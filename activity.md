@@ -117,3 +117,29 @@
   crashed the host; `timeout` does not exist on this Mac.
 - Untested: on-disk container and migration between versions (only v1 exists);
   `/goal` not invoked as a tool, bound self-enforced. No UI, so no screenshots.
+
+## 2026-10-21 — T003 Bundled data and idempotent seeding (Sonnet)
+
+- Added `NextCup/Resources/` `methods.json` (8 methods, one per style incl.
+  switchable immersion dripper and inverted press), `recipes.json` (8 generic
+  recipes, original text), `taxonomy.json` (5 dimensions, versioned). Added
+  `Persistence/BuiltInContent.swift` (decoder) and `BuiltInSeeder.swift`.
+- Seeding keys on `builtInKey` and a ledger of offered keys in `UserDefaults`
+  (saved only after a confirmed write). Seeding twice adds nothing; a newer
+  bundle adds only new keys and never touches edited rows; a built-in the user
+  deleted stays deleted until `forgetOfferedKeys()` (for delete-all, T019).
+- For T004 to confirm: on an iced recipe `waterG` is the hot water and `iceG` is
+  separate, so ratio and scaling must add them (`includesIce`). Espresso
+  recipes store the target yield in `waterG`.
+- Tests: `NextCupTests/BuiltInSeederTests.swift` (9: references resolve,
+  required presets, every style covered, taxonomy buckets valid and every
+  `RoastLevel`/`BrewStyle` mapped, seeding, idempotence, newer bundle, deleted
+  built-in).
+- Commands: `xcodebuild ... test` TEST SUCCEEDED (26 unit incl. 9 new, 1 UI);
+  `xcodebuild ... build` BUILD SUCCEEDED; `swift test --package-path
+  Packages/NextCupKit` passed (1); `swift format lint --recursive --strict`
+  clean (two long lines fixed first).
+- Untested: the seeder is not called at app launch yet (T006 wires it); no
+  taxonomy consumer yet (T016); bundle loaded only via `Bundle.main` in the
+  hosted test. No UI, so no screenshots. `/goal` not invoked as a tool; bound
+  self-enforced.
