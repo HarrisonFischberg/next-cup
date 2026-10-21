@@ -41,3 +41,16 @@
   only the iOS 27 simulator runtime installed (drove the iOS 27 minimum).
 - Waiting on owner approval (B011). Nothing deployed or changed externally
   beyond the PR.
+
+## 2026-10-21 — Phase 3B design directions (Sonnet)
+
+- Phase 3 blueprint approved and merged (PR #1).
+- Built `design/Shared` (one flow model, sample data, timer, validation, shell)
+  and five concept presentations, one git worktree and local branch each
+  (`ui-1`..`ui-5`, never pushed). Base branch `design-base`.
+- Screenshots (light/dark x default/largest text), critique, one fix batch per
+  concept, re-capture. Contrast computed; three failures found and fixed.
+- One live walkthrough (concept 4) found a safe-area bleed bug and a missing
+  verdict in the journal; both fixed.
+- Not done: VoiceOver, Reduce Motion, landscape, performance. Waiting for the
+  owner's design pick before 3C.
