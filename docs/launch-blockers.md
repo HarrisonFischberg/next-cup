@@ -2,7 +2,7 @@
 
 | # | Blocker | Type (missing fact / failed check / legal review / approval) | Owner | Needed for | Status |
 | --- | --- | --- | --- | --- | --- |
-| B001 | GitHub org name for the repo | missing fact | Owner | Phase 1 repo creation | OPEN |
+| B001 | GitHub org name for the repo | missing fact | Owner | Phase 1 repo creation | RESOLVED for now: private repo created under HarrisonFischberg 2026-10-21; move to an org and flip public (owner's stated plan) only on explicit approval |
 | B002 | Ralph quickstart not cloned; `/goal` and REA calls not yet verified | failed check | Builder | Phase 2 (REA) and Phase 4 (Ralph, `/goal`) | OPEN |
 | B003 | Authorization to analyze the three reference products: public pages and store listings only, no login or paywall bypass | approval | Owner | Phase 2 | ASSUMED from intake, confirm at the comparison stop |
 | B004 | Creator recipe import: confirm the source list, store parameters only with credit and links, check each source's terms | legal review | Owner | Feature build | OPEN |
