@@ -52,5 +52,5 @@
   concept, re-capture. Contrast computed; three failures found and fixed.
 - One live walkthrough (concept 4) found a safe-area bleed bug and a missing
   verdict in the journal; both fixed.
-- Not done: VoiceOver, Reduce Motion, landscape, performance. Waiting for the
-  owner's design pick before 3C.
+- Not done: VoiceOver, Reduce Motion, landscape, performance. Owner picked Steel & Kraft; other four archived as text, worktrees and
+  `ui-*` branches removed. Next: Phase 3C design system.
