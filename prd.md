@@ -72,7 +72,7 @@ and filled states, at default and the largest accessibility text size.
 | package tests | `swift test --package-path Packages/NextCupKit` |
 | build | `xcodebuild -project NextCup.xcodeproj -scheme NextCup -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build` |
 | app + UI tests | `xcodebuild -project NextCup.xcodeproj -scheme NextCup -destination 'platform=iOS Simulator,name=iPhone 18 Pro' test` |
-| lint | `swift format lint --recursive --strict NextCup NextCupLiveActivity NextCupUITests Packages` |
+| lint | `swift format lint --recursive --strict NextCup NextCupTests NextCupUITests Packages/NextCupKit/Sources Packages/NextCupKit/Tests` |
 
 Types are checked by the build (Swift 6 strict concurrency, warnings as
 errors in `NextCupKit`).

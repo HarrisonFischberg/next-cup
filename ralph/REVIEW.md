@@ -35,3 +35,11 @@ form was allowed. Every allow and deny rule now exists in both forms
 `rtk proxy` (which runs arbitrary commands). Verified with non-interactive
 runs: `xcodebuild -version` runs, `curl` is denied, `xcrun simctl list` runs.
 `git push` denial is by rule only; it was not exercised.
+
+## First run (T001, 2026-10-21)
+
+One iteration, one commit (`743edff`). I re-ran the checks myself afterwards:
+package tests pass, `xcodebuild test` succeeds (unit and UI), strict format
+lint is clean. Two loop findings: the headless session cannot invoke `/goal`
+(a slash command, not a tool) so the goal bound is self-imposed; and its
+`git add -A` staged SwiftPM `.build/` files (not committed; `.gitignore` fixed).

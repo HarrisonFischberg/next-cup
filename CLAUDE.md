@@ -24,7 +24,7 @@ loop. Verify each before claiming use: `docs/tool-environment.md`.
 | --- | --- |
 | package tests | `swift test --package-path Packages/NextCupKit` |
 | types | covered by build (Swift 6 strict concurrency) |
-| lint | `swift format lint --recursive --strict NextCup NextCupLiveActivity NextCupUITests Packages` |
+| lint | `swift format lint --recursive --strict NextCup NextCupTests NextCupUITests Packages/NextCupKit/Sources Packages/NextCupKit/Tests` |
 | build | `xcodebuild -project NextCup.xcodeproj -scheme NextCup -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build` |
 | app + UI tests | same as build with `test` |
 | design tokens | `python3 design/check_tokens.py` and `contrast.py` on `docs/design/tokens/*.json` |
