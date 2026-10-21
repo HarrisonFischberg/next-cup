@@ -1,7 +1,7 @@
 # Design directions (Phase 3B)
 
-Status: built, critiqued, fixed, screenshotted 2026-10-21. Waiting for the
-owner's pick. Nothing here is `DESIGN.md`; that is written only after a
+Status: built, critiqued, fixed, screenshotted 2026-10-21. Owner chose
+Steel & Kraft the same day. Nothing here is `DESIGN.md`; that is written only after a
 direction is approved.
 
 ## Brief (Impeccable `shape`, native iOS, Operate mode)
@@ -39,8 +39,7 @@ discovery round was held; assumptions are stated here instead.
 | 5 | Late-Night Café | Intimate, amber-lit, menu-card | Brass double rules, dotted leaders, centered composition | Spotlight on the current step, others fade away; lamp glow in dark | Native wheel pickers that open in place | Bodoni 72, Gill Sans |
 
 Each world differs in layout, typography, color, and how you enter a value;
-none is a reskin. Source for each lives on its local branch `ui-1` to `ui-5`
-(`design/Concept/ConceptRoot.swift`); never pushed.
+none is a reskin. The chosen one is `design/Concept/ConceptRoot.swift`; the other four are archived in `docs/design/archive/`.
 
 ## Evidence
 

@@ -1,5 +1,7 @@
 # Direction comparison and recommendation
 
+**Decision (owner, 2026-10-21): Steel & Kraft.** The other four are archived as source in `docs/design/archive/`; the `ui-*` worktrees and branches were removed. Warmth from Late-Night Café (brass, softer title face) is to be considered in Phase 3C.
+
 Draft by the builder (Sonnet) for the owner's decision; under
 `~/.claude/skills/new-app` the recommendation is Opus's to confirm, so it can
 be re-checked in the next phase. The owner chooses.
@@ -42,4 +44,4 @@ One pick (or a named hybrid such as "4's structure with 5's palette"). On your
 pick: merge that branch into main, remove the other worktrees and `ui-*`
 branches, then Phase 3C writes `DESIGN.md`, tokens and component states.
 Branches: `ui-1` Charcoal & Crema, `ui-2` Quiet Ceramic, `ui-3` Terracotta,
-`ui-4` Steel & Kraft, `ui-5` Late-Night Café (local only, never pushed).
+`ui-4` Steel & Kraft, `ui-5` Late-Night Café (removed after the pick; sources archived).
