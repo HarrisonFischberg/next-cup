@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "recipes": [
+    {
+      "key": "cone-balanced",
+      "methodKey": "cone-dripper",
+      "name": "Balanced cone",
+      "doseG": 15,
+      "waterG": 250,
+      "tempC": 94,
+      "totalTimeS": 180,
+      "tuningNote": "Sour or thin: grind finer. Bitter or dry: grind coarser.",
+      "includesIce": false,
+      "steps": [
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 45, "instruction": "Wet every ground and give the dripper a gentle swirl." },
+        { "kind": "pour", "startOffsetS": 45, "targetCumulativeWaterG": 150, "instruction": "Pour in slow circles from the centre outward." },
+        { "kind": "pour", "startOffsetS": 85, "targetCumulativeWaterG": 250, "instruction": "Pour to the final weight, keeping the bed level." },
+        { "kind": "drawdown", "startOffsetS": 125, "instruction": "Let the bed drain completely." }
+      ]
+    },
+    {
+      "key": "flat-even",
+      "methodKey": "flat-dripper",
+      "name": "Even flat bed",
+      "doseG": 20,
+      "waterG": 320,
+      "tempC": 93,
+      "totalTimeS": 210,
+      "tuningNote": "If the cup is muddy, pour more gently and swirl less.",
+      "includesIce": false,
+      "steps": [
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 60, "instruction": "Cover the bed evenly and wait for it to settle." },
+        { "kind": "pour", "startOffsetS": 40, "targetCumulativeWaterG": 190, "instruction": "Pour steadily in a wide spiral." },
+        { "kind": "pour", "startOffsetS": 90, "targetCumulativeWaterG": 320, "instruction": "Finish the pour in one smooth pass." },
+        { "kind": "swirl", "startOffsetS": 135, "instruction": "Swirl once to flatten the bed." },
+        { "kind": "drawdown", "startOffsetS": 145, "instruction": "Let the bed drain completely." }
+      ]
+    },
+    {
+      "key": "switchable-steep",
+      "methodKey": "switchable-dripper",
+      "name": "Steep then release",
+      "doseG": 18,
+      "waterG": 270,
+      "tempC": 95,
+      "totalTimeS": 210,
+      "tuningNote": "Taste too heavy: shorten the steep. Too sharp: lengthen it.",
+      "includesIce": false,
+      "steps": [
+        { "kind": "closeValve", "startOffsetS": 0, "instruction": "Close the valve before adding anything." },
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 270, "instruction": "Pour all the water quickly and evenly." },
+        { "kind": "stir", "startOffsetS": 30, "instruction": "Stir the slurry a few times." },
+        { "kind": "wait", "startOffsetS": 40, "instruction": "Let it steep." },
+        { "kind": "openValve", "startOffsetS": 120, "instruction": "Open the valve and place on the server." },
+        { "kind": "drawdown", "startOffsetS": 125, "instruction": "Let the coffee drain completely." }
+      ]
+    },
+    {
+      "key": "press-classic",
+      "methodKey": "press",
+      "name": "Classic press",
+      "doseG": 15,
+      "waterG": 250,
+      "tempC": 95,
+      "totalTimeS": 270,
+      "tuningNote": "For a cleaner cup, skim the top and let it settle before pressing.",
+      "includesIce": false,
+      "steps": [
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 250, "instruction": "Pour all the water over the grounds." },
+        { "kind": "stir", "startOffsetS": 30, "instruction": "Stir gently to break the crust." },
+        { "kind": "wait", "startOffsetS": 45, "instruction": "Place the lid on and steep." },
+        { "kind": "press", "startOffsetS": 240, "instruction": "Press the plunger down slowly and pour right away." }
+      ]
+    },
+    {
+      "key": "inverted-short",
+      "methodKey": "inverted-press",
+      "name": "Short inverted press",
+      "doseG": 16,
+      "waterG": 240,
+      "tempC": 92,
+      "totalTimeS": 165,
+      "tuningNote": "Dripping through the plug means the plunger is not seated; reseat before pouring.",
+      "includesIce": false,
+      "steps": [
+        { "kind": "plug", "startOffsetS": 0, "instruction": "Seat the plunger a little way into the chamber, upside down." },
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 240, "instruction": "Add the grounds, then pour all the water." },
+        { "kind": "stir", "startOffsetS": 20, "instruction": "Stir briefly." },
+        { "kind": "wait", "startOffsetS": 30, "instruction": "Steep." },
+        { "kind": "invert", "startOffsetS": 120, "instruction": "Fit the filter cap, then flip onto the server." },
+        { "kind": "press", "startOffsetS": 135, "instruction": "Press down steadily until it stops." }
+      ]
+    },
+    {
+      "key": "espresso-starting-point",
+      "methodKey": "espresso",
+      "name": "Espresso starting point",
+      "doseG": 18,
+      "waterG": 36,
+      "tempC": 93,
+      "totalTimeS": 28,
+      "tuningNote": "Running fast and sour: grind finer. Slow and bitter: grind coarser.",
+      "includesIce": false,
+      "steps": [
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 36, "instruction": "Start the shot and watch the yield on the scale." },
+        { "kind": "wait", "startOffsetS": 25, "instruction": "Stop the shot at the target weight." }
+      ]
+    },
+    {
+      "key": "iced-flash-chill",
+      "methodKey": "iced-pour-over",
+      "name": "Flash-chilled pour over",
+      "doseG": 20,
+      "waterG": 200,
+      "tempC": 94,
+      "totalTimeS": 150,
+      "tuningNote": "Hot water is the brewed amount; the ice sits in the server and melts into the cup.",
+      "includesIce": true,
+      "iceG": 120,
+      "steps": [
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 40, "instruction": "Wet the bed. The ice is already in the server." },
+        { "kind": "pour", "startOffsetS": 35, "targetCumulativeWaterG": 120, "instruction": "Pour in slow circles." },
+        { "kind": "pour", "startOffsetS": 70, "targetCumulativeWaterG": 200, "instruction": "Pour to the final hot-water weight." },
+        { "kind": "swirl", "startOffsetS": 120, "instruction": "Swirl the server to finish chilling." }
+      ]
+    },
+    {
+      "key": "cold-steep-concentrate",
+      "methodKey": "cold-brew",
+      "name": "Cold steep concentrate",
+      "doseG": 100,
+      "waterG": 800,
+      "totalTimeS": 43200,
+      "tuningNote": "Dilute to taste when serving; steep longer in a cooler place.",
+      "includesIce": false,
+      "steps": [
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 800, "instruction": "Add cool water over the grounds." },
+        { "kind": "stir", "startOffsetS": 60, "instruction": "Stir until no dry pockets remain." },
+        { "kind": "wait", "startOffsetS": 120, "instruction": "Cover and steep in the fridge, then strain." }
+      ]
+    }
+  ]
+}
