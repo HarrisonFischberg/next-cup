@@ -1,0 +1,26 @@
+{
+  "_about": "Steel & Kraft, light appearance. Source of truth for design/DesignSystem/Tokens.swift (checked by design/check_tokens.py). Check contrast: python3 contrast.py docs/design/tokens/tokens.light.json",
+  "color": {
+    "bg": "#D9C4A0",
+    "paper": "#EFE6D3",
+    "steel": "#2B2F33",
+    "on-steel": "#E8EAEC",
+    "ink": "#1E1E1C",
+    "ink-2": "#4A463E",
+    "line": "#1E1E1C",
+    "signal": "#C2410C",
+    "on-signal": "#FFFFFF",
+    "signal-on-steel": "#FF7A3D",
+    "kraft": "#C9AE82",
+    "on-kraft": "#1E1E1C",
+    "error": "#9A1B0A",
+    "ok": "#2A6A2A"
+  },
+  "pairs": [
+    ["ink", "bg"], ["ink-2", "bg"], ["ink", "paper"], ["ink-2", "paper"],
+    ["on-steel", "steel"], ["signal-on-steel", "steel"],
+    ["on-signal", "signal"], ["on-kraft", "kraft"],
+    ["error", "bg"], ["error", "paper"], ["ok", "paper"],
+    ["line", "bg", "ui"], ["line", "paper", "ui"], ["signal", "bg", "ui"]
+  ]
+}
