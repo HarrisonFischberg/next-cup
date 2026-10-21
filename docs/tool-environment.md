@@ -46,3 +46,16 @@ and audit use simulator screenshots. Never claim a browser preview.
 | web-quality-audit + siblings (evidence) | YES, NOT APPLICABLE | `~/.claude/skills/web-quality-audit` | No web surface |
 
 Missing tool or credential = BLOCKED, never PASS.
+
+## Phase 3B run (2026-10-21)
+
+| Item | Result |
+| --- | --- |
+| `impeccable context` | Ran once; loaded PRODUCT.md and the iOS reference. No DESIGN.md yet (by design) |
+| `/impeccable shape` | Brief written inline from the owner's directions; no interview round (owner had named the worlds and flow). Recorded in `docs/design/directions.md` |
+| `/impeccable critique` | Native: Assessment A only, inline, no detector (not applicable). `docs/design/critique.md` |
+| `/impeccable audit` | Native, from source and screenshots. VoiceOver and Accessibility Inspector not run: BLOCKED |
+| `/impeccable craft`, `live` | Not used (craft is a deprecated alias; live is browser-only) |
+| Browser preview | NOT APPLICABLE (native app) |
+| iOS Simulator | iPhone 18 Pro, iOS 27.0; screenshots by `xcrun simctl io`; one live tap-through on concept 4 |
+| Xcode project | Hand-written `design/Concepts.xcodeproj` (synchronized folders); builds with `xcodebuild` |
