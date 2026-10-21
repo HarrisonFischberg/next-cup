@@ -22,16 +22,16 @@ loop. Verify each before claiming use: `docs/tool-environment.md`.
 
 | Check | Command |
 | --- | --- |
-| tests | TODO |
-| types | TODO |
-| lint | TODO |
-| build | TODO |
-| e2e | TODO |
+| package tests | `swift test --package-path Packages/NextCupKit` |
+| types | covered by build (Swift 6 strict concurrency) |
+| lint | `swift format lint --recursive --strict NextCup NextCupLiveActivity NextCupUITests Packages` |
+| build | `xcodebuild -project NextCup.xcodeproj -scheme NextCup -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build` |
+| app + UI tests | same as build with `test` |
 
 ## Artifacts
 
 `prd.md`, `PROMPT.md`, `activity.md`, `replica/`, `ralph/`,
-`docs/`: `rea-findings.md`, `data-inventory.md`,
+`docs/`: `blueprint.md`, `rea-findings.md`, `data-inventory.md`,
 `compliance-checklist.md` (20 safeguards), `asset-licenses.md`,
 `claims-evidence.md`, `launch-blockers.md`, `tool-environment.md`.
 

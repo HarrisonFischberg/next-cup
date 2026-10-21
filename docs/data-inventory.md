@@ -31,3 +31,19 @@ needs a decision in the blueprint and then a row in the table above.
 Discovery inventory for the current repository: no app code exists yet, so
 there are no routes, SDKs, cookies, storage, emails, fonts or licenses to
 inventory. Rerun this section in Phase 5 against the built code.
+
+## Phase 3 blueprint decisions (2026-10-21)
+
+Pending owner approval of `docs/blueprint.md` §6.
+
+| Candidate | Decision |
+| --- | --- |
+| Bluetooth scale | Deferred (owner) |
+| Caffeine to Apple Health | Not adopted |
+| Café check-ins with location | Not adopted; only roasters the user saves |
+| CSV / JSON export and merge import | Adopted (T019) |
+| Automatic local backup (Application Support, keep 7) | Adopted (T019); included in the user's iCloud device backup per iOS settings; Keychain keys excluded |
+| Water profiles | Could (T029), on device |
+| Live Activity | Adopted (T026); timer state only |
+| Photo metadata | EXIF and GPS stripped before storing or sending (T009) |
+| Third-party SDKs | None |

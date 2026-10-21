@@ -12,6 +12,7 @@
 | B008 | Public review research (`/replica-entrepreneur`) on the three references not yet run | missing fact | Builder | Comparison stop | RESOLVED 2026-10-21: 151 items (50 App Store reviews of one reference, 99 public issues of another, 2 HN comments); no reviews exist for the third (0 ratings); Reddit skipped (official API needs a registered app). Fix plan X1–X8 and angle options in the lab |
 | B009 | Does the creator video channel from intake belong in Phase 2 research? | missing fact | Owner | Phase 2 | RESOLVED 2026-10-21: owner chose to study it when creator-recipe import is built (see B004), not in Phase 2 |
 | B010 | Reference recon used a Chromium-based app binary with a fresh profile because stock Chrome is not installed; in-app screens of two references not captured | failed check | Builder | Recon completeness | ACCEPTED limitation, noted in `docs/rea-findings.md` |
+| B011 | Blueprint and task plan (`docs/blueprint.md`, `prd.md`) need owner approval before Phase 3B | approval | Owner | Phase 3B, 4 | OPEN |
 
 ## ASSUMED answers (skipped or interpreted at intake)
 
