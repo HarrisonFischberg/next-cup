@@ -143,3 +143,25 @@
   taxonomy consumer yet (T016); bundle loaded only via `Bundle.main` in the
   hosted test. No UI, so no screenshots. `/goal` not invoked as a tool; bound
   self-enforced.
+
+## 2026-10-21 — T004 BrewMath, RecipeScaler, Freshness, units (Sonnet)
+
+- Added `Packages/NextCupKit/Sources/NextCupKit/Domain/`: `BrewMath` (ratio incl.
+  ice, espresso ratio, extraction yield, `1:x.x` label; missing or non-positive
+  inputs give `nil`), `RecipeScaler` (scales dose, water, ice and step targets;
+  water to whole grams, dose to 0.1 g; rounding notes; dose <= 0 throws),
+  `Freshness` (age in calendar days with frozen spans excluded, state
+  unknown/resting/peak/pastPeak/frozen), `UnitPreferences` (g/oz, °C/°F).
+- Value types only (`ScalableRecipe`, `FrozenSpan`); the app maps SwiftData
+  models onto them. Confirmed the T003 note: on an iced recipe `totalWaterG`
+  adds `iceG` to `waterG`; the ratio and scaling both include ice.
+- Freshness windows are my default (resting < 5 days, peak through day 30),
+  adjustable via `FreshnessWindows`; the blueprint gave no numbers.
+- Tests: `DomainTests.swift` (22 total in package incl. the version test).
+- Commands: `swift test --package-path Packages/NextCupKit` passed (22 tests);
+  `swift format lint --recursive --strict` clean (after `format --in-place`);
+  `xcodebuild ... build` BUILD SUCCEEDED. App tests not re-run (no app code
+  changed).
+- Untested: nothing consumes these yet (T007+); freshness in non-Gregorian
+  calendars or DST-boundary zones is not covered beyond the UTC test calendar.
+  No UI, so no screenshots. `/goal` not invoked as a tool; bound self-enforced.
