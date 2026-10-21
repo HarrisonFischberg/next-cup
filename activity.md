@@ -93,3 +93,27 @@
   tool in this session, so the goal bound was self-enforced; `NextCupLiveActivity`
   does not exist yet (T026); lint target list in CLAUDE.md omits `NextCupTests`,
   which I linted too. `/impeccable` polish/audit not run: placeholder screen.
+
+## 2026-10-21 — T002 SwiftData schema v1 and Store (Sonnet)
+
+- Added `NextCup/Persistence/`: `Enums.swift`, `Models.swift` (12 models from
+  blueprint §2), `Schema.swift` (`NextCupSchemaV1`, `NextCupMigrationPlan`,
+  `NextCupContainer.make(inMemory:)`), `Store.swift` (`find`, `upsert` by `id`,
+  `save() -> Result`). Tests in `NextCupTests/PersistenceTests.swift` (17).
+- Blueprint deviation (needed for its own CloudKit rule): added
+  `Brew.aiRequests` as the inverse of `AIRequest.brew`; §2 listed no inverse.
+- SwiftData rejects an inverse declared on both sides (circular macro error),
+  so each pair is declared from one end. The CloudKit test checks that every
+  relationship is either that end or its target.
+- `Schema.Attribute.defaultValue` hung the test host, so the "defaults" rule is
+  checked behaviorally (`everyModelSavesFromDefaultsAlone`) instead of by
+  introspection. Uniqueness, optional relationships and pairing are introspected.
+- `Store.find` filters in memory (generic `#Predicate` is unsupported); fine at
+  journal scale, revisit if brews reach many thousands.
+- Commands: `xcodebuild ... test` TEST SUCCEEDED (18 unit, 1 UI); `xcodebuild
+  ... build` BUILD SUCCEEDED; `swift test --package-path Packages/NextCupKit`
+  passed (1); `swift format lint --recursive --strict` clean.
+- Debugging notes: tests that dropped their `ModelContainer` (`let (store, _)`)
+  crashed the host; `timeout` does not exist on this Mac.
+- Untested: on-disk container and migration between versions (only v1 exists);
+  `/goal` not invoked as a tool, bound self-enforced. No UI, so no screenshots.
