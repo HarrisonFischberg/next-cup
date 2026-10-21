@@ -74,3 +74,22 @@
   runs; `curl` is denied. First test failed because the rtk hook rewrote
   commands; rules fixed.
 - Branch `build/phase-4` for the loop. Next: run the loop for T001.
+
+## 2026-10-21 — T001 Xcode project and package (Sonnet)
+
+- Added `NextCup.xcodeproj` (hand-written pbxproj, synchronized folders, shared
+  `NextCup` scheme with both test targets), `NextCup/App/NextCupApp.swift`
+  (placeholder `LaunchView`), `NextCupTests` (Swift Testing), `NextCupUITests`
+  (XCUITest launch check), local package `Packages/NextCupKit` (warnings as
+  errors, one test), `.swift-format`. Strict concurrency complete, iOS 27.
+- Commands: `swift test --package-path Packages/NextCupKit` passed (1 test);
+  `xcodebuild ... test` TEST SUCCEEDED (unit 1, UI 1); `xcodebuild ... build`
+  BUILD SUCCEEDED; `swift format lint --recursive --strict` clean.
+- Fixes along the way: added `ENABLE_TESTABILITY` for `@testable import`;
+  UI test queries any element type for the combined accessibility element.
+- Screenshots: `ralph/screenshots/T001-light.png`, `T001-dark.png`,
+  `T001-largest-text.png` (I viewed the largest-text shot only; it fits).
+- Untested: VoiceOver (placeholder screen only); `/goal` was not invoked as a
+  tool in this session, so the goal bound was self-enforced; `NextCupLiveActivity`
+  does not exist yet (T026); lint target list in CLAUDE.md omits `NextCupTests`,
+  which I linted too. `/impeccable` polish/audit not run: placeholder screen.
