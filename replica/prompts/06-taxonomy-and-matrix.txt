@@ -1,0 +1,5 @@
+Build the taxonomy and recommendation matrix (Next Cup's own design; no reference app has it).
+Taxonomy: one bundled, versioned dataset mapping raw values to generic buckets: origin -> region bucket (for example East Africa, Kenya), process -> process family, roast level -> roast band, flavor notes -> flavor families (for example stone fruit, citrus, chocolate), brewer -> method style. Users can add their own values and map them to buckets.
+Matrix: for a bean, find past brews of beans that share buckets, weight by similarity and rating, and recommend a method, a recipe and starting parameters, with a plain explanation ("you rated light, washed East African coffees highest on a cone dripper at 1:16"). Computed on device, works offline.
+Every feature (logging, search, recommendations, AI context) reads and writes the same buckets.
+Acceptance: deterministic unit tests for bucket mapping and ranking with a synthetic history; explanation strings never invent data.

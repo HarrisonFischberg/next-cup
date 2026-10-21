@@ -1,0 +1,3 @@
+Build local roaster discovery.
+MapKit local search for coffee roasters, on demand, while in use (ask for location in context, not at launch). Results on a map and a list; save a roaster to the library and link beans to it. Works with a typed city if location is denied. No check-in feed, no sharing.
+Acceptance: location-denied path works; nothing about location is stored beyond saved roasters the user chose.

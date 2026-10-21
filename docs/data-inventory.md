@@ -12,3 +12,22 @@ is verified against the code in Phase 5.
 | Coarse location (planned) | Local roaster search | Location prompt, while in use, on demand | Apple MapKit local search; not stored | Not stored | Revoke permission in iOS Settings |
 | Creator recipe parameters (planned) | Recipe library with credit and links | Import by the user | On device | Until deleted | Delete recipe |
 | iCloud sync (optional, later) | Cross-device journal | User opt-in | Apple CloudKit private database | Until deleted | Turn off sync; delete all data |
+
+## Phase 2 discovery: candidate flows (2026-10-21)
+
+The references point to these possible data flows. None is adopted yet. Each
+needs a decision in the blueprint and then a row in the table above.
+
+| Candidate | Seen in | Data and recipient if adopted | Note |
+| --- | --- | --- | --- |
+| Bluetooth scale (live weight, flow, saved curve) | Sources A, B, C | Weight time series, on device only; Bluetooth permission | Open decision in PRODUCT.md |
+| Caffeine written to Apple Health | Source B | Caffeine amounts to HealthKit (Apple, on device) | Adds health-category data and a permission; default no |
+| CSV / JSON export of every field | Source A | User-chosen destination via share sheet | Recommended: supports data portability (safeguard 20) |
+| Import from another journal app's export | Source A | File the user picks, parsed on device | Could |
+| Water profiles (mineral content) | Source B | On device | Could |
+| Café check-ins with location | Source A | Place and date on device; MapKit search | Narrower than intake's roaster search; decide in blueprint |
+| Live Activity / widgets for the brew timer | Source C | Timer state on device | No new recipient |
+
+Discovery inventory for the current repository: no app code exists yet, so
+there are no routes, SDKs, cookies, storage, emails, fonts or licenses to
+inventory. Rerun this section in Phase 5 against the built code.

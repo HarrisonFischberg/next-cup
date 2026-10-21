@@ -1,0 +1,7 @@
+Build the brew journal for Next Cup (SwiftUI, SwiftData, iPhone).
+A Brew records: date, method, optional recipe, optional bean(s) with amounts (blends allowed), dose g, water g (or yield g for espresso), derived ratio, grind setting, water temperature, total time, optional TDS with derived extraction yield, rating, tasting notes, optional photo, optional water profile.
+Screens: brew list (newest first, searchable, filter by method and bean), new/edit brew form.
+Must: actual values are what is saved; targets from a recipe are shown alongside, never locked. Any saved brew can be edited later. "Brew again" prefills from the last brew of the same bean and method and resets timing (X2). Only the parameters enabled for the chosen method are shown (see 04). Drafts autosave; a failed save is shown to the user and the draft is kept (X5). Units follow one global setting (X8).
+States: empty list with a "log your first brew" action, filled, search with no results, save error.
+Accessibility: Dynamic Type, VoiceOver labels on every field and value, 44 pt targets, the keyboard never covers Save (X7).
+Acceptance: unit tests for ratio and extraction derivation and for prefill rules; UI test that logs, edits and repeats a brew.

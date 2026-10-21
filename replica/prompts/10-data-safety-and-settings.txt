@@ -1,0 +1,4 @@
+Build data safety and settings.
+Export all data to CSV and JSON (share sheet). Import from a Next Cup export or a generic CSV: merge by id, never overwrite silently, preview changes first (X5). Automatic on-device backup with restore. Delete-all-data with Undo where possible and a confirm only for the irreversible step.
+Settings: units (°C/°F, g/oz) applied everywhere (X8), AI keys and per-feature models, disclosure text, methods, privacy summary, about. No accounts, no analytics.
+Acceptance: export -> wipe -> import round-trip test is lossless; a simulated failed write shows an error and keeps the draft.
