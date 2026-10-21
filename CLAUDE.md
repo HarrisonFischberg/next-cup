@@ -27,11 +27,12 @@ loop. Verify each before claiming use: `docs/tool-environment.md`.
 | lint | `swift format lint --recursive --strict NextCup NextCupLiveActivity NextCupUITests Packages` |
 | build | `xcodebuild -project NextCup.xcodeproj -scheme NextCup -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build` |
 | app + UI tests | same as build with `test` |
+| design tokens | `python3 design/check_tokens.py` and `contrast.py` on `docs/design/tokens/*.json` |
 
 ## Artifacts
 
 `prd.md`, `PROMPT.md`, `activity.md`, `replica/`, `ralph/`,
-`docs/`: `blueprint.md`, `rea-findings.md`, `data-inventory.md`,
+`DESIGN.md`, `docs/`: `design/` (system, tokens), `blueprint.md`, `rea-findings.md`, `data-inventory.md`,
 `compliance-checklist.md` (20 safeguards), `asset-licenses.md`,
 `claims-evidence.md`, `launch-blockers.md`, `tool-environment.md`.
 

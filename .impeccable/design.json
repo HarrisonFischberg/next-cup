@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-21T21:08:39.483735Z",
+  "title": "Design System: Next Cup",
+  "extensions": {
+    "shadows": [],
+    "motion": [
+      {
+        "name": "press",
+        "value": "easeOut 100ms, 2pt down",
+        "purpose": "Button press; removed under Reduce Motion."
+      },
+      {
+        "name": "state",
+        "value": "easeInOut 400ms max",
+        "purpose": "Spotlight and fade changes."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "accessibility",
+        "value": "DynamicTypeSize >= accessibility1 stacks rows and tiles"
+      }
+    ]
+  },
+  "components": [],
+  "narrative": {
+    "northStar": "The Bench Instrument",
+    "overview": "A brew journal that looks like the tool beside the scale.",
+    "keyCharacteristics": [
+      "Ruled tables and square tiles",
+      "Monospaced measurements",
+      "One signal orange",
+      "Flat, no shadows"
+    ],
+    "rules": [
+      {
+        "name": "The One Voice Rule",
+        "body": "Orange marks the action or the live step, once per region.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Show recipe targets beside values",
+      "Stack at accessibility sizes"
+    ],
+    "donts": [
+      "No shadows or gradients",
+      "Do not hide user values behind targets"
+    ]
+  }
+}

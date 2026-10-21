@@ -14,6 +14,7 @@
 		A10000000000000000000002 /* App */ = {isa = PBXFileSystemSynchronizedRootGroup; path = App; sourceTree = "<group>"; };
 		A10000000000000000000003 /* Shared */ = {isa = PBXFileSystemSynchronizedRootGroup; path = Shared; sourceTree = "<group>"; };
 		A10000000000000000000004 /* Concept */ = {isa = PBXFileSystemSynchronizedRootGroup; path = Concept; sourceTree = "<group>"; };
+		A10000000000000000000012 /* DesignSystem */ = {isa = PBXFileSystemSynchronizedRootGroup; path = DesignSystem; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -33,6 +34,7 @@
 				A10000000000000000000002 /* App */,
 				A10000000000000000000003 /* Shared */,
 				A10000000000000000000004 /* Concept */,
+				A10000000000000000000012 /* DesignSystem */,
 				A10000000000000000000007 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -64,6 +66,7 @@
 				A10000000000000000000002 /* App */,
 				A10000000000000000000003 /* Shared */,
 				A10000000000000000000004 /* Concept */,
+				A10000000000000000000012 /* DesignSystem */,
 			);
 			name = Concept;
 			productName = Concept;

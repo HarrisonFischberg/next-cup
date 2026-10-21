@@ -54,3 +54,13 @@
   verdict in the journal; both fixed.
 - Not done: VoiceOver, Reduce Motion, landscape, performance. Owner picked Steel & Kraft; other four archived as text, worktrees and
   `ui-*` branches removed. Next: Phase 3C design system.
+
+## 2026-10-21 — Phase 3C design system (Sonnet)
+
+- Owner picked Steel & Kraft; PR #2 (direction and evidence) open.
+- Wrote `DESIGN.md`, token JSON (light, dark), `design/DesignSystem/` (tokens,
+  15 components, gallery), moved the concept screens onto it, `design/check_tokens.py`.
+- Contrast: 0 failing AA in either appearance. Gallery shot in light/dark at
+  default and largest text; it exposed component reflow bugs, fixed and re-shot.
+- Not done: VoiceOver, focus ring, journal Undo. `/impeccable extract` and
+  `polish` were applied by hand to this scope (no browser tooling for native).
