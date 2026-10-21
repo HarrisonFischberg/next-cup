@@ -1,0 +1,6 @@
+Build the guided brew timer.
+From a recipe, run steps in order with a large, high-contrast timer, the current step, the next step, and the target weight. Haptic cue at each step change (respect system settings); optional audio cue. Pause, resume, skip step, and end early.
+Live Activity and Lock Screen display of the current step and time; it must not intrude on other apps' Dynamic Island content (X7). Survives backgrounding and screen lock.
+At the end, open the brew form prefilled with the recipe targets and the measured time, for the user to correct to actual values and rate.
+Reduce Motion: no animated timeline sweep. One-handed: primary controls in the bottom third.
+Acceptance: timer logic unit-tested with a fake clock; background/foreground UI test; Live Activity snapshot.

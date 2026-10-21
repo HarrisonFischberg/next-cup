@@ -1,0 +1,4 @@
+Build brew methods.
+A Method: name, style (pour over, immersion, espresso, cold), icon from SF Symbols or original art, list of tracked parameters (dose, water/yield, grind, temperature, time, TDS, pressure note, bypass water, milk), default step kinds.
+Ship common methods enabled by default; the user can add, rename, reorder, hide, and choose tracked parameters per method (X1). Hidden methods keep their history.
+Acceptance: the brew form shows exactly the enabled parameters; reorder by drag with a non-gesture alternative.

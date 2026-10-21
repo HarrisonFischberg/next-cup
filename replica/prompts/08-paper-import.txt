@@ -1,0 +1,4 @@
+Build paper journal import.
+The user picks a photo or screenshot of a handwritten recipe or journal page. With an AI key: extract fields into a draft recipe or brew; without a key: on-device text recognition (Vision) fills what it can.
+Always show a review screen with the image beside the extracted fields; low-confidence fields are highlighted; nothing saves until the user confirms. On save, file it automatically: recipe or brew, method, bean match (or create), taxonomy buckets.
+Acceptance: the review screen blocks saving until confirmed; field mapping tests with sample synthetic images.

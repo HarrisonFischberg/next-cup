@@ -1,0 +1,6 @@
+Build the bean library.
+A Bean: name, roaster, origin country, region, farm or station, process, varietal, roast level (ultra light to dark), roast date, flavor notes from the bag, bag weight, remaining g (drops with each brew; manual correction allowed), status (in use, buy again, wishlist, finished), decaf flag, freeze and thaw dates (X6).
+A Roaster: name, city, website, saved-from-map flag.
+Screens: bean list with All / Buy again / Wishlist filter, search and sort; bean detail with attributes, freshness state from roast date (resting, peak, past peak, frozen), remaining amount, linked brews, and a "best so far" card: rating spread, best brew's settings, grind history by grinder and dose (X3).
+Every bean attribute maps to taxonomy buckets (see 06).
+Acceptance: remaining-amount math with blends and manual edits; freshness state tests including frozen periods.

@@ -1,0 +1,53 @@
+feature,area,priority,original,clone,notes
+Log a brew: method dose water grind temp time notes rating,journal,must,A B C,no,C gates coffee logs behind its paid tier; free in Next Cup
+Record what actually happened (actual yield and time) not just the target,journal,must,A B,no,C reviewer complaint: target fixed before the shot; design against it
+Photo on a brew,journal,must,—,no,Next Cup intake; none of the sources advertise it
+Searchable dated brew history,journal,must,A,no,
+Guided recipe timer with step cues and haptics that logs the result,recipes,must,A C,no,
+Recipe detail with pour/wait timeline and cumulative water targets,recipes,must,A,no,
+Scale a recipe to a new dose,recipes,must,A,no,rounding rules needed
+Write and save own recipes,recipes,must,B C,no,
+Customize which parameters each brew method tracks,methods,should,B,no,
+Built-in methods: pour over immersion espresso cold brew,methods,must,A B C,no,
+Bean library by roaster with rating and roast level,beans,must,A B,no,
+Bean attributes: origin region process varietal roast date,beans,must,A B,no,feeds the taxonomy
+Remaining bean stock that drops with each brew,beans,should,B,no,
+Freshness state from roast date (resting / peak / past),beans,should,A,no,
+Buy again and wishlist lists,beans,could,A,no,
+Generic buckets (region / roast band / flavor family / process) as one taxonomy,taxonomy,must,—,no,Next Cup spine from intake; no source has it
+Recommend method and recipe for a bean from similar past brews,matrix,must,—,no,closest is A tasting-notes explorer
+Tasting notes explorer (flavor wheel linked to origins and processes),taxonomy,should,A,no,
+Taste-based suggestion of which variable to change next,dial-in,must,C,no,C does this rule-based; Next Cup adds AI proposals the user accepts
+AI brew diagnosis and next-cup suggestion,AI,must,—,no,Next Cup intake; BYO key
+Photo interpretation (crema / extraction),AI,should,—,no,Next Cup intake
+Bag recognition from a photo,beans,should,B,no,B offers scan/import of roaster data; Next Cup does it via AI
+Paper journal / recipe photo import with review screen,AI,should,—,no,Next Cup intake; no source has it
+Extraction yield from a TDS reading vs target window,brew science,could,A C,no,C paid
+Water profiles (minerals) attached to brews,water,could,B,no,
+Bluetooth scale live weight flow and saved curve,devices,could,A B C,no,open decision in PRODUCT.md
+Pressure profiling devices,devices,could,B,skip,hardware-specific; outside audience
+Find roasters nearby,discovery,should,A,no,Next Cup uses MapKit local search
+Café check-ins on a map,discovery,could,A,no,
+Streaks badges and stats,engagement,could,A,no,keep honest; no dark-pattern streak pressure
+Export all data to CSV and JSON,data,must,A,no,also covers safeguard 20 data portability
+Import history from another journal app,data,could,A,no,
+Caffeine to Apple Health,integrations,could,B,no,adds HealthKit data flow; needs data-inventory row
+Widgets Live Activities Siri and Shortcuts,system,should,C,no,C paid; Live Activity fits the brew timer
+Declared accessibility: VoiceOver larger text dark contrast reduced motion,accessibility,must,C,no,B declares none; Next Cup must declare all five
+Multiple languages,system,could,B C,no,
+No account local-first optional iCloud,platform,must,A,no,matches intake
+Home roasting: green beans and roast batches,roasting,could,B,skip,outside audience
+AR gear previews,learning,could,C,skip,heavy; no core-loop value
+Community recipe feed and sharing,social,could,C,skip,social out of scope by intake
+Partner roaster products,commerce,could,C,skip,partner deals cannot be rebuilt
+Paid tier and paywall,monetization,could,C,skip,Next Cup is free
+Editorial articles and coffee-of-the-week,content,could,A,skip,owned content
+Step kinds beyond pour/wait (bloom stir swirl invert press plug bypass valve) and free method creation,recipes,must,no,no,fix X1 from review research (25 items 3 sources)
+Brew again: prefill from last brew of same bean and method; edit actuals any time,journal,must,no,no,fix X2
+Bean page best-so-far card: rating spread best settings grind history,beans,should,no,no,fix X3
+Suggestions saved with the brew they came from and shown on the next brew,dial-in,must,no,no,fix X4
+Honest saves (failures surfaced draft kept) merge-only import automatic local backup,data,must,no,no,fix X5
+Freeze/thaw dates decaf flag and blends as multi-bean brew,beans,should,no,no,fix X6
+Large timer digits keyboard never hides Save Live Activity respects Dynamic Island,accessibility,must,no,no,fix X7
+One units setting applied everywhere including recipes,system,must,no,no,fix X8
+Gear and cost tracking,gear,could,no,no,review research missing #6 (thin)

@@ -1,0 +1,5 @@
+Build dial-in suggestions and AI features.
+Rule-based first: from the taste verdict (sour, bitter, weak, strong, balanced) and the brew's parameters, propose one change for next time (grind, ratio, temperature or time).
+AI (optional): after the user adds their own OpenAI or Anthropic key (Keychain only) and accepts a plain disclosure, they can ask for a brew diagnosis, photo interpretation, bag recognition (photo -> bean fields), and insights across notes. Per-feature model choice. Requests queue when offline with visible status.
+AI proposes, the user decides: every suggestion is a card with Accept / Edit / Dismiss. Every suggestion is stored with the brew it came from and shown on the next brew and in history (X4). Nothing is sent without the key and a tap.
+Acceptance: no network call without a key and a user action (test with a stub transport); disclosure shown once before the first call; suggestion persistence tests.

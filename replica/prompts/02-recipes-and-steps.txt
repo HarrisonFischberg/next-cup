@@ -1,0 +1,6 @@
+Build recipes for Next Cup.
+A Recipe: name, credit (free text, optional link), method, dose g, water g, temperature, total time, tuning note, ordered steps.
+A Step: kind (bloom, pour, wait, stir, swirl, invert, press, plug, bypass, open valve, close valve, drawdown), start offset in seconds, optional target cumulative water g, short instruction in the user's words (X1).
+Screens: recipe library grouped by brew style (pour over, immersion, espresso, cold); recipe detail with a horizontal step timeline and step list; recipe editor; scale-to-dose control that recalculates every target with clear rounding.
+Ship a small bundled set of generic recipes written for Next Cup (no third-party recipe text). Built-in presets include a switchable immersion dripper and an inverted press.
+Acceptance: scaling tests (including iced recipes where ice counts toward water), editor round-trip tests, VoiceOver reads each step as "kind, time, target".
