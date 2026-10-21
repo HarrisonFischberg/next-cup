@@ -1,6 +1,6 @@
 # next-cup — PRD
 
-Status: DRAFT for owner approval with `docs/blueprint.md` (Phase 3,
+Status: APPROVED by the owner with `docs/blueprint.md` (Phase 3,
 2026-10-21). Created 2026-10-21.
 
 ## Purpose
