@@ -41,6 +41,7 @@ struct ConceptShell<RV: View, TV: View, LV: View, JV: View>: View {
         .fullScreenCover(isPresented: $model.showTimer) { timerScreen(model).tint(tint) }
         .sheet(isPresented: $model.showLog) { logScreen(model).tint(tint) }
         .overlay(alignment: .bottom) { toast }
+        .tint(tint)
         .sensoryFeedback(.success, trigger: model.journal.count)
         .task {
             try? await Task.sleep(for: .milliseconds(400))
