@@ -1,0 +1,461 @@
+import SwiftUI
+import UIKit
+
+// Concept 1 — Charcoal & Crema
+// Dark, moody, sophisticated. A ledger: big Didot numerals, hairline rules, one
+// crema accent. Bottom-thumb primary actions for the brew station.
+
+private extension Color {
+    init(light: UInt32, dark: UInt32) {
+        self.init(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) })
+    }
+}
+
+private extension UIColor {
+    convenience init(hex: UInt32) {
+        self.init(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
+                  blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+    }
+}
+
+private enum T {
+    static let bg = Color(light: 0xF4ECDF, dark: 0x1B1917)
+    static let raised = Color(light: 0xEADFCC, dark: 0x262320)
+    static let ink = Color(light: 0x1F1B18, dark: 0xF2E8D8)
+    static let ink2 = Color(light: 0x5C5248, dark: 0xBFB2A0)
+    static let crema = Color(light: 0x8A5A2B, dark: 0xD9B88F)
+    static let onCrema = Color(light: 0xF4ECDF, dark: 0x1B1917)
+    static let rule = Color(light: 0xC9BBA3, dark: 0x3A3631)
+    static let error = Color(light: 0xA2331F, dark: 0xF0907D)
+
+    static func display(_ size: CGFloat, relativeTo style: Font.TextStyle = .largeTitle) -> Font {
+        .custom("Didot", size: size, relativeTo: style)
+    }
+    static func displayBold(_ size: CGFloat, relativeTo style: Font.TextStyle = .largeTitle) -> Font {
+        .custom("Didot-Bold", size: size, relativeTo: style)
+    }
+    static let label = Font.footnote.weight(.semibold).smallCaps()
+}
+
+struct ConceptRoot: View {
+    var body: some View {
+        ConceptShell(tint: T.crema, appearance: configureBars) { model in
+            RecipeScreen(model: model)
+        } timer: { model in
+            TimerScreen(model: model)
+        } log: { model in
+            LogScreen(model: model)
+        } journal: { model in
+            JournalScreen(model: model)
+        }
+    }
+
+    private func configureBars() {
+        let tab = UITabBarAppearance()
+        tab.configureWithOpaqueBackground()
+        tab.backgroundColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0x1B1917) : UIColor(hex: 0xF4ECDF) }
+        UITabBar.appearance().standardAppearance = tab
+        UITabBar.appearance().scrollEdgeAppearance = tab
+        let nav = UINavigationBarAppearance()
+        nav.configureWithTransparentBackground()
+        let ink = UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0xF2E8D8) : UIColor(hex: 0x1F1B18) }
+        nav.largeTitleTextAttributes = [.foregroundColor: ink, .font: UIFont(name: "Didot-Bold", size: 34) ?? .boldSystemFont(ofSize: 34)]
+        nav.titleTextAttributes = [.foregroundColor: ink, .font: UIFont(name: "Didot", size: 18) ?? .systemFont(ofSize: 18)]
+        UINavigationBar.appearance().standardAppearance = nav
+        UINavigationBar.appearance().scrollEdgeAppearance = nav
+    }
+}
+
+// MARK: - S07 Recipe
+
+private struct RecipeScreen: View {
+    let model: FlowModel
+    @Environment(\.dynamicTypeSize) private var dts
+
+    var body: some View {
+        let r = model.recipe
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
+                Text(r.name)
+                    .font(T.displayBold(46))
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                    .foregroundStyle(T.ink)
+                (dts.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14)) : AnyLayout(HStackLayout(alignment: .top, spacing: 0))) {
+                    spec("Dose", "\(Fmt.num(r.doseG)) g")
+                    spec("Water", "\(Fmt.num(r.waterG)) g")
+                    spec("Ratio", r.ratioText)
+                    spec("Time", Fmt.clock(r.totalS))
+                }
+                .padding(.vertical, 14)
+                .overlay(alignment: .top) { Rectangle().fill(T.rule).frame(height: 1) }
+                .overlay(alignment: .bottom) { Rectangle().fill(T.rule).frame(height: 1) }
+                .accessibilityElement(children: .combine)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Steps").font(T.display(24, relativeTo: .title2)).foregroundStyle(T.ink).padding(.bottom, 10)
+                    ForEach(r.steps) { step in
+                        HStack(alignment: .firstTextBaseline, spacing: 16) {
+                            Text(Fmt.clock(step.startS))
+                                .font(.system(.body, design: .monospaced).weight(.medium))
+                                .foregroundStyle(T.crema)
+                                .frame(width: 52, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack {
+                                    Text(step.kind.label).font(T.display(20, relativeTo: .title3)).foregroundStyle(T.ink)
+                                    Spacer()
+                                    if let g = step.cumulativeG {
+                                        Text("\(g) g").font(.body.monospacedDigit().weight(.semibold)).foregroundStyle(T.ink)
+                                    }
+                                }
+                                Text(step.instruction).font(.subheadline).foregroundStyle(T.ink2)
+                            }
+                        }
+                        .padding(.vertical, 12)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(step.kind.label), \(Fmt.clock(step.startS))\(step.cumulativeG.map { ", target \($0) grams" } ?? ""). \(step.instruction)")
+                        Rectangle().fill(T.rule).frame(height: 0.5)
+                    }
+                }
+                Text(r.tuningNote).font(.callout).foregroundStyle(T.ink2)
+                Text(r.credit).font(.footnote).foregroundStyle(T.ink2)
+            }
+            .padding(.horizontal, 22)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
+        }
+        .background(T.bg)
+        .navigationTitle("Recipe")
+        .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
+            Button { model.showTimer = true } label: {
+                Text("Brew this").font(T.displayBold(22, relativeTo: .title3))
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                    .frame(maxWidth: .infinity, minHeight: 56)
+            }
+            .buttonStyle(CremaButton())
+            .padding(.horizontal, 22).padding(.vertical, 8)
+            .background(T.bg)
+        }
+    }
+
+    private func spec(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(T.label).foregroundStyle(T.ink2)
+            Text(value).font(T.display(22, relativeTo: .title3)).foregroundStyle(T.ink)
+                .minimumScaleFactor(0.6).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct CremaButton: ButtonStyle {
+    var filled = true
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(filled ? T.onCrema : T.crema)
+            .background(filled ? T.crema : .clear, in: .capsule)
+            .overlay(Capsule().strokeBorder(T.crema, lineWidth: filled ? 0 : 1.5))
+            .opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.spring(duration: 0.2), value: configuration.isPressed)
+    }
+}
+
+// MARK: - S05 Timer
+
+private struct TimerScreen: View {
+    let model: FlowModel
+
+    var body: some View {
+        TimerClock(model: model) { elapsed, index in
+            let r = model.recipe
+            let step = r.steps[index]
+            let next = model.nextStep(after: index)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text(r.name).font(T.display(17, relativeTo: .body)).foregroundStyle(T.ink2).lineLimit(1)
+                    Spacer()
+                    Button { model.pauseTimer(); model.showTimer = false } label: {
+                        Image(systemName: "xmark").font(.body.weight(.semibold))
+                            .frame(width: 44, height: 44)
+                    }
+                    .foregroundStyle(T.ink)
+                    .accessibilityLabel("Close timer")
+                }
+                ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                Text(Fmt.clock(Int(elapsed)))
+                    .font(T.display(132, relativeTo: .largeTitle))
+                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.4).lineLimit(1)
+                    .foregroundStyle(T.ink)
+                    .accessibilityLabel("Elapsed \(Int(elapsed) / 60) minutes \(Int(elapsed) % 60) seconds")
+                Rectangle().fill(T.rule).frame(height: 1).padding(.vertical, 12)
+                Text(model.hasStarted ? step.kind.label : "Ready").font(T.displayBold(40, relativeTo: .title))
+                    .foregroundStyle(T.crema)
+                if model.hasStarted {
+                    Text(step.instruction).font(.title3).foregroundStyle(T.ink).padding(.top, 4)
+                    if let g = step.cumulativeG {
+                        Text("Target \(g) g").font(.title2.monospacedDigit().weight(.semibold)).foregroundStyle(T.ink).padding(.top, 6)
+                    }
+                } else {
+                    Text("Bloom first. \(Fmt.num(r.doseG)) g coffee, \(Fmt.num(r.waterG)) g water at \(Fmt.num(r.tempC))°C.")
+                        .font(.title3).foregroundStyle(T.ink)
+                }
+                if let next, model.hasStarted {
+                    Text("Next at \(Fmt.clock(next.startS)): \(next.kind.label)\(next.cumulativeG.map { " to \($0) g" } ?? "")")
+                        .font(.subheadline).foregroundStyle(T.ink2).padding(.top, 10)
+                }
+                }
+                }
+                .scrollBounceBehavior(.basedOnSize)
+                strip(elapsed: elapsed, index: index)
+                    .padding(.bottom, 20)
+                controls(done: model.isDone)
+            }
+            .padding(.horizontal, 22).padding(.bottom, 8)
+            .background(T.bg.ignoresSafeArea())
+        }
+    }
+
+    /// Step strip: one segment per step, widths follow step durations.
+    private func strip(elapsed: TimeInterval, index: Int) -> some View {
+        let r = model.recipe
+        return HStack(spacing: 3) {
+            ForEach(r.steps) { s in
+                let len = Double(r.endS(of: s) - s.startS)
+                let fill = min(1, max(0, (elapsed - Double(s.startS)) / len))
+                Capsule().fill(T.rule)
+                    .overlay(alignment: .leading) {
+                        GeometryReader { g in Capsule().fill(T.crema).frame(width: g.size.width * fill) }
+                    }
+                    .frame(height: s.id == index ? 10 : 6)
+                    .layoutPriority(len)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Step \(index + 1) of \(r.steps.count)")
+    }
+
+    private func controls(done: Bool) -> some View {
+        VStack(spacing: 10) {
+            Button { done ? model.finishBrew() : model.toggleTimer() } label: {
+                Text(done ? "Log this brew" : (!model.hasStarted ? "Start" : (model.isRunning ? "Pause" : "Resume")))
+                    .font(T.displayBold(26, relativeTo: .title2))
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                    .frame(maxWidth: .infinity, minHeight: 64)
+            }
+            .buttonStyle(CremaButton())
+            if model.hasStarted && !done {
+                Button { model.finishBrew() } label: {
+                    Text("End early and log").font(.headline).dynamicTypeSize(...DynamicTypeSize.accessibility1).frame(maxWidth: .infinity, minHeight: 48)
+                }
+                .buttonStyle(CremaButton(filled: false))
+            }
+        }
+    }
+}
+
+// MARK: - S02 Log
+
+private struct LogScreen: View {
+    @Bindable var model: FlowModel
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dts
+    private var rowLayout: AnyLayout { dts.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 8)) }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 26) {
+                    Text("Actual values are what get saved. The recipe's targets sit beside them.")
+                        .font(.subheadline).foregroundStyle(T.ink2)
+                    VStack(spacing: 0) {
+                        ledger("Dose", unit: "g", value: $model.draft.doseG, step: 0.5, range: 1...100, target: Fmt.num(model.recipe.doseG))
+                        ledger("Water", unit: "g", value: $model.draft.waterG, step: 5, range: 1...2000, target: Fmt.num(model.recipe.waterG))
+                        ledger("Temperature", unit: "°C", value: $model.draft.tempC, step: 1, range: 50...100, target: Fmt.num(model.recipe.tempC))
+                        timeRow
+                        grindRow
+                    }
+                    if let ratio = model.draft.ratio {
+                        Text("Ratio 1:\(Fmt.num((ratio * 10).rounded() / 10))").font(T.display(20, relativeTo: .title3)).foregroundStyle(T.crema)
+                    }
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("How did it taste?").font(T.display(20, relativeTo: .title3)).foregroundStyle(T.ink)
+                        verdicts
+                    }
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Grade").font(T.display(20, relativeTo: .title3)).foregroundStyle(T.ink)
+                        rating
+                    }
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Notes").font(T.display(20, relativeTo: .title3)).foregroundStyle(T.ink)
+                        TextField("Flavors, what to change next", text: $model.draft.notes, axis: .vertical)
+                            .lineLimit(3...6)
+                            .padding(14)
+                            .background(T.raised, in: .rect(cornerRadius: 12))
+                            .foregroundStyle(T.ink)
+                    }
+                    if let err = model.saveError {
+                        Text(err).font(.callout.weight(.semibold)).foregroundStyle(T.error)
+                    }
+                }
+                .padding(.horizontal, 22).padding(.top, 8).padding(.bottom, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(T.bg)
+            .navigationTitle(model.draft.bean)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("Save") { model.save() }.disabled(!model.draft.canSave) }
+            }
+            .safeAreaInset(edge: .bottom) {
+                Button { model.save() } label: {
+                    Text("Save brew").font(T.displayBold(22, relativeTo: .title3)).dynamicTypeSize(...DynamicTypeSize.accessibility1).frame(maxWidth: .infinity, minHeight: 56)
+                }
+                .buttonStyle(CremaButton())
+                .disabled(!model.draft.canSave)
+                .padding(.horizontal, 22).padding(.vertical, 8)
+                .background(T.bg)
+            }
+        }
+    }
+
+    private func ledger(_ title: String, unit: String, value: Binding<Double>, step: Double,
+                        range: ClosedRange<Double>, target: String) -> some View {
+        let s = value.stepped(by: step, in: range)
+        return row(title, "Target \(target) \(unit)", "\(Fmt.num(value.wrappedValue)) \(unit)",
+                   down: s.down, up: s.up, last: false)
+    }
+
+    private var timeRow: some View {
+        row("Time", "Target \(Fmt.clock(model.recipe.totalS))", Fmt.clock(model.draft.timeS),
+            down: { model.draft.timeS = max(1, model.draft.timeS - 5) }, up: { model.draft.timeS += 5 }, last: false)
+    }
+
+    private var grindRow: some View {
+        row("Grind", "Setting on your grinder", "\(model.draft.grind)",
+            down: { model.draft.grind = max(1, model.draft.grind - 1) }, up: { model.draft.grind += 1 }, last: true,
+            minus: "Finer", plus: "Coarser")
+    }
+
+    private func row(_ title: String, _ sub: String, _ value: String, down: @escaping () -> Void,
+                     up: @escaping () -> Void, last: Bool, minus: String? = nil, plus: String? = nil) -> some View {
+        rowLayout {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.headline).foregroundStyle(T.ink)
+                Text(sub).font(.caption).foregroundStyle(T.ink2)
+            }
+            if !dts.isAccessibilitySize { Spacer(minLength: 4) }
+            HStack(spacing: 8) {
+                roundButton("minus", label: minus ?? "Decrease \(title)", action: down)
+                Text(value).font(T.display(26, relativeTo: .title2)).monospacedDigit()
+                    .foregroundStyle(T.ink).frame(minWidth: 84)
+                    .minimumScaleFactor(0.6).lineLimit(1)
+                roundButton("plus", label: plus ?? "Increase \(title)", action: up)
+            }
+        }
+        .padding(.vertical, 10)
+        .overlay(alignment: .bottom) { if !last { Rectangle().fill(T.rule).frame(height: 0.5) } }
+    }
+
+    private func roundButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol).font(.body.weight(.bold))
+                .frame(width: 44, height: 44)
+                .overlay(Circle().strokeBorder(T.rule, lineWidth: 1.5))
+        }
+        .foregroundStyle(T.crema)
+        .accessibilityLabel(label)
+    }
+
+    private var verdicts: some View {
+        (dts.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))) {
+            ForEach(Verdict.allCases) { v in
+                let on = model.draft.verdict == v
+                Button { model.draft.verdict = on ? nil : v } label: {
+                    Text(v.label).font(.subheadline.weight(.semibold))
+                        .minimumScaleFactor(0.7).lineLimit(1)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .foregroundStyle(on ? T.onCrema : T.ink)
+                        .background(on ? T.crema : .clear, in: .rect(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(on ? .clear : T.rule, lineWidth: 1.5))
+                }
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+    }
+
+    private var rating: some View {
+        HStack(spacing: 14) {
+            roundButton("minus", label: "Lower grade") { model.draft.ratingHalfSteps = max(0, model.draft.ratingHalfSteps - 1) }
+            VStack(spacing: 4) {
+                Text(model.draft.ratingHalfSteps == 0 ? "—" : Fmt.num(Double(model.draft.ratingHalfSteps) / 2))
+                    .font(T.displayBold(44, relativeTo: .title)).foregroundStyle(T.ink)
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                HStack(spacing: 4) {
+                    ForEach(1...5, id: \.self) { i in
+                        Image(systemName: model.draft.ratingHalfSteps >= i * 2 ? "star.fill" :
+                                (model.draft.ratingHalfSteps == i * 2 - 1 ? "star.leadinghalf.filled" : "star"))
+                            .font(.system(size: 16))
+                            .foregroundStyle(T.crema)
+                    }
+                }
+                .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Grade \(Fmt.stars(model.draft.ratingHalfSteps))")
+            roundButton("plus", label: "Raise grade") { model.draft.ratingHalfSteps = min(10, model.draft.ratingHalfSteps + 1) }
+        }
+    }
+}
+
+// MARK: - S01 Journal
+
+private struct JournalScreen: View {
+    let model: FlowModel
+
+    var body: some View {
+        List {
+            ForEach(model.journal) { e in
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(Fmt.day(e.date)).font(T.label).foregroundStyle(T.crema)
+                        Spacer()
+                        Text(e.ratingHalfSteps == 0 ? "—" : Fmt.num(Double(e.ratingHalfSteps) / 2))
+                            .font(T.displayBold(28, relativeTo: .title)).foregroundStyle(T.ink)
+                            .accessibilityLabel("Grade \(Fmt.stars(e.ratingHalfSteps))")
+                    }
+                    Text(e.bean).font(T.display(22, relativeTo: .title3)).foregroundStyle(T.ink)
+                    Text("\(e.method) · \(Fmt.num(e.doseG)) g to \(Fmt.num(e.waterG)) g · 1:\(Fmt.num((e.ratio * 10).rounded() / 10)) · \(Fmt.clock(e.timeS))\(e.verdict.map { " · " + $0.label.lowercased() } ?? "")")
+                        .font(.footnote.monospacedDigit()).foregroundStyle(T.ink2)
+                    if !e.note.isEmpty { Text(e.note).font(.subheadline).foregroundStyle(T.ink2) }
+                }
+                .padding(.vertical, 8)
+                .listRowBackground(T.bg)
+                .listRowSeparatorTint(T.rule)
+                .accessibilityElement(children: .combine)
+                .swipeActions {
+                    Button("Delete", role: .destructive) { model.journal.removeAll { $0.id == e.id } }
+                }
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(T.bg)
+        .navigationTitle("Journal")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { model.prefillFromRecipe(measuredS: 180); model.showLog = true } label: {
+                    Image(systemName: "plus").frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Log a brew")
+            }
+        }
+    }
+}
