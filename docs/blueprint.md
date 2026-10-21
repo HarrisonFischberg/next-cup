@@ -1,6 +1,6 @@
 # Next Cup — Blueprint
 
-Status: DRAFT for owner approval (Phase 3, 2026-10-21).
+Status: APPROVED by the owner (Phase 3, 2026-10-21, PR #1).
 Inputs: `replica/recon.md`, `replica/features.csv`, `replica/comparison.md`,
 `replica/prompts/`, `PRODUCT.md`, `prd.md`. Replica's architecture pass is in
 `replica/architecture.md`; this file is the binding spec for Phase 4.
