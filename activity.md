@@ -26,3 +26,18 @@
   filled `replica/README.md` intentional differences, sweep clean, then
   deleted the lab folder with the owner's yes (2026-10-21). From here on,
   work only from `replica/`.
+
+## 2026-10-21 — Phase 3 blueprint (Opus)
+
+- Ran `replica-architect` against `replica/` (adapted to SwiftData; no SQL
+  or server routes). Wrote `replica/architecture.md`.
+- Wrote `docs/blueprint.md`: stack (SwiftUI, Swift 6.4, iOS 27, SwiftData
+  CloudKit-compatible, zero third-party packages), 12 models, internal
+  services, outbound calls, folders, state, vendors, parts that bite, and the
+  permission changes Phase 4 would need.
+- Rewrote `prd.md`: ranked features, non-goals, Phase 3B core flow (F01),
+  verification commands, 30 atomic tasks with dependencies, safeguard map.
+- Checked host: xcodegen, tuist, swiftlint absent; `swift format` present;
+  only the iOS 27 simulator runtime installed (drove the iOS 27 minimum).
+- Waiting on owner approval (B011). Nothing deployed or changed externally
+  beyond the PR.
