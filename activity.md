@@ -64,3 +64,13 @@
   default and largest text; it exposed component reflow bugs, fixed and re-shot.
 - Not done: VoiceOver, focus ring, journal Undo. `/impeccable extract` and
   `polish` were applied by hand to this scope (no browser tooling for native).
+
+## 2026-10-21 — Phase 4 setup (Sonnet)
+
+- Cloned and reviewed the Ralph quickstart (no license, nothing copied). Wrote
+  `ralph/ralph.sh`, `ralph/REVIEW.md`, iOS `PROMPT.md`, `.claude/settings.json`
+  (narrow permissions, both plain and `rtk` command forms).
+- Verified by real non-interactive runs: `/goal` is recognized; `xcodebuild`
+  runs; `curl` is denied. First test failed because the rtk hook rewrote
+  commands; rules fixed.
+- Branch `build/phase-4` for the loop. Next: run the loop for T001.
