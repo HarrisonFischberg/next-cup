@@ -10,3 +10,6 @@ ralph/logs/
 
 ralph/logs/
 .cache/
+.build/
+xcuserdata/
+*.xcuserstate
