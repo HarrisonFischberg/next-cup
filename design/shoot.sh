@@ -22,7 +22,7 @@ for mode in light dark; do
     for stage in "${STAGES[@]}"; do
       xcrun simctl terminate booted "$BUNDLE" >/dev/null 2>&1 || true
       EXTRA=(); [ "$stage" = timer ] && EXTRA=(-elapsed 78)
-      xcrun simctl launch booted "$BUNDLE" -stage $stage "${EXTRA[@]}" >/dev/null
+      xcrun simctl launch booted "$BUNDLE" -stage $stage ${EXTRA[@]+"${EXTRA[@]}"} >/dev/null
       sleep 2.6
       xcrun simctl io booted screenshot --type=png "$OUT/$ID-$stage-$mode-$size.png" >/dev/null 2>&1
     done
