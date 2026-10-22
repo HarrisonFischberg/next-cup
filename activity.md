@@ -173,3 +173,15 @@
 - Commands: `swift test --package-path Packages/NextCupKit` → 41 tests in 8 suites passed (one first-run failure was a wrong expected value in my own test, fixed; engine unchanged). `swift format lint --recursive --strict ...` → no output (clean).
 - Not run: app build / `xcodebuild test` (package-only task, no app files touched). No screenshots (not a UI task).
 - Untested: Live Activity mirroring and the `@Observable` wrapper with a real ticking UI belong to T008/T026.
+
+## 2026-10-21 — T006 App shell (Sonnet)
+
+- Added `NextCup/App/`: `AppTab`, `DeepLink` (parse/serialize `nextcup://brew/new`, `brew|recipe|bean/<uuid>`; malformed links are ignored), `AppRouter` (per-tab paths, replaces instead of stacking), `RootTabView` (5 tabs, placeholder screens built from `EmptyState`), `AppBootstrap` (opens the store and seeds built-ins at launch, closing the T003 gap; failure shows a retry screen). `NextCupApp` now uses them; `LaunchView` is gone.
+- Added `NextCup/DesignSystem/` (`Tokens.swift`, `Components.swift`) copied from `design/DesignSystem` and reformatted to the 2-space style. `design/check_tokens.py` now checks the app copy; the concept copy in `design/DesignSystem` is no longer checked and may drift.
+- URL scheme registered via `Config/NextCup-Info.plist` (`INFOPLIST_FILE` merged with the generated plist).
+- Blueprint deviation: the selected tab is stored with `@AppStorage`, not `@SceneStorage` (§5). A UI test showed `@SceneStorage` did not survive terminate and relaunch, and iOS discards it on force-quit, so it would miss "tab restores after relaunch".
+- Replaced the T001 `launchViewBuilds` placeholder test with `shellBuilds` and a bootstrap-seeds-store test; no test was weakened.
+- Tests: `DeepLinkTests` (unit, 7 incl. parameterized malformed links), `NextCupUITests` (launch to Journal, each of 4 links opens its screen and tab, malformed link ignored, tab restores after relaunch).
+- Commands: `xcodebuild ... test` TEST SUCCEEDED; `swift test --package-path Packages/NextCupKit` 41 passed; `xcodebuild ... build` BUILD SUCCEEDED; `swift format lint --recursive --strict` clean; `python3 design/check_tokens.py` tokens in sync.
+- Screenshots: `ralph/screenshots/T006-light.png`, `T006-dark.png`, `T006-largest-text.png` (viewed: recipe deep link, dark, accessibility XXXL; reflows), `T006-deeplink-recipe.png`.
+- Untested / caveats: UI tests deliver links through a DEBUG-only `-deepLink` launch argument that calls the same `handle` as `onOpenURL`; the real `simctl openurl` path was only seen to reach the system "Open in Next Cup?" prompt (scheme is registered), I could not tap Open. VoiceOver and Full Keyboard Access not run; tab bar is the system one. `contrast.py` not rerun (no colour change). `/impeccable` polish and audit not run (placeholder screens). `/goal` not invoked as a tool; bound self-enforced. The simulator was rebooted to clear a stuck system dialog.

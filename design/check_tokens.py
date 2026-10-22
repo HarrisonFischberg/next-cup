@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Fail if design/DesignSystem/Tokens.swift colors drift from docs/design/tokens/*.json.
+"""Fail if NextCup/DesignSystem/Tokens.swift colors drift from docs/design/tokens/*.json.
 usage: python3 design/check_tokens.py   (run from the repo root)"""
 import json, re, sys
-swift = open("design/DesignSystem/Tokens.swift").read()
+swift = open("NextCup/DesignSystem/Tokens.swift").read()
 light = json.load(open("docs/design/tokens/tokens.light.json"))["color"]
 dark = json.load(open("docs/design/tokens/tokens.dark.json"))["color"]
 camel = lambda k: re.sub(r"-(\w)", lambda m: m.group(1).upper(), k)
