@@ -114,9 +114,7 @@ struct BrewFormView: View {
             kind: .info, message: "You ended this brew early. The time is what it reached.")
         }
         methodPicker(binding.draft, model)
-        DatePicker("Brewed", selection: binding.draft.date, in: ...Date())
-          .font(DS.Font.label).textCase(.uppercase).foregroundStyle(DS.ink)
-          .frame(minHeight: DS.Size.control)
+        brewedRow(binding.draft.date)
         tiles(model)
         grindField(binding.draft.grindSetting)
         verdictRow(binding.draft.verdict)
@@ -198,6 +196,24 @@ struct BrewFormView: View {
     .accessibilityLabel("Method")
     .accessibilityValue(current?.name ?? "None chosen")
     .accessibilityIdentifier("brewform.method")
+  }
+
+  /// The label stacks above the picker at accessibility sizes, so it never wraps
+  /// letter by letter beside the date.
+  private func brewedRow(_ date: Binding<Date>) -> some View {
+    let layout =
+      dts.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: DS.Space.xs))
+      : AnyLayout(HStackLayout(spacing: DS.Space.sm))
+    return layout {
+      Text("BREWED").font(DS.Font.label).foregroundStyle(DS.ink2)
+        .accessibilityHidden(true)
+      if !dts.isAccessibilitySize { Spacer(minLength: 0) }
+      DatePicker("Brewed", selection: date, in: ...Date())
+        .labelsHidden().foregroundStyle(DS.ink)
+    }
+    .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
+    .accessibilityElement(children: .contain)
   }
 
   private func tiles(_ model: BrewFormModel) -> some View {
