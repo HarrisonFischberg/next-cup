@@ -125,15 +125,18 @@ struct BrewFormView: View {
         }
         methodPicker(binding.draft, model)
         brewedRow(binding.draft.date)
-        tiles(model)
-        grindField(binding.draft.grindSetting)
+        let fields = shownFields(for: model.draft.methodID)
+        tiles(model, fields)
+        if fields.contains(.grind) { grindField(binding.draft.grindSetting) }
         verdictRow(binding.draft.verdict)
-        VStack(alignment: .leading, spacing: DS.Space.sm) {
-          Text("GRADE").font(DS.Font.label).foregroundStyle(DS.ink2)
-          GradeScale(halfSteps: binding.draft.ratingHalfSteps)
+        if fields.contains(.rating) {
+          VStack(alignment: .leading, spacing: DS.Space.sm) {
+            Text("GRADE").font(DS.Font.label).foregroundStyle(DS.ink2)
+            GradeScale(halfSteps: binding.draft.ratingHalfSteps)
+          }
         }
-        photoRow(model)
-        notesField(binding.draft.notes)
+        if fields.contains(.photo) { photoRow(model) }
+        if fields.contains(.notes) { notesField(binding.draft.notes) }
       }
       .padding(DS.Space.lg)
       // Behind the fields, so a tap on empty space dismisses the keyboard
@@ -236,7 +239,15 @@ struct BrewFormView: View {
     .accessibilityElement(children: .contain)
   }
 
-  private func tiles(_ model: BrewFormModel) -> some View {
+  /// The fields the chosen method tracks. With no method chosen, every field shows.
+  private func shownFields(for methodID: UUID?) -> Set<BrewParameter> {
+    guard let method = methods.first(where: { $0.id == methodID }) else {
+      return Set(BrewParameter.allCases)
+    }
+    return MethodParameters.shown(tracked: method.trackedParameters)
+  }
+
+  private func tiles(_ model: BrewFormModel, _ fields: Set<BrewParameter>) -> some View {
     let targets = model.draft.targets
     let columns =
       dts.isAccessibilitySize
@@ -272,25 +283,29 @@ struct BrewFormView: View {
         }
       )
       .accessibilityIdentifier("brewform.water")
-      StepperTile(
-        title: "Temperature",
-        value: model.draft.tempC.map {
-          String(format: "%.0f", units.displayTemperature(celsius: $0))
-        }
-          ?? "—",
-        unit: model.draft.tempC == nil ? "" : units.temperatureSymbol,
-        target: targets?.tempC.map { RecipeFormat.temperature($0, units) },
-        down: { model.stepTemperature(direction: -1, units: units) },
-        up: { model.stepTemperature(direction: 1, units: units) }
-      )
-      .accessibilityIdentifier("brewform.temperature")
-      StepperTile(
-        title: "Time", value: model.draft.totalTimeS.map(RecipeFormat.clock) ?? "—",
-        target: targets?.totalTimeS.map(RecipeFormat.clock),
-        down: { model.stepTime(direction: -1) }, up: { model.stepTime(direction: 1) },
-        minusLabel: "Decrease Time by 5 seconds", plusLabel: "Increase Time by 5 seconds"
-      )
-      .accessibilityIdentifier("brewform.time")
+      if fields.contains(.temperature) {
+        StepperTile(
+          title: "Temperature",
+          value: model.draft.tempC.map {
+            String(format: "%.0f", units.displayTemperature(celsius: $0))
+          }
+            ?? "—",
+          unit: model.draft.tempC == nil ? "" : units.temperatureSymbol,
+          target: targets?.tempC.map { RecipeFormat.temperature($0, units) },
+          down: { model.stepTemperature(direction: -1, units: units) },
+          up: { model.stepTemperature(direction: 1, units: units) }
+        )
+        .accessibilityIdentifier("brewform.temperature")
+      }
+      if fields.contains(.time) {
+        StepperTile(
+          title: "Time", value: model.draft.totalTimeS.map(RecipeFormat.clock) ?? "—",
+          target: targets?.totalTimeS.map(RecipeFormat.clock),
+          down: { model.stepTime(direction: -1) }, up: { model.stepTime(direction: 1) },
+          minusLabel: "Decrease Time by 5 seconds", plusLabel: "Increase Time by 5 seconds"
+        )
+        .accessibilityIdentifier("brewform.time")
+      }
       ReadoutTile(title: "Ratio", value: model.ratioLabel ?? "—")
         .accessibilityIdentifier("brewform.ratio")
     }
