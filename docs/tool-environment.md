@@ -26,8 +26,8 @@ and Core Web Vitals are NOT APPLICABLE (no web surface).
 | --- | --- | --- | --- |
 | Replica | YES | replica-skill 1.0.0 (user scope) | `~/.claude/plugins/installed_plugins.json`; `replica-skill:replica-*` skills listed in session |
 | REA (MCP tools answer, not just skill installed) | YES | `rea` MCP server (CDP browser provider v2) | 2026-10-21 Phase 2: `inspect_plist` and `inspect_adb_client` returned structured errors (no artifact open, no adb), then `list_browser_targets`, `inspect_web_page` x5 and `capture_web_screenshot` succeeded against an isolated browser on 127.0.0.1:9333. Stock Chrome is not installed; a Chromium-based app binary (Comet 155) with a fresh profile served as the CDP browser |
-| Claude Code `/goal` | PENDING | | Not yet exercised. Verify before the first Phase 4 task; if unavailable, propose a documented alternative |
-| Ralph fresh-context shell loop | BLOCKED (not yet cloned) | only `ralph-loop` 1.0.0 plugin present | The plugin is a same-context loop and is not a substitute. Clone `coleam00/ralph-loop-quickstart` and review its scripts and permissions before Phase 4; difference recorded in `activity.md` |
+| Claude Code `/goal` | YES (command exists) | Claude Code 2.1.304 | `claude -p "/goal"` answered "No goal set. Usage: /goal <condition>" (2026-10-21). Turn-bound enforcement in print mode not verified; bound is the PROMPT.md instruction plus a per-iteration budget cap |
+| Ralph fresh-context shell loop | YES (own implementation) | `ralph/ralph.sh`, informed by `coleam00/ralph-loop-quickstart` @ f6a7781 | Cloned and reviewed (`ralph/REVIEW.md`); the repo has no license so nothing was copied. The `ralph-loop` plugin is a same-context loop and is not used |
 | Impeccable | YES | skill listed in session; installed at `~/projects/.claude` (engine 0.1.15; npm 4.6.0 checked 2026-10-17) | `/impeccable` appears in the session skill list, so no install was run in `next-cup` |
 
 Impeccable hooks (`SessionStart`, `PostToolUse` on `Edit|Write`, `Stop`) live in

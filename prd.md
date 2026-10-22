@@ -72,7 +72,7 @@ and filled states, at default and the largest accessibility text size.
 | package tests | `swift test --package-path Packages/NextCupKit` |
 | build | `xcodebuild -project NextCup.xcodeproj -scheme NextCup -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build` |
 | app + UI tests | `xcodebuild -project NextCup.xcodeproj -scheme NextCup -destination 'platform=iOS Simulator,name=iPhone 18 Pro' test` |
-| lint | `swift format lint --recursive --strict NextCup NextCupLiveActivity NextCupUITests Packages` |
+| lint | `swift format lint --recursive --strict NextCup NextCupTests NextCupUITests Packages/NextCupKit/Sources Packages/NextCupKit/Tests` |
 
 Types are checked by the build (Swift 6 strict concurrency, warnings as
 errors in `NextCupKit`).
@@ -85,14 +85,14 @@ Type checks, per the platform profile.
 
 | ID | Task | Depends on | Acceptance criteria | Verification | Status |
 | --- | --- | --- | --- | --- | --- |
-| T001 | Create Xcode project (synchronized folders), `NextCupKit` package, UI test target, swift-format config | — | Empty app launches on iPhone 18 Pro sim; `swift test` and `xcodebuild test` run green with one placeholder test each | build, package tests, app tests | pending |
-| T002 | SwiftData schema v1 (all models in blueprint §2), `Store` with upsert by `id`, migration plan | T001 | Models match blueprint; CloudKit-compatibility test (no unique attributes, all defaults/optional) passes; in-memory CRUD tests | app tests | pending |
-| T003 | Bundled `methods.json`, `recipes.json`, `taxonomy.json` (original content) and idempotent seeding by `builtInKey` | T002 | Seeding twice creates no duplicates; a newer bundle adds keys without overwriting edits | app tests | pending |
-| T004 | `BrewMath`, `RecipeScaler`, `Freshness`, units conversion in `NextCupKit` | T001 | Unit tests: ratio, espresso ratio, extraction yield, scaling incl. ice, rounding notes, freshness incl. frozen spans, °C/°F and g/oz round trips | package tests | pending |
-| T005 | `TimerEngine` with injectable clock, persisted start and pauses | T001 | Fake-clock tests: step changes, pause/resume, skip, end early, restore after simulated termination | package tests | pending |
-| T006 | App shell: tab bar (Journal, Recipes, Beans, Explore, Settings), deep links, scene restoration, design-system token stubs from Phase 3C | T002, Phase 3C | Each `nextcup://` link opens the right screen (UI test); tab restores after relaunch | app tests | pending |
-| T007 | Recipe library S06, detail S07 with step timeline, scale-to-dose | T003, T004, T006 | Grouped by style, searchable; scaling updates every target; VoiceOver reads each step as "kind, time, target" | app + UI tests | pending |
-| T008 | Guided timer S05 (haptics, one-handed bottom controls, Reduce Motion) | T005, T007 | Runs a recipe end to end; background/foreground UI test passes; opens S02 prefilled at the end | app + UI tests | pending |
+| T001 | Create Xcode project (synchronized folders), `NextCupKit` package, UI test target, swift-format config | — | Empty app launches on iPhone 18 Pro sim; `swift test` and `xcodebuild test` run green with one placeholder test each | build, package tests, app tests | done |
+| T002 | SwiftData schema v1 (all models in blueprint §2), `Store` with upsert by `id`, migration plan | T001 | Models match blueprint; CloudKit-compatibility test (no unique attributes, all defaults/optional) passes; in-memory CRUD tests | app tests | done |
+| T003 | Bundled `methods.json`, `recipes.json`, `taxonomy.json` (original content) and idempotent seeding by `builtInKey` | T002 | Seeding twice creates no duplicates; a newer bundle adds keys without overwriting edits | app tests | done |
+| T004 | `BrewMath`, `RecipeScaler`, `Freshness`, units conversion in `NextCupKit` | T001 | Unit tests: ratio, espresso ratio, extraction yield, scaling incl. ice, rounding notes, freshness incl. frozen spans, °C/°F and g/oz round trips | package tests | done |
+| T005 | `TimerEngine` with injectable clock, persisted start and pauses | T001 | Fake-clock tests: step changes, pause/resume, skip, end early, restore after simulated termination | package tests | done |
+| T006 | App shell: tab bar (Journal, Recipes, Beans, Explore, Settings), deep links, scene restoration, design-system token stubs from Phase 3C | T002, Phase 3C | Each `nextcup://` link opens the right screen (UI test); tab restores after relaunch | app tests | done |
+| T007 | Recipe library S06, detail S07 with step timeline, scale-to-dose | T003, T004, T006 | Grouped by style, searchable; scaling updates every target; VoiceOver reads each step as "kind, time, target" | app + UI tests | done |
+| T008 | Guided timer S05 (haptics, one-handed bottom controls, Reduce Motion) | T005, T007 | Runs a recipe end to end; background/foreground UI test passes; opens S02 prefilled at the end | app + UI tests | done |
 | T009 | Brew form S02 with `DraftStore`, honest saves, actual values, photo with metadata stripped | T004, T006 | Autosave restores after relaunch; simulated write failure shows error and keeps draft; keyboard never covers Save at largest text size; EXIF/GPS absent in stored photo | app + UI tests | pending |
 | T010 | Journal list S01: search, filter by method and bean, empty / no-results states, swipe delete with Undo | T009 | **Vertical slice complete:** UI test logs, edits, and finds a brew via F01 | UI tests | pending |
 | T011 | Brew again (X2) and edit any saved brew | T010 | Prefill tests (same bean + method, timing reset); UI test repeats a brew | package + UI tests | pending |

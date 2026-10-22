@@ -1,0 +1,173 @@
+import NextCupKit
+import Observation
+import SwiftUI
+import UIKit
+
+enum TimerHaptic: Equatable {
+  case start
+  case stepChange
+  case pauseToggle
+  case finish
+}
+
+@MainActor
+protocol TimerHaptics {
+  func play(_ haptic: TimerHaptic)
+}
+
+/// Haptics only for events that matter: start, a step change, pause or resume, and the end.
+@MainActor
+struct SystemTimerHaptics: TimerHaptics {
+  func play(_ haptic: TimerHaptic) {
+    switch haptic {
+    case .start, .pauseToggle: UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    case .stepChange: UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+    case .finish: UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+  }
+}
+
+/// Clock and storage for the running timer. UI tests can speed the clock up with
+/// `-timerSpeed <n>` in debug builds, so a three-minute recipe finishes in seconds.
+@MainActor
+enum TimerEnvironment {
+  static let clock: any TimerClock = {
+    #if DEBUG
+      let arguments = ProcessInfo.processInfo.arguments
+      if let index = arguments.firstIndex(of: "-timerSpeed"), index + 1 < arguments.count,
+        let speed = Double(arguments[index + 1]), speed > 0
+      {
+        return AcceleratedTimerClock(speed: speed)
+      }
+    #endif
+    return SystemTimerClock()
+  }()
+
+  /// An in-memory run (UI tests) never touches the real saved timer.
+  static let stateStore: any TimerStateStore = {
+    AppBootstrap.usesInMemoryStore
+      ? UserDefaultsTimerStateStore(suiteName: "nextcup.inmemory.timer.\(UUID().uuidString)")
+      : UserDefaultsTimerStateStore()
+  }()
+}
+
+#if DEBUG
+  struct AcceleratedTimerClock: TimerClock {
+    let speed: Double
+    private let origin = Date()
+    init(speed: Double) { self.speed = speed }
+    func now() -> Date { origin.addingTimeInterval(Date().timeIntervalSince(origin) * speed) }
+  }
+#endif
+
+/// How a run ended: the elapsed time reached and whether it was cut short.
+struct TimerOutcome: Equatable {
+  let elapsedS: Double
+  let endedEarly: Bool
+}
+
+/// Drives one `TimerEngine` for the screen. All time comes from the engine's
+/// persisted dates, so coming back from the background needs only a `tick()`.
+@MainActor
+@Observable
+final class TimerSession {
+  let setup: TimerSetup
+  private(set) var state: TimerState
+  private(set) var outcome: TimerOutcome?
+
+  @ObservationIgnored private var engine: TimerEngine
+  @ObservationIgnored private let haptics: any TimerHaptics
+  @ObservationIgnored private var lastIndex: Int?
+
+  /// Picks up the saved timer when it belongs to this same plan; otherwise starts clean.
+  init(
+    setup: TimerSetup, clock: any TimerClock = TimerEnvironment.clock,
+    store: any TimerStateStore = TimerEnvironment.stateStore,
+    haptics: any TimerHaptics = SystemTimerHaptics()
+  ) {
+    self.setup = setup
+    self.haptics = haptics
+    if let restored = TimerEngine.restore(clock: clock, store: store), restored.plan == setup.plan {
+      engine = restored
+    } else {
+      engine = TimerEngine(plan: setup.plan, clock: clock, store: store)
+    }
+    state = engine.state()
+    lastIndex = state.currentIndex
+    if case .finished = state.phase { complete(state) }
+  }
+
+  // MARK: Controls
+
+  func start() {
+    guard state.phase == .notStarted else { return }
+    engine.start()
+    haptics.play(.start)
+    refresh()
+    lastIndex = state.currentIndex
+  }
+
+  func pause() {
+    guard state.phase == .running else { return }
+    engine.pause()
+    haptics.play(.pauseToggle)
+    refresh()
+  }
+
+  func resume() {
+    guard state.phase == .paused else { return }
+    engine.resume()
+    haptics.play(.pauseToggle)
+    refresh()
+  }
+
+  func skipToNextStep() {
+    engine.skipToNextStep()
+    tick()
+  }
+
+  func endEarly() {
+    engine.endEarly()
+    tick()
+  }
+
+  /// Re-derives the state from the clock. Called on a short timer and on returning to the foreground.
+  func tick() {
+    guard outcome == nil else { return }
+    let latest = engine.state()
+    if case .finished = latest.phase {
+      complete(latest)
+      return
+    }
+    if let index = latest.currentIndex, index != lastIndex {
+      if lastIndex != nil || state.phase != .notStarted { haptics.play(.stepChange) }
+    }
+    lastIndex = latest.currentIndex
+    publish(latest)
+  }
+
+  // MARK: Private
+
+  private func refresh() {
+    let latest = engine.state()
+    if case .finished = latest.phase { complete(latest) } else { publish(latest) }
+  }
+
+  /// Only whole-second, step and phase changes reach the view, so it redraws once a second.
+  private func publish(_ latest: TimerState) {
+    let changed =
+      Int(latest.elapsedS) != Int(state.elapsedS) || latest.phase != state.phase
+      || latest.currentIndex != state.currentIndex
+    if changed { state = latest }
+  }
+
+  private func complete(_ finished: TimerState) {
+    guard outcome == nil else { return }
+    var early = false
+    if case .finished(let endedEarly) = finished.phase { early = endedEarly }
+    state = finished
+    outcome = TimerOutcome(elapsedS: finished.elapsedS, endedEarly: early)
+    haptics.play(.finish)
+    engine.discard()
+  }
+}

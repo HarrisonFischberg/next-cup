@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "methods": [
+    {
+      "key": "cone-dripper",
+      "name": "Cone dripper",
+      "style": "pourOver",
+      "symbol": "drop.degreesign",
+      "trackedParameters": ["dose", "water", "grind", "temperature", "time", "rating", "notes", "photo"],
+      "defaultStepKinds": ["bloom", "pour", "wait", "drawdown"]
+    },
+    {
+      "key": "flat-dripper",
+      "name": "Flat-bed dripper",
+      "style": "pourOver",
+      "symbol": "line.3.horizontal.decrease",
+      "trackedParameters": ["dose", "water", "grind", "temperature", "time", "rating", "notes", "photo"],
+      "defaultStepKinds": ["bloom", "pour", "swirl", "drawdown"]
+    },
+    {
+      "key": "switchable-dripper",
+      "name": "Switchable immersion dripper",
+      "style": "immersion",
+      "symbol": "switch.2",
+      "trackedParameters": ["dose", "water", "grind", "temperature", "time", "rating", "notes", "photo"],
+      "defaultStepKinds": ["closeValve", "pour", "stir", "wait", "openValve", "drawdown"]
+    },
+    {
+      "key": "press",
+      "name": "Press pot",
+      "style": "immersion",
+      "symbol": "cylinder.split.1x2",
+      "trackedParameters": ["dose", "water", "grind", "temperature", "time", "rating", "notes", "photo"],
+      "defaultStepKinds": ["pour", "stir", "wait", "press"]
+    },
+    {
+      "key": "inverted-press",
+      "name": "Inverted press",
+      "style": "immersion",
+      "symbol": "arrow.up.arrow.down",
+      "trackedParameters": ["dose", "water", "grind", "temperature", "time", "rating", "notes", "photo"],
+      "defaultStepKinds": ["plug", "pour", "stir", "wait", "invert", "press"]
+    },
+    {
+      "key": "espresso",
+      "name": "Espresso",
+      "style": "espresso",
+      "symbol": "gauge.with.dots.needle.67percent",
+      "trackedParameters": ["dose", "yield", "grind", "temperature", "time", "tds", "rating", "notes", "photo"],
+      "defaultStepKinds": ["pour", "wait"]
+    },
+    {
+      "key": "iced-pour-over",
+      "name": "Iced pour over",
+      "style": "cold",
+      "symbol": "snowflake",
+      "trackedParameters": ["dose", "water", "grind", "temperature", "time", "rating", "notes", "photo"],
+      "defaultStepKinds": ["bloom", "pour", "swirl", "drawdown"]
+    },
+    {
+      "key": "cold-brew",
+      "name": "Cold brew",
+      "style": "cold",
+      "symbol": "thermometer.snowflake",
+      "trackedParameters": ["dose", "water", "grind", "time", "rating", "notes", "photo"],
+      "defaultStepKinds": ["pour", "stir", "wait"]
+    }
+  ]
+}
