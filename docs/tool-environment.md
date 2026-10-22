@@ -59,3 +59,13 @@ Missing tool or credential = BLOCKED, never PASS.
 | Browser preview | NOT APPLICABLE (native app) |
 | iOS Simulator | iPhone 18 Pro, iOS 27.0; screenshots by `xcrun simctl io`; one live tap-through on concept 4 |
 | Xcode project | Hand-written `design/Concepts.xcodeproj` (synchronized folders); builds with `xcodebuild` |
+
+## Phase 3C run (2026-10-21)
+
+| Item | Result |
+| --- | --- |
+| `replica-skill:replica-design` | Skill loaded; its contrast tool ran on both token files. Its web outputs (tokens.css, Tailwind) are NOT APPLICABLE; tokens are Swift plus JSON |
+| `/impeccable document` | DESIGN.md written in scan mode from the built concept. North Star and voice chosen as defaults rather than asked (owner prefers few questions); owner can rename |
+| `/impeccable extract` | Done by hand: concept-private styles and controls moved to `design/DesignSystem`, concept screens migrated |
+| `/impeccable polish` | Not run as a command. Equivalent bounded pass done: gallery shot at the largest text size, defects fixed, one re-shoot |
+| `.impeccable/design.json` | Minimal sidecar written (motion, breakpoints, narrative); no component HTML (native) |
