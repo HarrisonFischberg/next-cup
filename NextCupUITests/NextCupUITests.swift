@@ -23,10 +23,10 @@ final class NextCupUITests: XCTestCase {
     }
   }
 
-  /// All text inside a component (a stepper tile holds its value, unit and target).
+  /// The text inside a tile after its title: value, unit and target, in order.
   private func text(_ app: XCUIApplication, in identifier: String) -> String {
-    element(app, identifier).staticTexts.allElementsBoundByIndex.map { $0.label }.joined(
-      separator: " ")
+    element(app, identifier).staticTexts.allElementsBoundByIndex.dropFirst().map { $0.label }
+      .joined(separator: " ")
   }
 
   private func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
@@ -220,6 +220,9 @@ final class NextCupUITests: XCTestCase {
     app.buttons["Increase Dose"].tap()
     let grind = app.textFields["brewform.grind"]
     scrollUntilHittable(grind, in: app)
+    // Lift the field clear of the Save bar with a short drag.
+    let mid = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+    mid.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)))
     grind.tap()
     grind.typeText("21 clicks")
     app.keyboards.buttons["Done"].tap()  // dismisses the keyboard and the draft stays
