@@ -93,21 +93,26 @@ private struct TabRoot: View {
         Color.clear.accessibilityElement().accessibilityIdentifier(link.identifier)
       }
     case .brew(let id): BrewDestination(link: link, brewID: id)
+    case .brewAgain(let id): BrewDestination(link: link, brewID: id, repeats: true)
     default: DestinationPlaceholder(link: link)
     }
   }
 }
 
-/// Opens a saved brew for editing. A link to a brew that no longer exists lands
-/// on a screen that says so, never on a blank form.
+/// Opens a saved brew for editing, or a new brew that repeats it. A link to a
+/// brew that no longer exists lands on a screen that says so, never on a blank
+/// form.
 private struct BrewDestination: View {
   let link: DeepLink
   let brewID: UUID
+  var repeats = false
   @Environment(\.modelContext) private var context
 
   var body: some View {
     if let brew = try? Store(context: context).find(Brew.self, id: brewID) {
-      BrewFormView(seed: nil, editing: brew).background {
+      BrewFormView(
+        seed: nil, editing: repeats ? nil : brew, repeating: repeats ? brew : nil
+      ).background {
         Color.clear.accessibilityElement().accessibilityIdentifier(link.identifier)
       }
     } else {

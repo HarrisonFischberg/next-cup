@@ -29,11 +29,12 @@ struct BrewFormModelTests {
     }
 
     func model(
-      seed: BrewFormSeed? = nil, editing: Brew? = nil, failSave: Bool = false
+      seed: BrewFormSeed? = nil, editing: Brew? = nil, repeating: Brew? = nil,
+      failSave: Bool = false
     ) -> BrewFormModel {
       BrewFormModel(
-        seed: seed, editing: editing, store: store, draftStore: draftStore, defaults: defaults,
-        simulatesSaveFailure: failSave)
+        seed: seed, editing: editing, repeating: repeating, store: store,
+        draftStore: draftStore, defaults: defaults, simulatesSaveFailure: failSave)
     }
 
     func brews() throws -> [Brew] { try container.mainContext.fetch(FetchDescriptor<Brew>()) }
@@ -72,6 +73,102 @@ struct BrewFormModelTests {
   private func metadata(of data: Data) throws -> [CFString: Any] {
     let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
     return try #require(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+  }
+
+  // MARK: Brew again
+
+  /// A saved brew with a bean, a verdict, notes and a measured time.
+  private func beanBrew(_ harness: Harness) throws -> (brew: Brew, bean: Bean) {
+    let method = BrewMethod(name: "Cone", style: .pourOver)
+    let bean = Bean(name: "Synthetic Natural")
+    let brew = Brew(date: Date(timeIntervalSince1970: 1_000))
+    brew.method = method
+    brew.doseG = 18
+    brew.waterG = 288
+    brew.tempC = 93
+    brew.totalTimeS = 172
+    brew.grindSetting = "21 clicks"
+    brew.verdict = .sour
+    brew.ratingHalfSteps = 6
+    brew.notes = "Thin and sharp."
+    harness.container.mainContext.insert(method)
+    harness.container.mainContext.insert(bean)
+    harness.container.mainContext.insert(brew)
+    let use = BrewBean(grams: 18, beanNameSnapshot: bean.name)
+    harness.container.mainContext.insert(use)
+    use.bean = bean
+    brew.beans = [use]
+    if case .failure(let error) = harness.store.save() { throw error }
+    return (brew, bean)
+  }
+
+  @Test func brewAgainOpensWithTheSameBeanMethodAndAmountsButNoTiming() throws {
+    let harness = try Harness()
+    let (source, bean) = try beanBrew(harness)
+    let model = harness.model(repeating: source)
+
+    #expect(model.draft.id != source.id)
+    #expect(model.draft.methodID == source.method?.id)
+    #expect(model.draft.doseG == 18)
+    #expect(model.draft.waterG == 288)
+    #expect(model.draft.tempC == 93)
+    #expect(model.draft.grindSetting == "21 clicks")
+    #expect(model.draft.beans?.first?.beanID == bean.id)
+    #expect(model.draft.totalTimeS == nil)
+    #expect(model.draft.verdict == nil)
+    #expect(model.draft.notes.isEmpty)
+    #expect(model.draft.date > source.date)
+  }
+
+  @Test func savingARepeatMakesASecondBrewWithTheBeanAndLeavesTheFirstAlone() throws {
+    let harness = try Harness()
+    let (source, bean) = try beanBrew(harness)
+    let model = harness.model(repeating: source)
+    #expect(model.save())
+
+    let all = try harness.brews()
+    #expect(all.count == 2)
+    let repeated = try #require(all.first { $0.id != source.id })
+    #expect(repeated.beans?.count == 1)
+    #expect(repeated.beans?.first?.bean?.id == bean.id)
+    #expect(repeated.beans?.first?.grams == 18)
+    #expect(repeated.totalTimeS == nil)
+    #expect(source.totalTimeS == 172)
+    #expect(source.notes == "Thin and sharp.")
+    #expect(source.beans?.count == 1)
+  }
+
+  @Test func aRepeatKeepsItsOwnDraftAndLeavesTheNewBrewDraftAlone() throws {
+    let harness = try Harness()
+    let (source, _) = try beanBrew(harness)
+    let blank = harness.model()
+    blank.draft.notes = "half typed"
+    blank.flushDraft()
+
+    let repeated = BrewFormModel(
+      seed: nil, repeating: source, store: harness.store,
+      draftStore: .repeating(source.id), defaults: harness.defaults)
+    repeated.draft.grindSetting = "23 clicks"
+    repeated.flushDraft()
+    defer { _ = DraftStore.repeating(source.id).clear() }
+
+    let reopened = BrewFormModel(
+      seed: nil, repeating: source, store: harness.store,
+      draftStore: .repeating(source.id), defaults: harness.defaults)
+    #expect(reopened.draft.grindSetting == "23 clicks")
+    #expect(reopened.draft.id == repeated.draft.id)
+    #expect(harness.model().draft.notes == "half typed")
+  }
+
+  @Test func editingASavedBrewStillLeavesItsBeansAlone() throws {
+    let harness = try Harness()
+    let (source, bean) = try beanBrew(harness)
+    let model = harness.model(editing: source)
+    model.draft.notes = "Better with a finer grind."
+    #expect(model.save())
+    #expect(try harness.brews().count == 1)
+    #expect(source.beans?.first?.bean?.id == bean.id)
+    #expect(source.notes == "Better with a finer grind.")
   }
 
   // MARK: Autosave and restore

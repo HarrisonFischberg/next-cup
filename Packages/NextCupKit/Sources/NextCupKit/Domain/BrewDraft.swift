@@ -18,6 +18,20 @@ public struct BrewTargets: Codable, Equatable, Sendable {
   }
 }
 
+/// A bean in a brew being repeated: which bean (when it still exists), its name
+/// as it was, and its share of the dose.
+public struct DraftBean: Codable, Equatable, Sendable {
+  public var beanID: UUID?
+  public var name: String
+  public var grams: Double
+
+  public init(beanID: UUID?, name: String, grams: Double) {
+    self.beanID = beanID
+    self.name = name
+    self.grams = grams
+  }
+}
+
 /// The open brew form, saved outside the store so typed input survives
 /// navigation, backgrounding and a crash. Canonical units only (grams, °C,
 /// seconds); `verdict` holds the stored raw value.
@@ -40,13 +54,16 @@ public struct BrewDraft: Codable, Equatable, Sendable {
   public var photo: Data?
   public var targets: BrewTargets?
   public var endedEarly: Bool
+  /// Beans carried over by "Brew again". `nil` for a brew that did not start that
+  /// way, so saving an edit never touches the beans already on the brew.
+  public var beans: [DraftBean]?
 
   public init(
     id: UUID = UUID(), sourceKey: String? = nil, date: Date = Date(), methodID: UUID? = nil,
     recipeID: UUID? = nil, doseG: Double? = nil, waterG: Double? = nil, tempC: Double? = nil,
     totalTimeS: Int? = nil, grindSetting: String = "", verdict: String? = nil,
     ratingHalfSteps: Int = 0, notes: String = "", photo: Data? = nil, targets: BrewTargets? = nil,
-    endedEarly: Bool = false
+    endedEarly: Bool = false, beans: [DraftBean]? = nil
   ) {
     self.id = id
     self.sourceKey = sourceKey
@@ -64,6 +81,25 @@ public struct BrewDraft: Codable, Equatable, Sendable {
     self.photo = photo
     self.targets = targets
     self.endedEarly = endedEarly
+    self.beans = beans
+  }
+
+  /// Identifies a "Brew again" draft, so reopening the same repeat restores it.
+  public static func repeatKey(for sourceID: UUID) -> String { "again:\(sourceID.uuidString)" }
+
+  /// A fresh brew that repeats `source` (X2): the same method, recipe, beans,
+  /// amounts, temperature and grind, with the time reset. The date, verdict,
+  /// grade, notes and photo belong to the cup that was drunk, so they start empty.
+  /// The recipe's targets stay beside the values.
+  public static func repeating(
+    _ source: BrewDraft, sourceID: UUID, beans: [DraftBean], now: Date = Date(),
+    id: UUID = UUID()
+  ) -> BrewDraft {
+    BrewDraft(
+      id: id, sourceKey: repeatKey(for: sourceID), date: now, methodID: source.methodID,
+      recipeID: source.recipeID, doseG: source.doseG, waterG: source.waterG,
+      tempC: source.tempC, totalTimeS: nil, grindSetting: source.grindSetting,
+      targets: source.targets, beans: beans)
   }
 
   /// A brew needs the two numbers every derived value rests on.
