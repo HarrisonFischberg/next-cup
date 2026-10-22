@@ -324,3 +324,23 @@ Untested / honest gaps:
 - Hide has no Undo toast: it is non-destructive and reversible from the same row.
 - Restoring the brew form after a method is hidden mid-draft is untested. A brew saved with a field its method no longer tracks keeps the value, but the field is not shown.
 - `/impeccable polish` and `audit` not run. `/goal` not invoked as a tool; bound self-enforced.
+
+## T013 — Recipe editor S08 (done)
+
+**Changed**
+- `RecipeEditorService` (draft ⇄ `Recipe`, validation, save in place or as a copy, rollback on a failed write), `RecipeEditorFields` (text fields in the user's units → `RecipeDraft`, names the unreadable field), `RecipeEditorView` (all 12 step kinds, add / move up / move down / remove with Undo, method picker, ice, credit, tuning note).
+- Library: "+" new recipe, context menu Edit / Duplicate / Customize. Detail: actions menu with the same. A built-in is never edited in place: Customize saves a copy with `builtInKey` cleared.
+- Bundle already held the switchable dripper and inverted press (methods + recipes); a test now pins them.
+
+**Commands and results**
+- `swift format lint --strict ...`: clean.
+- `swift test --package-path Packages/NextCupKit`: 57 tests passed.
+- `xcodebuild ... test -only-testing:NextCupTests`: 94 tests passed, including the 9 new `RecipeEditorTests` (round trip, every step kind, in-place edit leaves no orphan steps, customized copy leaves the original, validation, unit round trip in oz / °F, parsing).
+- New UI test `testCustomizingABuiltInRecipeSavesACopy`: passed.
+- Full `xcodebuild test`: one failure, `testJournalLogsFindsEditsAndDeletesABrewWithUndo` (journal code, not touched here). Re-run alone: passed. Treated as flaky under load; not investigated further.
+
+**Untested / not done**
+- No screenshots (light, dark, largest text) were saved to `ralph/screenshots/`; no VoiceOver pass or `/impeccable` polish and audit. The editor was only exercised by the UI test.
+- The keyboard toolbar "Done" button was not found by the UI test; the form dismisses the keyboard by scrolling instead.
+- No delete for the user's own recipes yet, and no autosaved editor draft (the sheet blocks swipe-dismiss while there are unsaved changes).
+- Oz values are shown to 3 decimals so a customized copy stays within about 0.03 g of the original.

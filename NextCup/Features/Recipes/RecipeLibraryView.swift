@@ -6,6 +6,7 @@ import SwiftUI
 struct RecipeLibraryView: View {
   @Query(sort: \Recipe.name) private var recipes: [Recipe]
   @State private var search = ""
+  @State private var editor: RecipeEditorTarget?
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -56,6 +57,19 @@ struct RecipeLibraryView: View {
     .searchable(text: $search, prompt: "Search recipes")
     .navigationTitle("Recipes")
     .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      ToolbarItem(placement: .topBarTrailing) {
+        Button {
+          editor = .new
+        } label: {
+          Label("New recipe", systemImage: "plus")
+        }
+        .accessibilityIdentifier("recipes.add")
+      }
+    }
+    .sheet(item: $editor) { target in
+      RecipeEditorView(target: target) { _ in editor = nil }
+    }
     .accessibilityIdentifier("tab.root.recipes")
   }
 
@@ -73,6 +87,16 @@ struct RecipeLibraryView: View {
           ForEach(members) { recipe in
             NavigationLink(value: DeepLink.recipe(recipe.id)) { row(recipe) }
               .buttonStyle(.plain)
+              .contextMenu {
+                if recipe.builtInKey == nil {
+                  Button("Edit", systemImage: "pencil") { editor = .edit(recipe.id) }
+                }
+                Button(
+                  recipe.builtInKey == nil ? "Duplicate" : "Customize",
+                  systemImage: recipe.builtInKey == nil
+                    ? "plus.square.on.square" : "slider.horizontal.3"
+                ) { editor = .copy(recipe.id) }
+              }
               .accessibilityIdentifier("recipe.row.\(recipe.id.uuidString)")
             if recipe.id != members.last?.id { Hairline() }
           }
