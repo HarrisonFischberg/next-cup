@@ -297,3 +297,30 @@ Untested / honest gaps:
 - Time reset in the UI test checks an empty time on a brew that never had one; a measured time being cleared is covered by package and model tests.
 - VoiceOver not run by hand; haptics not felt. `/impeccable polish` and `audit` not run. `/goal` not invoked as a tool.
 - The full suite was run as two scoped runs (unit, then UI), not one `test` invocation.
+
+## 2026-10-22 — T012 Methods S09
+
+What changed:
+- `NextCup/Features/Methods/`: `MethodsView` (S09 list: tap to edit, drag in Edit mode, trailing full-swipe Hide/Show, context menu and VoiceOver actions for Hide, Move up, Move down; "Hidden" tag; empty state; error banner), `MethodEditorView` (sheet: name, style on add, one switch per optional field, visible Move up / Move down with "Position n of m"), `MethodsService` (add, rename/update, hide, move, step; trimmed non-empty case-insensitive unique names; renumbers `sortOrder` without gaps; failed save is rolled back and reported), `MethodParameters` (which fields a method shows).
+- Methods are never deleted; hiding keeps every brew and the method's place. The brew form still offers a hidden method on a brew that already uses it.
+- `SettingsRootView` is now the Settings tab root with a "Brew methods" row (units, data, privacy arrive with T020).
+- `BrewFormView`: temperature, time, grind setting, grade, photo and notes show only if the chosen method tracks them. Dose, water, ratio and taste verdict always show.
+
+Decisions to confirm:
+- Dose and water are always on (a brew cannot be saved without them), so the editor shows them locked. Yield and TDS stay on a method untouched but are not offered: the form has no field for them yet (TDS UI is T029). Espresso keeps using the Water field for output weight, as before.
+- Verdict ("how it tasted") is not a `BrewParameter`, so it is always shown.
+- Style is chosen when adding a method and not changed afterwards.
+
+Commands and results:
+- `swift test --package-path Packages/NextCupKit`: 57 passed.
+- `xcodebuild ... test` (full, app + UI): TEST SUCCEEDED; UI 22 run, 6 skipped (screenshot captures), 0 failures, incl. `testMethodsAddReorderHideAndShapeTheBrewForm`. Unit tests 85 passed (9 new in `MethodsServiceTests`). The wrapper reported the background task as killed at its time limit after the run had printed TEST SUCCEEDED (simulator diagnostics collection hangs ~10 min after a run).
+- `swift format lint --recursive --strict ...`: clean.
+- First UI attempts failed for test-side reasons (editor "Move up" below the fold; a switch tap that missed the thumb); the app code was not changed for either.
+
+Screenshots (`ralph/screenshots/`): `settings-{light,dark,largest-text}.png`, `methods-list-{light,dark,largest-text}.png`, `methods-editor-{light,dark}.png` (viewed: list light and largest text, editor dark). `methods-editor-largest-text.png` was not produced in the final capture run; the editor at the largest text size was not looked at. Fixed from screenshots: off-theme white footer band, icon overlapping text at the largest size.
+
+Untested / honest gaps:
+- VoiceOver not run by hand; the row label, actions and switch values are set, not heard. Real drag-to-reorder was not driven in a UI test (Move up/down is). No haptics on reorder.
+- Hide has no Undo toast: it is non-destructive and reversible from the same row.
+- Restoring the brew form after a method is hidden mid-draft is untested. A brew saved with a field its method no longer tracks keeps the value, but the field is not shown.
+- `/impeccable polish` and `audit` not run. `/goal` not invoked as a tool; bound self-enforced.

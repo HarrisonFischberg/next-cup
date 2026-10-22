@@ -387,6 +387,124 @@ final class NextCupUITests: XCTestCase {
       journalRow(app, containing: "Washed Ethiopia sweet").exists, "the first is intact")
   }
 
+  private func openMethods(_ app: XCUIApplication) {
+    app.tabBars.buttons["Settings"].tap()
+    XCTAssertTrue(element(app, "settings.methods").waitForExistence(timeout: 5))
+    element(app, "settings.methods").tap()
+    XCTAssertTrue(element(app, "methods.screen").waitForExistence(timeout: 5))
+  }
+
+  private func addMethod(_ app: XCUIApplication, name: String, switchOff: String) {
+    app.buttons["methods.add"].tap()
+    let field = element(app, "methods.editor.name")
+    XCTAssertTrue(field.waitForExistence(timeout: 5))
+    field.tap()
+    field.typeText(name)
+    app.keyboards.buttons["Done"].tap()
+    // The switch element spans the row; its thumb is at the trailing edge.
+    app.switches[switchOff].coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+    XCTAssertEqual(app.switches[switchOff].value as? String, "0", "\(switchOff) is switched off")
+    app.buttons["methods.editor.save"].tap()
+    XCTAssertTrue(element(app, "methods.row.\(name)").waitForExistence(timeout: 5))
+  }
+
+  /// T012: add a method with a field switched off, move it up without a drag,
+  /// hide another, and see the brew form follow.
+  @MainActor
+  func testMethodsAddReorderHideAndShapeTheBrewForm() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    openMethods(app)
+    addMethod(app, name: "Moka pot", switchOff: "Temperature")
+
+    // The new method is last; "Move up" in its editor puts it above the old last.
+    let rows = app.descendants(matching: .any).matching(
+      NSPredicate(format: "identifier BEGINSWITH 'methods.row.'"))
+    let before = rows.count
+    XCTAssertEqual(rows.element(boundBy: before - 1).identifier, "methods.row.Moka pot")
+    element(app, "methods.row.Moka pot").tap()
+    XCTAssertTrue(element(app, "methods.editor.name").waitForExistence(timeout: 5))
+    XCTAssertEqual(
+      app.switches["Temperature"].value as? String, "0", "the switch stayed off after saving")
+    XCTAssertEqual(app.switches["Grind setting"].value as? String, "1")
+    let up = element(app, "methods.editor.up")
+    var swipes = 0
+    while !up.isHittable && swipes < 6 {
+      app.swipeUp()
+      swipes += 1
+    }
+    XCTAssertTrue(up.isHittable, "Move up is reachable by scrolling")
+    up.tap()
+    app.buttons["methods.editor.cancel"].tap()
+    XCTAssertTrue(element(app, "methods.screen").waitForExistence(timeout: 5))
+    XCTAssertEqual(rows.element(boundBy: before - 2).identifier, "methods.row.Moka pot")
+
+    // Hiding keeps the row, marked, and takes it out of the picker.
+    let press = element(app, "methods.row.Press pot")
+    press.swipeLeft()
+    app.buttons["Hide"].tap()
+    XCTAssertTrue(
+      element(app, "methods.row.Press pot").label.contains("hidden"),
+      "hidden rows stay in the list: \(element(app, "methods.row.Press pot").label)")
+
+    app.tabBars.buttons["Journal"].tap()
+    app.buttons["Log a brew"].tap()
+    XCTAssertTrue(element(app, "brewform.blank").waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      element(app, "brewform.temperature").exists, "the first method tracks temperature")
+    element(app, "brewform.method").tap()
+    XCTAssertTrue(app.buttons["Moka pot"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.buttons["Press pot"].exists, "a hidden method is not offered")
+    app.buttons["Moka pot"].tap()
+    XCTAssertTrue(element(app, "brewform.grind").waitForExistence(timeout: 5))
+    XCTAssertFalse(
+      element(app, "brewform.temperature").exists, "temperature is off for Moka pot")
+    XCTAssertTrue(element(app, "brewform.dose").exists && element(app, "brewform.water").exists)
+  }
+
+  /// Writes the methods list, editor and shaped form in light, dark and the
+  /// largest text size. Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureMethodsScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      if let size = variant.size {
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
+      }
+      app.launch()
+      XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+      app.tabBars.buttons["Settings"].tap()
+      XCTAssertTrue(element(app, "settings.methods").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/settings-\(variant.name).png")
+      element(app, "settings.methods").tap()
+      XCTAssertTrue(element(app, "methods.screen").waitForExistence(timeout: 5))
+      let press = element(app, "methods.row.Press pot")
+      scrollUntilHittable(press, in: app)
+      press.swipeLeft()
+      app.buttons["Hide"].tap()
+      try save(app.screenshot(), "\(folderURL.path)/methods-list-\(variant.name).png")
+      for _ in 0..<6 { app.swipeDown() }
+      element(app, "methods.row.Cone dripper").tap()
+      XCTAssertTrue(element(app, "methods.editor.name").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/methods-editor-\(variant.name).png")
+      app.terminate()
+    }
+  }
+
   /// Writes journal screenshots in light, dark and the largest text size.
   /// Runs only while `ralph/screenshots/.capture` exists.
   @MainActor

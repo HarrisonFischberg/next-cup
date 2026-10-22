@@ -76,6 +76,8 @@ private struct TabRoot: View {
         for: DeepLink.self, destination: destination)
     case .recipes:
       RecipeLibraryView().navigationDestination(for: DeepLink.self, destination: destination)
+    case .settings:
+      SettingsRootView().navigationDestination(for: DeepLink.self, destination: destination)
     default:
       TabPlaceholder(tab: tab, router: router).navigationDestination(
         for: DeepLink.self, destination: destination)
