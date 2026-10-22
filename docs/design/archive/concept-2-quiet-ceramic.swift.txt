@@ -1,0 +1,454 @@
+import SwiftUI
+import UIKit
+
+// Concept 2 — Quiet Ceramic
+// Japanese-minimal: warm ivory, walnut ink, one celadon glaze. Generous empty
+// space, light Mincho display, direct typed entry instead of steppers, a water
+// gauge that shows where the pour should be. One round ceramic button per screen.
+
+private extension Color {
+    init(light: UInt32, dark: UInt32) {
+        self.init(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) })
+    }
+}
+
+private extension UIColor {
+    convenience init(hex: UInt32) {
+        self.init(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
+                  blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+    }
+}
+
+private enum T {
+    static let bg = Color(light: 0xF6F1E7, dark: 0x1F1A16)
+    static let surface = Color(light: 0xECE4D3, dark: 0x2A241E)
+    static let ink = Color(light: 0x3B2E25, dark: 0xEFE7D8)
+    static let ink2 = Color(light: 0x6B5B4E, dark: 0xB8AC9C)
+    static let glaze = Color(light: 0x44695A, dark: 0x9DBFAE)
+    static let onGlaze = Color(light: 0xF6F1E7, dark: 0x1F1A16)
+    static let rule = Color(light: 0xD3C8B3, dark: 0x3D342C)
+    static let error = Color(light: 0x9B3B2A, dark: 0xEE9A86)
+
+    static func mincho(_ size: CGFloat, relativeTo style: Font.TextStyle = .title) -> Font {
+        .custom("HiraMinProN-W3", size: size, relativeTo: style)
+    }
+    static func minchoBold(_ size: CGFloat, relativeTo style: Font.TextStyle = .title) -> Font {
+        .custom("HiraMinProN-W6", size: size, relativeTo: style)
+    }
+    static let body = Font.body.weight(.light)
+}
+
+struct ConceptRoot: View {
+    var body: some View {
+        ConceptShell(tint: T.glaze, appearance: configureBars) { model in
+            RecipeScreen(model: model)
+        } timer: { model in
+            TimerScreen(model: model)
+        } log: { model in
+            LogScreen(model: model)
+        } journal: { model in
+            JournalScreen(model: model)
+        }
+    }
+
+    private func configureBars() {
+        let tab = UITabBarAppearance()
+        tab.configureWithOpaqueBackground()
+        tab.backgroundColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0x1F1A16) : UIColor(hex: 0xF6F1E7) }
+        UITabBar.appearance().standardAppearance = tab
+        UITabBar.appearance().scrollEdgeAppearance = tab
+        let nav = UINavigationBarAppearance()
+        nav.configureWithTransparentBackground()
+        let ink = UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0xEFE7D8) : UIColor(hex: 0x3B2E25) }
+        nav.largeTitleTextAttributes = [.foregroundColor: ink, .font: UIFont(name: "HiraMinProN-W3", size: 32) ?? .systemFont(ofSize: 32)]
+        nav.titleTextAttributes = [.foregroundColor: ink, .font: UIFont(name: "HiraMinProN-W3", size: 16) ?? .systemFont(ofSize: 16)]
+        UINavigationBar.appearance().standardAppearance = nav
+        UINavigationBar.appearance().scrollEdgeAppearance = nav
+    }
+}
+
+/// The one ceramic button: a round glazed disc.
+private struct DiscButton: View {
+    let title: String
+    let symbol: String
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 2) {
+                Image(systemName: symbol).font(.system(size: 26, weight: .light))
+                Text(title).font(T.mincho(14, relativeTo: .footnote)).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            }
+            .foregroundStyle(T.onGlaze)
+            .frame(width: 92, height: 92)
+            .background(T.glaze, in: .circle)
+            .overlay(Circle().strokeBorder(T.onGlaze.opacity(0.35), lineWidth: 1).padding(5))
+        }
+        .buttonStyle(PressScale())
+        .accessibilityLabel(title)
+    }
+}
+
+private struct PressScale: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.95 : 1)
+            .animation(.spring(duration: 0.25), value: configuration.isPressed)
+    }
+}
+
+/// Horizontal water level for one step: where the pour ends, out of the full recipe.
+private struct LevelBar: View {
+    let fraction: Double
+    var body: some View {
+        Capsule().fill(T.rule).frame(height: 3)
+            .overlay(alignment: .leading) {
+                GeometryReader { g in Capsule().fill(T.glaze).frame(width: g.size.width * fraction) }
+            }
+            .accessibilityHidden(true)
+    }
+}
+
+// MARK: - S07 Recipe
+
+private struct RecipeScreen: View {
+    let model: FlowModel
+
+    var body: some View {
+        let r = model.recipe
+        ScrollView {
+            VStack(alignment: .leading, spacing: 44) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(r.name).font(T.mincho(30)).foregroundStyle(T.ink)
+                    Text("\(Fmt.num(r.doseG)) g coffee  ·  \(Fmt.num(r.waterG)) g water  ·  \(r.ratioText)\n\(Fmt.num(r.tempC))°C  ·  \(Fmt.clock(r.totalS))")
+                        .font(T.body.monospacedDigit()).foregroundStyle(T.ink2).lineSpacing(6)
+                }
+                VStack(alignment: .leading, spacing: 30) {
+                    ForEach(r.steps) { step in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(step.kind.label).font(T.minchoBold(19, relativeTo: .title3)).foregroundStyle(T.ink)
+                                Spacer()
+                                Text(Fmt.clock(step.startS)).font(T.body.monospacedDigit()).foregroundStyle(T.ink2)
+                            }
+                            if let g = step.cumulativeG {
+                                LevelBar(fraction: Double(g) / r.waterG)
+                            }
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(step.instruction).font(T.body).foregroundStyle(T.ink2)
+                                if let g = step.cumulativeG {
+                                    Spacer(minLength: 8)
+                                    Text("\(g) g").font(.body.monospacedDigit()).foregroundStyle(T.glaze)
+                                }
+                            }
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(step.kind.label), \(Fmt.clock(step.startS))\(step.cumulativeG.map { ", target \($0) grams" } ?? ""). \(step.instruction)")
+                    }
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(r.tuningNote).font(T.body).foregroundStyle(T.ink2)
+                    Text(r.credit).font(.footnote).foregroundStyle(T.ink2)
+                }
+            }
+            .padding(.horizontal, 32)
+            .padding(.top, 12)
+            .padding(.bottom, 24)
+        }
+        .background(T.bg)
+        .navigationTitle("Recipe")
+        .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
+            DiscButton(title: "Brew", symbol: "cup.and.saucer") { model.showTimer = true }
+                .padding(.vertical, 8).frame(maxWidth: .infinity)
+                .background(T.bg.opacity(0.94))
+        }
+    }
+}
+
+// MARK: - S05 Timer
+
+private struct TimerScreen: View {
+    let model: FlowModel
+    @Environment(\.dynamicTypeSize) private var dts
+
+    var body: some View {
+        TimerClock(model: model) { elapsed, index in
+            let r = model.recipe
+            let step = r.steps[index]
+            let next = model.nextStep(after: index)
+            let water = r.steps[...index].compactMap(\.cumulativeG).last ?? 0
+            VStack(spacing: 0) {
+                HStack {
+                    Spacer()
+                    Button { model.pauseTimer(); model.showTimer = false } label: {
+                        Image(systemName: "xmark").font(.body.weight(.light)).frame(width: 44, height: 44)
+                    }
+                    .foregroundStyle(T.ink2)
+                    .accessibilityLabel("Close timer")
+                }
+                .padding(.horizontal, 20)
+                (dts.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 12)) : AnyLayout(HStackLayout(alignment: .top, spacing: 28))) {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 18) {
+                            Text(Fmt.clock(Int(elapsed)))
+                                .font(T.mincho(92, relativeTo: .largeTitle)).monospacedDigit()
+                                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                                .minimumScaleFactor(0.5).lineLimit(1)
+                                .foregroundStyle(T.ink)
+                                .accessibilityLabel("Elapsed \(Int(elapsed) / 60) minutes \(Int(elapsed) % 60) seconds")
+                            Text(model.hasStarted ? step.kind.label : "Ready")
+                                .font(T.minchoBold(34, relativeTo: .title)).foregroundStyle(T.glaze)
+                            Text(model.hasStarted ? step.instruction
+                                 : "\(Fmt.num(r.doseG)) g coffee, \(Fmt.num(r.waterG)) g water at \(Fmt.num(r.tempC))°C.")
+                                .font(.title3.weight(.light)).foregroundStyle(T.ink)
+                            if let next, model.hasStarted {
+                                Text("Next, \(Fmt.clock(next.startS)): \(next.kind.label)")
+                                    .font(T.body).foregroundStyle(T.ink2)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                    gauge(water: water, total: r.waterG)
+                }
+                .padding(.horizontal, 32)
+                (dts.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 28))) {
+                    if model.hasStarted && !model.isDone {
+                        Button("End and log") { model.finishBrew() }
+                            .font(T.mincho(17, relativeTo: .body)).foregroundStyle(T.ink2)
+                            .frame(minWidth: 88, minHeight: 44)
+                    }
+                    if model.isDone {
+                        DiscButton(title: "Log", symbol: "square.and.pencil") { model.finishBrew() }
+                    } else {
+                        DiscButton(title: !model.hasStarted ? "Start" : (model.isRunning ? "Pause" : "Resume"),
+                                   symbol: model.isRunning ? "pause" : "play") { model.toggleTimer() }
+                    }
+                }
+                .padding(.top, 12).padding(.bottom, 16)
+            }
+            .background(T.bg.ignoresSafeArea())
+        }
+    }
+
+    /// Vertical water gauge: the fill is where the scale should read right now.
+    @ViewBuilder
+    private func gauge(water: Int, total: Double) -> some View {
+        if dts.isAccessibilitySize {
+            HStack(spacing: 12) {
+                Text("\(water) g").font(.callout.monospacedDigit()).foregroundStyle(T.glaze)
+                Capsule().strokeBorder(T.ink2.opacity(0.6), lineWidth: 1.5).frame(height: 18)
+                    .overlay(alignment: .leading) {
+                        GeometryReader { g in Capsule().fill(T.glaze.opacity(0.85)).frame(width: g.size.width * min(1, Double(water) / total)).padding(3) }
+                    }
+            }
+            .accessibilityElement().accessibilityLabel("Water target \(water) of \(Int(total)) grams")
+        } else { verticalGauge(water: water, total: total) }
+    }
+
+    private func verticalGauge(water: Int, total: Double) -> some View {
+        VStack(spacing: 8) {
+            Text("\(water) g").font(.callout.monospacedDigit()).foregroundStyle(T.glaze)
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            RoundedRectangle(cornerRadius: 18)
+                .strokeBorder(T.ink2.opacity(0.6), lineWidth: 1.5)
+                .frame(width: 44)
+                .overlay(alignment: .bottom) {
+                    GeometryReader { g in
+                        RoundedRectangle(cornerRadius: 16).fill(T.glaze.opacity(0.85))
+                            .frame(height: g.size.height * min(1, Double(water) / total))
+                            .frame(maxHeight: .infinity, alignment: .bottom)
+                            .animation(.easeOut(duration: 0.6), value: water)
+                    }
+                    .padding(3)
+                }
+                .frame(maxHeight: 320)
+        }
+        .frame(width: 60)
+        .accessibilityElement()
+        .accessibilityLabel("Water target \(water) of \(Int(total)) grams")
+    }
+}
+
+// MARK: - S02 Log
+
+private struct LogScreen: View {
+    @Bindable var model: FlowModel
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dts
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 36) {
+                    Text("What actually happened. Targets are shown in grey and never locked.")
+                        .font(T.body).foregroundStyle(T.ink2)
+                    VStack(spacing: 0) {
+                        field("Coffee", unit: "g", value: $model.draft.doseG, target: Fmt.num(model.recipe.doseG))
+                        field("Water", unit: "g", value: $model.draft.waterG, target: Fmt.num(model.recipe.waterG))
+                        field("Temperature", unit: "°C", value: $model.draft.tempC, target: Fmt.num(model.recipe.tempC))
+                        field("Time", unit: "s", int: $model.draft.timeS, target: "\(model.recipe.totalS)")
+                        field("Grind", unit: "", int: $model.draft.grind, target: nil)
+                    }
+                    if let ratio = model.draft.ratio {
+                        Text("Ratio 1:\(Fmt.num((ratio * 10).rounded() / 10))").font(T.mincho(20, relativeTo: .title3)).foregroundStyle(T.glaze)
+                    }
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text("Taste").font(T.minchoBold(16, relativeTo: .headline)).foregroundStyle(T.ink)
+                        taste
+                    }
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text("Grade  \(Fmt.stars(model.draft.ratingHalfSteps))").font(T.minchoBold(16, relativeTo: .headline)).foregroundStyle(T.ink)
+                        dots
+                    }
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Notes").font(T.minchoBold(16, relativeTo: .headline)).foregroundStyle(T.ink)
+                        TextField("A few words for next time", text: $model.draft.notes, axis: .vertical)
+                            .font(T.body).lineLimit(2...6).focused($focused)
+                            .padding(.bottom, 8)
+                            .overlay(alignment: .bottom) { Rectangle().fill(T.rule).frame(height: 1) }
+                    }
+                    if let err = model.saveError { Text(err).font(.callout).foregroundStyle(T.error) }
+                }
+                .padding(.horizontal, 32).padding(.top, 8).padding(.bottom, 24)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(T.bg)
+            .navigationTitle(model.draft.bean)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { focused = false } }
+            }
+            .safeAreaInset(edge: .bottom) {
+                DiscButton(title: "Save", symbol: "checkmark") { model.save() }
+                    .disabled(!model.draft.canSave).opacity(model.draft.canSave ? 1 : 0.4)
+                    .padding(.vertical, 8).frame(maxWidth: .infinity)
+                    .background(T.bg.opacity(0.94))
+            }
+        }
+    }
+
+    private func field(_ title: String, unit: String, value: Binding<Double>, target: String?) -> some View {
+        fieldRow(title, unit: unit, target: target) {
+            TextField(title, value: value, format: .number.precision(.fractionLength(0...1)))
+                .keyboardType(.decimalPad).focused($focused)
+        }
+    }
+
+    private func field(_ title: String, unit: String, int value: Binding<Int>, target: String?) -> some View {
+        fieldRow(title, unit: unit, target: target) {
+            TextField(title, value: value, format: .number).keyboardType(.numberPad).focused($focused)
+        }
+    }
+
+    private func fieldRow<F: View>(_ title: String, unit: String, target: String?, @ViewBuilder _ input: () -> F) -> some View {
+        let layout = dts.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 12))
+        return layout {
+            Text(title).font(T.mincho(18, relativeTo: .body)).foregroundStyle(T.ink)
+            if !dts.isAccessibilitySize { Spacer(minLength: 8) }
+            if let target { Text("\(target)\(unit.isEmpty ? "" : " " + unit)").font(.callout.monospacedDigit()).foregroundStyle(T.ink2.opacity(0.8)) }
+            HStack(spacing: 4) {
+                input().multilineTextAlignment(dts.isAccessibilitySize ? .leading : .trailing)
+                    .font(T.mincho(24, relativeTo: .title2)).monospacedDigit().foregroundStyle(T.ink)
+                    .frame(minWidth: 64, minHeight: 44)
+                if !unit.isEmpty { Text(unit).font(T.body).foregroundStyle(T.ink2) }
+            }
+        }
+        .padding(.vertical, 6)
+        .overlay(alignment: .bottom) { Rectangle().fill(T.rule).frame(height: 1) }
+        .accessibilityElement(children: .contain)
+    }
+
+    private var taste: some View {
+        (dts.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(spacing: 4))) {
+            ForEach(Verdict.allCases) { v in
+                let on = model.draft.verdict == v
+                Button { model.draft.verdict = on ? nil : v } label: {
+                    Text(v.label).font(on ? T.minchoBold(17, relativeTo: .body) : T.mincho(17, relativeTo: .body))
+                        .foregroundStyle(on ? T.glaze : T.ink2)
+                        .padding(.horizontal, 6).frame(minHeight: 44)
+                        .overlay(alignment: .bottom) {
+                            Rectangle().fill(on ? T.glaze : T.rule).frame(height: on ? 2 : 1).padding(.horizontal, 6).offset(y: -6)
+                        }
+                }
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+    }
+
+    /// Five discs. Tap once for a whole grade, again for the half below it, again to clear.
+    private var dots: some View {
+        HStack(spacing: 10) {
+            ForEach(1...5, id: \.self) { i in
+                let half = model.draft.ratingHalfSteps
+                Button {
+                    let whole = i * 2
+                    model.draft.ratingHalfSteps = half == whole ? whole - 1 : (half == whole - 1 ? 0 : whole)
+                } label: {
+                    ZStack {
+                        Circle().strokeBorder(T.glaze, lineWidth: 1.5)
+                        if half >= i * 2 { Circle().fill(T.glaze) }
+                        else if half == i * 2 - 1 { Circle().fill(T.glaze).mask(alignment: .leading) { Rectangle().frame(width: 22) } }
+                    }
+                    .frame(width: 44, height: 44)
+                }
+                .accessibilityHidden(true)
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Grade")
+        .accessibilityValue(Fmt.stars(model.draft.ratingHalfSteps))
+        .accessibilityAdjustableAction { dir in
+            let h = model.draft.ratingHalfSteps
+            model.draft.ratingHalfSteps = dir == .increment ? min(10, h + 1) : max(0, h - 1)
+        }
+    }
+}
+
+// MARK: - S01 Journal
+
+private struct JournalScreen: View {
+    let model: FlowModel
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 40) {
+                ForEach(model.journal) { e in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(Fmt.day(e.date)).font(.footnote).foregroundStyle(T.ink2)
+                        Text(e.bean).font(T.mincho(22, relativeTo: .title3)).foregroundStyle(T.ink)
+                        Text("\(e.method)  ·  \(Fmt.num(e.doseG)) g, \(Fmt.num(e.waterG)) g  ·  \(Fmt.clock(e.timeS))\(e.verdict.map { " · " + $0.label.lowercased() } ?? "")")
+                            .font(T.body.monospacedDigit()).foregroundStyle(T.ink2)
+                        HStack(spacing: 5) {
+                            ForEach(1...5, id: \.self) { i in
+                                Circle().fill(e.ratingHalfSteps >= i * 2 ? T.glaze : .clear)
+                                    .overlay(Circle().strokeBorder(T.glaze, lineWidth: 1))
+                                    .frame(width: 10, height: 10)
+                            }
+                        }
+                        .accessibilityHidden(true)
+                        if !e.note.isEmpty { Text(e.note).font(T.body).foregroundStyle(T.ink2) }
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(Fmt.day(e.date)), \(e.bean), \(e.method), grade \(Fmt.stars(e.ratingHalfSteps)). \(e.note)")
+                    .contextMenu {
+                        Button("Delete", role: .destructive) { model.journal.removeAll { $0.id == e.id } }
+                    }
+                }
+            }
+            .padding(.horizontal, 32).padding(.top, 16).padding(.bottom, 40)
+        }
+        .background(T.bg)
+        .navigationTitle("Journal")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { model.prefillFromRecipe(measuredS: 180); model.showLog = true } label: {
+                    Image(systemName: "plus").font(.body.weight(.light)).frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Log a brew")
+            }
+        }
+    }
+}
