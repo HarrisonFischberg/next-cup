@@ -275,3 +275,25 @@ Untested / honest gaps:
 - Undo window ends if the app is killed during it: the brew then stays (safe direction).
 - At the largest text size the Undo toast covers the empty state's button until scrolled.
 - VoiceOver not run by hand; haptics not felt. `/impeccable polish` and `audit` not run.
+
+## 2026-10-22 — T011 Brew again and edit any saved brew
+
+What changed:
+- Housekeeping: T010 was finished and logged by the previous session but never committed; committed it separately first (`feat(T010)`), so this commit holds T011 only.
+- Edit of any saved brew already shipped with T010 (`BrewFormModel(editing:)`); T011 adds a test that editing leaves a brew's beans alone.
+- Brew again: `BrewDraft.repeating` (NextCupKit) keeps method, recipe, beans, dose, water, temperature, grind and recipe targets; resets time, date, verdict, grade, notes, photo and ended-early. `BrewDraft.beans` is optional, so old draft files still load and an edit never touches beans. `DraftStore.repeating(id)` gives a repeat its own draft file, so it never overwrites a half-typed new brew.
+- App: `nextcup://brew-again/<id>` (`DeepLink.brewAgain`), `BrewFormModel(repeating:)` copies beans into new `BrewBean` rows scaled to the dose (a deleted bean keeps its name), form shows "BREW AGAIN" and "Same beans: ...". Journal: leading full-swipe, context menu and VoiceOver action "Brew again".
+
+Commands and results:
+- `swift test --package-path Packages/NextCupKit`: 57 passed (5 new).
+- `xcodebuild ... test -only-testing:NextCupTests`: 76 passed, TEST SUCCEEDED (4 new brew-again/edit model tests).
+- `xcodebuild ... test -only-testing:NextCupUITests`: TEST SUCCEEDED, 19 run, 4 skipped (screenshot captures), 0 failures, incl. `testBrewAgainRepeatsASavedBrew`.
+- `swift format lint --recursive --strict ...`: clean.
+
+Screenshots (`ralph/screenshots/`): `brewform-again-{light,dark,largest-text}.png`, `journal-brew-again-swipe-{light,dark,largest-text}.png` (viewed: brewform-again largest text; reflows, Save stays visible).
+
+Untested / honest gaps:
+- UI test brews have no bean (beans UI is T014), so beans carry-over is covered by model tests only; the "Same beans" line was not seen on screen.
+- Time reset in the UI test checks an empty time on a brew that never had one; a measured time being cleared is covered by package and model tests.
+- VoiceOver not run by hand; haptics not felt. `/impeccable polish` and `audit` not run. `/goal` not invoked as a tool.
+- The full suite was run as two scoped runs (unit, then UI), not one `test` invocation.

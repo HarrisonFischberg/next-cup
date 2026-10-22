@@ -1,10 +1,12 @@
 import Foundation
 
 /// A `nextcup://` entry point (blueprint §3c):
-/// `brew/new`, `brew/<id>`, `recipe/<id>`, `bean/<id>`.
+/// `brew/new`, `brew/<id>`, `brew-again/<id>`, `recipe/<id>`, `bean/<id>`.
 enum DeepLink: Hashable, Sendable {
   case newBrew
   case brew(UUID)
+  /// A new brew that repeats the saved brew with this id.
+  case brewAgain(UUID)
   case recipe(UUID)
   case bean(UUID)
 
@@ -24,6 +26,9 @@ enum DeepLink: Hashable, Sendable {
     case "brew":
       guard let id = UUID(uuidString: target) else { return nil }
       self = .brew(id)
+    case "brew-again":
+      guard let id = UUID(uuidString: target) else { return nil }
+      self = .brewAgain(id)
     case "recipe":
       guard let id = UUID(uuidString: target) else { return nil }
       self = .recipe(id)
@@ -37,7 +42,7 @@ enum DeepLink: Hashable, Sendable {
 
   var tab: AppTab {
     switch self {
-    case .newBrew, .brew: .journal
+    case .newBrew, .brew, .brewAgain: .journal
     case .recipe: .recipes
     case .bean: .beans
     }
@@ -47,6 +52,7 @@ enum DeepLink: Hashable, Sendable {
     switch self {
     case .newBrew: URL(string: "\(Self.scheme)://brew/new")!
     case .brew(let id): URL(string: "\(Self.scheme)://brew/\(id.uuidString)")!
+    case .brewAgain(let id): URL(string: "\(Self.scheme)://brew-again/\(id.uuidString)")!
     case .recipe(let id): URL(string: "\(Self.scheme)://recipe/\(id.uuidString)")!
     case .bean(let id): URL(string: "\(Self.scheme)://bean/\(id.uuidString)")!
     }
@@ -57,6 +63,7 @@ enum DeepLink: Hashable, Sendable {
     switch self {
     case .newBrew: "New brew"
     case .brew: "Brew"
+    case .brewAgain: "Brew again"
     case .recipe: "Recipe"
     case .bean: "Bean"
     }
@@ -66,6 +73,7 @@ enum DeepLink: Hashable, Sendable {
     switch self {
     case .newBrew: "destination.brew.new"
     case .brew(let id): "destination.brew.\(id.uuidString)"
+    case .brewAgain(let id): "destination.brew-again.\(id.uuidString)"
     case .recipe(let id): "destination.recipe.\(id.uuidString)"
     case .bean(let id): "destination.bean.\(id.uuidString)"
     }

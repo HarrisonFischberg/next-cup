@@ -117,6 +117,14 @@ struct JournalListView: View {
         .listRowInsets(EdgeInsets())
         .listRowBackground(DS.paper)
         .listRowSeparatorTint(DS.line)
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+          Button {
+            brewAgain(brew)
+          } label: {
+            Label("Brew again", systemImage: "arrow.counterclockwise")
+          }
+          .tint(DS.ink)
+        }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
           Button(role: .destructive) {
             delete(brew)
@@ -125,6 +133,11 @@ struct JournalListView: View {
           }
         }
         .contextMenu {
+          Button {
+            brewAgain(brew)
+          } label: {
+            Label("Brew again", systemImage: "arrow.counterclockwise")
+          }
           Button {
             router.journalPath.append(.brew(brew.id))
           } label: {
@@ -136,6 +149,7 @@ struct JournalListView: View {
             Label("Delete", systemImage: "trash")
           }
         }
+        .accessibilityAction(named: "Brew again") { brewAgain(brew) }
         .accessibilityAction(named: "Delete") { delete(brew) }
         .accessibilityIdentifier("journal.row.\(brew.id.uuidString)")
       }
@@ -200,6 +214,10 @@ struct JournalListView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(DS.bg)
     .overlay(alignment: .bottom) { Hairline() }
+  }
+
+  private func brewAgain(_ brew: Brew) {
+    router.journalPath.append(.brewAgain(brew.id))
   }
 
   private func clearFilters() {

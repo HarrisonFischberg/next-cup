@@ -12,6 +12,9 @@ struct BrewFormView: View {
   let seed: BrewFormSeed?
   /// A saved brew to change. Its values open in the form and Save updates it.
   var editing: Brew?
+  /// A saved brew to repeat: its method, beans, amounts and grind open in a new
+  /// brew, with the time reset.
+  var repeating: Brew?
   var onSaved: (() -> Void)?
 
   @Environment(\.modelContext) private var context
@@ -43,13 +46,14 @@ struct BrewFormView: View {
       }
     }
     .background(DS.bg)
-    .navigationTitle(editing == nil ? "New brew" : "Edit brew")
+    .navigationTitle(editing != nil ? "Edit brew" : (repeating != nil ? "Brew again" : "New brew"))
     .navigationBarTitleDisplayMode(.inline)
     .task {
       guard model == nil else { return }
       model = BrewFormModel(
-        seed: seed, editing: editing, store: Store(context: context),
-        draftStore: editing.map { .editing($0.id) } ?? .standard(),
+        seed: seed, editing: editing, repeating: repeating, store: Store(context: context),
+        draftStore: editing.map { .editing($0.id) } ?? repeating.map { .repeating($0.id) }
+          ?? .standard(),
         simulatesSaveFailure: Self.simulatesSaveFailure)
     }
   }
@@ -152,7 +156,9 @@ struct BrewFormView: View {
       Color.clear.accessibilityElement()
         .accessibilityIdentifier(
           model.isEditing
-            ? "brewform.edit" : (seed == nil ? "brewform.blank" : "brewform.prefilled"))
+            ? "brewform.edit"
+            : (model.repeatingID != nil
+              ? "brewform.again" : (seed == nil ? "brewform.blank" : "brewform.prefilled")))
     }
   }
 
@@ -160,9 +166,15 @@ struct BrewFormView: View {
 
   private func header(_ model: BrewFormModel) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
-      Text(model.isEditing ? "EDIT BREW" : "NEW BREW").font(DS.Font.display).foregroundStyle(DS.ink)
+      Text(model.isEditing ? "EDIT BREW" : (model.repeatingID != nil ? "BREW AGAIN" : "NEW BREW"))
+        .font(DS.Font.display).foregroundStyle(DS.ink)
         .dynamicTypeSize(...DS.displayCap)
         .accessibilityAddTraits(.isHeader)
+      if let beans = model.draft.beans, !beans.isEmpty {
+        Text("Same beans: " + beans.map(\.name).joined(separator: ", "))
+          .font(.subheadline).foregroundStyle(DS.ink2)
+          .accessibilityIdentifier("brewform.beans")
+      }
       if let seed {
         Text([seed.recipeName, seed.methodName].compactMap { $0 }.joined(separator: " · "))
           .font(.subheadline).foregroundStyle(DS.ink2)

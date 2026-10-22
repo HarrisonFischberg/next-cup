@@ -355,6 +355,38 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts["NO BREWS YET"].exists)
   }
 
+  /// X2: "Brew again" opens a new brew with the old amounts and none of the old
+  /// notes, and saving it adds a second brew.
+  @MainActor
+  func testBrewAgainRepeatsASavedBrew() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    logBrew(app, note: "Washed Ethiopia sweet")
+    let row = journalRow(app, containing: "Washed Ethiopia sweet")
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+
+    // Leading swipe is the quick path; the context menu and VoiceOver action
+    // reach the same screen.
+    row.swipeRight()
+    app.buttons["Brew again"].tap()
+    XCTAssertTrue(element(app, "brewform.again").waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["BREW AGAIN"].exists)
+    XCTAssertTrue(text(app, in: "brewform.dose").hasPrefix("15"), "dose carried over")
+    XCTAssertTrue(text(app, in: "brewform.time").hasPrefix("—"), "time starts empty")
+    XCTAssertEqual(
+      element(app, "brewform.notes").value as? String ?? "", "", "the old notes are not copied")
+
+    app.buttons["Save brew"].tap()
+    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
+    app.buttons["Done"].tap()
+    let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'journal.row.'"))
+    XCTAssertTrue(
+      rows.element(boundBy: 1).waitForExistence(timeout: 5), "the repeat is a second brew")
+    XCTAssertEqual(rows.count, 2)
+    XCTAssertTrue(
+      journalRow(app, containing: "Washed Ethiopia sweet").exists, "the first is intact")
+  }
+
   /// Writes journal screenshots in light, dark and the largest text size.
   /// Runs only while `ralph/screenshots/.capture` exists.
   @MainActor
@@ -388,6 +420,43 @@ final class NextCupUITests: XCTestCase {
       app.buttons["Delete"].tap()
       XCTAssertTrue(app.staticTexts["Brew deleted"].waitForExistence(timeout: 5))
       try save(app.screenshot(), "\(folderURL.path)/journal-undo-\(variant.name).png")
+      app.terminate()
+    }
+  }
+
+  /// Writes "Brew again" screenshots in light, dark and the largest text size.
+  /// Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureBrewAgainScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      if let size = variant.size {
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
+      }
+      app.launch()
+      XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+      logBrew(app, note: "Washed Ethiopia sweet")
+      let row = journalRow(app, containing: "Washed Ethiopia")
+      XCTAssertTrue(row.waitForExistence(timeout: 5))
+      row.swipeRight()
+      try save(app.screenshot(), "\(folderURL.path)/journal-brew-again-swipe-\(variant.name).png")
+      app.buttons["Brew again"].tap()
+      XCTAssertTrue(element(app, "brewform.again").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/brewform-again-\(variant.name).png")
       app.terminate()
     }
   }

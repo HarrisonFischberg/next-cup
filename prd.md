@@ -95,7 +95,7 @@ Type checks, per the platform profile.
 | T008 | Guided timer S05 (haptics, one-handed bottom controls, Reduce Motion) | T005, T007 | Runs a recipe end to end; background/foreground UI test passes; opens S02 prefilled at the end | app + UI tests | done |
 | T009 | Brew form S02 with `DraftStore`, honest saves, actual values, photo with metadata stripped | T004, T006 | Autosave restores after relaunch; simulated write failure shows error and keeps draft; keyboard never covers Save at largest text size; EXIF/GPS absent in stored photo | app + UI tests | done |
 | T010 | Journal list S01: search, filter by method and bean, empty / no-results states, swipe delete with Undo | T009 | **Vertical slice complete:** UI test logs, edits, and finds a brew via F01 | UI tests | done |
-| T011 | Brew again (X2) and edit any saved brew | T010 | Prefill tests (same bean + method, timing reset); UI test repeats a brew | package + UI tests | pending |
+| T011 | Brew again (X2) and edit any saved brew | T010 | Prefill tests (same bean + method, timing reset); UI test repeats a brew | package + UI tests | done |
 | T012 | Methods S09: add, rename, reorder (drag + non-gesture alternative), hide, tracked parameters | T009 | Brew form shows exactly enabled parameters; hidden method keeps history | app + UI tests | pending |
 | T013 | Recipe editor S08 with all step kinds (X1); save customized copy | T007 | Editor round-trip tests; built-in switchable dripper and inverted press present | app tests | pending |
 | T014 | Bean library S03 and detail S04, roasters, remaining stock, freshness, status filters | T003, T004, T009 | Remaining math with manual edits; filter and sort remembered | app + UI tests | pending |
