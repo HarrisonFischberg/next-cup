@@ -3,7 +3,7 @@
 | # | Blocker | Type (missing fact / failed check / legal review / approval) | Owner | Needed for | Status |
 | --- | --- | --- | --- | --- | --- |
 | B001 | GitHub org name for the repo | missing fact | Owner | Phase 1 repo creation | RESOLVED for now: private repo created under HarrisonFischberg 2026-10-21; move to an org and flip public (owner's stated plan) only on explicit approval |
-| B002 | Ralph quickstart not cloned; `/goal` not yet verified (REA verified 2026-10-21 by real calls, see `docs/rea-findings.md`) | failed check | Builder | Phase 4 (Ralph, `/goal`) | OPEN (REA part RESOLVED) |
+| B002 | Ralph quickstart not cloned; `/goal` not yet verified (REA verified 2026-10-21 by real calls, see `docs/rea-findings.md`) | failed check | Builder | Phase 4 (Ralph, `/goal`) | RESOLVED 2026-10-21: quickstart cloned and reviewed, own `ralph/ralph.sh`, `/goal` command exists; turn-bound enforcement unverified (see `ralph/REVIEW.md`) |
 | B003 | Authorization to analyze the three reference products: public pages and store listings only, no login or paywall bypass | approval | Owner | Phase 2 | Owner supplied the three URLs 2026-10-21; analysis kept to public pages. Confirm at the comparison stop |
 | B004 | Creator recipe import: confirm the source list, store parameters only with credit and links, check each source's terms | legal review | Owner | Feature build | OPEN |
 | B005 | Privacy policy and support URL (candidate host: rarecreatures.app) | approval | Owner | TestFlight external testing | OPEN |

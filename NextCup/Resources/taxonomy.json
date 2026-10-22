@@ -1,0 +1,161 @@
+{
+  "version": 1,
+  "dimensions": {
+    "origin": {
+      "buckets": [
+        { "key": "east-africa", "name": "East Africa" },
+        { "key": "central-america", "name": "Central America" },
+        { "key": "south-america", "name": "South America" },
+        { "key": "asia-pacific", "name": "Asia Pacific" },
+        { "key": "caribbean", "name": "Caribbean" }
+      ],
+      "map": {
+        "ethiopia": "east-africa",
+        "kenya": "east-africa",
+        "rwanda": "east-africa",
+        "burundi": "east-africa",
+        "tanzania": "east-africa",
+        "uganda": "east-africa",
+        "guatemala": "central-america",
+        "costa rica": "central-america",
+        "honduras": "central-america",
+        "el salvador": "central-america",
+        "nicaragua": "central-america",
+        "panama": "central-america",
+        "mexico": "central-america",
+        "colombia": "south-america",
+        "brazil": "south-america",
+        "peru": "south-america",
+        "bolivia": "south-america",
+        "ecuador": "south-america",
+        "indonesia": "asia-pacific",
+        "sumatra": "asia-pacific",
+        "papua new guinea": "asia-pacific",
+        "india": "asia-pacific",
+        "vietnam": "asia-pacific",
+        "yemen": "asia-pacific",
+        "jamaica": "caribbean",
+        "haiti": "caribbean",
+        "dominican republic": "caribbean"
+      }
+    },
+    "process": {
+      "buckets": [
+        { "key": "washed", "name": "Washed" },
+        { "key": "natural", "name": "Natural" },
+        { "key": "honey", "name": "Honey" },
+        { "key": "experimental", "name": "Experimental" }
+      ],
+      "map": {
+        "washed": "washed",
+        "fully washed": "washed",
+        "wet": "washed",
+        "natural": "natural",
+        "dry": "natural",
+        "sun dried": "natural",
+        "honey": "honey",
+        "pulped natural": "honey",
+        "yellow honey": "honey",
+        "red honey": "honey",
+        "black honey": "honey",
+        "anaerobic": "experimental",
+        "carbonic maceration": "experimental",
+        "wet hulled": "experimental",
+        "co-fermented": "experimental"
+      }
+    },
+    "roast": {
+      "buckets": [
+        { "key": "light", "name": "Light" },
+        { "key": "medium", "name": "Medium" },
+        { "key": "dark", "name": "Dark" }
+      ],
+      "map": {
+        "ultralight": "light",
+        "light": "light",
+        "mediumlight": "light",
+        "medium": "medium",
+        "mediumdark": "dark",
+        "dark": "dark"
+      }
+    },
+    "flavor": {
+      "buckets": [
+        { "key": "citrus", "name": "Citrus" },
+        { "key": "stone-fruit", "name": "Stone fruit" },
+        { "key": "berry", "name": "Berry" },
+        { "key": "tropical", "name": "Tropical fruit" },
+        { "key": "floral", "name": "Floral" },
+        { "key": "chocolate", "name": "Chocolate" },
+        { "key": "nutty", "name": "Nutty" },
+        { "key": "caramel", "name": "Caramel and sweet" },
+        { "key": "spice", "name": "Spice" },
+        { "key": "roasted", "name": "Roasted" }
+      ],
+      "map": {
+        "lemon": "citrus",
+        "lime": "citrus",
+        "orange": "citrus",
+        "grapefruit": "citrus",
+        "bergamot": "citrus",
+        "peach": "stone-fruit",
+        "apricot": "stone-fruit",
+        "plum": "stone-fruit",
+        "cherry": "stone-fruit",
+        "nectarine": "stone-fruit",
+        "blueberry": "berry",
+        "strawberry": "berry",
+        "raspberry": "berry",
+        "blackcurrant": "berry",
+        "pineapple": "tropical",
+        "mango": "tropical",
+        "passion fruit": "tropical",
+        "papaya": "tropical",
+        "jasmine": "floral",
+        "rose": "floral",
+        "lavender": "floral",
+        "hibiscus": "floral",
+        "dark chocolate": "chocolate",
+        "milk chocolate": "chocolate",
+        "cocoa": "chocolate",
+        "chocolate": "chocolate",
+        "almond": "nutty",
+        "hazelnut": "nutty",
+        "walnut": "nutty",
+        "peanut": "nutty",
+        "caramel": "caramel",
+        "honey": "caramel",
+        "brown sugar": "caramel",
+        "toffee": "caramel",
+        "maple": "caramel",
+        "cinnamon": "spice",
+        "clove": "spice",
+        "cardamom": "spice",
+        "black pepper": "spice",
+        "toast": "roasted",
+        "smoke": "roasted",
+        "tobacco": "roasted",
+        "burnt sugar": "roasted"
+      }
+    },
+    "brewer": {
+      "buckets": [
+        { "key": "pourOver", "name": "Pour over" },
+        { "key": "immersion", "name": "Immersion" },
+        { "key": "espresso", "name": "Espresso" },
+        { "key": "cold", "name": "Cold" }
+      ],
+      "map": {
+        "cone dripper": "pourOver",
+        "flat-bed dripper": "pourOver",
+        "pour over": "pourOver",
+        "switchable immersion dripper": "immersion",
+        "press pot": "immersion",
+        "inverted press": "immersion",
+        "espresso": "espresso",
+        "iced pour over": "cold",
+        "cold brew": "cold"
+      }
+    }
+  }
+}
