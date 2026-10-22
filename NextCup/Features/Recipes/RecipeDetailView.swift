@@ -35,6 +35,8 @@ struct RecipeDetailView: View {
 private struct RecipeDetailContent: View {
   let recipe: Recipe
   @State private var scaledDoseG: Double?
+  @State private var timerSetup: TimerSetup?
+  @State private var startFailed = false
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -60,6 +62,9 @@ private struct RecipeDetailContent: View {
     ScrollView {
       VStack(alignment: .leading, spacing: DS.Space.lg) {
         header
+        if startFailed {
+          StateBanner(kind: .error, message: "This recipe cannot be timed. Check its steps.")
+        }
         doseControls
         specGrid
         if let note = recipe.tuningNote, !note.isEmpty {
@@ -76,6 +81,16 @@ private struct RecipeDetailContent: View {
       }
       .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.lg)
     }
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      if !steps.isEmpty {
+        SteelButton(title: "Start brew", action: startBrew)
+          .accessibilityIdentifier("recipe.start")
+          .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.md)
+          .background(DS.bg, ignoresSafeAreaEdges: .bottom)
+          .overlay(alignment: .top) { Hairline() }
+      }
+    }
+    .navigationDestination(item: $timerSetup) { TimerView(setup: $0) }
   }
 
   // MARK: Sections
@@ -186,6 +201,16 @@ private struct RecipeDetailContent: View {
   }
 
   // MARK: Actions
+
+  /// Starts the guided timer at the dose on screen.
+  private func startBrew() {
+    do {
+      timerSetup = try TimerPlanBuilder.setup(for: recipe, doseG: doseG)
+      startFailed = false
+    } catch {
+      startFailed = true
+    }
+  }
 
   private func adjustDose(by delta: Double) {
     let next = ((doseG + delta) * 100).rounded() / 100

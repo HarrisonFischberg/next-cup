@@ -1,0 +1,183 @@
+import Foundation
+import NextCupKit
+import Testing
+
+@testable import NextCup
+
+private final class FakeClock: TimerClock, @unchecked Sendable {
+  private let lock = NSLock()
+  private var current: Date
+  init(_ start: Date = Date(timeIntervalSince1970: 1_000_000)) { current = start }
+  func now() -> Date { lock.withLock { current } }
+  func advance(_ seconds: Double) {
+    lock.withLock { current = current.addingTimeInterval(seconds) }
+  }
+}
+
+private final class MemoryStore: TimerStateStore, @unchecked Sendable {
+  private let lock = NSLock()
+  private var saved: TimerSnapshot?
+  func save(_ snapshot: TimerSnapshot) { lock.withLock { saved = snapshot } }
+  func load() -> TimerSnapshot? { lock.withLock { saved } }
+  func clear() { lock.withLock { saved = nil } }
+}
+
+@MainActor
+private final class RecordingHaptics: TimerHaptics {
+  private(set) var played: [TimerHaptic] = []
+  func play(_ haptic: TimerHaptic) { played.append(haptic) }
+}
+
+@MainActor
+@Suite("TimerSession")
+struct TimerSessionTests {
+  private func makeRecipe(total: Int? = 120) -> Recipe {
+    let recipe = Recipe(name: "Test cone", doseG: 15, waterG: 250)
+    recipe.totalTimeS = total
+    recipe.tempC = 94
+    let bloom = RecipeStep(order: 0, kind: .bloom, startOffsetS: 0)
+    bloom.targetCumulativeWaterG = 45
+    bloom.instruction = "Wet the bed"
+    let pour = RecipeStep(order: 1, kind: .pour, startOffsetS: 40)
+    pour.targetCumulativeWaterG = 250
+    let drawdown = RecipeStep(order: 2, kind: .drawdown, startOffsetS: 90)
+    recipe.steps = [pour, drawdown, bloom]
+    return recipe
+  }
+
+  private func makeSession(
+    total: Int? = 120, dose: Double = 15, clock: FakeClock = FakeClock(),
+    store: MemoryStore = MemoryStore(), haptics: RecordingHaptics = RecordingHaptics()
+  ) throws -> (TimerSession, FakeClock, MemoryStore, RecordingHaptics) {
+    let setup = try TimerPlanBuilder.setup(for: makeRecipe(total: total), doseG: dose)
+    return (
+      TimerSession(setup: setup, clock: clock, store: store, haptics: haptics), clock, store,
+      haptics
+    )
+  }
+
+  // MARK: Plan
+
+  @Test func planFollowsStepOrderAndScalesTargets() throws {
+    let setup = try TimerPlanBuilder.setup(for: makeRecipe(), doseG: 30)
+    #expect(setup.plan.steps.map(\.label) == ["Bloom", "Pour", "Drawdown"])
+    #expect(setup.plan.steps.map(\.startOffsetS) == [0, 40, 90])
+    #expect(setup.plan.steps.map(\.targetCumulativeWaterG) == [90, 500, nil])
+    #expect(setup.plan.totalDurationS == 120)
+    #expect(setup.scaled.doseG == 30)
+  }
+
+  @Test func planAddsATailWhenTheRecipeGivesNoUsableTotal() throws {
+    #expect(
+      try TimerPlanBuilder.setup(for: makeRecipe(total: nil), doseG: 15).plan.totalDurationS == 120)
+    #expect(
+      try TimerPlanBuilder.setup(for: makeRecipe(total: 60), doseG: 15).plan.totalDurationS == 120)
+  }
+
+  @Test func recipeWithoutStepsCannotBeTimed() {
+    let empty = Recipe(name: "Empty", doseG: 15, waterG: 250)
+    #expect(throws: TimerPlanError.noSteps) { try TimerPlanBuilder.setup(for: empty, doseG: 15) }
+  }
+
+  // MARK: Running
+
+  @Test func runsEndToEndAndHandsOverTheTimeReached() throws {
+    let (session, clock, store, haptics) = try makeSession()
+    #expect(session.state.phase == .notStarted)
+    session.start()
+    #expect(session.state.currentIndex == 0)
+    clock.advance(41)
+    session.tick()
+    #expect(session.state.currentIndex == 1)
+    clock.advance(50)
+    session.tick()
+    #expect(session.state.currentIndex == 2)
+    clock.advance(30)
+    session.tick()
+    #expect(session.outcome == TimerOutcome(elapsedS: 120, endedEarly: false))
+    #expect(session.setup.seed(elapsedS: 120, endedEarly: false).totalTimeS == 120)
+    #expect(haptics.played == [.start, .stepChange, .stepChange, .finish])
+    #expect(store.load() == nil, "the saved timer is forgotten once the form has the values")
+  }
+
+  @Test func pauseStopsTimeAndResumeContinues() throws {
+    let (session, clock, _, haptics) = try makeSession()
+    session.start()
+    clock.advance(10)
+    session.pause()
+    clock.advance(600)
+    session.tick()
+    #expect(session.state.phase == .paused)
+    #expect(Int(session.state.elapsedS) == 10)
+    session.resume()
+    clock.advance(5)
+    session.tick()
+    #expect(Int(session.state.elapsedS) == 15)
+    #expect(haptics.played == [.start, .pauseToggle, .pauseToggle])
+  }
+
+  @Test func skipJumpsToTheNextStepWithOneHaptic() throws {
+    let (session, _, _, haptics) = try makeSession()
+    session.start()
+    session.skipToNextStep()
+    #expect(session.state.currentIndex == 1)
+    #expect(haptics.played == [.start, .stepChange])
+  }
+
+  @Test func endEarlyKeepsTheElapsedTime() throws {
+    let (session, clock, _, haptics) = try makeSession()
+    session.start()
+    clock.advance(55)
+    session.endEarly()
+    #expect(session.outcome == TimerOutcome(elapsedS: 55, endedEarly: true))
+    #expect(haptics.played.last == .finish)
+  }
+
+  @Test func returningFromTheBackgroundCatchesUpWithOneStepHaptic() throws {
+    let (session, clock, _, haptics) = try makeSession()
+    session.start()
+    clock.advance(95)  // app was backgrounded across two step changes
+    session.tick()
+    #expect(session.state.currentIndex == 2)
+    #expect(haptics.played == [.start, .stepChange])
+  }
+
+  @Test func ticksWithoutAChangeNeverPlayHaptics() throws {
+    let (session, clock, _, haptics) = try makeSession()
+    session.start()
+    for _ in 0..<5 {
+      clock.advance(1)
+      session.tick()
+    }
+    #expect(haptics.played == [.start])
+  }
+
+  // MARK: Restore
+
+  @Test func aSessionForTheSamePlanPicksUpWhereTheLastOneStopped() throws {
+    let clock = FakeClock()
+    let store = MemoryStore()
+    let setup = try TimerPlanBuilder.setup(for: makeRecipe(), doseG: 15)
+    let first = TimerSession(setup: setup, clock: clock, store: store, haptics: RecordingHaptics())
+    first.start()
+    clock.advance(45)
+
+    let second = TimerSession(setup: setup, clock: clock, store: store, haptics: RecordingHaptics())
+    #expect(second.state.phase == .running)
+    #expect(second.state.currentIndex == 1)
+  }
+
+  @Test func aSavedTimerForAnotherPlanIsNotAdopted() throws {
+    let clock = FakeClock()
+    let store = MemoryStore()
+    let firstSetup = try TimerPlanBuilder.setup(for: makeRecipe(), doseG: 15)
+    let first = TimerSession(
+      setup: firstSetup, clock: clock, store: store, haptics: RecordingHaptics())
+    first.start()
+
+    let otherSetup = try TimerPlanBuilder.setup(for: makeRecipe(total: 200), doseG: 15)
+    let second = TimerSession(
+      setup: otherSetup, clock: clock, store: store, haptics: RecordingHaptics())
+    #expect(second.state.phase == .notStarted)
+  }
+}

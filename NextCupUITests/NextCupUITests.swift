@@ -87,6 +87,109 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(water.label.contains("250"))
   }
 
+  /// Opens a recipe's detail with a sped-up timer clock and taps Start brew.
+  @MainActor
+  private func openTimer(speed: Int, extraArguments: [String] = []) -> XCUIApplication {
+    let app = XCUIApplication()
+    app.launchArguments =
+      ["-inMemoryStore", "-resetNavigationState", "-timerSpeed", "\(speed)"] + extraArguments
+    app.launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Recipes"].tap()
+    let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'"))
+      .firstMatch
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+    row.tap()
+    let start = app.buttons["Start brew"]
+    XCTAssertTrue(start.waitForExistence(timeout: 5))
+    start.tap()
+    XCTAssertTrue(element(app, "timer.screen").waitForExistence(timeout: 5))
+    return app
+  }
+
+  @MainActor
+  func testTimerRunsARecipeToTheEndAndOpensThePrefilledForm() {
+    let app = openTimer(speed: 60)
+    XCTAssertTrue(element(app, "timer.status").label.hasPrefix("READY"))
+    app.buttons["Start"].tap()
+    // Pause and resume keep the controls reachable and change the label.
+    XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 5))
+    app.buttons["Pause"].tap()
+    XCTAssertTrue(app.buttons["Resume"].waitForExistence(timeout: 5))
+    XCTAssertTrue(element(app, "timer.status").label.contains("PAUSED"))
+    app.buttons["Resume"].tap()
+
+    // Sixty times faster, the whole recipe takes a few seconds.
+    let form = element(app, "brewform.prefilled")
+    XCTAssertTrue(form.waitForExistence(timeout: 30), "timer never reached the brew form")
+    XCTAssertTrue(
+      element(app, "brewform.dose").label.contains("15"), "dose prefilled: \(app.debugDescription)")
+    XCTAssertTrue(element(app, "brewform.water").label.contains("250"))
+    XCTAssertFalse(element(app, "brewform.time").label.contains("0:00"))
+
+    // Back returns to the finished timer, which can reopen the form.
+    app.navigationBars.buttons.element(boundBy: 0).tap()
+    XCTAssertTrue(app.buttons["Log this brew"].waitForExistence(timeout: 5))
+  }
+
+  @MainActor
+  func testTimerKeepsTimeWhileTheAppIsInTheBackground() {
+    let app = openTimer(speed: 6)
+    app.buttons["Start"].tap()
+    XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 5))
+    XCUIDevice.shared.press(.home)
+    sleep(6)  // 36 timer seconds pass while the app is not running its tick
+    app.activate()
+    XCTAssertTrue(element(app, "timer.screen").waitForExistence(timeout: 10))
+    // Six real seconds at 6x is 36 timer seconds, so the readout cannot still say zero.
+    let spoken = element(app, "timer.elapsed").value.map { "\($0)" } ?? ""
+    let finished = element(app, "brewform.prefilled").exists
+    XCTAssertTrue(
+      finished || (!spoken.isEmpty && spoken != "0 seconds"),
+      "time moved on in the background, got '\(spoken)'")
+  }
+
+  @MainActor
+  func testEndEarlyOpensTheFormWithTheTimeReached() {
+    let app = openTimer(speed: 20)
+    app.buttons["Start"].tap()
+    XCTAssertTrue(app.buttons["End early"].waitForExistence(timeout: 5))
+    sleep(2)
+    app.buttons["End early"].tap()
+    XCTAssertTrue(element(app, "brewform.prefilled").waitForExistence(timeout: 10))
+    XCTAssertFalse(element(app, "brewform.time").label.contains("0:00"))
+  }
+
+  /// Writes timer screenshots (ready and running) in light, dark and the largest text size.
+  /// Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureTimerScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      var extra: [String] = []
+      if let size = variant.size { extra = ["-UIPreferredContentSizeCategoryName", size] }
+      let app = openTimer(speed: 1, extraArguments: extra)
+      try save(app.screenshot(), "\(folderURL.path)/timer-ready-\(variant.name).png")
+      app.buttons["Start"].tap()
+      XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 5))
+      sleep(3)
+      try save(app.screenshot(), "\(folderURL.path)/timer-running-\(variant.name).png")
+      app.terminate()
+    }
+  }
+
   /// Writes library and detail screenshots in light, dark and the largest text size.
   /// Runs only while `ralph/screenshots/.capture` exists.
   @MainActor

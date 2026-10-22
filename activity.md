@@ -206,3 +206,25 @@ Untested / honest gaps:
 - The unit setting UI is T020; until then units read `units.weight` / `units.temperature` from UserDefaults (default g, °C). The ounce path is covered by format tests only, not by a UI test.
 - `/impeccable polish` and `/impeccable audit` were not run (not available in this session); screenshots were checked by eye only.
 - No Start button on the detail yet; the guided timer is T008.
+
+## T008 — Guided timer S05 (Sonnet)
+
+Changed:
+- `NextCup/Features/Timer/`: `TimerSetup` + `TimerPlanBuilder` (recipe at the chosen dose to a `TimerPlan`; total = recipe time, or last step + 30 s), `TimerSession` (@Observable wrapper over `TimerEngine`; haptics only on start, step change, pause/resume, finish; adopts a saved timer only if its plan matches; forgets the saved timer at the end), `TimerView` (readout on steel, live step row, bottom thumb-zone controls Start/Pause/Resume, Skip step, End early; keeps the screen awake; VoiceOver announces step changes; no animation under Reduce Motion; tab bar hidden).
+- `RecipeDetailView`: "Start brew" button at the bottom, starts at the scaled dose.
+- `Features/Journal/BrewFormSeed.swift`: `BrewFormSeed` and `BrewFormPlaceholder`, a stand-in for S02 that shows what the timer hands over (dose, water, temperature, time reached). T009 replaces the placeholder with the real form.
+- DEBUG-only `-timerSpeed <n>` launch argument speeds the timer clock so UI tests finish in seconds.
+
+Commands and results:
+- `swift test --package-path Packages/NextCupKit`: 41 passed.
+- `swift format lint --recursive --strict ...`: clean.
+- `xcodebuild ... test` (iPhone 18 Pro, app unit tests + UI tests): TEST SUCCEEDED. New: `TimerSessionTests` (plan, end to end, pause, skip, end early, background catch-up, haptic count, restore, foreign plan) and 3 UI tests (end-to-end run to prefilled form, background/foreground, end early). The first UI run failed because identifiers on `SteelButton` were not found; tests now find buttons by label.
+
+Screenshots (`ralph/screenshots/`): `timer-ready-{light,dark,largest-text}.png`, `timer-running-{light,dark,largest-text}.png` (viewed: running light, ready dark, running largest text).
+
+Untested / honest gaps:
+- VoiceOver was not run by hand; labels, the step announcement and `updatesFrequently` are set but not heard. Real haptics not felt (simulator).
+- At the largest text size the readout scrolls out of view as the live step is centered; elapsed time is not pinned. Candidate fix for a later polish pass.
+- Relaunch mid-brew: the engine restores (T005 tests) and a same-plan session adopts it, but nothing reopens the timer screen on its own after a relaunch; the user must reopen the recipe and tap Start brew.
+- Pause/resume haptics and the Live Activity (T026) are not exercised in UI tests. `/impeccable polish` and `audit` not run. `/goal` not invoked as a tool; bound self-enforced.
+- The first full test run hit a 600 s simulator-diagnostics timeout; later runs were scoped to the app test targets.
