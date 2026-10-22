@@ -8,6 +8,8 @@ import UIKit
 struct TimerView: View {
   @State private var session: TimerSession
   @State private var seed: BrewFormSeed?
+  /// Set once the brew from this run is saved, so it cannot be logged twice.
+  @State private var logged = false
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -51,7 +53,9 @@ struct TimerView: View {
     .navigationTitle("Brew")
     .navigationBarTitleDisplayMode(.inline)
     .toolbarVisibility(.hidden, for: .tabBar)
-    .navigationDestination(item: $seed) { BrewFormPlaceholder(seed: $0) }
+    .navigationDestination(item: $seed) { seed in
+      BrewFormView(seed: seed, onSaved: { logged = true })
+    }
     .accessibilityIdentifier("timer.screen")
     .task {
       while !Task.isCancelled {
@@ -167,6 +171,7 @@ struct TimerView: View {
   private var controls: some View {
     VStack(spacing: DS.Space.sm) {
       SteelButton(title: primaryTitle, action: primaryAction)
+        .disabled(logged)
         .accessibilityIdentifier("timer.primary")
       if showsSecondary {
         let layout =
@@ -195,7 +200,7 @@ struct TimerView: View {
     case .notStarted: "Start"
     case .running: "Pause"
     case .paused: "Resume"
-    case .finished: "Log this brew"
+    case .finished: logged ? "Brew logged" : "Log this brew"
     }
   }
 
