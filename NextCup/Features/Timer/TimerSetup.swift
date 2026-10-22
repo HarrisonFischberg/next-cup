@@ -22,9 +22,10 @@ struct TimerSetup: Identifiable, Hashable {
   /// timer actually reached.
   func seed(elapsedS: Double, endedEarly: Bool) -> BrewFormSeed {
     BrewFormSeed(
-      recipeID: recipeID, recipeName: recipeName, methodName: methodName,
-      doseG: scaled.doseG, waterG: scaled.waterG, tempC: tempC,
-      totalTimeS: Int(elapsedS.rounded()), endedEarly: endedEarly)
+      sessionKey: id.uuidString, recipeID: recipeID, recipeName: recipeName,
+      methodName: methodName, doseG: scaled.doseG, waterG: scaled.waterG, tempC: tempC,
+      totalTimeS: Int(elapsedS.rounded()), targetTimeS: plan.totalDurationS,
+      endedEarly: endedEarly)
   }
 }
 

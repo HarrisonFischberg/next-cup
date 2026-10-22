@@ -1,3 +1,4 @@
+import NextCupKit
 import SwiftData
 import SwiftUI
 
@@ -9,6 +10,10 @@ struct NextCupApp: App {
     // UI tests start from a known tab; relaunches in the same test omit this.
     if ProcessInfo.processInfo.arguments.contains("-resetNavigationState") {
       UserDefaults.standard.removeObject(forKey: AppTab.storageKey)
+    }
+    // UI tests start without a draft left by an earlier test; relaunches omit this.
+    if ProcessInfo.processInfo.arguments.contains("-resetDraft") {
+      _ = DraftStore.standard().clear()
     }
   }
 

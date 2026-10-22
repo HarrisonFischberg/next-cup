@@ -73,7 +73,8 @@ private struct TabRoot: View {
     case .recipes:
       RecipeLibraryView().navigationDestination(for: DeepLink.self, destination: destination)
     default:
-      TabPlaceholder(tab: tab).navigationDestination(for: DeepLink.self, destination: destination)
+      TabPlaceholder(tab: tab, router: router).navigationDestination(
+        for: DeepLink.self, destination: destination)
     }
   }
 
@@ -81,6 +82,8 @@ private struct TabRoot: View {
   private func destination(for link: DeepLink) -> some View {
     switch link {
     case .recipe(let id): RecipeDetailView(link: link, recipeID: id)
+    case .newBrew:
+      BrewFormView(seed: nil).accessibilityIdentifier(link.identifier)
     default: DestinationPlaceholder(link: link)
     }
   }
@@ -89,10 +92,14 @@ private struct TabRoot: View {
 /// Stands in for each tab's screen until its task builds it.
 private struct TabPlaceholder: View {
   let tab: AppTab
+  let router: AppRouter
 
   var body: some View {
     ScrollView {
-      EmptyState(title: tab.title, message: message)
+      EmptyState(
+        title: tab.title, message: message,
+        actionTitle: tab == .journal ? "Log a brew" : nil,
+        action: tab == .journal ? { router.open(.newBrew) } : nil)
     }
     .background(DS.bg)
     .navigationTitle(tab.title)

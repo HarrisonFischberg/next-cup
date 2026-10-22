@@ -9,10 +9,24 @@ final class NextCupUITests: XCTestCase {
 
   private func launch(deepLink: String? = nil) -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchArguments = ["-inMemoryStore", "-resetNavigationState"]
+    app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
     if let deepLink { app.launchArguments += ["-deepLink", deepLink] }
     app.launch()
     return app
+  }
+
+  private func scrollUntilHittable(_ target: XCUIElement, in app: XCUIApplication) {
+    var swipes = 0
+    while !target.isHittable && swipes < 12 {
+      app.swipeUp()
+      swipes += 1
+    }
+  }
+
+  /// All text inside a component (a stepper tile holds its value, unit and target).
+  private func text(_ app: XCUIApplication, in identifier: String) -> String {
+    element(app, identifier).staticTexts.allElementsBoundByIndex.map { $0.label }.joined(
+      separator: " ")
   }
 
   private func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
@@ -92,7 +106,8 @@ final class NextCupUITests: XCTestCase {
   private func openTimer(speed: Int, extraArguments: [String] = []) -> XCUIApplication {
     let app = XCUIApplication()
     app.launchArguments =
-      ["-inMemoryStore", "-resetNavigationState", "-timerSpeed", "\(speed)"] + extraArguments
+      ["-inMemoryStore", "-resetNavigationState", "-resetDraft", "-timerSpeed", "\(speed)"]
+      + extraArguments
     app.launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
     app.tabBars.buttons["Recipes"].tap()
@@ -123,13 +138,27 @@ final class NextCupUITests: XCTestCase {
     let form = element(app, "brewform.prefilled")
     XCTAssertTrue(form.waitForExistence(timeout: 30), "timer never reached the brew form")
     XCTAssertTrue(
-      element(app, "brewform.dose").label.contains("15"), "dose prefilled: \(app.debugDescription)")
-    XCTAssertTrue(element(app, "brewform.water").label.contains("250"))
-    XCTAssertFalse(element(app, "brewform.time").label.contains("0:00"))
+      text(app, in: "brewform.dose").hasPrefix("15"), "dose prefilled: \(app.debugDescription)")
+    XCTAssertTrue(text(app, in: "brewform.water").hasPrefix("250"))
+    XCTAssertFalse(text(app, in: "brewform.time").hasPrefix("0:00"))
+    // The recipe's number sits beside the value, not in place of it.
+    XCTAssertTrue(text(app, in: "brewform.time").contains("TARGET"))
 
     // Back returns to the finished timer, which can reopen the form.
     app.navigationBars.buttons.element(boundBy: 0).tap()
     XCTAssertTrue(app.buttons["Log this brew"].waitForExistence(timeout: 5))
+  }
+
+  @MainActor
+  func testLoggingAFinishedBrewSavesItOnceAndLocksTheTimerButton() {
+    let app = openTimer(speed: 60)
+    app.buttons["Start"].tap()
+    XCTAssertTrue(element(app, "brewform.prefilled").waitForExistence(timeout: 30))
+    app.buttons["Save brew"].tap()
+    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
+    app.buttons["Done"].tap()
+    XCTAssertTrue(app.buttons["Brew logged"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.buttons["Brew logged"].isEnabled)
   }
 
   @MainActor
@@ -157,7 +186,125 @@ final class NextCupUITests: XCTestCase {
     sleep(2)
     app.buttons["End early"].tap()
     XCTAssertTrue(element(app, "brewform.prefilled").waitForExistence(timeout: 10))
-    XCTAssertFalse(element(app, "brewform.time").label.contains("0:00"))
+    XCTAssertFalse(text(app, in: "brewform.time").hasPrefix("0:00"))
+    XCTAssertTrue(app.staticTexts["You ended this brew early. The time is what it reached."].exists)
+  }
+
+  // MARK: Brew form (S02)
+
+  /// Opens the blank form through the deep link, with dose and water set.
+  @MainActor
+  private func openBlankForm(extraArguments: [String] = []) -> XCUIApplication {
+    let app = XCUIApplication()
+    app.launchArguments =
+      ["-inMemoryStore", "-resetNavigationState", "-resetDraft", "-deepLink", "nextcup://brew/new"]
+      + extraArguments
+    app.launch()
+    XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 10))
+    return app
+  }
+
+  @MainActor
+  func testJournalOffersLogABrewAndOpensTheBlankForm() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.buttons["Log a brew"].tap()
+    XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 5))
+    XCTAssertFalse(app.buttons["Save brew"].isEnabled, "nothing to save yet")
+    XCTAssertTrue(element(app, "brewform.save.hint").exists)
+  }
+
+  @MainActor
+  func testBrewFormDraftSurvivesRelaunch() {
+    let app = openBlankForm()
+    app.buttons["Increase Dose"].tap()
+    let grind = app.textFields["brewform.grind"]
+    scrollUntilHittable(grind, in: app)
+    grind.tap()
+    grind.typeText("21 clicks")
+    app.keyboards.buttons["Done"].tap()  // dismisses the keyboard and the draft stays
+    sleep(1)  // autosave waits for typing to pause
+
+    app.terminate()
+    app.launchArguments = ["-inMemoryStore", "-deepLink", "nextcup://brew/new"]
+    app.launch()
+    XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 10))
+    XCTAssertTrue(element(app, "brewform.notice").waitForExistence(timeout: 5))
+    XCTAssertEqual(app.textFields["brewform.grind"].value as? String, "21 clicks")
+    XCTAssertTrue(text(app, in: "brewform.dose").hasPrefix("15"))
+  }
+
+  @MainActor
+  func testFailedSaveShowsTheErrorAndKeepsTheDraftUntilARetrySucceeds() {
+    let app = openBlankForm(extraArguments: ["-failBrewSave"])
+    app.buttons["Increase Dose"].tap()
+    app.buttons["Increase Water"].tap()
+    app.buttons["Save brew"].tap()
+    XCTAssertTrue(element(app, "brewform.error").waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["Save brew"].isEnabled, "the draft stays savable")
+    XCTAssertFalse(element(app, "brewform.saved").exists)
+
+    app.terminate()
+    app.launchArguments = ["-inMemoryStore", "-deepLink", "nextcup://brew/new"]
+    app.launch()
+    XCTAssertTrue(element(app, "brewform.notice").waitForExistence(timeout: 10))
+    app.buttons["Save brew"].tap()
+    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
+  }
+
+  @MainActor
+  func testKeyboardNeverCoversSaveAtTheLargestTextSize() {
+    let app = openBlankForm(extraArguments: [
+      "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+    ])
+    let notes = element(app, "brewform.notes")
+    XCTAssertTrue(notes.waitForExistence(timeout: 5))
+    scrollUntilHittable(notes, in: app)
+    notes.tap()
+    notes.typeText("Sweet and clean")
+    let keyboard = app.keyboards.firstMatch
+    XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
+    let save = app.buttons["Save brew"]
+    XCTAssertTrue(save.exists)
+    XCTAssertLessThanOrEqual(
+      save.frame.maxY, keyboard.frame.minY + 1,
+      "Save (\(save.frame)) must sit above the keyboard (\(keyboard.frame))")
+  }
+
+  /// Writes form screenshots in light, dark and the largest text size.
+  /// Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureBrewFormScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let app = openTimer(
+        speed: 60,
+        extraArguments: variant.size.map { ["-UIPreferredContentSizeCategoryName", $0] } ?? [])
+      app.buttons["Start"].tap()
+      XCTAssertTrue(element(app, "brewform.prefilled").waitForExistence(timeout: 30))
+      try save(app.screenshot(), "\(folderURL.path)/brewform-prefilled-\(variant.name).png")
+      if variant.name == "light" {
+        app.swipeUp()
+        try save(app.screenshot(), "\(folderURL.path)/brewform-lower-light.png")
+      }
+      app.terminate()
+      let blank = openBlankForm(
+        extraArguments: variant.size.map { ["-UIPreferredContentSizeCategoryName", $0] } ?? [])
+      try save(blank.screenshot(), "\(folderURL.path)/brewform-blank-\(variant.name).png")
+      blank.terminate()
+    }
   }
 
   /// Writes timer screenshots (ready and running) in light, dark and the largest text size.
