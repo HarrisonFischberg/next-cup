@@ -387,6 +387,41 @@ final class NextCupUITests: XCTestCase {
       journalRow(app, containing: "Washed Ethiopia sweet").exists, "the first is intact")
   }
 
+  /// T013: customizing a built-in saves a separate copy; the original is untouched.
+  @MainActor
+  func testCustomizingABuiltInRecipeSavesACopy() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Recipes"].tap()
+    let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'"))
+      .firstMatch
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+    row.tap()
+    element(app, "recipe.menu").tap()
+    app.buttons["Customize"].tap()
+    XCTAssertTrue(element(app, "recipe.editor").waitForExistence(timeout: 5))
+    let name = element(app, "recipe.editor.name")
+    XCTAssertEqual(name.value as? String, "Balanced cone (copy)")
+    let dose = element(app, "recipe.editor.dose")
+    XCTAssertEqual(dose.value as? String, "15")
+    dose.tap()
+    dose.typeText(XCUIKeyboardKey.delete.rawValue + XCUIKeyboardKey.delete.rawValue + "18")
+    app.buttons["recipe.editor.save"].tap()
+    XCTAssertTrue(element(app, "recipe.editor").waitForNonExistence(timeout: 5))
+
+    // Back in the library, both recipes exist with their own doses.
+    app.navigationBars.buttons.element(boundBy: 0).tap()
+    let copy = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone (copy)'"))
+      .firstMatch
+    XCTAssertTrue(copy.waitForExistence(timeout: 5))
+    XCTAssertTrue(copy.label.contains("18"), "the copy carries the new dose: \(copy.label)")
+    let original = app.buttons.matching(
+      NSPredicate(format: "label CONTAINS[c] 'Balanced cone' AND NOT label CONTAINS[c] 'copy'")
+    ).firstMatch
+    XCTAssertTrue(original.exists)
+    XCTAssertTrue(original.label.contains("15 g"), "the original is unchanged: \(original.label)")
+  }
+
   private func openMethods(_ app: XCUIApplication) {
     app.tabBars.buttons["Settings"].tap()
     XCTAssertTrue(element(app, "settings.methods").waitForExistence(timeout: 5))

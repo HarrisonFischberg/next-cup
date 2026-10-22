@@ -37,6 +37,7 @@ private struct RecipeDetailContent: View {
   @State private var scaledDoseG: Double?
   @State private var timerSetup: TimerSetup?
   @State private var startFailed = false
+  @State private var editor: RecipeEditorTarget?
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -91,6 +92,25 @@ private struct RecipeDetailContent: View {
       }
     }
     .navigationDestination(item: $timerSetup) { TimerView(setup: $0) }
+    .toolbar {
+      ToolbarItem(placement: .topBarTrailing) {
+        Menu {
+          if recipe.builtInKey == nil {
+            Button("Edit", systemImage: "pencil") { editor = .edit(recipe.id) }
+          }
+          Button(
+            recipe.builtInKey == nil ? "Duplicate" : "Customize",
+            systemImage: recipe.builtInKey == nil ? "plus.square.on.square" : "slider.horizontal.3"
+          ) { editor = .copy(recipe.id) }
+        } label: {
+          Label("Recipe actions", systemImage: "ellipsis.circle")
+        }
+        .accessibilityIdentifier("recipe.menu")
+      }
+    }
+    .sheet(item: $editor) { target in
+      RecipeEditorView(target: target) { _ in editor = nil }
+    }
   }
 
   // MARK: Sections
