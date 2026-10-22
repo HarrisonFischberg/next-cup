@@ -228,3 +228,25 @@ Untested / honest gaps:
 - Relaunch mid-brew: the engine restores (T005 tests) and a same-plan session adopts it, but nothing reopens the timer screen on its own after a relaunch; the user must reopen the recipe and tap Start brew.
 - Pause/resume haptics and the Live Activity (T026) are not exercised in UI tests. `/impeccable polish` and `audit` not run. `/goal` not invoked as a tool; bound self-enforced.
 - The first full test run hit a 600 s simulator-diagnostics timeout; later runs were scoped to the app test targets.
+
+## T009 — Brew form S02, DraftStore, honest saves, photo sanitizing (Sonnet)
+
+Changed:
+- `NextCupKit`: `DraftStore` (file-backed autosave, failed write reported and previous draft kept, corrupt file discarded), `BrewDraft` (`canSave` needs positive dose and water), `PhotoSanitizer` (re-encodes without GPS/EXIF/TIFF metadata, scales down).
+- `NextCup/Features/Journal/`: `BrewFormModel` (restore, debounced autosave, flush on background/disappear, save clears the draft only after the store confirms; failure rolls back, shows the error, keeps the draft), `BrewFormView` (method picker, date, dose/water/temperature/time steppers with recipe targets beside them, ratio, grind, verdict, grade, photo, notes; Save in the bottom inset; tap-away and Done dismiss the keyboard), `BrewFormSeed` hand-over from the timer. DEBUG `-failBrewSave` simulates a write failure.
+- This session: fixed the "BREWED" label wrapping letter by letter at the largest text size (label now stacks above the date picker); fixed one over-long line in `NextCupUITests.swift`.
+
+Commands and results:
+- `swift test --package-path Packages/NextCupKit`: 52 tests passed (incl. DraftStore, PhotoSanitizer GPS/EXIF absence).
+- `swift format lint --recursive --strict ...`: clean.
+- `xcodebuild ... build`: BUILD SUCCEEDED.
+- `xcodebuild ... test` (app + UI, before the label fix): TEST SUCCEEDED, 16 UI tests. After the fix a scoped re-run of the app unit tests plus the three form UI tests was started; see the result line below.
+
+Screenshots (`ralph/screenshots/`): `brewform-prefilled-{light,dark,largest-text}.png`, `brewform-blank-{light,dark,largest-text}.png`, `brewform-lower-light.png` (viewed: prefilled largest text before and after the fix).
+
+Untested / honest gaps:
+- VoiceOver not run by hand; labels and identifiers are set, not heard. Real haptics not felt.
+- Photo picker was not driven in a UI test (system picker); sanitizing is covered by package tests with a GPS-carrying fixture.
+- Journal list that shows the saved brew is T010; the form currently ends on a "Brew saved" state.
+- `/impeccable polish` and `audit` not run. `/goal` not invoked as a tool; bound self-enforced.
+- Result of the post-fix scoped re-run (app unit tests + 3 form UI tests, `-quiet`): no failures or errors printed; the run went quiet at the end of the test phase without a summary line, so I did not see an explicit TEST SUCCEEDED for it. The full run before the label fix did print TEST SUCCEEDED. Lint re-run clean.

@@ -222,7 +222,8 @@ final class NextCupUITests: XCTestCase {
     scrollUntilHittable(grind, in: app)
     // Lift the field clear of the Save bar with a short drag.
     let mid = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
-    mid.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)))
+    let higher = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+    mid.press(forDuration: 0.05, thenDragTo: higher)
     grind.tap()
     grind.typeText("21 clicks")
     app.keyboards.buttons["Done"].tap()  // dismisses the keyboard and the draft stays
