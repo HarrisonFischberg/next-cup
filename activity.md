@@ -165,3 +165,11 @@
 - Untested: nothing consumes these yet (T007+); freshness in non-Gregorian
   calendars or DST-boundary zones is not covered beyond the UTC test calendar.
   No UI, so no screenshots. `/goal` not invoked as a tool; bound self-enforced.
+
+## T005 — TimerEngine with injectable clock (done)
+
+- Added `Packages/NextCupKit/Sources/NextCupKit/Domain/TimerEngine.swift`: `TimerClock`, `TimerPlan`/`TimerStep`, `TimerSnapshot` (start date, pause spans, skip offset, end), `TimerStateStore` with `UserDefaultsTimerStateStore` (corrupt data discarded), and a value-type `TimerEngine` (start, pause, resume, skip, end early, discard, restore). State is derived from persisted dates, never a ticking counter.
+- Added `Tests/NextCupKitTests/TimerEngineTests.swift`: fake-clock tests for step changes, pause/resume, multiple pauses, skip (incl. while paused and on the last step), end early, restore after simulated termination (open pause, skips, early end), backwards clock, plan validation, UserDefaults round trip.
+- Commands: `swift test --package-path Packages/NextCupKit` → 41 tests in 8 suites passed (one first-run failure was a wrong expected value in my own test, fixed; engine unchanged). `swift format lint --recursive --strict ...` → no output (clean).
+- Not run: app build / `xcodebuild test` (package-only task, no app files touched). No screenshots (not a UI task).
+- Untested: Live Activity mirroring and the `@Observable` wrapper with a real ticking UI belong to T008/T026.
