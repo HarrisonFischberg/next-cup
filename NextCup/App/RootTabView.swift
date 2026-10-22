@@ -83,7 +83,11 @@ private struct TabRoot: View {
     switch link {
     case .recipe(let id): RecipeDetailView(link: link, recipeID: id)
     case .newBrew:
-      BrewFormView(seed: nil).accessibilityIdentifier(link.identifier)
+      // The marker sits behind the form: an identifier on the form itself would
+      // replace the identifiers of the elements inside it.
+      BrewFormView(seed: nil).background {
+        Color.clear.accessibilityElement().accessibilityIdentifier(link.identifier)
+      }
     default: DestinationPlaceholder(link: link)
     }
   }

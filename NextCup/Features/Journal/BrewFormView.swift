@@ -128,9 +128,13 @@ struct BrewFormView: View {
         notesField(binding.draft.notes)
       }
       .padding(DS.Space.lg)
+      // Behind the fields, so a tap on empty space dismisses the keyboard
+      // without stealing the tap from a field.
+      .background {
+        Color.clear.contentShape(Rectangle()).onTapGesture { focused = nil }
+      }
     }
     .scrollDismissesKeyboard(.interactively)
-    .onTapGesture { focused = nil }
     .safeAreaInset(edge: .bottom, spacing: 0) { saveBar(model) }
     .toolbar {
       ToolbarItemGroup(placement: .keyboard) {
@@ -138,7 +142,12 @@ struct BrewFormView: View {
         Button("Done") { focused = nil }
       }
     }
-    .accessibilityIdentifier(seed == nil ? "brewform.blank" : "brewform.prefilled")
+    // A marker, not an identifier on the scroll view: that would replace the
+    // identifiers of every element inside it.
+    .background {
+      Color.clear.accessibilityElement()
+        .accessibilityIdentifier(seed == nil ? "brewform.blank" : "brewform.prefilled")
+    }
   }
 
   // MARK: Sections
