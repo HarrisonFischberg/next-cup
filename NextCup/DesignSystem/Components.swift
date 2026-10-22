@@ -367,7 +367,8 @@ struct SteelToast: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(DS.steel, ignoresSafeAreaEdges: [])
     .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
-    .accessibilityElement(children: .combine)
+    // `.contain`, not `.combine`: Undo must stay its own control for VoiceOver.
+    .accessibilityElement(children: .contain)
   }
 }
 

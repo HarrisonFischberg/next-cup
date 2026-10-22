@@ -28,9 +28,11 @@ struct BrewFormModelTests {
       defaults = UserDefaults(suiteName: "nextcup.formtests.\(UUID().uuidString)") ?? .standard
     }
 
-    func model(seed: BrewFormSeed? = nil, failSave: Bool = false) -> BrewFormModel {
+    func model(
+      seed: BrewFormSeed? = nil, editing: Brew? = nil, failSave: Bool = false
+    ) -> BrewFormModel {
       BrewFormModel(
-        seed: seed, store: store, draftStore: draftStore, defaults: defaults,
+        seed: seed, editing: editing, store: store, draftStore: draftStore, defaults: defaults,
         simulatesSaveFailure: failSave)
     }
 
@@ -208,6 +210,67 @@ struct BrewFormModelTests {
     model.draft.waterG = 250
     #expect(model.save())
     #expect(harness.model().draft.methodID == second.id)
+  }
+
+  // MARK: Editing a saved brew
+
+  private func savedBrew(_ harness: Harness) throws -> Brew {
+    let first = harness.model()
+    first.draft.doseG = 15
+    first.draft.waterG = 250
+    first.draft.grindSetting = "21 clicks"
+    first.draft.verdict = Verdict.sour.rawValue
+    first.draft.ratingHalfSteps = 7
+    first.draft.notes = "Sweet, a bit short."
+    #expect(first.save())
+    return try #require(try harness.brews().first)
+  }
+
+  @Test func editOpensWithTheSavedValuesAndSavesOverTheSameBrew() throws {
+    let harness = try Harness()
+    let brew = try savedBrew(harness)
+    let model = harness.model(editing: brew)
+    #expect(model.isEditing)
+    #expect(model.draft.id == brew.id)
+    #expect(model.draft.doseG == 15)
+    #expect(model.draft.grindSetting == "21 clicks")
+    #expect(model.draft.verdict == Verdict.sour.rawValue)
+    #expect(model.draft.ratingHalfSteps == 7)
+    #expect(model.notice == nil)
+
+    model.draft.doseG = 16
+    model.draft.notes = "Sweeter at 16 g."
+    #expect(model.save())
+    let brews = try harness.brews()
+    #expect(brews.count == 1, "an edit never makes a second brew")
+    #expect(brews[0].doseG == 16)
+    #expect(brews[0].notes == "Sweeter at 16 g.")
+    #expect(brews[0].grindSetting == "21 clicks")
+  }
+
+  @Test func editDraftRestoresForTheSameBrewOnly() throws {
+    let harness = try Harness()
+    let brew = try savedBrew(harness)
+    let first = harness.model(editing: brew)
+    first.draft.notes = "unsaved edit"
+    first.flushDraft()
+
+    #expect(harness.model(editing: brew).draft.notes == "unsaved edit")
+    let other = Brew()
+    harness.container.mainContext.insert(other)
+    #expect(harness.model(editing: other).draft.id == other.id)
+    #expect(harness.model(editing: other).draft.notes.isEmpty)
+  }
+
+  @Test func failedEditSaveKeepsTheSavedBrewAndTheEditedDraft() throws {
+    let harness = try Harness()
+    let brew = try savedBrew(harness)
+    let model = harness.model(editing: brew, failSave: true)
+    model.draft.doseG = 18
+    #expect(!model.save())
+    #expect(model.saveError != nil)
+    #expect(try harness.brews().first?.doseG == 15)
+    #expect(model.draft.doseG == 18)
   }
 
   // MARK: Stepping in the user's units

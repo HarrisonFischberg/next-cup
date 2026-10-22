@@ -31,43 +31,62 @@ final class BrewFormModel {
   private(set) var photoError: String?
 
   let seed: BrewFormSeed?
+  /// The saved brew being edited, or `nil` for a new brew.
+  let editingID: UUID?
   private let store: Store
   private let draftStore: DraftStore
   private let defaults: UserDefaults
   private let simulatesSaveFailure: Bool
   private var autosave: Task<Void, Never>?
 
+  var isEditing: Bool { editingID != nil }
+
   /// Opens the form: restores a saved draft when one belongs here, otherwise
-  /// starts from the timer's seed or a blank brew.
+  /// starts from the saved brew being edited, the timer's seed or a blank brew.
+  /// An edit keeps its own draft file, so it never touches a new brew's draft.
   init(
-    seed: BrewFormSeed?, store: Store, draftStore: DraftStore = .standard(),
-    defaults: UserDefaults = .standard, simulatesSaveFailure: Bool = false
+    seed: BrewFormSeed?, editing brew: Brew? = nil, store: Store,
+    draftStore: DraftStore = .standard(), defaults: UserDefaults = .standard,
+    simulatesSaveFailure: Bool = false
   ) {
     self.seed = seed
+    self.editingID = brew?.id
     self.store = store
     self.draftStore = draftStore
     self.defaults = defaults
     self.simulatesSaveFailure = simulatesSaveFailure
 
+    func belongs(_ saved: BrewDraft) -> Bool {
+      if let brew { return saved.id == brew.id }
+      return seed == nil || saved.sourceKey == seed?.sessionKey
+    }
     switch draftStore.load() {
-    case .draft(let saved) where seed == nil || saved.sourceKey == seed?.sessionKey:
+    case .draft(let saved) where belongs(saved):
       draft = saved
       notice = FormNotice(kind: .info, message: "Restored your unsaved brew.")
     case .discardedCorrupt:
-      draft = Self.fresh(seed: seed, store: store, defaults: defaults)
+      draft = Self.fresh(seed: seed, editing: brew, store: store, defaults: defaults)
       notice = FormNotice(
         kind: .info, message: "A damaged draft could not be read and was discarded.")
     default:
-      draft = Self.fresh(seed: seed, store: store, defaults: defaults)
+      draft = Self.fresh(seed: seed, editing: brew, store: store, defaults: defaults)
     }
     // A form opened from a timer run is saved at once, so the time reached
     // survives a crash before the first edit.
     if seed != nil { flushDraft() }
   }
 
-  private static func fresh(seed: BrewFormSeed?, store: Store, defaults: UserDefaults)
-    -> BrewDraft
-  {
+  private static func fresh(
+    seed: BrewFormSeed?, editing brew: Brew?, store: Store, defaults: UserDefaults
+  ) -> BrewDraft {
+    if let brew {
+      return BrewDraft(
+        id: brew.id, date: brew.date, methodID: brew.method?.id, recipeID: brew.recipe?.id,
+        doseG: brew.doseG, waterG: brew.waterG, tempC: brew.tempC, totalTimeS: brew.totalTimeS,
+        grindSetting: brew.grindSetting ?? "", verdict: brew.verdict?.rawValue,
+        ratingHalfSteps: brew.ratingHalfSteps ?? 0, notes: brew.notes, photo: brew.photo,
+        targets: brew.targetsJSON.flatMap { try? JSONDecoder().decode(BrewTargets.self, from: $0) })
+    }
     if let seed {
       let method = (try? store.find(Recipe.self, id: seed.recipeID))?.method
       return BrewDraft(

@@ -250,3 +250,28 @@ Untested / honest gaps:
 - Journal list that shows the saved brew is T010; the form currently ends on a "Brew saved" state.
 - `/impeccable polish` and `audit` not run. `/goal` not invoked as a tool; bound self-enforced.
 - Result of the post-fix scoped re-run (app unit tests + 3 form UI tests, `-quiet`): no failures or errors printed; the run went quiet at the end of the test phase without a summary line, so I did not see an explicit TEST SUCCEEDED for it. The full run before the label fix did print TEST SUCCEEDED. Lint re-run clean.
+
+## 2026-10-22 — T010 journal list S01
+
+What changed:
+- `JournalListView` (S01): newest-first list, search (notes, method, recipe, grind, verdict, bean names), method / bean / order filters remembered in `@AppStorage`, empty state with "Log a brew", "No matches" state with "Clear filters", swipe-to-delete (full swipe) and context-menu / VoiceOver "Delete" with a 6 s Undo toast. The brew is removed from the store only when the toast times out or the screen is left; a failed delete rolls back and shows an error.
+- `JournalFilter` (pure rules, unit tested), `JournalStorage`.
+- Edit of a saved brew (needed by the T010 criterion): `BrewFormModel(editing:)`, own per-brew draft file, `brew/<id>` deep link opens the form on the saved values; a missing brew shows "Brew not found".
+- `SteelToast` now uses `.contain` so Undo stays its own control for VoiceOver.
+- Grade badge shows only for graded brews (found from screenshots).
+
+Commands and results:
+- `swift test --package-path Packages/NextCupKit`: 52 passed.
+- `swift format lint --recursive --strict ...`: clean.
+- `xcodebuild ... test` (full): TEST SUCCEEDED, 72 app tests and 18 UI tests, including `testJournalLogsFindsEditsAndDeletesABrewWithUndo` (log, search hit and miss, edit, delete + Undo, delete and let the toast expire).
+- After the badge change: re-ran only the F01 journal UI test and the journal screenshot capture; exit code 0 (I could not read the per-test lines, the output was truncated). The full suite was not re-run after that one-line view change.
+
+Screenshots (`ralph/screenshots/`): `journal-{empty,list,undo}-{light,dark,largest-text}.png`.
+
+Untested / honest gaps:
+- Bean filter has no UI test: beans cannot be logged until T014; covered by `JournalFilterTests` only.
+- Leading swipe, duplicate, share, move are not built (brew again is T011, export T019).
+- No pull-to-refresh or loading skeleton: the list is local and synchronous.
+- Undo window ends if the app is killed during it: the brew then stays (safe direction).
+- At the largest text size the Undo toast covers the empty state's button until scrolled.
+- VoiceOver not run by hand; haptics not felt. `/impeccable polish` and `audit` not run.
