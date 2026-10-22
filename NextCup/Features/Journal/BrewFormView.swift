@@ -10,6 +10,8 @@ import UIKit
 /// pushes it up instead of covering it.
 struct BrewFormView: View {
   let seed: BrewFormSeed?
+  /// A saved brew to change. Its values open in the form and Save updates it.
+  var editing: Brew?
   var onSaved: (() -> Void)?
 
   @Environment(\.modelContext) private var context
@@ -41,12 +43,13 @@ struct BrewFormView: View {
       }
     }
     .background(DS.bg)
-    .navigationTitle("New brew")
+    .navigationTitle(editing == nil ? "New brew" : "Edit brew")
     .navigationBarTitleDisplayMode(.inline)
     .task {
       guard model == nil else { return }
       model = BrewFormModel(
-        seed: seed, store: Store(context: context),
+        seed: seed, editing: editing, store: Store(context: context),
+        draftStore: editing.map { .editing($0.id) } ?? .standard(),
         simulatesSaveFailure: Self.simulatesSaveFailure)
     }
   }
@@ -87,7 +90,10 @@ struct BrewFormView: View {
   private var savedState: some View {
     ScrollView {
       EmptyState(
-        title: "Brew saved", message: "It is in your journal. The draft has been cleared.",
+        title: "Brew saved",
+        message: editing != nil
+          ? "Your changes are in your journal."
+          : "It is in your journal. The draft has been cleared.",
         actionTitle: "Done",
         action: {
           onSaved?()
@@ -144,7 +150,9 @@ struct BrewFormView: View {
     // identifiers of every element inside it.
     .background {
       Color.clear.accessibilityElement()
-        .accessibilityIdentifier(seed == nil ? "brewform.blank" : "brewform.prefilled")
+        .accessibilityIdentifier(
+          model.isEditing
+            ? "brewform.edit" : (seed == nil ? "brewform.blank" : "brewform.prefilled"))
     }
   }
 
@@ -152,7 +160,7 @@ struct BrewFormView: View {
 
   private func header(_ model: BrewFormModel) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
-      Text("NEW BREW").font(DS.Font.display).foregroundStyle(DS.ink)
+      Text(model.isEditing ? "EDIT BREW" : "NEW BREW").font(DS.Font.display).foregroundStyle(DS.ink)
         .dynamicTypeSize(...DS.displayCap)
         .accessibilityAddTraits(.isHeader)
       if let seed {
