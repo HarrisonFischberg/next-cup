@@ -1,0 +1,444 @@
+import SwiftUI
+import UIKit
+
+// Concept 5 — Late-Night Café
+// A menu card by lamplight: deep brown, brass rules, Bodoni over Gill Sans,
+// dotted leaders between names and values. The timer is a spotlight on the
+// current step; values are set with native wheel pickers that open in place.
+
+private extension Color {
+    init(light: UInt32, dark: UInt32) {
+        self.init(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) })
+    }
+}
+
+private extension UIColor {
+    convenience init(hex: UInt32) {
+        self.init(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
+                  blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+    }
+}
+
+private enum T {
+    static let bg = Color(light: 0xF2E6CF, dark: 0x17100C)
+    static let panel = Color(light: 0xE7D7B6, dark: 0x241911)
+    static let ink = Color(light: 0x2A1A10, dark: 0xF1E4CC)
+    static let ink2 = Color(light: 0x5E4630, dark: 0xC2AE92)
+    static let brass = Color(light: 0x7A5518, dark: 0xC9A15B)
+    static let amber = Color(light: 0x8A4B08, dark: 0xF0AE4A)
+    static let onBrass = Color(light: 0xF8EEDB, dark: 0x17100C)
+    static let error = Color(light: 0x9B2A14, dark: 0xFF9F85)
+
+    static func bodoni(_ size: CGFloat, relativeTo style: Font.TextStyle = .title) -> Font {
+        .custom("BodoniSvtyTwoOSITCTT-Bold", size: size, relativeTo: style)
+    }
+    static func bodoniBook(_ size: CGFloat, relativeTo style: Font.TextStyle = .title) -> Font {
+        .custom("BodoniSvtyTwoOSITCTT-Book", size: size, relativeTo: style)
+    }
+    static func gill(_ size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
+        .custom("GillSans", size: size, relativeTo: style)
+    }
+    static func gillBold(_ size: CGFloat, relativeTo style: Font.TextStyle = .body) -> Font {
+        .custom("GillSans-SemiBold", size: size, relativeTo: style)
+    }
+}
+
+/// Double brass rule with a small diamond at its centre.
+private struct Ornament: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            Rectangle().fill(T.brass).frame(height: 1)
+            Rectangle().fill(T.brass).frame(width: 7, height: 7).rotationEffect(.degrees(45))
+            Rectangle().fill(T.brass).frame(height: 1)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// "Name ........ value" with a dotted leader.
+private struct Leader<V: View>: View {
+    let name: String
+    @ViewBuilder let value: V
+    @Environment(\.dynamicTypeSize) private var dts
+    var body: some View {
+        if dts.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name).font(T.bodoniBook(19, relativeTo: .headline)).foregroundStyle(T.ink)
+                value
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(name).font(T.bodoniBook(19, relativeTo: .headline)).foregroundStyle(T.ink).layoutPriority(1)
+                Line().stroke(T.ink2.opacity(0.7), style: StrokeStyle(lineWidth: 1.2, lineCap: .round, dash: [0.1, 5]))
+                    .frame(height: 1).offset(y: -4)
+                value
+            }
+        }
+    }
+    private struct Line: Shape {
+        func path(in rect: CGRect) -> Path { Path { $0.move(to: CGPoint(x: 0, y: rect.midY)); $0.addLine(to: CGPoint(x: rect.maxX, y: rect.midY)) } }
+    }
+}
+
+struct ConceptRoot: View {
+    var body: some View {
+        ConceptShell(tint: T.brass, appearance: configureBars) { model in
+            RecipeScreen(model: model)
+        } timer: { model in
+            TimerScreen(model: model)
+        } log: { model in
+            LogScreen(model: model)
+        } journal: { model in
+            JournalScreen(model: model)
+        }
+    }
+
+    private func configureBars() {
+        let tab = UITabBarAppearance()
+        tab.configureWithOpaqueBackground()
+        tab.backgroundColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0x17100C) : UIColor(hex: 0xF2E6CF) }
+        UITabBar.appearance().standardAppearance = tab
+        UITabBar.appearance().scrollEdgeAppearance = tab
+        let nav = UINavigationBarAppearance()
+        nav.configureWithTransparentBackground()
+        let ink = UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0xF1E4CC) : UIColor(hex: 0x2A1A10) }
+        nav.largeTitleTextAttributes = [.foregroundColor: ink, .font: UIFont(name: "BodoniSvtyTwoOSITCTT-Bold", size: 34) ?? .boldSystemFont(ofSize: 34)]
+        nav.titleTextAttributes = [.foregroundColor: ink, .font: UIFont(name: "BodoniSvtyTwoOSITCTT-Book", size: 17) ?? .systemFont(ofSize: 17)]
+        UINavigationBar.appearance().standardAppearance = nav
+        UINavigationBar.appearance().scrollEdgeAppearance = nav
+    }
+}
+
+private struct BrassButton: ButtonStyle {
+    var filled = true
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(filled ? T.onBrass : T.brass)
+            .background(filled ? T.brass : .clear, in: .rect(cornerRadius: 4))
+            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(T.brass, lineWidth: 1.5).padding(filled ? 3 : 0)
+                .opacity(filled ? 0.5 : 1))
+            .opacity(enabled ? (configuration.isPressed ? 0.85 : 1) : 0.4)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+// MARK: - S07 Recipe (the menu card)
+
+private struct RecipeScreen: View {
+    let model: FlowModel
+
+    var body: some View {
+        let r = model.recipe
+        ScrollView {
+            VStack(spacing: 18) {
+                Ornament()
+                Text(r.name).font(T.bodoni(30)).multilineTextAlignment(.center).foregroundStyle(T.ink)
+                Text("\(Fmt.num(r.doseG)) g coffee, \(Fmt.num(r.waterG)) g water\n\(r.ratioText)  ·  \(Fmt.num(r.tempC))°C  ·  \(Fmt.clock(r.totalS))")
+                    .font(T.gill(16, relativeTo: .callout)).foregroundStyle(T.brass).multilineTextAlignment(.center)
+                Ornament()
+                VStack(spacing: 20) {
+                    ForEach(r.steps) { step in
+                        VStack(spacing: 4) {
+                            Leader(name: step.kind.label) {
+                                Text(step.cumulativeG.map { "\($0) g" } ?? Fmt.clock(step.startS))
+                                    .font(T.bodoni(19, relativeTo: .headline)).foregroundStyle(T.amber)
+                            }
+                            HStack {
+                                Text(Fmt.clock(step.startS) + " — " + step.instruction)
+                                    .font(T.gill(15, relativeTo: .subheadline)).foregroundStyle(T.ink2)
+                                Spacer(minLength: 0)
+                            }
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(step.kind.label), \(Fmt.clock(step.startS))\(step.cumulativeG.map { ", target \($0) grams" } ?? ""). \(step.instruction)")
+                    }
+                }
+                .padding(.vertical, 6)
+                Ornament()
+                Text(r.tuningNote).font(T.bodoniBook(16, relativeTo: .body)).italic().multilineTextAlignment(.center).foregroundStyle(T.ink2)
+                Text(r.credit).font(T.gill(13, relativeTo: .footnote)).foregroundStyle(T.ink2)
+            }
+            .padding(.horizontal, 26).padding(.top, 4).padding(.bottom, 16)
+        }
+        .background(T.bg)
+        .navigationTitle("Recipe")
+        .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
+            Button { model.showTimer = true } label: {
+                Text("Begin the brew").font(T.bodoni(21, relativeTo: .title3)).dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                    .frame(maxWidth: .infinity, minHeight: 58)
+            }
+            .buttonStyle(BrassButton())
+            .padding(.horizontal, 26).padding(.vertical, 8).background(T.bg)
+        }
+    }
+}
+
+// MARK: - S05 Timer (spotlight)
+
+private struct TimerScreen: View {
+    let model: FlowModel
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        TimerClock(model: model) { elapsed, index in
+            let r = model.recipe
+            VStack(spacing: 10) {
+                HStack {
+                    Text(r.name).font(T.bodoniBook(16, relativeTo: .body)).foregroundStyle(T.ink2).lineLimit(1)
+                    Spacer()
+                    Button { model.pauseTimer(); model.showTimer = false } label: {
+                        Image(systemName: "xmark").font(.body.weight(.medium)).frame(width: 44, height: 44)
+                    }
+                    .foregroundStyle(T.ink2).accessibilityLabel("Close timer")
+                }
+                Text(Fmt.clock(Int(elapsed)))
+                    .font(T.bodoni(76, relativeTo: .largeTitle)).monospacedDigit()
+                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                    .minimumScaleFactor(0.5).lineLimit(1).foregroundStyle(T.amber)
+                    .accessibilityLabel("Elapsed \(Int(elapsed) / 60) minutes \(Int(elapsed) % 60) seconds")
+                Ornament().padding(.horizontal, 30)
+                // Spotlight list: past steps fade up, upcoming steps fade down.
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(spacing: 14) {
+                            ForEach(r.steps) { s in
+                                let d = model.hasStarted ? abs(s.id - index) : s.id
+                                let on = model.hasStarted && s.id == index
+                                VStack(spacing: 4) {
+                                    Text(s.kind.label).font(T.bodoni(on ? 44 : 24, relativeTo: on ? .largeTitle : .title2))
+                                        .foregroundStyle(on ? T.ink : T.ink2)
+                                    if on {
+                                        Text(s.instruction).font(T.gill(20, relativeTo: .title3)).foregroundStyle(T.ink)
+                                            .multilineTextAlignment(.center)
+                                        if let g = s.cumulativeG {
+                                            Text("scale  \(g) g").font(T.bodoni(28, relativeTo: .title)).foregroundStyle(T.amber)
+                                        }
+                                    } else {
+                                        Text(Fmt.clock(s.startS) + (s.cumulativeG.map { "  ·  \($0) g" } ?? ""))
+                                            .font(T.gill(15, relativeTo: .subheadline)).foregroundStyle(T.ink2)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
+                                .opacity(on ? 1 : max(0.35, 0.75 - Double(d) * 0.15))
+                                .id(s.id)
+                                .accessibilityElement(children: .combine)
+                                .accessibilityAddTraits(on ? .isSelected : [])
+                                .animation(.easeOut(duration: 0.4), value: index)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .onChange(of: index) { _, new in withAnimation { proxy.scrollTo(new, anchor: .center) } }
+                    .onAppear { proxy.scrollTo(index, anchor: .center) }
+                }
+                HStack(spacing: 10) {
+                    if model.hasStarted && !model.isDone {
+                        Button { model.finishBrew() } label: {
+                            Text("End and log").font(T.gillBold(17)).dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                                .frame(maxWidth: .infinity, minHeight: 58)
+                        }
+                        .buttonStyle(BrassButton(filled: false))
+                    }
+                    Button { model.isDone ? model.finishBrew() : model.toggleTimer() } label: {
+                        Text(model.isDone ? "Log it" : (!model.hasStarted ? "Begin" : (model.isRunning ? "Pause" : "Resume")))
+                            .font(T.bodoni(22, relativeTo: .title3)).dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                            .frame(maxWidth: .infinity, minHeight: 58)
+                    }
+                    .buttonStyle(BrassButton())
+                }
+            }
+            .padding(.horizontal, 22).padding(.bottom, 8)
+            .background(
+                ZStack {
+                    T.bg
+                    if scheme == .dark {
+                        RadialGradient(colors: [T.amber.opacity(0.22), .clear], center: .init(x: 0.5, y: 0.12), startRadius: 10, endRadius: 360)
+                    }
+                }
+                .ignoresSafeArea()
+            )
+        }
+    }
+}
+
+// MARK: - S02 Log (tasting card with in-place wheels)
+
+private struct LogScreen: View {
+    @Bindable var model: FlowModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var open: String?
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    Ornament()
+                    Text("Tasting card").font(T.bodoni(28)).foregroundStyle(T.ink)
+                    Text("Tap a line to turn the wheel. The recipe's mark is in brackets.")
+                        .font(T.gill(15, relativeTo: .subheadline)).foregroundStyle(T.ink2).multilineTextAlignment(.center)
+                    VStack(spacing: 6) {
+                        wheel("Coffee", unit: "g", value: $model.draft.doseG, values: opts(1, 40, 0.5, model.draft.doseG), target: Fmt.num(model.recipe.doseG))
+                        wheel("Water", unit: "g", value: $model.draft.waterG, values: opts(20, 600, 5, model.draft.waterG), target: Fmt.num(model.recipe.waterG))
+                        wheel("Temperature", unit: "°C", value: $model.draft.tempC, values: opts(50, 100, 1, model.draft.tempC), target: Fmt.num(model.recipe.tempC))
+                        wheel("Time", unit: "", value: Binding(get: { Double(model.draft.timeS) }, set: { model.draft.timeS = Int($0) }),
+                              values: opts(10, 600, 1, Double(model.draft.timeS)), target: Fmt.clock(model.recipe.totalS), clock: true)
+                        wheel("Grind", unit: "", value: Binding(get: { Double(model.draft.grind) }, set: { model.draft.grind = Int($0) }),
+                              values: opts(1, 40, 1, Double(model.draft.grind)), target: nil)
+                    }
+                    if let ratio = model.draft.ratio {
+                        Text("ratio 1:\(Fmt.num((ratio * 10).rounded() / 10))").font(T.bodoniBook(20, relativeTo: .title3)).italic().foregroundStyle(T.brass)
+                    }
+                    Ornament()
+                    Text("The taste").font(T.bodoni(20, relativeTo: .title3)).foregroundStyle(T.ink)
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 8)], spacing: 8) {
+                        ForEach(Verdict.allCases) { v in
+                            let on = model.draft.verdict == v
+                            Button { model.draft.verdict = on ? nil : v } label: {
+                                Text(v.label).font(T.gill(18, relativeTo: .body))
+                                    .frame(maxWidth: .infinity, minHeight: 44)
+                                    .foregroundStyle(on ? T.onBrass : T.ink)
+                                    .background(on ? T.brass : .clear, in: .capsule)
+                                    .overlay(Capsule().strokeBorder(T.brass, lineWidth: 1.2))
+                            }
+                            .accessibilityAddTraits(on ? .isSelected : [])
+                        }
+                    }
+                    Text("Grade  \(Fmt.stars(model.draft.ratingHalfSteps))").font(T.bodoni(20, relativeTo: .title3)).foregroundStyle(T.ink)
+                    medallions
+                    TextField("A line for the next cup", text: $model.draft.notes, axis: .vertical)
+                        .font(T.bodoniBook(17, relativeTo: .body)).italic().lineLimit(2...5).multilineTextAlignment(.center)
+                        .padding(14).overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(T.brass.opacity(0.7), lineWidth: 1))
+                    if let err = model.saveError { Text(err).font(T.gillBold(16)).foregroundStyle(T.error) }
+                }
+                .padding(.horizontal, 26).padding(.top, 4).padding(.bottom, 16)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .background(T.bg)
+            .navigationTitle(model.draft.bean)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .safeAreaInset(edge: .bottom) {
+                Button { model.save() } label: {
+                    Text("Save to the journal").font(T.bodoni(21, relativeTo: .title3)).dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                        .frame(maxWidth: .infinity, minHeight: 58)
+                }
+                .buttonStyle(BrassButton()).disabled(!model.draft.canSave)
+                .padding(.horizontal, 26).padding(.vertical, 8).background(T.bg)
+            }
+        }
+    }
+
+    private func opts(_ lo: Double, _ hi: Double, _ step: Double, _ current: Double) -> [Double] {
+        var v = Array(stride(from: lo, through: hi, by: step))
+        if !v.contains(current) { v.append(current); v.sort() }
+        return v
+    }
+
+    private func wheel(_ title: String, unit: String, value: Binding<Double>, values: [Double], target: String?, clock: Bool = false) -> some View {
+        let shown = clock ? Fmt.clock(Int(value.wrappedValue)) : "\(Fmt.num(value.wrappedValue))\(unit.isEmpty ? "" : " " + unit)"
+        return VStack(spacing: 0) {
+            Button { withAnimation(.snappy) { open = open == title ? nil : title } } label: {
+                Leader(name: title) {
+                    HStack(spacing: 6) {
+                        if let target { Text("[\(target)]").font(T.gill(14, relativeTo: .caption)).foregroundStyle(T.ink2) }
+                        Text(shown).font(T.bodoni(22, relativeTo: .title3)).monospacedDigit().foregroundStyle(T.amber)
+                    }
+                }
+                .frame(minHeight: 48)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(title).accessibilityValue(shown).accessibilityHint("Opens a picker")
+            if open == title {
+                Picker(title, selection: value) {
+                    ForEach(values, id: \.self) { v in
+                        Text(clock ? Fmt.clock(Int(v)) : Fmt.num(v)).font(T.bodoniBook(22)).tag(v)
+                    }
+                }
+                .pickerStyle(.wheel).frame(height: 120)
+            }
+        }
+    }
+
+    /// Five brass medallions 1–5, plus a half-step chip.
+    private var medallions: some View {
+        let h = model.draft.ratingHalfSteps
+        let whole = h / 2
+        return VStack(spacing: 10) {
+            HStack(spacing: 8) {
+                ForEach(1...5, id: \.self) { i in
+                    Button { model.draft.ratingHalfSteps = h == i * 2 ? 0 : i * 2 } label: {
+                        Text("\(i)").font(T.bodoni(20, relativeTo: .headline))
+                            .frame(width: 44, height: 44)
+                            .foregroundStyle(i <= whole || (h % 2 == 1 && i == whole + 1) ? T.onBrass : T.brass)
+                            .background(i <= whole ? T.brass : (h % 2 == 1 && i == whole + 1 ? T.brass.opacity(0.55) : .clear), in: .circle)
+                            .overlay(Circle().strokeBorder(T.brass, lineWidth: 1.2))
+                    }
+                    .accessibilityHidden(true)
+                }
+            }
+            Button { model.draft.ratingHalfSteps = max(0, min(10, h % 2 == 1 ? h + 1 : h - 1)) } label: {
+                Text(h % 2 == 1 ? "make it a whole" : "take off a half").font(T.gill(15, relativeTo: .subheadline)).foregroundStyle(T.brass)
+                    .frame(minHeight: 44)
+            }
+            .disabled(h == 0)
+            .accessibilityHidden(true)
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Grade").accessibilityValue(Fmt.stars(h))
+        .accessibilityAdjustableAction { dir in
+            model.draft.ratingHalfSteps = dir == .increment ? min(10, h + 1) : max(0, h - 1)
+        }
+    }
+}
+
+// MARK: - S01 Journal (the menu)
+
+private struct JournalScreen: View {
+    let model: FlowModel
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 22) {
+                Ornament()
+                ForEach(model.journal) { e in
+                    VStack(spacing: 4) {
+                        Leader(name: e.bean) {
+                            Text(e.ratingHalfSteps == 0 ? "—" : Fmt.num(Double(e.ratingHalfSteps) / 2))
+                                .font(T.bodoni(22, relativeTo: .title3)).foregroundStyle(T.amber)
+                                .accessibilityLabel("Grade \(Fmt.stars(e.ratingHalfSteps))")
+                        }
+                        HStack {
+                            Text("\(Fmt.day(e.date))  ·  \(e.method)  ·  \(Fmt.num(e.doseG)) g, \(Fmt.num(e.waterG)) g  ·  \(Fmt.clock(e.timeS))\(e.verdict.map { " · " + $0.label.lowercased() } ?? "")")
+                                .font(T.gill(14, relativeTo: .footnote)).foregroundStyle(T.brass)
+                            Spacer(minLength: 0)
+                        }
+                        if !e.note.isEmpty {
+                            HStack {
+                                Text(e.note).font(T.bodoniBook(15, relativeTo: .subheadline)).italic().foregroundStyle(T.ink2)
+                                Spacer(minLength: 0)
+                            }
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                    .contextMenu { Button("Delete", role: .destructive) { model.journal.removeAll { $0.id == e.id } } }
+                }
+                Ornament()
+            }
+            .padding(.horizontal, 26).padding(.top, 8).padding(.bottom, 30)
+        }
+        .background(T.bg)
+        .navigationTitle("Journal")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { model.prefillFromRecipe(measuredS: 180); model.showLog = true } label: {
+                    Image(systemName: "plus").font(.body.weight(.medium)).frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Log a brew")
+            }
+        }
+    }
+}
