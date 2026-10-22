@@ -54,6 +54,86 @@ final class NextCupUITests: XCTestCase {
   }
 
   @MainActor
+  func testRecipeLibraryGroupsSearchesAndScales() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Recipes"].tap()
+    XCTAssertTrue(element(app, "tab.root.recipes").waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      element(app, "POUR OVER").waitForExistence(timeout: 5),
+      "recipes are grouped by style: \(app.debugDescription)")
+
+    // No match shows the empty state with a way out.
+    let search = app.searchFields.firstMatch
+    search.tap()
+    search.typeText("zzzz")
+    XCTAssertTrue(app.staticTexts["NO MATCHES"].waitForExistence(timeout: 5))
+    app.buttons["Clear search"].tap()
+
+    search.tap()
+    search.typeText("balanced")
+    let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'"))
+      .firstMatch
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+    row.tap()
+
+    let water = element(app, "recipe.water")
+    XCTAssertTrue(water.waitForExistence(timeout: 5))
+    XCTAssertTrue(water.label.contains("250"), "unscaled water is 250 g, got \(water.label)")
+    app.buttons["Increase dose"].tap()  // 15 g to 15.5 g: 250 g x 15.5 / 15 = 258 g
+    XCTAssertTrue(water.label.contains("258"), "scaled water is 258 g, got \(water.label)")
+    XCTAssertTrue(element(app, "recipe.dose.reset").exists)
+    element(app, "recipe.dose.reset").tap()
+    XCTAssertTrue(water.label.contains("250"))
+  }
+
+  /// Writes library and detail screenshots in light, dark and the largest text size.
+  /// Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureRecipeScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    let folder = folderURL.path
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState"]
+      if let size = variant.size {
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
+      }
+      app.launch()
+      XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+      app.tabBars.buttons["Recipes"].tap()
+      XCTAssertTrue(app.staticTexts["POUR OVER"].waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folder)/recipes-library-\(variant.name).png")
+
+      app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'")).firstMatch
+        .tap()
+      XCTAssertTrue(element(app, "recipe.water").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folder)/recipe-detail-\(variant.name).png")
+      if variant.name == "light" {
+        app.swipeUp()
+        try save(app.screenshot(), "\(folder)/recipe-detail-steps-light.png")
+      }
+      app.terminate()
+    }
+  }
+
+  private func save(_ screenshot: XCUIScreenshot, _ path: String) throws {
+    try screenshot.pngRepresentation.write(to: URL(fileURLWithPath: path))
+  }
+
+  @MainActor
   func testSelectedTabRestoresAfterRelaunch() {
     let app = launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
