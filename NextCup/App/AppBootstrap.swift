@@ -12,13 +12,20 @@ enum AppBootstrap {
   /// A failure to open or seed is returned, never swallowed, so the app can
   /// say so and offer a retry.
   static func start(
-    inMemory: Bool = usesInMemoryStore, defaults: UserDefaults = .standard,
+    inMemory: Bool = usesInMemoryStore, defaults: UserDefaults? = nil,
     bundle: Bundle = .main
   ) -> Result<ModelContainer, StartupError> {
     do {
       let container = try NextCupContainer.make(inMemory: inMemory)
       let content = try BuiltInContent(bundle: bundle)
-      let seeder = BuiltInSeeder(store: Store(context: container.mainContext), defaults: defaults)
+      // The offered-keys ledger must not outlive an in-memory store, or a second
+      // test launch would find the ledger full and seed nothing.
+      let ledger =
+        defaults
+        ?? (inMemory
+          ? UserDefaults(suiteName: "nextcup.inmemory.\(UUID().uuidString)") ?? .standard
+          : .standard)
+      let seeder = BuiltInSeeder(store: Store(context: container.mainContext), defaults: ledger)
       if case .failure(let error) = seeder.seed(content) {
         return .failure(.init(message: describe(error)))
       }

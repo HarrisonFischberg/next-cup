@@ -185,3 +185,24 @@
 - Commands: `xcodebuild ... test` TEST SUCCEEDED; `swift test --package-path Packages/NextCupKit` 41 passed; `xcodebuild ... build` BUILD SUCCEEDED; `swift format lint --recursive --strict` clean; `python3 design/check_tokens.py` tokens in sync.
 - Screenshots: `ralph/screenshots/T006-light.png`, `T006-dark.png`, `T006-largest-text.png` (viewed: recipe deep link, dark, accessibility XXXL; reflows), `T006-deeplink-recipe.png`.
 - Untested / caveats: UI tests deliver links through a DEBUG-only `-deepLink` launch argument that calls the same `handle` as `onOpenURL`; the real `simctl openurl` path was only seen to reach the system "Open in Next Cup?" prompt (scheme is registered), I could not tap Open. VoiceOver and Full Keyboard Access not run; tab bar is the system one. `contrast.py` not rerun (no colour change). `/impeccable` polish and audit not run (placeholder screens). `/goal` not invoked as a tool; bound self-enforced. The simulator was rebooted to clear a stuck system dialog.
+
+## T007 — Recipe library S06, detail S07, scale-to-dose
+
+Changed:
+- `NextCup/Features/Recipes/`: `RecipeLibraryView` (grouped by brew style, searchable by name, method, credit; empty and no-results states), `RecipeDetailView` (spec tiles, tuning note on kraft, step timeline, dose stepper that rescales water, ice and every step target via `RecipeScaler`, reset, rounding notes, credit link, not-found state), `RecipeFormat` (clock, spoken time, units-aware weight and temperature, step titles, VoiceOver "kind, at time, target" label).
+- `RootTabView`: Recipes tab shows the library; `nextcup://recipe/<id>` opens the detail.
+- `AppBootstrap`: an in-memory store now gets a throwaway defaults suite for the seeding ledger. Before, a second UI-test launch found the ledger full and seeded no recipes (found by the new UI test).
+- Tests: `RecipeFormatTests` (6), UI `testRecipeLibraryGroupsSearchesAndScales`, and `testCaptureRecipeScreenshots` (runs only while `ralph/screenshots/.capture` exists).
+
+Commands and results:
+- `swift test --package-path Packages/NextCupKit`: 41 tests passed.
+- `swift format lint --recursive --strict ...`: clean.
+- `xcodebuild ... test` (iPhone 18 Pro): 40 app tests passed, 5 UI tests passed, TEST SUCCEEDED.
+
+Screenshots (`ralph/screenshots/`): `recipes-library-{light,dark,largest-text}.png`, `recipe-detail-{light,dark,largest-text}.png`, `recipe-detail-steps-light.png`.
+
+Untested / honest gaps:
+- VoiceOver was not run on a device or simulator by hand; the per-step label is unit-tested and set as the accessibility label, not heard.
+- The unit setting UI is T020; until then units read `units.weight` / `units.temperature` from UserDefaults (default g, °C). The ounce path is covered by format tests only, not by a UI test.
+- `/impeccable polish` and `/impeccable audit` were not run (not available in this session); screenshots were checked by eye only.
+- No Start button on the detail yet; the guided timer is T008.

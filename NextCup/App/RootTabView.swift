@@ -67,9 +67,22 @@ private struct TabRoot: View {
     }
   }
 
+  @ViewBuilder
   private var content: some View {
-    TabPlaceholder(tab: tab)
-      .navigationDestination(for: DeepLink.self) { DestinationPlaceholder(link: $0) }
+    switch tab {
+    case .recipes:
+      RecipeLibraryView().navigationDestination(for: DeepLink.self, destination: destination)
+    default:
+      TabPlaceholder(tab: tab).navigationDestination(for: DeepLink.self, destination: destination)
+    }
+  }
+
+  @ViewBuilder
+  private func destination(for link: DeepLink) -> some View {
+    switch link {
+    case .recipe(let id): RecipeDetailView(link: link, recipeID: id)
+    default: DestinationPlaceholder(link: link)
+    }
   }
 }
 
