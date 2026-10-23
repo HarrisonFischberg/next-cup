@@ -844,6 +844,104 @@ final class NextCupUITests: XCTestCase {
     }
   }
 
+  // MARK: Blends, freezer, best so far (T015)
+
+  /// Adds two beans, logs a graded 50/50 blend of them, then opens the first
+  /// bean's detail. `shot` is called with a name at each screen worth capturing.
+  @MainActor
+  private func runBlendFlow(_ app: XCUIApplication, shot: (String) throws -> Void) throws {
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Beans"].tap()
+    XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 5))
+    addBean(app, name: "Washed Ethiopia", roaster: "Tiny Roastery", weight: "250")
+    XCTAssertTrue(element(app, "beans.row.Washed Ethiopia").waitForExistence(timeout: 5))
+    app.buttons["Add a bean"].firstMatch.tap()
+    let field = element(app, "beans.editor.name")
+    XCTAssertTrue(field.waitForExistence(timeout: 5))
+    field.tap()
+    field.typeText("Natural Brazil")
+    app.buttons["Done"].tap()
+    let bag = element(app, "beans.editor.bagWeight")
+    scrollUntilHittable(bag, in: app)
+    bag.tap()
+    bag.typeText("250")
+    app.buttons["Done"].tap()
+    app.buttons["beans.editor.save"].tap()
+    XCTAssertTrue(element(app, "beans.row.Natural Brazil").waitForExistence(timeout: 5))
+
+    app.tabBars.buttons["Journal"].tap()
+    app.buttons["Log a brew"].firstMatch.tap()
+    XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 5))
+    XCTAssertTrue(element(app, "brewform.beans.empty").waitForExistence(timeout: 5))
+    element(app, "brewform.beans.add").tap()
+    app.buttons["Washed Ethiopia"].tap()
+    element(app, "brewform.beans.add").tap()
+    app.buttons["Natural Brazil"].tap()
+    // Share buttons appear only once the brew is a blend.
+    let moreEthiopia = app.buttons["Increase Washed Ethiopia share"]
+    XCTAssertTrue(moreEthiopia.waitForExistence(timeout: 5))
+    app.buttons["Increase Dose"].tap()
+    app.buttons["Increase Water"].tap()
+    moreEthiopia.tap()  // 55 / 45
+    try shot("brewform-blend")
+
+    app.buttons["Save brew"].tap()
+    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
+    app.buttons["Done"].tap()
+
+    app.tabBars.buttons["Beans"].tap()
+    element(app, "beans.row.Washed Ethiopia").tap()
+    XCTAssertTrue(element(app, "bean.freezer").waitForExistence(timeout: 5))
+    // 15 g dose at 55%: 8.25 g came off this bag, so 241.75 g is left (shown rounded).
+    XCTAssertTrue(
+      element(app, "bean.remaining").label.contains("of 250"),
+      "got \(element(app, "bean.remaining").label)")
+    XCTAssertFalse(element(app, "bean.remaining").label.contains("250 g of 250"))
+    element(app, "bean.freezer.toggle").tap()
+    XCTAssertTrue(element(app, "bean.freezer").label.contains("Since"))
+    try shot("bean-detail-freezer")
+    scrollUntilHittable(element(app, "bean.best"), in: app)
+    XCTAssertTrue(element(app, "bean.best").exists)
+    try shot("bean-best-so-far")
+  }
+
+  @MainActor
+  func testBlendBrewFreezerAndBestSoFarFlow() throws {
+    let app = launch()
+    try runBlendFlow(app) { _ in }
+  }
+
+  /// Writes blend, freezer and best-so-far screenshots in light, dark and the
+  /// largest text size. Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureBlendScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      if let size = variant.size {
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
+      }
+      app.launch()
+      try runBlendFlow(app) { name in
+        try save(app.screenshot(), "\(folderURL.path)/T015-\(name)-\(variant.name).png")
+      }
+      app.terminate()
+    }
+  }
+
   private func save(_ screenshot: XCUIScreenshot, _ path: String) throws {
     try screenshot.pngRepresentation.write(to: URL(fileURLWithPath: path))
   }

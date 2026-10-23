@@ -22,6 +22,11 @@ struct BrewFormView: View {
   @Environment(\.scenePhase) private var scenePhase
   @Environment(\.dynamicTypeSize) private var dts
   @Query(sort: \BrewMethod.sortOrder) private var methods: [BrewMethod]
+  @Query(sort: \Bean.name) private var allBeans: [Bean]
+  @Query(sort: \Grinder.name) private var grinders: [Grinder]
+  @State private var addingGrinder = false
+  @State private var newGrinderName = ""
+  @State private var grinderError: String?
   @State private var model: BrewFormModel?
   @State private var pickedPhoto: PhotosPickerItem?
   @FocusState private var focused: Field?
@@ -124,10 +129,14 @@ struct BrewFormView: View {
             kind: .info, message: "You ended this brew early. The time is what it reached.")
         }
         methodPicker(binding.draft, model)
+        beansSection(model)
         brewedRow(binding.draft.date)
         let fields = shownFields(for: model.draft.methodID)
         tiles(model, fields)
-        if fields.contains(.grind) { grindField(binding.draft.grindSetting) }
+        if fields.contains(.grind) {
+          grindField(binding.draft.grindSetting)
+          grinderPicker(model)
+        }
         verdictRow(binding.draft.verdict)
         if fields.contains(.rating) {
           VStack(alignment: .leading, spacing: DS.Space.sm) {
@@ -173,11 +182,6 @@ struct BrewFormView: View {
         .font(DS.Font.display).foregroundStyle(DS.ink)
         .dynamicTypeSize(...DS.displayCap)
         .accessibilityAddTraits(.isHeader)
-      if let beans = model.draft.beans, !beans.isEmpty {
-        Text("Same beans: " + beans.map(\.name).joined(separator: ", "))
-          .font(.subheadline).foregroundStyle(DS.ink2)
-          .accessibilityIdentifier("brewform.beans")
-      }
       if let seed {
         Text([seed.recipeName, seed.methodName].compactMap { $0 }.joined(separator: " · "))
           .font(.subheadline).foregroundStyle(DS.ink2)
@@ -219,6 +223,162 @@ struct BrewFormView: View {
     .accessibilityLabel("Method")
     .accessibilityValue(current?.name ?? "None chosen")
     .accessibilityIdentifier("brewform.method")
+  }
+
+  // MARK: Beans and grinder
+
+  /// The beans in this brew. One bean takes the whole dose; two or more are a
+  /// blend, each with a share, and each bag loses its own part of the dose.
+  private func beansSection(_ model: BrewFormModel) -> some View {
+    let chosen = model.draft.beans ?? []
+    let shares = model.beanShares
+    let grams = model.beanGrams
+    let chosenIDs = Set(chosen.compactMap(\.beanID))
+    let available = allBeans.filter { !chosenIDs.contains($0.id) && $0.status != .finished }
+    return VStack(alignment: .leading, spacing: DS.Space.sm) {
+      Text("BEANS").font(DS.Font.label).foregroundStyle(DS.ink2)
+        .accessibilityAddTraits(.isHeader)
+      if chosen.isEmpty {
+        Text("No beans chosen. Add one bean, or several for a blend.")
+          .font(.footnote).foregroundStyle(DS.ink2)
+          .accessibilityIdentifier("brewform.beans.empty")
+      } else {
+        PaperBox {
+          VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(chosen.enumerated()), id: \.offset) { index, entry in
+              if index > 0 { Hairline() }
+              beanRow(
+                model, index: index, entry: entry, share: shares[index], grams: grams[index],
+                isBlend: chosen.count > 1)
+            }
+          }
+        }
+        .accessibilityIdentifier("brewform.beans")
+        if chosen.count > 1 {
+          Text("A blend. Each bean's amount comes off its own bag.")
+            .font(.footnote).foregroundStyle(DS.ink2)
+        }
+      }
+      Menu {
+        ForEach(available) { bean in
+          Button(bean.name) { model.addBean(bean) }
+        }
+      } label: {
+        Text(chosen.isEmpty ? "ADD A BEAN" : "ADD ANOTHER BEAN")
+          .font(DS.Font.din(22, relativeTo: .title3))
+          .frame(maxWidth: .infinity, minHeight: DS.Size.control)
+          .foregroundStyle(DS.ink)
+          .background(DS.paper, ignoresSafeAreaEdges: [])
+          .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+      }
+      .disabled(available.isEmpty)
+      .accessibilityLabel(chosen.isEmpty ? "Add a bean" : "Add another bean")
+      .accessibilityIdentifier("brewform.beans.add")
+      if available.isEmpty && chosen.isEmpty {
+        Text("Add beans on the Beans tab, then choose them here.")
+          .font(.footnote).foregroundStyle(DS.ink2)
+      }
+    }
+  }
+
+  private func beanRow(
+    _ model: BrewFormModel, index: Int, entry: DraftBean, share: Double, grams: Double,
+    isBlend: Bool
+  ) -> some View {
+    let layout =
+      dts.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: DS.Space.sm))
+      : AnyLayout(HStackLayout(alignment: .center, spacing: DS.Space.sm))
+    let isDecaf = allBeans.first { $0.id == entry.beanID }?.isDecaf == true
+    let amount =
+      RecipeFormat.weight(grams, units)
+      + (isBlend ? "  ·  " + String(format: "%.0f%%", share) : "")
+    return layout {
+      VStack(alignment: .leading, spacing: 2) {
+        Text(entry.name.uppercased()).font(DS.Font.headline).foregroundStyle(DS.ink)
+        HStack(spacing: DS.Space.sm) {
+          Text(amount).font(DS.Font.mono(.footnote)).foregroundStyle(DS.ink2)
+          if isDecaf { Tag(text: "Decaf") }
+        }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .accessibilityElement(children: .combine)
+      HStack(spacing: 0) {
+        if isBlend {
+          shareButton("minus", label: "Decrease \(entry.name) share") {
+            model.stepShare(at: index, by: -5)
+          }
+          shareButton("plus", label: "Increase \(entry.name) share") {
+            model.stepShare(at: index, by: 5)
+          }
+        }
+        shareButton("xmark", label: "Remove \(entry.name)") { model.removeBean(at: index) }
+      }
+    }
+    .padding(DS.Space.md)
+    .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
+    .accessibilityIdentifier("brewform.bean.\(index)")
+  }
+
+  private func shareButton(_ symbol: String, label: String, action: @escaping () -> Void)
+    -> some View
+  {
+    Button(action: action) {
+      Image(systemName: symbol).font(.body.weight(.heavy)).foregroundStyle(DS.ink)
+        // Capped so the glyph never outgrows its 44 pt target and overlaps its neighbor.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .frame(width: DS.Size.minTap, height: DS.Size.minTap)
+        .contentShape(Rectangle())
+    }
+    .accessibilityLabel(label)
+  }
+
+  private func grinderPicker(_ model: BrewFormModel) -> some View {
+    let current = grinders.first { $0.id == model.draft.grinderID }
+    return VStack(alignment: .leading, spacing: DS.Space.xs) {
+      Menu {
+        Button("None") { model.setGrinder(nil) }
+        ForEach(grinders) { grinder in
+          Button(grinder.name) { model.setGrinder(grinder.id) }
+        }
+        Button("New grinder…") {
+          newGrinderName = ""
+          addingGrinder = true
+        }
+      } label: {
+        HStack {
+          VStack(alignment: .leading, spacing: 2) {
+            Text("GRINDER").font(DS.Font.label).foregroundStyle(DS.ink2)
+            Text(current?.name ?? "None chosen").font(DS.Font.headline).foregroundStyle(DS.ink)
+              .multilineTextAlignment(.leading)
+          }
+          Spacer(minLength: DS.Space.sm)
+          Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink)
+            .accessibilityHidden(true)
+        }
+        .padding(DS.Space.md).frame(minHeight: DS.Size.control)
+        .background(DS.paper, ignoresSafeAreaEdges: [])
+        .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+      }
+      .accessibilityLabel("Grinder")
+      .accessibilityValue(current?.name ?? "None chosen")
+      .accessibilityIdentifier("brewform.grinder")
+      if let grinderError {
+        StateBanner(kind: .error, message: grinderError, actionTitle: "Dismiss") {
+          self.grinderError = nil
+        }
+      }
+    }
+    .alert("New grinder", isPresented: $addingGrinder) {
+      TextField("Grinder name", text: $newGrinderName)
+      Button("Cancel", role: .cancel) {}
+      Button("Add") {
+        grinderError =
+          model.addGrinder(named: newGrinderName) ? nil : "The grinder could not be added."
+      }
+    } message: {
+      Text("Its name is kept so grind settings can be compared by grinder.")
+    }
   }
 
   /// The label stacks above the picker at accessibility sizes, so it never wraps

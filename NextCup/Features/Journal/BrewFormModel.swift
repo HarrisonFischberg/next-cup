@@ -22,6 +22,7 @@ final class BrewFormModel {
   static let defaultTempC = 94.0
   static let defaultTimeS = 180
   static let lastMethodKey = "brew.lastMethodID"
+  static let lastGrinderKey = "brew.lastGrinderID"
 
   var draft: BrewDraft
   private(set) var notice: FormNotice?
@@ -91,7 +92,12 @@ final class BrewFormModel {
       doseG: brew.doseG, waterG: brew.waterG, tempC: brew.tempC, totalTimeS: brew.totalTimeS,
       grindSetting: brew.grindSetting ?? "", verdict: brew.verdict?.rawValue,
       ratingHalfSteps: brew.ratingHalfSteps ?? 0, notes: brew.notes, photo: brew.photo,
-      targets: brew.targetsJSON.flatMap { try? JSONDecoder().decode(BrewTargets.self, from: $0) })
+      targets: brew.targetsJSON.flatMap { try? JSONDecoder().decode(BrewTargets.self, from: $0) },
+      beans: (brew.beans ?? []).sorted { $0.createdAt < $1.createdAt }.map {
+        DraftBean(
+          beanID: $0.bean?.id, name: $0.bean?.name ?? $0.beanNameSnapshot, grams: $0.grams)
+      },
+      grinderID: brew.grinder?.id)
   }
 
   private static func fresh(
@@ -100,7 +106,7 @@ final class BrewFormModel {
   ) -> BrewDraft {
     if let brew { return saved(brew) }
     if let source {
-      let beans = (source.beans ?? []).map {
+      let beans = (source.beans ?? []).sorted { $0.createdAt < $1.createdAt }.map {
         DraftBean(
           beanID: $0.bean?.id, name: $0.bean?.name ?? $0.beanNameSnapshot, grams: $0.grams)
       }
@@ -117,7 +123,15 @@ final class BrewFormModel {
     let visible = (try? store.context.fetch(FetchDescriptor<BrewMethod>())) ?? []
     let fallback = visible.filter { !$0.isHidden }.min { $0.sortOrder < $1.sortOrder }
     let method = visible.first { $0.id == remembered && !$0.isHidden } ?? fallback
-    return BrewDraft(methodID: method?.id)
+    return BrewDraft(methodID: method?.id, grinderID: rememberedGrinder(store, defaults))
+  }
+
+  /// The grinder used last, if it still exists.
+  private static func rememberedGrinder(_ store: Store, _ defaults: UserDefaults) -> UUID? {
+    guard let id = defaults.string(forKey: lastGrinderKey).flatMap(UUID.init(uuidString:)) else {
+      return nil
+    }
+    return (try? store.find(Grinder.self, id: id)) == nil ? nil : id
   }
 
   // MARK: Derived
@@ -161,6 +175,71 @@ final class BrewFormModel {
       return
     }
     draft.totalTimeS = max(0, current + direction * 5)
+  }
+
+  // MARK: Beans and grinder
+
+  /// Each bean's share of the dose in percent, in the order of `draft.beans`.
+  var beanShares: [Double] {
+    BlendShares.percentages(parts: (draft.beans ?? []).map(\.grams))
+  }
+
+  /// What each bean contributes at the dose now set, in grams.
+  var beanGrams: [Double] {
+    BlendShares.grams(dose: draft.doseG ?? 0, parts: (draft.beans ?? []).map(\.grams))
+  }
+
+  /// Adds a bean to the blend at an even share. A bean already in it is ignored.
+  func addBean(_ bean: Bean) {
+    var beans = draft.beans ?? []
+    guard !beans.contains(where: { $0.beanID == bean.id }) else { return }
+    let shares = BlendShares.appending(to: beans.map(\.grams))
+    beans.append(DraftBean(beanID: bean.id, name: bean.name, grams: 0))
+    for index in beans.indices { beans[index].grams = shares[index] }
+    draft.beans = beans
+  }
+
+  func removeBean(at index: Int) {
+    guard var beans = draft.beans, beans.indices.contains(index) else { return }
+    let shares = BlendShares.removing(at: index, from: beans.map(\.grams))
+    beans.remove(at: index)
+    for position in beans.indices { beans[position].grams = shares[position] }
+    draft.beans = beans
+  }
+
+  /// Moves one bean's share by `points` percent; the others give or take the rest.
+  func stepShare(at index: Int, by points: Double) {
+    guard var beans = draft.beans, beans.indices.contains(index), beans.count > 1 else { return }
+    let current = BlendShares.percentages(parts: beans.map(\.grams))
+    let next = BlendShares.rebalanced(current, setting: index, to: current[index] + points)
+    for position in beans.indices { beans[position].grams = next[position] }
+    draft.beans = beans
+  }
+
+  func setGrinder(_ id: UUID?) {
+    draft.grinderID = id
+  }
+
+  /// Adds a grinder (or finds the one with this name) and chooses it.
+  @discardableResult
+  func addGrinder(named name: String) -> Bool {
+    let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !clean.isEmpty else { return false }
+    let existing = (try? store.context.fetch(FetchDescriptor<Grinder>())) ?? []
+    if let match = existing.first(where: {
+      $0.name.compare(clean, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+    }) {
+      draft.grinderID = match.id
+      return true
+    }
+    let grinder = Grinder(name: clean)
+    store.context.insert(grinder)
+    if case .failure = store.save() {
+      store.context.rollback()
+      return false
+    }
+    draft.grinderID = grinder.id
+    return true
   }
 
   /// Re-encodes the picked photo without location or camera metadata before it
@@ -237,6 +316,9 @@ final class BrewFormModel {
     if let methodID = draft.methodID {
       defaults.set(methodID.uuidString, forKey: Self.lastMethodKey)
     }
+    if let grinderID = draft.grinderID {
+      defaults.set(grinderID.uuidString, forKey: Self.lastGrinderKey)
+    }
     savedBrewID = draft.id
     if case .failure = draftStore.clear() {
       notice = FormNotice(
@@ -270,18 +352,19 @@ final class BrewFormModel {
     brew.photo = draft.photo
     brew.targetsJSON = draft.targets.flatMap { try? JSONEncoder().encode($0) }
     brew.isDraft = false
+    brew.grinder = draft.grinderID.flatMap { try? store.find(Grinder.self, id: $0) }
     if let beans = draft.beans { applyBeans(beans, to: brew) }
   }
 
-  /// Gives the brew the repeated beans, their shares scaled to this brew's dose.
-  /// A bean that has since been deleted keeps its name, so the journal still
-  /// reads the same.
+  /// Gives the brew its beans, each taking its share of this brew's dose, so a
+  /// blend deducts from every bag. The beans the brew had before are removed, or
+  /// their grams would still count against those bags. A bean that has since been
+  /// deleted keeps its name, so the journal still reads the same.
   private func applyBeans(_ beans: [DraftBean], to brew: Brew) {
-    let total = beans.reduce(0) { $0 + $1.grams }
-    let dose = draft.doseG ?? 0
-    brew.beans = beans.map { entry in
-      let share = total > 0 ? entry.grams / total : 1 / Double(beans.count)
-      let use = BrewBean(grams: dose * share, beanNameSnapshot: entry.name)
+    let grams = BlendShares.grams(dose: draft.doseG ?? 0, parts: beans.map(\.grams))
+    for old in brew.beans ?? [] { store.context.delete(old) }
+    brew.beans = zip(beans, grams).map { entry, share in
+      let use = BrewBean(grams: share, beanNameSnapshot: entry.name)
       store.context.insert(use)
       use.bean = entry.beanID.flatMap { try? store.find(Bean.self, id: $0) }
       return use

@@ -99,7 +99,7 @@ Type checks, per the platform profile.
 | T012 | Methods S09: add, rename, reorder (drag + non-gesture alternative), hide, tracked parameters | T009 | Brew form shows exactly enabled parameters; hidden method keeps history | app + UI tests | done |
 | T013 | Recipe editor S08 with all step kinds (X1); save customized copy | T007 | Editor round-trip tests; built-in switchable dripper and inverted press present | app tests | done |
 | T014 | Bean library S03 and detail S04, roasters, remaining stock, freshness, status filters | T003, T004, T009 | Remaining math with manual edits; filter and sort remembered | app + UI tests | done |
-| T015 | Blends, decaf, freeze/thaw (X6) and best-so-far card (X3) | T014 | Blend brew deducts from each bean; best-so-far shows rating spread, best settings, grind history by grinder and dose | app tests | pending |
+| T015 | Blends, decaf, freeze/thaw (X6) and best-so-far card (X3) | T014 | Blend brew deducts from each bean; best-so-far shows rating spread, best settings, grind history by grinder and dose | app tests | done |
 | T016 | `Taxonomy` service + user aliases + "Unmapped" flow | T003 | Deterministic mapping tests; user alias overrides bundle | package tests | pending |
 | T017 | `Recommender` + Explore tab recommendations with explanation | T016, T014 | Synthetic-history ranking tests; explanation built only from computed facts; cold start labelled as default | package + app tests | pending |
 | T018 | Rule-based dial-in + `Suggestion` cards (accept / edit / dismiss), shown on next brew and in history (X4) | T011 | Rules tests per verdict; persistence tests; suggestion visible on the next brew of that bean | package + UI tests | pending |
