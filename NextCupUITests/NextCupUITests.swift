@@ -722,6 +722,128 @@ final class NextCupUITests: XCTestCase {
     }
   }
 
+  // MARK: Beans (S03, S04)
+
+  /// Adds a bean through the editor sheet: name, roaster and bag weight.
+  @MainActor
+  private func addBean(_ app: XCUIApplication, name: String, roaster: String, weight: String) {
+    app.buttons["Add a bean"].firstMatch.tap()
+    let field = element(app, "beans.editor.name")
+    XCTAssertTrue(field.waitForExistence(timeout: 5))
+    field.tap()
+    field.typeText(name)
+    let roasterField = element(app, "beans.editor.roaster")
+    roasterField.tap()
+    roasterField.typeText(roaster)
+    app.buttons["Done"].tap()
+    let bag = element(app, "beans.editor.bagWeight")
+    scrollUntilHittable(bag, in: app)
+    bag.tap()
+    bag.typeText(weight)
+    app.buttons["Done"].tap()
+    app.buttons["beans.editor.save"].tap()
+    XCTAssertTrue(element(app, "beans.editor").waitForNonExistence(timeout: 5))
+  }
+
+  @MainActor
+  private func openBeans() -> XCUIApplication {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Beans"].tap()
+    XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 5))
+    return app
+  }
+
+  /// T014: add a bean, see freshness and what is left, correct the amount, filter
+  /// by status, and delete with Undo.
+  @MainActor
+  func testBeansAddCorrectFilterAndDeleteWithUndo() {
+    let app = openBeans()
+    XCTAssertTrue(app.staticTexts["NO BEANS YET"].exists, "empty library offers the next action")
+
+    addBean(app, name: "Washed Ethiopia", roaster: "Tiny Roastery", weight: "250")
+    let row = element(app, "beans.row.Washed Ethiopia")
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+    XCTAssertTrue(row.label.contains("250 g left"), "row shows what is left: \(row.label)")
+    XCTAssertTrue(row.label.contains("Tiny Roastery"))
+    XCTAssertFalse(app.staticTexts["NO BEANS YET"].exists)
+
+    // Detail: freshness unknown without a roast date; correct the amount.
+    row.tap()
+    XCTAssertTrue(element(app, "bean.freshness").waitForExistence(timeout: 5))
+    XCTAssertTrue(element(app, "bean.freshness").label.contains("No roast date"))
+    let remaining = element(app, "bean.remaining")
+    XCTAssertTrue(remaining.label.contains("250 g of 250 g"), "got \(remaining.label)")
+    element(app, "bean.correct").tap()
+    let amount = app.alerts.textFields.firstMatch
+    XCTAssertTrue(amount.waitForExistence(timeout: 5))
+    amount.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 5) + "100")
+    app.alerts.buttons["Save"].tap()
+    XCTAssertTrue(
+      remaining.waitForExistence(timeout: 5) && remaining.label.contains("100 g of 250 g"),
+      "got \(remaining.label)")
+    app.navigationBars.buttons.element(boundBy: 0).tap()
+    XCTAssertTrue(element(app, "beans.row.Washed Ethiopia").label.contains("100 g left"))
+
+    // Status filter: the bean is in use, so Wishlist shows the way out.
+    element(app, "beans.filter.status").tap()
+    app.buttons["Wishlist"].tap()
+    XCTAssertTrue(app.staticTexts["NO MATCHES"].waitForExistence(timeout: 5))
+    app.buttons["Clear filters"].tap()
+    XCTAssertTrue(element(app, "beans.row.Washed Ethiopia").waitForExistence(timeout: 5))
+
+    // Delete with Undo brings it back; letting the toast run out removes it.
+    element(app, "beans.row.Washed Ethiopia").swipeLeft()
+    app.buttons["Delete"].tap()
+    XCTAssertTrue(app.staticTexts["Bean deleted"].waitForExistence(timeout: 5))
+    app.buttons["UNDO"].tap()
+    XCTAssertTrue(element(app, "beans.row.Washed Ethiopia").waitForExistence(timeout: 5))
+    element(app, "beans.row.Washed Ethiopia").swipeLeft()
+    app.buttons["Delete"].tap()
+    XCTAssertTrue(app.staticTexts["NO BEANS YET"].waitForExistence(timeout: 5))
+  }
+
+  /// Writes bean library, detail and editor screenshots in light, dark and the
+  /// largest text size. Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureBeanScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      if let size = variant.size {
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
+      }
+      app.launch()
+      XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+      app.tabBars.buttons["Beans"].tap()
+      XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/beans-empty-\(variant.name).png")
+      addBean(app, name: "Washed Ethiopia", roaster: "Tiny Roastery", weight: "250")
+      XCTAssertTrue(element(app, "beans.row.Washed Ethiopia").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/beans-list-\(variant.name).png")
+      element(app, "beans.row.Washed Ethiopia").tap()
+      XCTAssertTrue(element(app, "bean.freshness").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/bean-detail-\(variant.name).png")
+      element(app, "bean.edit").tap()
+      XCTAssertTrue(element(app, "beans.editor.name").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/bean-editor-\(variant.name).png")
+      app.terminate()
+    }
+  }
+
   private func save(_ screenshot: XCUIScreenshot, _ path: String) throws {
     try screenshot.pngRepresentation.write(to: URL(fileURLWithPath: path))
   }

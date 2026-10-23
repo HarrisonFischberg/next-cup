@@ -344,3 +344,11 @@ Untested / honest gaps:
 - The keyboard toolbar "Done" button was not found by the UI test; the form dismisses the keyboard by scrolling instead.
 - No delete for the user's own recipes yet, and no autosaved editor draft (the sheet blocks swipe-dismiss while there are unsaved changes).
 - Oz values are shown to 3 decimals so a customized copy stays within about 0.03 g of the original.
+
+## 2026-10-22 — T014 bean library, detail, roasters, stock, freshness
+
+- Added `BeanStock` (remaining = bag − Σ brew grams + manual adjustment, never below zero, unknown without a bag weight; low at ≤20%) with package tests.
+- App: `BeanFilter` (status All / In use / Buy again / Wishlist / Finished, search over name, roaster, origin, process, bag notes, sort recent / name / roast date / grade), `BeanService` (save with validation, roaster reused by name, set status, correct remaining, delete keeping brews' bean names), `BeanLibraryView` (S03: search, remembered status and order, swipe finished / delete with Undo, context menu, VoiceOver actions, empty and no-results states), `BeanDetailView` (S04: freshness and age from roast date with frozen spans, remaining with manual correction, attributes, bag flavor notes, linked brews), `BeanEditorView`. `nextcup://bean/<id>` now opens the real detail, or a "Bean not found" screen. `FilterMenu` made internal to share with the journal.
+- Commands: `swift test --package-path Packages/NextCupKit` passed (64 tests). `swift format lint --strict` clean. `xcodebuild ... test`: unit suite 107 tests passed; UI suite 25 executed, 0 failures, 7 capture tests skipped (the capture test ran separately and passed).
+- Screenshots in `ralph/screenshots/`: beans-empty, beans-list, bean-detail, bean-editor, each in `-light`, `-dark`, `-largest-text`.
+- Untested: VoiceOver on a real device (labels and actions are set, not exercised); remembered filter checked only through the storage keys, not across a UI relaunch; `/impeccable polish` and `/impeccable audit` not run; freeze/thaw UI, blends and best-so-far are T015; bean photo, bean rating entry and Explore links are not built.
