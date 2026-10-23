@@ -60,8 +60,10 @@ struct BeanDetailView: View {
         }
         header
         readouts
+        freezer
         attributes
         if !bean.bagFlavorNotes.isEmpty { flavor }
+        BestSoFarCard(summary: bean.bestSoFar, units: units)
         brews
       }
       .padding(DS.Space.lg)
@@ -172,6 +174,49 @@ struct BeanDetailView: View {
           .font(.footnote.weight(.semibold)).foregroundStyle(DS.error)
       }
     }
+  }
+
+  /// X6: a bag in the freezer stops aging. One freezer stay is kept per bag.
+  private var freezer: some View {
+    let stayedOnce = bean.frozenOn != nil && bean.thawedOn != nil
+    return VStack(alignment: .leading, spacing: DS.Space.xs) {
+      PaperBox {
+        VStack(alignment: .leading, spacing: 0) {
+          SpecCell(label: "Freezer", value: freezerText)
+            .accessibilityIdentifier("bean.freezer")
+          Hairline()
+          Button {
+            toggleFreezer()
+          } label: {
+            Text((bean.isFrozen ? "TAKE OUT OF THE FREEZER" : "PUT IN THE FREEZER"))
+              .font(DS.Font.label).foregroundStyle(DS.ink)
+              .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
+              .padding(.horizontal, DS.Space.md)
+          }
+          .disabled(stayedOnce)
+          .accessibilityIdentifier("bean.freezer.toggle")
+        }
+      }
+      Text(
+        stayedOnce
+          ? "This bag has had its freezer stay. Frozen days were left out of its age."
+          : "Days in the freezer do not count toward the bag's age."
+      )
+      .font(.footnote).foregroundStyle(DS.ink2)
+    }
+  }
+
+  private var freezerText: String {
+    guard let frozenOn = bean.frozenOn else { return "Not frozen" }
+    let day = Date.FormatStyle().month(.abbreviated).day()
+    let start = frozenOn.formatted(day)
+    guard let thawedOn = bean.thawedOn else { return "Since \(start)" }
+    return "\(start) to \(thawedOn.formatted(day))"
+  }
+
+  private func toggleFreezer() {
+    let result = bean.isFrozen ? service.thaw(bean) : service.freeze(bean)
+    if case .failure(let failure) = result { error = failure.message }
   }
 
   private var ageText: String {

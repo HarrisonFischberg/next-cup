@@ -352,3 +352,31 @@ Untested / honest gaps:
 - Commands: `swift test --package-path Packages/NextCupKit` passed (64 tests). `swift format lint --strict` clean. `xcodebuild ... test`: unit suite 107 tests passed; UI suite 25 executed, 0 failures, 7 capture tests skipped (the capture test ran separately and passed).
 - Screenshots in `ralph/screenshots/`: beans-empty, beans-list, bean-detail, bean-editor, each in `-light`, `-dark`, `-largest-text`.
 - Untested: VoiceOver on a real device (labels and actions are set, not exercised); remembered filter checked only through the storage keys, not across a UI relaunch; `/impeccable polish` and `/impeccable audit` not run; freeze/thaw UI, blends and best-so-far are T015; bean photo, bean rating entry and Explore links are not built.
+
+## 2026-10-22 — T015 blends, decaf, freeze/thaw, best-so-far
+
+What changed:
+- `NextCupKit`: `BlendShares` (dose split by shares so the parts add up to the dose, plus add / remove / rebalance helpers that keep shares at 100%, 5% to 95% per bean) and `BestSoFar` (rating spread, best brew's settings, grind history by grinder and dose; newest first within a dose). `BrewDraft.grinderID` added (old drafts still load).
+- Brew form (S02): a BEANS section (add one bean or several; blend shows each bean's grams and percent with minus / plus / remove, all 44 pt) and a GRINDER picker with "New grinder…" (remembered for the next brew). Saving a brew gives each bean its share of the dose, so each bag loses its own part. Saving an edit now replaces the brew's old bean rows; before, they would have stayed and double-charged the bags. Bean rows load in creation order so an edited blend does not reshuffle.
+- Bean detail (S04): Freezer row with Put in / Take out (frozen days stay out of age, already in `Freshness`) and the Best so far card. Decaf is a flag on the bean (T014) and shows as a tag in the blend list.
+- Replaced the "Same beans: ..." header line in the form (brew again) with the editable BEANS section.
+
+Decisions to confirm:
+- The model holds one freezer stay per bag (`frozenOn` / `thawedOn`, blueprint §2). A second freeze after a thaw is refused with a message instead of silently dropping the first stay's days from the age. Several stays would need a schema change (a list of spans, or a frozen-days total); I did not redesign the blueprint.
+- A blend brew counts toward the best-so-far card of each bean in it.
+
+Commands and results:
+- `swift test --package-path Packages/NextCupKit`: 80 passed.
+- `swift format lint --recursive --strict ...`: clean.
+- Unit target (`-only-testing:NextCupTests`): 118 passed, including 11 new in `BlendAndFreezerTests` (blend deducts from each bag, edit does not double-charge, freeze / thaw age and rules, grinder remembered, best-so-far from real brews). First runs failed twice on my own test expectations (grind history order; an unordered relationship), the second one exposing the bean-order issue fixed above.
+- UI: `testBlendBrewFreezerAndBestSoFarFlow` passed (add two beans, log a 55 / 45 blend, bag shows less than 250 g, freeze, best-so-far card present). Two earlier UI runs died because the simulator would not launch the runner or the app (no result from the tests); `simctl shutdown all` fixed it.
+- Final UI suite after a simulator restart: `xcodebuild ... test -only-testing:NextCupUITests` TEST SUCCEEDED, 27 run, 8 skipped (screenshot captures), 0 failures; this includes the existing brew-again and journal tests after the form change. The unit target was last run before the final one-line icon-size change (UI only); the full `xcodebuild test` was not run as one invocation (unit and UI runs were separate).
+- Fixed from screenshots: at the largest text size the minus / plus / remove icons overlapped; the glyphs are now capped at xxxLarge inside their 44 pt targets.
+
+Screenshots (`ralph/screenshots/`): `T015-brewform-blend-*`, `T015-bean-detail-freezer-*`, `T015-bean-best-so-far-*`, each in `-light`, `-dark`, `-largest-text` (viewed: blend form light and largest text, bean detail dark).
+
+Untested / honest gaps:
+- The screenshots and UI test show the Best so far card only in its "no grade yet" state: the flow does not grade the brew or enter a grind. The graded card (best settings, grade spread bars, grind history) is covered by package and app tests but I have not seen it rendered.
+- VoiceOver not run by hand; labels are set (share buttons name the bean, spread rows read "Grade 4.5, 2 brews"), not heard. `/impeccable polish` and `audit` not run. `/goal` not invoked as a tool; bound self-enforced.
+- No UI for removing a grinder; no Undo for the freezer toggle (it reverses with Take out). A freezer stay can be recorded once per bag (see decisions above).
+- Decaf has no filter yet; it shows as a tag on the bean detail and in the blend list.

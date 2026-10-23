@@ -6,10 +6,17 @@ enum BeanError: Error, Equatable {
   case emptyName
   case invalidBagWeight
   case invalidRemaining
+  case alreadyFrozen
+  case alreadyFrozenOnce
+  case notFrozen
   case saveFailed(String)
 
   var message: String {
     switch self {
+    case .alreadyFrozen: "This bag is already in the freezer."
+    case .alreadyFrozenOnce:
+      "This bag has already had its freezer stay. Next Cup keeps one freezer stay per bag."
+    case .notFrozen: "This bag is not in the freezer."
     case .emptyName: "Give the bean a name."
     case .invalidBagWeight: "The bag weight must be more than zero."
     case .invalidRemaining: "Enter how much is left, from zero up. This bag has no weight yet."
@@ -98,6 +105,27 @@ struct BeanService {
 
   func setStatus(_ bean: Bean, _ status: BeanStatus) -> Result<Void, BeanError> {
     bean.status = status
+    bean.updatedAt = Date()
+    return commit { () }
+  }
+
+  /// Puts the bag in the freezer: from `date` its days stop counting toward age
+  /// (X6). One freezer stay is kept per bag, so a second freeze is refused instead
+  /// of silently dropping the first stay's days from the age.
+  func freeze(_ bean: Bean, on date: Date = Date()) -> Result<Void, BeanError> {
+    if bean.frozenOn != nil {
+      return .failure(bean.thawedOn == nil ? .alreadyFrozen : .alreadyFrozenOnce)
+    }
+    bean.frozenOn = date
+    bean.thawedOn = nil
+    bean.updatedAt = Date()
+    return commit { () }
+  }
+
+  /// Takes the bag out; its days count toward age again from `date`.
+  func thaw(_ bean: Bean, on date: Date = Date()) -> Result<Void, BeanError> {
+    guard let frozenOn = bean.frozenOn, bean.thawedOn == nil else { return .failure(.notFrozen) }
+    bean.thawedOn = max(date, frozenOn)
     bean.updatedAt = Date()
     return commit { () }
   }
