@@ -24,6 +24,7 @@ struct BrewFormView: View {
   @Query(sort: \BrewMethod.sortOrder) private var methods: [BrewMethod]
   @Query(sort: \Bean.name) private var allBeans: [Bean]
   @Query(sort: \Grinder.name) private var grinders: [Grinder]
+  @Query(sort: \Suggestion.createdAt, order: .reverse) private var suggestions: [Suggestion]
   @State private var addingGrinder = false
   @State private var newGrinderName = ""
   @State private var grinderError: String?
@@ -98,6 +99,14 @@ struct BrewFormView: View {
 
   private var savedState: some View {
     ScrollView {
+      VStack(alignment: .leading, spacing: DS.Space.md) {
+        savedContent
+      }
+    }
+  }
+
+  @ViewBuilder private var savedContent: some View {
+    Group {
       EmptyState(
         title: "Brew saved",
         message: editing != nil
@@ -110,6 +119,21 @@ struct BrewFormView: View {
         }
       )
       .accessibilityIdentifier("brewform.saved")
+      if let model, let made = model.madeSuggestion {
+        VStack(alignment: .leading, spacing: DS.Space.xs) {
+          Text("TRY THIS NEXT TIME").font(DS.Font.label).foregroundStyle(DS.ink2)
+          Text(SuggestionFormat.headline(made, units))
+            .font(DS.Font.mono(.title3, .bold)).foregroundStyle(DS.ink)
+            .accessibilityIdentifier("brewform.saved.suggestion")
+          Text(made.rationale).font(.footnote).foregroundStyle(DS.ink2)
+        }
+        .padding(.horizontal, DS.Space.xl).frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+      } else if let note = model?.dialInNote {
+        Text(note).font(.footnote).foregroundStyle(DS.ink2)
+          .padding(.horizontal, DS.Space.xl).frame(maxWidth: .infinity, alignment: .leading)
+          .accessibilityIdentifier("brewform.saved.dialin")
+      }
     }
   }
 
@@ -130,6 +154,7 @@ struct BrewFormView: View {
         }
         methodPicker(binding.draft, model)
         beansSection(model)
+        suggestionSection(model)
         brewedRow(binding.draft.date)
         let fields = shownFields(for: model.draft.methodID)
         tiles(model, fields)
@@ -146,6 +171,7 @@ struct BrewFormView: View {
         }
         if fields.contains(.photo) { photoRow(model) }
         if fields.contains(.notes) { notesField(binding.draft.notes) }
+        if let editing { SuggestionHistory(brew: editing, units: units) }
       }
       .padding(DS.Space.lg)
       // Behind the fields, so a tap on empty space dismisses the keyboard
@@ -331,6 +357,32 @@ struct BrewFormView: View {
         .contentShape(Rectangle())
     }
     .accessibilityLabel(label)
+  }
+
+  /// The dial-in card from the last brew of these beans. Only a new brew shows
+  /// it; an answered card stays, with Undo, until the form is closed.
+  @ViewBuilder
+  private func suggestionSection(_ model: BrewFormModel) -> some View {
+    if !model.isEditing {
+      let handled = suggestions.first { $0.id == model.handledSuggestionID }
+      let waiting = SuggestionService.match(
+        in: suggestions, beanIDs: Set((model.draft.beans ?? []).compactMap(\.beanID)),
+        methodID: model.draft.methodID, excluding: model.draft.id)
+      if let suggestion = handled ?? waiting {
+        SuggestionCard(
+          suggestion: suggestion, units: units, error: model.suggestionError,
+          onAccept: { model.applySuggestion(suggestion) },
+          onEdit: { typed in
+            if let value = SuggestionFormat.canonical(typed, for: suggestion.field, units) {
+              model.applySuggestion(suggestion, editedTo: value)
+            } else {
+              model.applySuggestion(suggestion, editedTo: "")
+            }
+          },
+          onDismiss: { model.dismissSuggestion(suggestion) },
+          onUndo: { model.undoSuggestionAnswer(suggestion) })
+      }
+    }
   }
 
   private func grinderPicker(_ model: BrewFormModel) -> some View {
