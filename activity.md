@@ -380,3 +380,11 @@ Untested / honest gaps:
 - VoiceOver not run by hand; labels are set (share buttons name the bean, spread rows read "Grade 4.5, 2 brews"), not heard. `/impeccable polish` and `audit` not run. `/goal` not invoked as a tool; bound self-enforced.
 - No UI for removing a grinder; no Undo for the freezer toggle (it reverses with Take out). A freezer stay can be recorded once per bag (see decisions above).
 - Decaf has no filter yet; it shows as a tag on the bean detail and in the blend list.
+
+## 2026-10-22 — T016 Taxonomy service + user aliases + "Unmapped" flow
+
+- Added `Packages/NextCupKit/Sources/NextCupKit/Taxonomy/Taxonomy.swift`: loads `taxonomy.json` (rejects unknown dimensions and map entries pointing at missing buckets), `normalize` (case, accents, punctuation, spacing), `map` (user alias > bundle > `.unmapped`), `buckets(for:)`, `unmapped(in:)` for the mapping list, `alias(mapping:to:in:replacing:)` (rejects missing buckets and empty values, replaces an earlier alias). A stale alias pointing at a removed bucket falls back to the bundle.
+- `NextCup/Resources/taxonomy.json` bumped to version 2: added spaced roast names ("ultra light", "medium light", "medium dark"); the shipped-bundle test found that "Medium Light" was unmapped.
+- Tests: `TaxonomyTests` (14) covering determinism, normalization, unmapped values, alias override, per-dimension isolation, bad bundles, the shipped bundle.
+- Commands: `swift test --package-path Packages/NextCupKit` → 94 tests passed; `swift format lint --recursive --strict ...` clean; `xcodebuild ... test` → TEST SUCCEEDED.
+- Untested / not done: no SwiftData `TaxonomyAlias` wiring and no "Unmapped" UI yet (service layer only, which is what the acceptance criteria test); T017 and the bean screens consume it. No screenshots (no UI change).
