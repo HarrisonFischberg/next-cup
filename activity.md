@@ -396,3 +396,29 @@ Untested / honest gaps:
 - Commands: `swift test --package-path Packages/NextCupKit` → 108 tests passed (14 new). `swift format lint --strict` clean. `xcodebuild ... test` (full) → TEST SUCCEEDED, 29 UI tests with 9 capture tests skipped, 0 failures. Targeted re-run of `ExploreModelTests`, `testExploreShowsLabelledDefaultForANewBean` and `testCaptureExploreScreenshots` → TEST SUCCEEDED.
 - Screenshots: `ralph/screenshots/T017-explore-{empty,default}-{light,dark,largest-text}.png`.
 - Untested / honest notes: no SwiftData-backed UI test of a history-driven (non-default) card; that path is covered by package and `ExploreModelTests`. No skeleton loading state (`@Query` is synchronous). VoiceOver checked only through accessibility labels/identifiers in UI tests, not a manual VoiceOver pass. `/impeccable polish` and `audit` were not run. Start values are shown but not yet prefilled into the brew form; the card links to a new brew.
+
+## 2026-10-23 — T018 Rule-based dial-in + Suggestion cards
+
+What changed:
+- `NextCupKit/DialIn/DialInRules.swift`: verdict + brew values → one `SuggestionDraft` or `.keep`. Sour: finer grind (numeric settings step by 1, text around the number kept), else +2 °C (cap 99), else longer steep (immersion/cold). Bitter: the mirror. Weak/strong: water -6% / +8% (espresso: output weight -/+10%, to 0.5 g). Only parameters the method tracks; balanced keeps everything. One lever per suggestion.
+- App: `SuggestionService` (stores a `.rules` Suggestion linked to its brew after a save, replaces an unanswered one on edit, never rewrites an answered one, dismisses older unanswered ones for the same beans, `match` finds the card for the next brew by bean, or by method when neither brew has beans), `SuggestionFormat` (units-aware text), `SuggestionCard` (Accept / Edit / Dismiss, Undo after any answer, no confirm dialog), `SuggestionHistory`.
+- Brew form: card under BEANS on a new brew; accept applies to the draft and marks the saved brew as having followed it; Edit takes a value in the user's units; saved screen shows "Try this next time" or why there is none. Journal rows show "Next: ..." and "Followed: ...". Editing a brew lists its suggestions.
+
+Decisions to confirm:
+- Rules assume a lower grind number is finer (said in the rationale). The app does not know the grinder's direction.
+- Answered state is stored at once; an accepted suggestion whose brew is never saved stays "applied". Relaunch with a restored draft keeps the applied value but loses the follow link.
+- Edit rewrites `toValue` to the user's number; the original suggested value is not kept after Edit.
+
+Commands and results:
+- `swift test --package-path Packages/NextCupKit`: 125 passed (17 new `DialInRulesTests`).
+- `swift format lint --recursive --strict ...`: clean.
+- `xcodebuild ... test` (full): TEST SUCCEEDED, 0 failures; UI 33 executed incl. `testDialInSuggestionShowsOnTheNextBrewOfThatBean` (log sour cup, saved screen and journal row show Grind 20 → 19, next brew of that bean shows the card, accept, undo, dismiss, undo), 12 capture tests skipped; unit tests incl. 17 new `DialInSuggestionTests`.
+- First app-test run had one failure in my own test (no dose set); fixed the test. The capture as one 3-variant test died mid-run (runner restart), so it is now one test per variant.
+
+Screenshots (`ralph/screenshots/`): `T018-dialin-{saved,card,accepted}-{light,dark,largest-text}.png` (viewed: card light and largest text; at largest text the card sits below the fold and is reached by scrolling).
+
+Untested / honest gaps:
+- VoiceOver not run by hand (headline has a spoken label, buttons are named). Haptics not felt. `/impeccable polish` and `audit` not run. `/goal` not invoked as a tool.
+- The Edit alert was not driven in a UI test (unit tests cover edit values and units). Ounce/°F paths covered by unit tests only.
+- The journal row line is asserted by the UI test but not viewed in a screenshot; neither is the edit-form history.
+- AI suggestions will share the card flow in T023; none are produced yet.

@@ -1008,6 +1008,128 @@ final class NextCupUITests: XCTestCase {
     }
   }
 
+  // MARK: Dial-in suggestions (T018)
+
+  /// Logs a sour cup of a bean, reads the suggestion on the saved screen and in
+  /// the journal, then starts the next brew of that bean, where the card waits.
+  /// `shot` is called with a name at each screen worth capturing.
+  @MainActor
+  private func runDialInFlow(_ app: XCUIApplication, shot: (String) throws -> Void) throws {
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Beans"].tap()
+    XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 5))
+    addBean(app, name: "Washed Ethiopia", roaster: "Tiny Roastery", weight: "250")
+    XCTAssertTrue(element(app, "beans.row.Washed Ethiopia").waitForExistence(timeout: 5))
+
+    func startBrew(_ app: XCUIApplication) {
+      app.tabBars.buttons["Journal"].tap()
+      app.buttons["Log a brew"].firstMatch.tap()
+      XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 5))
+      element(app, "brewform.beans.add").tap()
+      app.buttons["Washed Ethiopia"].tap()
+      app.buttons["Increase Dose"].tap()
+      app.buttons["Increase Water"].tap()
+    }
+
+    startBrew(app)
+    let grind = element(app, "brewform.grind")
+    scrollUntilHittable(grind, in: app)
+    grind.tap()
+    grind.typeText("20\n")
+    let sour = element(app, "brewform.verdict.sour")
+    scrollUntilHittable(sour, in: app)
+    sour.tap()
+    app.buttons["Save brew"].tap()
+    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
+    let made = element(app, "brewform.saved.suggestion")
+    XCTAssertTrue(made.waitForExistence(timeout: 5))
+    XCTAssertTrue(made.label.contains("Grind: 20 → 19"), "got \(made.label)")
+    try shot("dialin-saved")
+    app.buttons["Done"].tap()
+
+    // History: the journal row names the suggestion this cup produced.
+    let row = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Next: Grind: 20'"))
+      .firstMatch
+    XCTAssertTrue(row.waitForExistence(timeout: 5), "journal row shows the suggestion")
+
+    // The next brew of the same bean carries the card.
+    app.buttons["Log a brew"].firstMatch.tap()
+    XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 5))
+    XCTAssertFalse(element(app, "suggestion.card").exists, "no bean yet, so no card")
+    element(app, "brewform.beans.add").tap()
+    app.buttons["Washed Ethiopia"].tap()
+    let card = element(app, "suggestion.card")
+    XCTAssertTrue(card.waitForExistence(timeout: 5))
+    XCTAssertTrue(element(app, "suggestion.headline").label == "Grind from 20 to 19")
+    try shot("dialin-card")
+
+    // Accepting puts the new grind in the form; Undo takes it back.
+    element(app, "suggestion.accept").tap()
+    XCTAssertTrue(element(app, "suggestion.undo").waitForExistence(timeout: 5))
+    let nextGrind = element(app, "brewform.grind")
+    scrollUntilHittable(nextGrind, in: app)
+    XCTAssertEqual(nextGrind.value as? String, "19")
+    try shot("dialin-accepted")
+    scrollUntilHittable(element(app, "suggestion.undo"), in: app)
+    element(app, "suggestion.undo").tap()
+    XCTAssertTrue(element(app, "suggestion.accept").waitForExistence(timeout: 5))
+    XCTAssertFalse((element(app, "brewform.grind").value as? String) == "19")
+
+    // Dismissing keeps the form as it is and can be taken back as well.
+    element(app, "suggestion.dismiss").tap()
+    XCTAssertTrue(element(app, "suggestion.undo").waitForExistence(timeout: 5))
+    element(app, "suggestion.undo").tap()
+    XCTAssertTrue(element(app, "suggestion.accept").waitForExistence(timeout: 5))
+  }
+
+  @MainActor
+  func testDialInSuggestionShowsOnTheNextBrewOfThatBean() throws {
+    let app = launch()
+    try runDialInFlow(app) { _ in }
+  }
+
+  @MainActor
+  func testCaptureDialInLight() throws {
+    try captureDialIn("light", appearance: .light, size: nil)
+  }
+
+  @MainActor
+  func testCaptureDialInDark() throws {
+    try captureDialIn("dark", appearance: .dark, size: nil)
+  }
+
+  @MainActor
+  func testCaptureDialInLargestText() throws {
+    try captureDialIn(
+      "largest-text", appearance: .light, size: "UICTContentSizeCategoryAccessibilityXXXL")
+  }
+
+  /// Writes dial-in screenshots for one appearance; one test per variant keeps each
+  /// run short. Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  private func captureDialIn(
+    _ variant: String, appearance: XCUIDevice.Appearance, size: String?
+  ) throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    defer { XCUIDevice.shared.appearance = .light }
+    XCUIDevice.shared.appearance = appearance
+    do {
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      if let size { app.launchArguments += ["-UIPreferredContentSizeCategoryName", size] }
+      app.launch()
+      try runDialInFlow(app) { name in
+        try save(app.screenshot(), "\(folderURL.path)/T018-\(name)-\(variant).png")
+      }
+      app.terminate()
+    }
+  }
+
   private func save(_ screenshot: XCUIScreenshot, _ path: String) throws {
     try screenshot.pngRepresentation.write(to: URL(fileURLWithPath: path))
   }

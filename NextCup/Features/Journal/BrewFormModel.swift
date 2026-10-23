@@ -30,6 +30,17 @@ final class BrewFormModel {
   private(set) var isSaving = false
   private(set) var savedBrewID: UUID?
   private(set) var photoError: String?
+  /// The suggestion the user has answered on this form, so its card stays visible
+  /// with Undo after it leaves the waiting list.
+  private(set) var handledSuggestionID: UUID?
+  private(set) var suggestionError: String?
+  /// What the rules made of the brew just saved: the suggestion, or why none.
+  private(set) var madeSuggestion: Suggestion?
+  private(set) var dialInNote: String?
+  private var followedSuggestionID: UUID?
+  /// The draft value and suggested value before an answer, kept for Undo.
+  private var undoDraftValue: String?
+  private var undoToValue: String?
 
   let seed: BrewFormSeed?
   /// The saved brew being edited, or `nil` for a new brew.
@@ -260,6 +271,85 @@ final class BrewFormModel {
     draft.photo = nil
   }
 
+  // MARK: Dial-in suggestion
+
+  /// Applies the suggested change to this brew, or the user's edited value (in
+  /// canonical text). The answer is stored first; the form changes only once the
+  /// store confirms it.
+  func applySuggestion(_ suggestion: Suggestion, editedTo edited: String? = nil) {
+    suggestionError = nil
+    let parameter = suggestion.field
+    let original = suggestion.toValue
+    let applied = edited ?? original
+    var next = draft
+    guard !applied.trimmingCharacters(in: .whitespaces).isEmpty,
+      SuggestionApplication.set(applied, for: parameter, in: &next)
+    else {
+      suggestionError = "That value could not be used. Nothing was changed."
+      return
+    }
+    let previous = SuggestionApplication.value(of: parameter, in: draft)
+    suggestion.toValue = applied
+    suggestion.state = edited == nil ? .accepted : .edited
+    suggestion.updatedAt = Date()
+    guard answered(suggestion, restoring: original) else { return }
+    undoDraftValue = previous
+    undoToValue = original
+    followedSuggestionID = suggestion.id
+    draft = next
+    UINotificationFeedbackGenerator().notificationOccurred(.success)
+  }
+
+  func dismissSuggestion(_ suggestion: Suggestion) {
+    suggestionError = nil
+    let original = suggestion.toValue
+    suggestion.state = .dismissed
+    suggestion.updatedAt = Date()
+    guard answered(suggestion, restoring: original) else { return }
+    undoDraftValue = nil
+    undoToValue = original
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+  }
+
+  /// Takes the answer back: the draft value returns to what it was and the
+  /// suggestion waits again.
+  func undoSuggestionAnswer(_ suggestion: Suggestion) {
+    suggestionError = nil
+    let applied = suggestion.state == .accepted || suggestion.state == .edited
+    let answer = (suggestion.state, suggestion.toValue)
+    suggestion.state = .proposed
+    suggestion.toValue = undoToValue ?? suggestion.toValue
+    suggestion.updatedAt = Date()
+    switch store.save() {
+    case .success:
+      if applied, let undoDraftValue {
+        SuggestionApplication.set(undoDraftValue, for: suggestion.field, in: &draft)
+      }
+      undoDraftValue = nil
+      followedSuggestionID = nil
+      handledSuggestionID = nil
+    case .failure(.saveFailed(let message)):
+      store.context.rollback()
+      suggestion.state = answer.0
+      suggestion.toValue = answer.1
+      suggestionError = "The suggestion was not changed. \(message)"
+    }
+  }
+
+  /// Stores a suggestion's new state. A failed write is rolled back and shown.
+  private func answered(_ suggestion: Suggestion, restoring original: String) -> Bool {
+    switch store.save() {
+    case .success:
+      handledSuggestionID = suggestion.id
+      return true
+    case .failure(.saveFailed(let message)):
+      store.context.rollback()
+      suggestion.toValue = original
+      suggestionError = "The suggestion was not saved. \(message)"
+      return false
+    }
+  }
+
   // MARK: Autosave
 
   /// Called on every edit. Writes shortly after typing pauses.
@@ -320,12 +410,27 @@ final class BrewFormModel {
       defaults.set(grinderID.uuidString, forKey: Self.lastGrinderKey)
     }
     savedBrewID = draft.id
+    makeSuggestion()
     if case .failure = draftStore.clear() {
       notice = FormNotice(
         kind: .info, message: "Saved. An old draft file could not be removed.")
     }
     UINotificationFeedbackGenerator().notificationOccurred(.success)
     return true
+  }
+
+  /// Asks the dial-in rules what to change next. The brew is already saved, so a
+  /// failure here is a note, never a lost brew.
+  private func makeSuggestion() {
+    guard let brew = try? store.find(Brew.self, id: draft.id) else { return }
+    switch SuggestionService(store: store).propose(for: brew) {
+    case .success(.change):
+      madeSuggestion = (brew.suggestionsMade ?? []).first { $0.source == .rules }
+    case .success(.keep(let reason)):
+      dialInNote = reason
+    case .failure:
+      dialInNote = "The brew is saved, but its dial-in suggestion could not be stored."
+    }
   }
 
   private func failSave(_ message: String) -> Bool {
@@ -353,6 +458,9 @@ final class BrewFormModel {
     brew.targetsJSON = draft.targets.flatMap { try? JSONEncoder().encode($0) }
     brew.isDraft = false
     brew.grinder = draft.grinderID.flatMap { try? store.find(Grinder.self, id: $0) }
+    if let followedSuggestionID {
+      brew.suggestionFollowed = try? store.find(Suggestion.self, id: followedSuggestionID)
+    }
     if let beans = draft.beans { applyBeans(beans, to: brew) }
   }
 
