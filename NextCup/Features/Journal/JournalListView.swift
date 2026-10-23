@@ -284,7 +284,7 @@ enum JournalStorage {
 // MARK: Pieces
 
 /// A bordered menu button that names what it filters and what is chosen.
-private struct FilterMenu<Content: View>: View {
+struct FilterMenu<Content: View>: View {
   let title: String
   let value: String
   @ViewBuilder let content: Content
