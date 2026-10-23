@@ -101,7 +101,7 @@ Type checks, per the platform profile.
 | T014 | Bean library S03 and detail S04, roasters, remaining stock, freshness, status filters | T003, T004, T009 | Remaining math with manual edits; filter and sort remembered | app + UI tests | done |
 | T015 | Blends, decaf, freeze/thaw (X6) and best-so-far card (X3) | T014 | Blend brew deducts from each bean; best-so-far shows rating spread, best settings, grind history by grinder and dose | app tests | done |
 | T016 | `Taxonomy` service + user aliases + "Unmapped" flow | T003 | Deterministic mapping tests; user alias overrides bundle | package tests | done |
-| T017 | `Recommender` + Explore tab recommendations with explanation | T016, T014 | Synthetic-history ranking tests; explanation built only from computed facts; cold start labelled as default | package + app tests | pending |
+| T017 | `Recommender` + Explore tab recommendations with explanation | T016, T014 | Synthetic-history ranking tests; explanation built only from computed facts; cold start labelled as default | package + app tests | done |
 | T018 | Rule-based dial-in + `Suggestion` cards (accept / edit / dismiss), shown on next brew and in history (X4) | T011 | Rules tests per verdict; persistence tests; suggestion visible on the next brew of that bean | package + UI tests | pending |
 | T019 | Export CSV/JSON, merge import with preview, daily backup keep 7, restore, delete all with Undo where possible | T010, T014 | Export → wipe → import round trip lossless; conflicts never overwrite silently; delete all clears store, drafts, backups, keys | app tests | pending |
 | T020 | Settings: units everywhere (X8), privacy summary, about, data controls | T019 | Changing units updates journal, recipes, timer, form (UI test) | UI tests | pending |

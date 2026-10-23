@@ -942,6 +942,72 @@ final class NextCupUITests: XCTestCase {
     }
   }
 
+  // MARK: Explore recommendations (T017)
+
+  /// Opens Explore with no beans, follows its next action to add one, and returns
+  /// to see the bean's labelled default recommendation. `shot` is called with a
+  /// name at each screen worth capturing.
+  @MainActor
+  private func runExploreFlow(_ app: XCUIApplication, shot: (String) throws -> Void) throws {
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Explore"].tap()
+    XCTAssertTrue(element(app, "tab.root.explore").waitForExistence(timeout: 5))
+    XCTAssertTrue(element(app, "explore.empty").waitForExistence(timeout: 5))
+    try shot("explore-empty")
+
+    app.buttons["Add a bean"].firstMatch.tap()
+    XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 5))
+    addBean(app, name: "Washed Ethiopia", roaster: "Tiny Roastery", weight: "250")
+
+    app.tabBars.buttons["Explore"].tap()
+    let card = element(app, "explore.card.Washed Ethiopia")
+    XCTAssertTrue(card.waitForExistence(timeout: 5))
+    let basis = element(app, "explore.basis.Washed Ethiopia")
+    XCTAssertTrue(basis.label.hasPrefix("DEFAULT"), "cold start is labelled: \(basis.label)")
+    XCTAssertTrue(
+      app.staticTexts.matching(
+        NSPredicate(format: "label CONTAINS 'not based on your brews'")
+      ).firstMatch.exists)
+    try shot("explore-default")
+  }
+
+  @MainActor
+  func testExploreShowsLabelledDefaultForANewBean() throws {
+    let app = launch()
+    try runExploreFlow(app) { _ in }
+  }
+
+  /// Writes Explore screenshots in light, dark and the largest text size. Runs
+  /// only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureExploreScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      if let size = variant.size {
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
+      }
+      app.launch()
+      try runExploreFlow(app) { name in
+        try save(app.screenshot(), "\(folderURL.path)/T017-\(name)-\(variant.name).png")
+      }
+      app.terminate()
+    }
+  }
+
   private func save(_ screenshot: XCUIScreenshot, _ path: String) throws {
     try screenshot.pngRepresentation.write(to: URL(fileURLWithPath: path))
   }

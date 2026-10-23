@@ -78,6 +78,8 @@ private struct TabRoot: View {
       RecipeLibraryView().navigationDestination(for: DeepLink.self, destination: destination)
     case .beans:
       BeanLibraryView().navigationDestination(for: DeepLink.self, destination: destination)
+    case .explore:
+      ExploreView().navigationDestination(for: DeepLink.self, destination: destination)
     case .settings:
       SettingsRootView().navigationDestination(for: DeepLink.self, destination: destination)
     default:
