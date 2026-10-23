@@ -388,3 +388,11 @@ Untested / honest gaps:
 - Tests: `TaxonomyTests` (14) covering determinism, normalization, unmapped values, alias override, per-dimension isolation, bad bundles, the shipped bundle.
 - Commands: `swift test --package-path Packages/NextCupKit` → 94 tests passed; `swift format lint --recursive --strict ...` clean; `xcodebuild ... test` → TEST SUCCEEDED.
 - Untested / not done: no SwiftData `TaxonomyAlias` wiring and no "Unmapped" UI yet (service layer only, which is what the acceptance criteria test); T017 and the bean screens consume it. No screenshots (no UI change).
+
+## 2026-10-22 — T017 Recommender + Explore tab
+
+- Added `NextCupKit/Recommender/Recommender.swift`: ranks methods by mean grade over rated brews of similar beans (similar = shares 2 of origin/process/roast buckets, or the one it has), start values from the best brew, explanation built only from computed `HistoryFacts`. Fewer than 3 similar rated brews returns the bundled roast-band default, labelled as a default (no roast level: medium default, says so).
+- App: `Features/Explore/ExploreModel.swift` (beans/brews → recommender inputs, user aliases applied) and `ExploreView.swift` (card per in-use/buy-again bean, empty state with "Add a bean", error banner if taxonomy unreadable); Explore tab now uses it.
+- Commands: `swift test --package-path Packages/NextCupKit` → 108 tests passed (14 new). `swift format lint --strict` clean. `xcodebuild ... test` (full) → TEST SUCCEEDED, 29 UI tests with 9 capture tests skipped, 0 failures. Targeted re-run of `ExploreModelTests`, `testExploreShowsLabelledDefaultForANewBean` and `testCaptureExploreScreenshots` → TEST SUCCEEDED.
+- Screenshots: `ralph/screenshots/T017-explore-{empty,default}-{light,dark,largest-text}.png`.
+- Untested / honest notes: no SwiftData-backed UI test of a history-driven (non-default) card; that path is covered by package and `ExploreModelTests`. No skeleton loading state (`@Query` is synchronous). VoiceOver checked only through accessibility labels/identifiers in UI tests, not a manual VoiceOver pass. `/impeccable polish` and `audit` were not run. Start values are shown but not yet prefilled into the brew form; the card links to a new brew.
