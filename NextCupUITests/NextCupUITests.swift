@@ -1253,4 +1253,87 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 10))
     XCTAssertTrue(app.tabBars.buttons["Beans"].isSelected)
   }
+
+  // MARK: Paper import (T025)
+
+  /// Saves review-screen screenshots to `ralph/screenshots` when `.capture` exists there.
+  @MainActor
+  func testPaperImportScreenshots() throws {
+    let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+      .deletingLastPathComponent().appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folder.appendingPathComponent(".capture").path),
+      "create ralph/screenshots/.capture to save screenshots")
+    let directory = folder.path
+    let variants: [(name: String, arguments: [String])] = [
+      ("light", []),
+      ("dark", ["-AppleInterfaceStyle", "Dark"]),
+      (
+        "largest-text",
+        ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+      ),
+    ]
+    for variant in variants {
+      let app = XCUIApplication()
+      app.launchArguments =
+        ["-inMemoryStore", "-resetNavigationState", "-resetDraft"] + variant.arguments
+      app.launch()
+      element(app, "journal.import").tap()
+      element(app, "import.sample").tap()
+      try shoot(app, "\(directory)/T025-choose-\(variant.name).png")
+      let read = element(app, "import.read.device")
+      scrollUntilHittable(read, in: app)
+      read.tap()
+      XCTAssertTrue(element(app, "import.review").waitForExistence(timeout: 30))
+      try shoot(app, "\(directory)/T025-review-\(variant.name).png")
+      app.swipeUp()
+      try shoot(app, "\(directory)/T025-review-lower-\(variant.name).png")
+      app.terminate()
+    }
+  }
+
+  private func shoot(_ app: XCUIApplication, _ path: String) throws {
+    try app.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: path))
+  }
+
+  @MainActor
+  func testPaperImportCannotSaveUntilConfirmed() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    element(app, "journal.import").tap()
+    XCTAssertTrue(element(app, "import.sheet").waitForExistence(timeout: 5))
+
+    element(app, "import.sample").tap()
+    let read = element(app, "import.read.device")
+    XCTAssertTrue(read.waitForExistence(timeout: 5))
+    read.tap()
+
+    XCTAssertTrue(element(app, "import.review").waitForExistence(timeout: 30), "page was not read")
+    let save = element(app, "import.save")
+    XCTAssertFalse(save.isEnabled, "Save must stay off until the page is confirmed")
+    let dose = element(app, "import.dose")
+    var swipes = 0
+    while !dose.exists && swipes < 6 {
+      app.swipeUp()
+      swipes += 1
+    }
+    XCTAssertEqual(dose.value as? String, "18")
+
+    // Editing a field after confirming asks for the confirmation again.
+    let confirm = element(app, "import.confirm")
+    scrollUntilHittable(confirm, in: app)
+    // The switch sits at the trailing edge of its row.
+    func flip() { confirm.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap() }
+    flip()
+    XCTAssertTrue(save.waitForExistence(timeout: 2) && save.isEnabled, "confirming enables Save")
+    flip()
+    XCTAssertFalse(save.isEnabled)
+    flip()
+    save.tap()
+
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 5))
+    let row = app.descendants(matching: .any)
+      .matching(NSPredicate(format: "label CONTAINS[c] 'Sample Blend'")).firstMatch
+    XCTAssertTrue(row.waitForExistence(timeout: 5), "the imported brew is in the journal")
+  }
 }

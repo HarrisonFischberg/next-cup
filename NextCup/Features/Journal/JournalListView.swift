@@ -20,6 +20,7 @@ struct JournalListView: View {
   @State private var pendingDelete: UUID?
   @State private var deleteTimer: Task<Void, Never>?
   @State private var deleteError: String?
+  @State private var showImport = false
   @AppStorage(JournalStorage.methodKey) private var methodFilter = ""
   @AppStorage(JournalStorage.beanKey) private var beanFilter = ""
   @AppStorage(JournalStorage.sortKey) private var sortChoice = JournalSort.newest.rawValue
@@ -76,6 +77,15 @@ struct JournalListView: View {
     .safeAreaInset(edge: .top, spacing: 0) { if !logged.isEmpty { filterBar } }
     .safeAreaInset(edge: .bottom, spacing: 0) { toast }
     .toolbar {
+      ToolbarItem(placement: .topBarLeading) {
+        Button {
+          showImport = true
+        } label: {
+          Image(systemName: "doc.text.viewfinder")
+        }
+        .accessibilityLabel("Import a journal page")
+        .accessibilityIdentifier("journal.import")
+      }
       if !logged.isEmpty {
         ToolbarItem(placement: .primaryAction) {
           Button {
@@ -93,6 +103,9 @@ struct JournalListView: View {
     // identifiers of the rows inside it.
     .background {
       Color.clear.accessibilityElement().accessibilityIdentifier("tab.root.journal")
+    }
+    .sheet(isPresented: $showImport) {
+      PaperImportView(context: context) { showImport = false }
     }
     .onChange(of: scenePhase) { _, phase in if phase != .active { commitPendingDelete() } }
     .onDisappear { commitPendingDelete() }
