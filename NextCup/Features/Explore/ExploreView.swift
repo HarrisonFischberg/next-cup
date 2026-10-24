@@ -41,6 +41,18 @@ struct ExploreView: View {
     .background(DS.bg)
     .navigationTitle("Explore")
     .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      if let taxonomy = ExploreModel.taxonomy {
+        ToolbarItem(placement: .topBarTrailing) {
+          NavigationLink {
+            FlavorExplorerView(taxonomy: taxonomy)
+          } label: {
+            Label("Flavors", systemImage: "book")
+          }
+          .accessibilityIdentifier("explore.flavors")
+        }
+      }
+    }
     // A marker, not an identifier on the list: that would replace the
     // identifiers of the cards inside it.
     .background {

@@ -54,6 +54,13 @@ struct TaxonomyTests {
     #expect(taxonomy.map("lemon", in: .origin).bucket == nil)
   }
 
+  @Test func listsBundledWordsPerBucket() throws {
+    let taxonomy = try taxonomy()
+    #expect(taxonomy.words(for: "citrus", in: .flavor) == ["lemon", "lime"])
+    #expect(taxonomy.words(for: "east-africa", in: .origin) == ["ethiopia"])
+    #expect(taxonomy.words(for: "citrus", in: .origin).isEmpty)
+  }
+
   @Test func userAliasMapsAnUnmappedValue() throws {
     let taxonomy = try taxonomy()
     let aliases = try #require(taxonomy.alias(mapping: "Atlantis", to: "berry", in: .flavor))

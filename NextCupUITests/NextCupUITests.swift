@@ -61,6 +61,39 @@ final class NextCupUITests: XCTestCase {
   }
 
   @MainActor
+  func testFlavorExplorerReachesEveryBucket() {
+    let app = launch()
+    app.tabBars.buttons["Explore"].tap()
+    let entry = element(app, "explore.flavors")
+    XCTAssertTrue(entry.waitForExistence(timeout: 10))
+    entry.tap()
+    XCTAssertTrue(element(app, "flavor.list").waitForExistence(timeout: 10))
+    let buckets = [
+      "flavor": [
+        "citrus", "stone-fruit", "berry", "tropical", "floral", "chocolate", "nutty", "caramel",
+        "spice", "roasted",
+      ],
+      "origin": ["east-africa", "central-america", "south-america", "asia-pacific", "caribbean"],
+      "process": ["washed", "natural", "honey", "experimental"],
+      "roast": ["light", "medium", "dark"],
+      "brewer": ["pourOver", "immersion", "espresso", "cold"],
+    ]
+    for (dimension, keys) in buckets {
+      for key in keys {
+        let row = element(app, "flavor.bucket.\(dimension).\(key)")
+        // The list is lazy: start from the top each time, then scroll down to the row.
+        for _ in 0..<6 { app.swipeDown() }
+        scrollUntilHittable(row, in: app)
+        XCTAssertTrue(row.isHittable, "bucket \(dimension).\(key) is not reachable")
+      }
+    }
+    for _ in 0..<14 { app.swipeDown() }
+    element(app, "flavor.bucket.flavor.citrus").tap()
+    XCTAssertTrue(element(app, "flavor.detail.flavor.citrus").waitForExistence(timeout: 10))
+    XCTAssertTrue(app.staticTexts["WORDS THAT MAP HERE"].exists)
+  }
+
+  @MainActor
   func testMalformedDeepLinkIsIgnored() {
     let app = launch(deepLink: "nextcup://recipe/not-a-uuid")
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
