@@ -47,3 +47,5 @@ Pending owner approval of `docs/blueprint.md` §6.
 | Live Activity | Adopted (T026); timer state only |
 | Photo metadata | EXIF and GPS stripped before storing or sending (T009) |
 | Third-party SDKs | None |
+| AI keys (T021) | Keychain generic-password items, `WhenUnlockedThisDeviceOnly`, service `app.rarecreatures.nextcup.ai`; cleared by delete all; no network call made yet |
+| AI disclosure version and per-feature provider/model IDs (T021) | `UserDefaults` only; contain no secrets |

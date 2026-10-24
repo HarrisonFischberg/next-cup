@@ -1,0 +1,174 @@
+import SwiftUI
+
+/// Settings → AI: bring-your-own keys, the one-time disclosure and a provider
+/// and model for each feature. Nothing here makes a network call.
+struct AISettingsView: View {
+  private let keychain = KeychainStore()
+  @State private var drafts: [AIProvider: String] = [:]
+  @State private var saved: Set<AIProvider> = []
+  @State private var pending: AIProvider?
+  @State private var errorMessage: String?
+
+  var body: some View {
+    List {
+      if let errorMessage {
+        StateBanner(kind: .error, message: errorMessage, actionTitle: "Dismiss") {
+          self.errorMessage = nil
+        }
+        .accessibilityIdentifier("ai.error")
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(DS.bg)
+      }
+      ForEach(AIProvider.allCases, id: \.self) { provider in keySection(provider) }
+      Section {
+        ForEach(AIFeature.allCases, id: \.self) { feature in FeatureModelRow(feature: feature) }
+      } header: {
+        Text("Model for each feature")
+      } footer: {
+        Text("Type the model ID your provider documents. Nothing is chosen for you.")
+      }
+    }
+    .listStyle(.insetGrouped)
+    .scrollContentBackground(.hidden)
+    .background(DS.bg)
+    .navigationTitle("AI")
+    .navigationBarTitleDisplayMode(.inline)
+    .onAppear { saved = Set(AIProvider.allCases.filter(keychain.hasKey)) }
+    .sheet(item: $pending) { provider in
+      AIDisclosureView(provider: provider) {
+        AIPreferences().acceptDisclosure()
+        pending = nil
+        store(provider)
+      } cancel: {
+        pending = nil
+      }
+    }
+    .accessibilityIdentifier("settings.ai.root")
+  }
+
+  private func keySection(_ provider: AIProvider) -> some View {
+    Section {
+      if saved.contains(provider) {
+        LabeledContent("Key", value: "Saved on this iPhone")
+          .listRowBackground(DS.paper)
+        Button("Remove key", role: .destructive) { remove(provider) }
+          .frame(minHeight: DS.Size.control).listRowBackground(DS.paper)
+          .accessibilityIdentifier("ai.remove.\(provider.rawValue)")
+      } else {
+        SecureField(
+          "API key",
+          text: Binding(get: { drafts[provider] ?? "" }, set: { drafts[provider] = $0 })
+        )
+        .textContentType(.password).textInputAutocapitalization(.never).autocorrectionDisabled()
+        .submitLabel(.done).frame(minHeight: DS.Size.control).listRowBackground(DS.paper)
+        .accessibilityIdentifier("ai.key.\(provider.rawValue)")
+        Button("Save key") { requestSave(provider) }
+          .frame(minHeight: DS.Size.control).listRowBackground(DS.paper)
+          .disabled((drafts[provider] ?? "").trimmingCharacters(in: .whitespaces).isEmpty)
+          .accessibilityIdentifier("ai.save.\(provider.rawValue)")
+      }
+    } header: {
+      Text(provider.title)
+    } footer: {
+      Text("Kept in the Keychain on this device only. Not backed up, not exported.")
+    }
+  }
+
+  private func requestSave(_ provider: AIProvider) {
+    if AIPreferences().hasAcceptedDisclosure { store(provider) } else { pending = provider }
+  }
+
+  private func store(_ provider: AIProvider) {
+    do {
+      try keychain.setKey(drafts[provider] ?? "", for: provider)
+      drafts[provider] = nil
+      saved.insert(provider)
+      errorMessage = nil
+    } catch {
+      errorMessage = "The key was not saved. \(error.localizedDescription)"
+    }
+  }
+
+  private func remove(_ provider: AIProvider) {
+    do {
+      try keychain.removeKey(for: provider)
+      saved.remove(provider)
+    } catch {
+      errorMessage = "The key was not removed. \(error.localizedDescription)"
+    }
+  }
+}
+
+extension AIProvider: Identifiable {
+  var id: String { rawValue }
+}
+
+private struct FeatureModelRow: View {
+  let feature: AIFeature
+  @AppStorage private var provider: String
+  @AppStorage private var model: String
+
+  init(feature: AIFeature) {
+    self.feature = feature
+    _provider = AppStorage(
+      wrappedValue: AIProvider.anthropic.rawValue, AIPreferences.providerKey(feature))
+    _model = AppStorage(wrappedValue: "", AIPreferences.modelKey(feature))
+  }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: DS.Space.sm) {
+      Text(feature.title).font(DS.Font.headline).foregroundStyle(DS.ink)
+      Picker("Provider", selection: $provider) {
+        ForEach(AIProvider.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
+      }
+      .pickerStyle(.segmented)
+      TextField("Model ID", text: $model)
+        .textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.done)
+        .frame(minHeight: DS.Size.control)
+        .accessibilityIdentifier("ai.model.\(feature.rawValue)")
+    }
+    .padding(.vertical, DS.Space.xs)
+    .listRowBackground(DS.paper)
+    .accessibilityElement(children: .contain)
+  }
+}
+
+/// Shown once, before the first key is saved and so before any AI call.
+private struct AIDisclosureView: View {
+  let provider: AIProvider
+  let agree: () -> Void
+  let cancel: () -> Void
+
+  var body: some View {
+    NavigationStack {
+      List {
+        Section {
+          Text(
+            "When you tap an AI action, Next Cup sends the brew, notes and a slice of your history to \(provider.title) with your own key."
+          )
+          Text("A photo, if you add one, is sent without location or camera metadata.")
+          Text(
+            "Nothing is sent until you tap, and never without a key. \(provider.title) handles the request under its own terms; Next Cup has no server and sees none of it."
+          )
+          Text("You can remove the key at any time.")
+        }
+        .font(.body).foregroundStyle(DS.ink).listRowBackground(DS.paper)
+      }
+      .listStyle(.insetGrouped)
+      .scrollContentBackground(.hidden)
+      .background(DS.bg)
+      .navigationTitle("Before you use AI")
+      .navigationBarTitleDisplayMode(.inline)
+      .safeAreaInset(edge: .bottom) {
+        VStack(spacing: DS.Space.sm) {
+          SteelButton(title: "I understand", action: agree)
+            .accessibilityIdentifier("ai.disclosure.agree")
+          SteelButton(title: "Not now", kind: .secondary, action: cancel)
+            .accessibilityIdentifier("ai.disclosure.cancel")
+        }
+        .padding(DS.Space.lg).background(DS.bg)
+      }
+    }
+    .accessibilityIdentifier("ai.disclosure")
+  }
+}
