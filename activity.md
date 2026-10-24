@@ -565,3 +565,7 @@ The loop's iteration was blocked because `grep`, `git ls-files` and compound she
 - Found and fixed: no `PrivacyInfo.xcprivacy` (added, UserDefaults CA92.1, no tracking or collected data); the AI disclosure did not say the provider may charge the user's account (line added).
 - Wrote: `docs/compliance-checklist.md` (9 PASS, 6 NEEDS REVIEW, 4 NOT APPLICABLE, 1 BLOCKED), `docs/ux-baseline.md` (missing: photo zoom, shake/Cmd-Z undo, localization, keyboard shortcuts), `docs/claims-evidence.md`, a verified section in `docs/data-inventory.md`, and `docs/legal/privacy-policy-draft.md` (DRAFT, unreviewed, owner facts UNKNOWN).
 - Not done: Opus audit of the consent, data, vendor and deletion rows; VoiceOver; the Gate A and Gate B reviews.
+
+### Final verification of T024 to T030 (supervised, 2026-10-24)
+
+- Package 152, app unit 220, lint and tokens pass. UI suite: 44 tests (17 skipped, screenshot capture only). The full run is not reliably green: two full runs each had one different failure, both in keyboard-driven tests (`testBeansAddCorrectFilterAndDeleteWithUndo` after my manual simulator session, `testBrewFormDraftSurvivesRelaunch` on the next run, where the software keyboard's Done button could not be scrolled to). Each passed when rerun alone (the first after a simulator reboot). Treat as flaky keyboard handling in the UI tests, not as proven product bugs; the next step is to make those tests robust (no dependence on the software keyboard's Done button).
