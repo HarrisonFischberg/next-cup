@@ -49,3 +49,4 @@ Pending owner approval of `docs/blueprint.md` §6.
 | Third-party SDKs | None |
 | AI keys (T021) | Keychain generic-password items, `WhenUnlockedThisDeviceOnly`, service `app.rarecreatures.nextcup.ai`; cleared by delete all; no network call made yet |
 | AI disclosure version and per-feature provider/model IDs (T021) | `UserDefaults` only; contain no secrets |
+| Paper import (T025) | Photo of a journal page chosen with `PhotosPicker` (no library permission). Text is read on device by Apple Vision with no network. Only on an explicit tap of "Read with my AI key" is the metadata-stripped photo sent to the user's chosen provider (existing OpenAI/Anthropic rows). The page photo is kept on the saved brew only after the user confirms; nothing is stored before that |
