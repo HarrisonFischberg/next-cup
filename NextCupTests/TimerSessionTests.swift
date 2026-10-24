@@ -29,6 +29,14 @@ private final class RecordingHaptics: TimerHaptics {
 }
 
 @MainActor
+private final class RecordingActivity: TimerActivityControlling {
+  private(set) var updates: [TimerState] = []
+  private(set) var endCount = 0
+  func update(setup: TimerSetup, state: TimerState) { updates.append(state) }
+  func end() { endCount += 1 }
+}
+
+@MainActor
 @Suite("TimerSession")
 struct TimerSessionTests {
   private func makeRecipe(total: Int? = 120) -> Recipe {
@@ -47,12 +55,14 @@ struct TimerSessionTests {
 
   private func makeSession(
     total: Int? = 120, dose: Double = 15, clock: FakeClock = FakeClock(),
-    store: MemoryStore = MemoryStore(), haptics: RecordingHaptics = RecordingHaptics()
+    store: MemoryStore = MemoryStore(), haptics: RecordingHaptics = RecordingHaptics(),
+    activity: RecordingActivity = RecordingActivity()
   ) throws -> (TimerSession, FakeClock, MemoryStore, RecordingHaptics) {
     let setup = try TimerPlanBuilder.setup(for: makeRecipe(total: total), doseG: dose)
     return (
-      TimerSession(setup: setup, clock: clock, store: store, haptics: haptics), clock, store,
-      haptics
+      TimerSession(
+        setup: setup, clock: clock, store: store, haptics: haptics, activity: activity),
+      clock, store, haptics
     )
   }
 
@@ -158,11 +168,15 @@ struct TimerSessionTests {
     let clock = FakeClock()
     let store = MemoryStore()
     let setup = try TimerPlanBuilder.setup(for: makeRecipe(), doseG: 15)
-    let first = TimerSession(setup: setup, clock: clock, store: store, haptics: RecordingHaptics())
+    let first = TimerSession(
+      setup: setup, clock: clock, store: store, haptics: RecordingHaptics(),
+      activity: RecordingActivity())
     first.start()
     clock.advance(45)
 
-    let second = TimerSession(setup: setup, clock: clock, store: store, haptics: RecordingHaptics())
+    let second = TimerSession(
+      setup: setup, clock: clock, store: store, haptics: RecordingHaptics(),
+      activity: RecordingActivity())
     #expect(second.state.phase == .running)
     #expect(second.state.currentIndex == 1)
   }
@@ -172,12 +186,67 @@ struct TimerSessionTests {
     let store = MemoryStore()
     let firstSetup = try TimerPlanBuilder.setup(for: makeRecipe(), doseG: 15)
     let first = TimerSession(
-      setup: firstSetup, clock: clock, store: store, haptics: RecordingHaptics())
+      setup: firstSetup, clock: clock, store: store, haptics: RecordingHaptics(),
+      activity: RecordingActivity())
     first.start()
 
     let otherSetup = try TimerPlanBuilder.setup(for: makeRecipe(total: 200), doseG: 15)
     let second = TimerSession(
-      setup: otherSetup, clock: clock, store: store, haptics: RecordingHaptics())
+      setup: otherSetup, clock: clock, store: store, haptics: RecordingHaptics(),
+      activity: RecordingActivity())
     #expect(second.state.phase == .notStarted)
+  }
+
+  // MARK: Live Activity
+
+  @Test func activityHearsStartPauseResumeAndStepChangesThenEnds() throws {
+    let activity = RecordingActivity()
+    let (session, clock, _, _) = try makeSession(activity: activity)
+    session.tick()
+    #expect(activity.updates.isEmpty, "nothing to show before the start")
+    session.start()
+    clock.advance(10)
+    session.tick()
+    #expect(activity.updates.count == 1, "plain seconds never reach the activity")
+    session.pause()
+    session.resume()
+    clock.advance(31)
+    session.tick()
+    #expect(
+      activity.updates.map(\.phase) == [.running, .paused, .running, .running])
+    #expect(activity.updates.last?.currentIndex == 1)
+    #expect(activity.endCount == 0)
+    session.endEarly()
+    #expect(activity.endCount == 1)
+  }
+
+  @Test func contentStateCountsFromTheVirtualStartAndFreezesWhilePaused() throws {
+    let now = Date(timeIntervalSince1970: 2_000_000)
+    let (session, clock, _, _) = try makeSession()
+    session.start()
+    clock.advance(50)
+    session.tick()
+    let running = try #require(TimerActivityAttributes.ContentState(state: session.state, now: now))
+    #expect(running.startDate == now.addingTimeInterval(-50))
+    #expect(running.endDate == running.startDate.addingTimeInterval(120))
+    #expect(running.pausedAt == nil)
+    #expect(running.stepLabel == "Pour")
+    #expect(running.nextLabel == "Drawdown")
+    #expect(running.stepNumber == 2)
+
+    session.pause()
+    let paused = try #require(TimerActivityAttributes.ContentState(state: session.state, now: now))
+    #expect(paused.pausedAt == now)
+
+    session.endEarly()
+    #expect(TimerActivityAttributes.ContentState(state: session.state, now: now) == nil)
+  }
+
+  @Test func activityLinkReopensTheTimerAtTheScaledDose() throws {
+    let recipe = makeRecipe()
+    let setup = try TimerPlanBuilder.setup(for: recipe, doseG: 30)
+    let attributes = TimerActivityAttributes(setup: setup)
+    #expect(DeepLink(url: attributes.linkURL) == .timer(recipeID: recipe.id, doseG: 30))
+    #expect(attributes.stepCount == 3)
   }
 }
