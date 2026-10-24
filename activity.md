@@ -422,3 +422,65 @@ Untested / honest gaps:
 - The Edit alert was not driven in a UI test (unit tests cover edit values and units). Ounce/°F paths covered by unit tests only.
 - The journal row line is asserted by the UI test but not viewed in a screenshot; neither is the edit-form history.
 - AI suggestions will share the card flow in T023; none are produced yet.
+
+## T019 — Export, merge import, backup, delete all
+
+Added `Persistence/DataArchive.swift` (record types, one per model), `Persistence/DataExchange.swift` (exporter, importer with preview, daily backup keep 7, eraser), `Features/Settings/DataSettingsView.swift` (Settings → Your data), a launch backup hook in `NextCupApp`, `createdAt` on the `Identified` protocol, and `DataExchangeTests` (11 tests). Built-ins match by `builtInKey` on import. Conflicts keep the local row unless the user picks the imported one. Delete all wipes store, drafts folder, backups, the app's preference domain (selected tab kept) and generic-password Keychain items, then reseeds; Undo re-imports an in-memory snapshot for 8 s.
+
+Commands and results:
+- `swift format lint --recursive --strict ...`: clean.
+- `swift test --package-path Packages/NextCupKit`: 125 tests passed.
+- `xcodebuild ... build`: succeeded.
+- `xcodebuild ... test` (all app + UI tests): TEST SUCCEEDED.
+- UI test `testYourDataDeleteAllCanBeUndone` plus capture tests passed.
+
+Screenshots (`ralph/screenshots/`): `T019-data-screen-{light,dark,largest-text}.png`, `T019-data-deleted-{light,dark,largest-text}.png`.
+
+Not done or not verified:
+- `AIRequest` rows are not exported (transient queue).
+- An edit that only changes a built-in recipe's steps is not flagged as a conflict.
+- Keychain wipe is tested through an injected stub only; nothing writes Keychain items yet. Re-check against `KeychainStore` in T021.
+- Undo restores data only, not backups or keys.
+- The share sheet and the file-importer sheet were not exercised on screen.
+- `/impeccable polish` and `/impeccable audit` and a VoiceOver pass were not run.
+
+## 2026-10-24 — T020 settings: units, privacy summary, about
+
+What changed:
+- `SettingsRootView`: Units section (weight g/oz, temperature °C/°F segmented pickers) writing the `UnitStorage` keys that journal, recipe detail, timer and brew form already read through `@AppStorage`; Privacy page (`PrivacySummaryView`); About section with version. Data controls were already under "Your data" (T019).
+- UI test `testChangingUnitsInSettingsUpdatesRecipesAndTheBrewForm`: switches to ounces, checks recipe water and the brew form dose tile, then restores grams.
+
+Commands and results:
+- `swift format lint --recursive --strict ...`: clean.
+- `xcodebuild ... test` (full app + UI suite): TEST SUCCEEDED, 38 executed, 15 skipped, 0 failures. Two earlier full runs failed (5 and 8 failures); my first version of the new test failed because a blank form shows no unit until the dose has a value, so it now steps the dose first. I could not read the failure messages of the other failing tests in those runs (xcresulttool was not permitted), and they passed in the final run, so whether they were order or timing flakes is unconfirmed.
+- Not re-run in this task: `swift test --package-path Packages/NextCupKit` (no package code changed).
+
+Not done or not verified:
+- No screenshots saved to `ralph/screenshots/` (light, dark, largest text) for the Settings screen.
+- `/impeccable polish`, `/impeccable audit` and a VoiceOver pass were not run.
+- The timer screen under ounces is covered by code reading only (it reads the same `@AppStorage` keys), not by the UI test; the journal rows likewise.
+- The 15 skipped UI tests were not examined.
+
+## 2026-10-24 — T021 Keychain, AI disclosure, model picker
+
+- Added `NextCup/Features/AI/AIConfig.swift` (`KeychainStore`, `AIPreferences`) and `AISettingsView.swift` (key entry per provider, one-time disclosure sheet shown before the first key is saved, provider + model ID per feature). Linked from Settings → AI. Tests in `NextCupTests/AIConfigTests.swift`.
+- Keys: Keychain only (`WhenUnlockedThisDeviceOnly`); `DataEraser.clearKeychain` already wipes them on delete all. Preferences hold only disclosure version and provider/model IDs.
+- Commands: `swift format lint --strict` clean; `xcodebuild ... -only-testing:NextCupTests test` 158 tests passed; AIConfigTests 5/5.
+- Untested: no screenshots (light/dark/largest text) and no VoiceOver check of Settings → AI or the disclosure sheet; UI tests were not run. The model "picker" is a free-text model ID per feature because the model list needs `GET /v1/models` (network, T022); no model ID is hardcoded.
+
+## 2026-10-24 — T022 AIClient, Transport, AIQueue
+
+- `NextCupKit/AI/`: `JSONSchema` (small schema type: builds the provider schema, validates output exactly, tells booleans from numbers), `AIClient` (`Transport` protocol + `URLSessionTransport`; Anthropic `/v1/messages` with a forced tool, OpenAI `/v1/responses` with strict `json_schema`; optional JPEG; 60 s timeout). Refused before any I/O without accepted disclosure or a key; 401 is "key rejected"; 429/5xx retried with doubling backoff, 3 attempts max; offline is not retried; output that is not schema-valid JSON throws `invalidResponse` and is never retried.
+- App: `Features/AI/AIQueue.swift` (@Observable over `AIRequest`: enqueue is the only way a call starts, offline stays `queued` with a message, cancel, retry, `NWPathMonitor` resumes the queue; image kept as the request attachment). `AIQueue.live` wires Keychain keys and the stored disclosure flag.
+- Nothing creates a `Suggestion` from AI output yet (T023); a failed request creates none (tested).
+- Commands: `swift test --package-path Packages/NextCupKit` 138 passed (14 new `AIClientTests` with a stub transport: no key, no disclosure, request shape per provider, 401, retry cap 3, backoff, invalid outputs, offline). `xcodebuild ... -only-testing:NextCupTests test` 166 passed incl. 8 new `AIQueueTests`. `swift format lint --recursive --strict` clean.
+- A first full `xcodebuild test` reported TEST FAILED; the cause was my queue tests dropping their `ModelContainer` (known host crash, see T002); containers are now kept alive. The full UI suite was not re-run after that fix (no UI code changed).
+- Untested: real network calls (none made, by rule), the real provider response shapes beyond what the docs describe, `NWPathMonitor` on a device, `GET /v1/models`. No screenshots (no UI). `/goal` not invoked as a tool.
+
+## T023 — AI brew diagnosis and insights as Suggestions
+
+- Added `NextCup/Features/AI/AISuggestions.swift`: prompt/payload builders for diagnosis (one brew) and insights (up to 8 brews of one bean), a strict schema (field in grind/water/temperature/time, toValue, rationale), and `ingest(request:in:)` that makes a `Suggestion` (`source = .ai`, `modelID`, `sourceBrew`, `fromValue` read from the brew, id = request id so repeats never double). Unusable answers (bad field, non-numeric value, no brew, wrong feature) store nothing.
+- `AIQueue` gained `onDone`, set in `live(context:)` to ingest; `SuggestionService.supersedeOlder` is now internal so a newer AI card dismisses the stale one, same as rules. The existing card, accept/edit/dismiss/undo and next-brew match work unchanged.
+- Tests: `NextCupTests/AISuggestionsTests.swift` (8 tests).
+- Commands: `swift format lint --strict ...` clean; `xcodebuild ... test -only-testing:NextCupTests` → 174 tests passed.
+- Not done / untested: no button yet starts a diagnosis or insights request from the UI (nothing calls `enqueue` with these payloads; no screenshots, no UI test, no real provider call). `swift test` for the package and the UI test bundle were not re-run (package untouched).
