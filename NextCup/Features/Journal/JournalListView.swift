@@ -284,7 +284,7 @@ enum JournalStorage {
 // MARK: Pieces
 
 /// A bordered menu button that names what it filters and what is chosen.
-private struct FilterMenu<Content: View>: View {
+struct FilterMenu<Content: View>: View {
   let title: String
   let value: String
   @ViewBuilder let content: Content
@@ -336,6 +336,10 @@ private struct BrewRow: View {
       if !brew.notes.isEmpty {
         Text(brew.notes).font(.footnote).foregroundStyle(DS.ink).lineLimit(2)
       }
+      if let dialIn {
+        Text(dialIn).font(.footnote).foregroundStyle(DS.ink2)
+          .accessibilityIdentifier("journal.row.dialin")
+      }
     }
     .padding(DS.Space.md)
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -351,6 +355,20 @@ private struct BrewRow: View {
       parts.append(ratio)
     }
     if let seconds = brew.totalTimeS { parts.append(RecipeFormat.clock(seconds)) }
+    return parts.isEmpty ? nil : parts.joined(separator: "  ·  ")
+  }
+
+  /// The suggestion this cup produced and the one it followed (X4).
+  private var dialIn: String? {
+    var parts: [String] = []
+    if let made = (brew.suggestionsMade ?? []).max(by: { $0.createdAt < $1.createdAt }) {
+      parts.append(
+        "Next: \(SuggestionFormat.headline(made, units)) (\(SuggestionFormat.title(made.state).lowercased()))"
+      )
+    }
+    if let followed = brew.suggestionFollowed {
+      parts.append("Followed: \(SuggestionFormat.headline(followed, units))")
+    }
     return parts.isEmpty ? nil : parts.joined(separator: "  ·  ")
   }
 

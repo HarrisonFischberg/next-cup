@@ -722,6 +722,414 @@ final class NextCupUITests: XCTestCase {
     }
   }
 
+  // MARK: Beans (S03, S04)
+
+  /// Adds a bean through the editor sheet: name, roaster and bag weight.
+  @MainActor
+  private func addBean(_ app: XCUIApplication, name: String, roaster: String, weight: String) {
+    app.buttons["Add a bean"].firstMatch.tap()
+    let field = element(app, "beans.editor.name")
+    XCTAssertTrue(field.waitForExistence(timeout: 5))
+    field.tap()
+    field.typeText(name)
+    let roasterField = element(app, "beans.editor.roaster")
+    roasterField.tap()
+    roasterField.typeText(roaster)
+    app.buttons["Done"].tap()
+    let bag = element(app, "beans.editor.bagWeight")
+    scrollUntilHittable(bag, in: app)
+    bag.tap()
+    bag.typeText(weight)
+    app.buttons["Done"].tap()
+    app.buttons["beans.editor.save"].tap()
+    XCTAssertTrue(element(app, "beans.editor").waitForNonExistence(timeout: 5))
+  }
+
+  @MainActor
+  private func openBeans() -> XCUIApplication {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Beans"].tap()
+    XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 5))
+    return app
+  }
+
+  /// T014: add a bean, see freshness and what is left, correct the amount, filter
+  /// by status, and delete with Undo.
+  @MainActor
+  func testBeansAddCorrectFilterAndDeleteWithUndo() {
+    let app = openBeans()
+    XCTAssertTrue(app.staticTexts["NO BEANS YET"].exists, "empty library offers the next action")
+
+    addBean(app, name: "Washed Ethiopia", roaster: "Tiny Roastery", weight: "250")
+    let row = element(app, "beans.row.Washed Ethiopia")
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+    XCTAssertTrue(row.label.contains("250 g left"), "row shows what is left: \(row.label)")
+    XCTAssertTrue(row.label.contains("Tiny Roastery"))
+    XCTAssertFalse(app.staticTexts["NO BEANS YET"].exists)
+
+    // Detail: freshness unknown without a roast date; correct the amount.
+    row.tap()
+    XCTAssertTrue(element(app, "bean.freshness").waitForExistence(timeout: 5))
+    XCTAssertTrue(element(app, "bean.freshness").label.contains("No roast date"))
+    let remaining = element(app, "bean.remaining")
+    XCTAssertTrue(remaining.label.contains("250 g of 250 g"), "got \(remaining.label)")
+    element(app, "bean.correct").tap()
+    let amount = app.alerts.textFields.firstMatch
+    XCTAssertTrue(amount.waitForExistence(timeout: 5))
+    amount.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 5) + "100")
+    app.alerts.buttons["Save"].tap()
+    XCTAssertTrue(
+      remaining.waitForExistence(timeout: 5) && remaining.label.contains("100 g of 250 g"),
+      "got \(remaining.label)")
+    app.navigationBars.buttons.element(boundBy: 0).tap()
+    XCTAssertTrue(element(app, "beans.row.Washed Ethiopia").label.contains("100 g left"))
+
+    // Status filter: the bean is in use, so Wishlist shows the way out.
+    element(app, "beans.filter.status").tap()
+    app.buttons["Wishlist"].tap()
+    XCTAssertTrue(app.staticTexts["NO MATCHES"].waitForExistence(timeout: 5))
+    app.buttons["Clear filters"].tap()
+    XCTAssertTrue(element(app, "beans.row.Washed Ethiopia").waitForExistence(timeout: 5))
+
+    // Delete with Undo brings it back; letting the toast run out removes it.
+    element(app, "beans.row.Washed Ethiopia").swipeLeft()
+    app.buttons["Delete"].tap()
+    XCTAssertTrue(app.staticTexts["Bean deleted"].waitForExistence(timeout: 5))
+    app.buttons["UNDO"].tap()
+    XCTAssertTrue(element(app, "beans.row.Washed Ethiopia").waitForExistence(timeout: 5))
+    element(app, "beans.row.Washed Ethiopia").swipeLeft()
+    app.buttons["Delete"].tap()
+    XCTAssertTrue(app.staticTexts["NO BEANS YET"].waitForExistence(timeout: 5))
+  }
+
+  /// Writes bean library, detail and editor screenshots in light, dark and the
+  /// largest text size. Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureBeanScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      if let size = variant.size {
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
+      }
+      app.launch()
+      XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+      app.tabBars.buttons["Beans"].tap()
+      XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/beans-empty-\(variant.name).png")
+      addBean(app, name: "Washed Ethiopia", roaster: "Tiny Roastery", weight: "250")
+      XCTAssertTrue(element(app, "beans.row.Washed Ethiopia").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/beans-list-\(variant.name).png")
+      element(app, "beans.row.Washed Ethiopia").tap()
+      XCTAssertTrue(element(app, "bean.freshness").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/bean-detail-\(variant.name).png")
+      element(app, "bean.edit").tap()
+      XCTAssertTrue(element(app, "beans.editor.name").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/bean-editor-\(variant.name).png")
+      app.terminate()
+    }
+  }
+
+  // MARK: Blends, freezer, best so far (T015)
+
+  /// Adds two beans, logs a graded 50/50 blend of them, then opens the first
+  /// bean's detail. `shot` is called with a name at each screen worth capturing.
+  @MainActor
+  private func runBlendFlow(_ app: XCUIApplication, shot: (String) throws -> Void) throws {
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Beans"].tap()
+    XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 5))
+    addBean(app, name: "Washed Ethiopia", roaster: "Tiny Roastery", weight: "250")
+    XCTAssertTrue(element(app, "beans.row.Washed Ethiopia").waitForExistence(timeout: 5))
+    app.buttons["Add a bean"].firstMatch.tap()
+    let field = element(app, "beans.editor.name")
+    XCTAssertTrue(field.waitForExistence(timeout: 5))
+    field.tap()
+    field.typeText("Natural Brazil")
+    app.buttons["Done"].tap()
+    let bag = element(app, "beans.editor.bagWeight")
+    scrollUntilHittable(bag, in: app)
+    bag.tap()
+    bag.typeText("250")
+    app.buttons["Done"].tap()
+    app.buttons["beans.editor.save"].tap()
+    XCTAssertTrue(element(app, "beans.row.Natural Brazil").waitForExistence(timeout: 5))
+
+    app.tabBars.buttons["Journal"].tap()
+    app.buttons["Log a brew"].firstMatch.tap()
+    XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 5))
+    XCTAssertTrue(element(app, "brewform.beans.empty").waitForExistence(timeout: 5))
+    element(app, "brewform.beans.add").tap()
+    app.buttons["Washed Ethiopia"].tap()
+    element(app, "brewform.beans.add").tap()
+    app.buttons["Natural Brazil"].tap()
+    // Share buttons appear only once the brew is a blend.
+    let moreEthiopia = app.buttons["Increase Washed Ethiopia share"]
+    XCTAssertTrue(moreEthiopia.waitForExistence(timeout: 5))
+    app.buttons["Increase Dose"].tap()
+    app.buttons["Increase Water"].tap()
+    moreEthiopia.tap()  // 55 / 45
+    try shot("brewform-blend")
+
+    app.buttons["Save brew"].tap()
+    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
+    app.buttons["Done"].tap()
+
+    app.tabBars.buttons["Beans"].tap()
+    element(app, "beans.row.Washed Ethiopia").tap()
+    XCTAssertTrue(element(app, "bean.freezer").waitForExistence(timeout: 5))
+    // 15 g dose at 55%: 8.25 g came off this bag, so 241.75 g is left (shown rounded).
+    XCTAssertTrue(
+      element(app, "bean.remaining").label.contains("of 250"),
+      "got \(element(app, "bean.remaining").label)")
+    XCTAssertFalse(element(app, "bean.remaining").label.contains("250 g of 250"))
+    element(app, "bean.freezer.toggle").tap()
+    XCTAssertTrue(element(app, "bean.freezer").label.contains("Since"))
+    try shot("bean-detail-freezer")
+    scrollUntilHittable(element(app, "bean.best"), in: app)
+    XCTAssertTrue(element(app, "bean.best").exists)
+    try shot("bean-best-so-far")
+  }
+
+  @MainActor
+  func testBlendBrewFreezerAndBestSoFarFlow() throws {
+    let app = launch()
+    try runBlendFlow(app) { _ in }
+  }
+
+  /// Writes blend, freezer and best-so-far screenshots in light, dark and the
+  /// largest text size. Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureBlendScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      if let size = variant.size {
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
+      }
+      app.launch()
+      try runBlendFlow(app) { name in
+        try save(app.screenshot(), "\(folderURL.path)/T015-\(name)-\(variant.name).png")
+      }
+      app.terminate()
+    }
+  }
+
+  // MARK: Explore recommendations (T017)
+
+  /// Opens Explore with no beans, follows its next action to add one, and returns
+  /// to see the bean's labelled default recommendation. `shot` is called with a
+  /// name at each screen worth capturing.
+  @MainActor
+  private func runExploreFlow(_ app: XCUIApplication, shot: (String) throws -> Void) throws {
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Explore"].tap()
+    XCTAssertTrue(element(app, "tab.root.explore").waitForExistence(timeout: 5))
+    XCTAssertTrue(element(app, "explore.empty").waitForExistence(timeout: 5))
+    try shot("explore-empty")
+
+    app.buttons["Add a bean"].firstMatch.tap()
+    XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 5))
+    addBean(app, name: "Washed Ethiopia", roaster: "Tiny Roastery", weight: "250")
+
+    app.tabBars.buttons["Explore"].tap()
+    let card = element(app, "explore.card.Washed Ethiopia")
+    XCTAssertTrue(card.waitForExistence(timeout: 5))
+    let basis = element(app, "explore.basis.Washed Ethiopia")
+    XCTAssertTrue(basis.label.hasPrefix("DEFAULT"), "cold start is labelled: \(basis.label)")
+    XCTAssertTrue(
+      app.staticTexts.matching(
+        NSPredicate(format: "label CONTAINS 'not based on your brews'")
+      ).firstMatch.exists)
+    try shot("explore-default")
+  }
+
+  @MainActor
+  func testExploreShowsLabelledDefaultForANewBean() throws {
+    let app = launch()
+    try runExploreFlow(app) { _ in }
+  }
+
+  /// Writes Explore screenshots in light, dark and the largest text size. Runs
+  /// only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureExploreScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      if let size = variant.size {
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
+      }
+      app.launch()
+      try runExploreFlow(app) { name in
+        try save(app.screenshot(), "\(folderURL.path)/T017-\(name)-\(variant.name).png")
+      }
+      app.terminate()
+    }
+  }
+
+  // MARK: Dial-in suggestions (T018)
+
+  /// Logs a sour cup of a bean, reads the suggestion on the saved screen and in
+  /// the journal, then starts the next brew of that bean, where the card waits.
+  /// `shot` is called with a name at each screen worth capturing.
+  @MainActor
+  private func runDialInFlow(_ app: XCUIApplication, shot: (String) throws -> Void) throws {
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Beans"].tap()
+    XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 5))
+    addBean(app, name: "Washed Ethiopia", roaster: "Tiny Roastery", weight: "250")
+    XCTAssertTrue(element(app, "beans.row.Washed Ethiopia").waitForExistence(timeout: 5))
+
+    func startBrew(_ app: XCUIApplication) {
+      app.tabBars.buttons["Journal"].tap()
+      app.buttons["Log a brew"].firstMatch.tap()
+      XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 5))
+      element(app, "brewform.beans.add").tap()
+      app.buttons["Washed Ethiopia"].tap()
+      app.buttons["Increase Dose"].tap()
+      app.buttons["Increase Water"].tap()
+    }
+
+    startBrew(app)
+    let grind = element(app, "brewform.grind")
+    scrollUntilHittable(grind, in: app)
+    grind.tap()
+    grind.typeText("20\n")
+    let sour = element(app, "brewform.verdict.sour")
+    scrollUntilHittable(sour, in: app)
+    sour.tap()
+    app.buttons["Save brew"].tap()
+    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
+    let made = element(app, "brewform.saved.suggestion")
+    XCTAssertTrue(made.waitForExistence(timeout: 5))
+    XCTAssertTrue(made.label.contains("Grind: 20 → 19"), "got \(made.label)")
+    try shot("dialin-saved")
+    app.buttons["Done"].tap()
+
+    // History: the journal row names the suggestion this cup produced.
+    let row = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Next: Grind: 20'"))
+      .firstMatch
+    XCTAssertTrue(row.waitForExistence(timeout: 5), "journal row shows the suggestion")
+
+    // The next brew of the same bean carries the card.
+    app.buttons["Log a brew"].firstMatch.tap()
+    XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 5))
+    XCTAssertFalse(element(app, "suggestion.card").exists, "no bean yet, so no card")
+    element(app, "brewform.beans.add").tap()
+    app.buttons["Washed Ethiopia"].tap()
+    let card = element(app, "suggestion.card")
+    XCTAssertTrue(card.waitForExistence(timeout: 5))
+    XCTAssertTrue(element(app, "suggestion.headline").label == "Grind from 20 to 19")
+    try shot("dialin-card")
+
+    // Accepting puts the new grind in the form; Undo takes it back.
+    element(app, "suggestion.accept").tap()
+    XCTAssertTrue(element(app, "suggestion.undo").waitForExistence(timeout: 5))
+    let nextGrind = element(app, "brewform.grind")
+    scrollUntilHittable(nextGrind, in: app)
+    XCTAssertEqual(nextGrind.value as? String, "19")
+    try shot("dialin-accepted")
+    scrollUntilHittable(element(app, "suggestion.undo"), in: app)
+    element(app, "suggestion.undo").tap()
+    XCTAssertTrue(element(app, "suggestion.accept").waitForExistence(timeout: 5))
+    XCTAssertFalse((element(app, "brewform.grind").value as? String) == "19")
+
+    // Dismissing keeps the form as it is and can be taken back as well.
+    element(app, "suggestion.dismiss").tap()
+    XCTAssertTrue(element(app, "suggestion.undo").waitForExistence(timeout: 5))
+    element(app, "suggestion.undo").tap()
+    XCTAssertTrue(element(app, "suggestion.accept").waitForExistence(timeout: 5))
+  }
+
+  @MainActor
+  func testDialInSuggestionShowsOnTheNextBrewOfThatBean() throws {
+    let app = launch()
+    try runDialInFlow(app) { _ in }
+  }
+
+  @MainActor
+  func testCaptureDialInLight() throws {
+    try captureDialIn("light", appearance: .light, size: nil)
+  }
+
+  @MainActor
+  func testCaptureDialInDark() throws {
+    try captureDialIn("dark", appearance: .dark, size: nil)
+  }
+
+  @MainActor
+  func testCaptureDialInLargestText() throws {
+    try captureDialIn(
+      "largest-text", appearance: .light, size: "UICTContentSizeCategoryAccessibilityXXXL")
+  }
+
+  /// Writes dial-in screenshots for one appearance; one test per variant keeps each
+  /// run short. Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  private func captureDialIn(
+    _ variant: String, appearance: XCUIDevice.Appearance, size: String?
+  ) throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    defer { XCUIDevice.shared.appearance = .light }
+    XCUIDevice.shared.appearance = appearance
+    do {
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      if let size { app.launchArguments += ["-UIPreferredContentSizeCategoryName", size] }
+      app.launch()
+      try runDialInFlow(app) { name in
+        try save(app.screenshot(), "\(folderURL.path)/T018-\(name)-\(variant).png")
+      }
+      app.terminate()
+    }
+  }
+
   private func save(_ screenshot: XCUIScreenshot, _ path: String) throws {
     try screenshot.pngRepresentation.write(to: URL(fileURLWithPath: path))
   }

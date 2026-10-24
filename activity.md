@@ -344,3 +344,81 @@ Untested / honest gaps:
 - The keyboard toolbar "Done" button was not found by the UI test; the form dismisses the keyboard by scrolling instead.
 - No delete for the user's own recipes yet, and no autosaved editor draft (the sheet blocks swipe-dismiss while there are unsaved changes).
 - Oz values are shown to 3 decimals so a customized copy stays within about 0.03 g of the original.
+
+## 2026-10-22 — T014 bean library, detail, roasters, stock, freshness
+
+- Added `BeanStock` (remaining = bag − Σ brew grams + manual adjustment, never below zero, unknown without a bag weight; low at ≤20%) with package tests.
+- App: `BeanFilter` (status All / In use / Buy again / Wishlist / Finished, search over name, roaster, origin, process, bag notes, sort recent / name / roast date / grade), `BeanService` (save with validation, roaster reused by name, set status, correct remaining, delete keeping brews' bean names), `BeanLibraryView` (S03: search, remembered status and order, swipe finished / delete with Undo, context menu, VoiceOver actions, empty and no-results states), `BeanDetailView` (S04: freshness and age from roast date with frozen spans, remaining with manual correction, attributes, bag flavor notes, linked brews), `BeanEditorView`. `nextcup://bean/<id>` now opens the real detail, or a "Bean not found" screen. `FilterMenu` made internal to share with the journal.
+- Commands: `swift test --package-path Packages/NextCupKit` passed (64 tests). `swift format lint --strict` clean. `xcodebuild ... test`: unit suite 107 tests passed; UI suite 25 executed, 0 failures, 7 capture tests skipped (the capture test ran separately and passed).
+- Screenshots in `ralph/screenshots/`: beans-empty, beans-list, bean-detail, bean-editor, each in `-light`, `-dark`, `-largest-text`.
+- Untested: VoiceOver on a real device (labels and actions are set, not exercised); remembered filter checked only through the storage keys, not across a UI relaunch; `/impeccable polish` and `/impeccable audit` not run; freeze/thaw UI, blends and best-so-far are T015; bean photo, bean rating entry and Explore links are not built.
+
+## 2026-10-22 — T015 blends, decaf, freeze/thaw, best-so-far
+
+What changed:
+- `NextCupKit`: `BlendShares` (dose split by shares so the parts add up to the dose, plus add / remove / rebalance helpers that keep shares at 100%, 5% to 95% per bean) and `BestSoFar` (rating spread, best brew's settings, grind history by grinder and dose; newest first within a dose). `BrewDraft.grinderID` added (old drafts still load).
+- Brew form (S02): a BEANS section (add one bean or several; blend shows each bean's grams and percent with minus / plus / remove, all 44 pt) and a GRINDER picker with "New grinder…" (remembered for the next brew). Saving a brew gives each bean its share of the dose, so each bag loses its own part. Saving an edit now replaces the brew's old bean rows; before, they would have stayed and double-charged the bags. Bean rows load in creation order so an edited blend does not reshuffle.
+- Bean detail (S04): Freezer row with Put in / Take out (frozen days stay out of age, already in `Freshness`) and the Best so far card. Decaf is a flag on the bean (T014) and shows as a tag in the blend list.
+- Replaced the "Same beans: ..." header line in the form (brew again) with the editable BEANS section.
+
+Decisions to confirm:
+- The model holds one freezer stay per bag (`frozenOn` / `thawedOn`, blueprint §2). A second freeze after a thaw is refused with a message instead of silently dropping the first stay's days from the age. Several stays would need a schema change (a list of spans, or a frozen-days total); I did not redesign the blueprint.
+- A blend brew counts toward the best-so-far card of each bean in it.
+
+Commands and results:
+- `swift test --package-path Packages/NextCupKit`: 80 passed.
+- `swift format lint --recursive --strict ...`: clean.
+- Unit target (`-only-testing:NextCupTests`): 118 passed, including 11 new in `BlendAndFreezerTests` (blend deducts from each bag, edit does not double-charge, freeze / thaw age and rules, grinder remembered, best-so-far from real brews). First runs failed twice on my own test expectations (grind history order; an unordered relationship), the second one exposing the bean-order issue fixed above.
+- UI: `testBlendBrewFreezerAndBestSoFarFlow` passed (add two beans, log a 55 / 45 blend, bag shows less than 250 g, freeze, best-so-far card present). Two earlier UI runs died because the simulator would not launch the runner or the app (no result from the tests); `simctl shutdown all` fixed it.
+- Final UI suite after a simulator restart: `xcodebuild ... test -only-testing:NextCupUITests` TEST SUCCEEDED, 27 run, 8 skipped (screenshot captures), 0 failures; this includes the existing brew-again and journal tests after the form change. The unit target was last run before the final one-line icon-size change (UI only); the full `xcodebuild test` was not run as one invocation (unit and UI runs were separate).
+- Fixed from screenshots: at the largest text size the minus / plus / remove icons overlapped; the glyphs are now capped at xxxLarge inside their 44 pt targets.
+
+Screenshots (`ralph/screenshots/`): `T015-brewform-blend-*`, `T015-bean-detail-freezer-*`, `T015-bean-best-so-far-*`, each in `-light`, `-dark`, `-largest-text` (viewed: blend form light and largest text, bean detail dark).
+
+Untested / honest gaps:
+- The screenshots and UI test show the Best so far card only in its "no grade yet" state: the flow does not grade the brew or enter a grind. The graded card (best settings, grade spread bars, grind history) is covered by package and app tests but I have not seen it rendered.
+- VoiceOver not run by hand; labels are set (share buttons name the bean, spread rows read "Grade 4.5, 2 brews"), not heard. `/impeccable polish` and `audit` not run. `/goal` not invoked as a tool; bound self-enforced.
+- No UI for removing a grinder; no Undo for the freezer toggle (it reverses with Take out). A freezer stay can be recorded once per bag (see decisions above).
+- Decaf has no filter yet; it shows as a tag on the bean detail and in the blend list.
+
+## 2026-10-22 — T016 Taxonomy service + user aliases + "Unmapped" flow
+
+- Added `Packages/NextCupKit/Sources/NextCupKit/Taxonomy/Taxonomy.swift`: loads `taxonomy.json` (rejects unknown dimensions and map entries pointing at missing buckets), `normalize` (case, accents, punctuation, spacing), `map` (user alias > bundle > `.unmapped`), `buckets(for:)`, `unmapped(in:)` for the mapping list, `alias(mapping:to:in:replacing:)` (rejects missing buckets and empty values, replaces an earlier alias). A stale alias pointing at a removed bucket falls back to the bundle.
+- `NextCup/Resources/taxonomy.json` bumped to version 2: added spaced roast names ("ultra light", "medium light", "medium dark"); the shipped-bundle test found that "Medium Light" was unmapped.
+- Tests: `TaxonomyTests` (14) covering determinism, normalization, unmapped values, alias override, per-dimension isolation, bad bundles, the shipped bundle.
+- Commands: `swift test --package-path Packages/NextCupKit` → 94 tests passed; `swift format lint --recursive --strict ...` clean; `xcodebuild ... test` → TEST SUCCEEDED.
+- Untested / not done: no SwiftData `TaxonomyAlias` wiring and no "Unmapped" UI yet (service layer only, which is what the acceptance criteria test); T017 and the bean screens consume it. No screenshots (no UI change).
+
+## 2026-10-22 — T017 Recommender + Explore tab
+
+- Added `NextCupKit/Recommender/Recommender.swift`: ranks methods by mean grade over rated brews of similar beans (similar = shares 2 of origin/process/roast buckets, or the one it has), start values from the best brew, explanation built only from computed `HistoryFacts`. Fewer than 3 similar rated brews returns the bundled roast-band default, labelled as a default (no roast level: medium default, says so).
+- App: `Features/Explore/ExploreModel.swift` (beans/brews → recommender inputs, user aliases applied) and `ExploreView.swift` (card per in-use/buy-again bean, empty state with "Add a bean", error banner if taxonomy unreadable); Explore tab now uses it.
+- Commands: `swift test --package-path Packages/NextCupKit` → 108 tests passed (14 new). `swift format lint --strict` clean. `xcodebuild ... test` (full) → TEST SUCCEEDED, 29 UI tests with 9 capture tests skipped, 0 failures. Targeted re-run of `ExploreModelTests`, `testExploreShowsLabelledDefaultForANewBean` and `testCaptureExploreScreenshots` → TEST SUCCEEDED.
+- Screenshots: `ralph/screenshots/T017-explore-{empty,default}-{light,dark,largest-text}.png`.
+- Untested / honest notes: no SwiftData-backed UI test of a history-driven (non-default) card; that path is covered by package and `ExploreModelTests`. No skeleton loading state (`@Query` is synchronous). VoiceOver checked only through accessibility labels/identifiers in UI tests, not a manual VoiceOver pass. `/impeccable polish` and `audit` were not run. Start values are shown but not yet prefilled into the brew form; the card links to a new brew.
+
+## 2026-10-23 — T018 Rule-based dial-in + Suggestion cards
+
+What changed:
+- `NextCupKit/DialIn/DialInRules.swift`: verdict + brew values → one `SuggestionDraft` or `.keep`. Sour: finer grind (numeric settings step by 1, text around the number kept), else +2 °C (cap 99), else longer steep (immersion/cold). Bitter: the mirror. Weak/strong: water -6% / +8% (espresso: output weight -/+10%, to 0.5 g). Only parameters the method tracks; balanced keeps everything. One lever per suggestion.
+- App: `SuggestionService` (stores a `.rules` Suggestion linked to its brew after a save, replaces an unanswered one on edit, never rewrites an answered one, dismisses older unanswered ones for the same beans, `match` finds the card for the next brew by bean, or by method when neither brew has beans), `SuggestionFormat` (units-aware text), `SuggestionCard` (Accept / Edit / Dismiss, Undo after any answer, no confirm dialog), `SuggestionHistory`.
+- Brew form: card under BEANS on a new brew; accept applies to the draft and marks the saved brew as having followed it; Edit takes a value in the user's units; saved screen shows "Try this next time" or why there is none. Journal rows show "Next: ..." and "Followed: ...". Editing a brew lists its suggestions.
+
+Decisions to confirm:
+- Rules assume a lower grind number is finer (said in the rationale). The app does not know the grinder's direction.
+- Answered state is stored at once; an accepted suggestion whose brew is never saved stays "applied". Relaunch with a restored draft keeps the applied value but loses the follow link.
+- Edit rewrites `toValue` to the user's number; the original suggested value is not kept after Edit.
+
+Commands and results:
+- `swift test --package-path Packages/NextCupKit`: 125 passed (17 new `DialInRulesTests`).
+- `swift format lint --recursive --strict ...`: clean.
+- `xcodebuild ... test` (full): TEST SUCCEEDED, 0 failures; UI 33 executed incl. `testDialInSuggestionShowsOnTheNextBrewOfThatBean` (log sour cup, saved screen and journal row show Grind 20 → 19, next brew of that bean shows the card, accept, undo, dismiss, undo), 12 capture tests skipped; unit tests incl. 17 new `DialInSuggestionTests`.
+- First app-test run had one failure in my own test (no dose set); fixed the test. The capture as one 3-variant test died mid-run (runner restart), so it is now one test per variant.
+
+Screenshots (`ralph/screenshots/`): `T018-dialin-{saved,card,accepted}-{light,dark,largest-text}.png` (viewed: card light and largest text; at largest text the card sits below the fold and is reached by scrolling).
+
+Untested / honest gaps:
+- VoiceOver not run by hand (headline has a spoken label, buttons are named). Haptics not felt. `/impeccable polish` and `audit` not run. `/goal` not invoked as a tool.
+- The Edit alert was not driven in a UI test (unit tests cover edit values and units). Ounce/°F paths covered by unit tests only.
+- The journal row line is asserted by the UI test but not viewed in a screenshot; neither is the edit-form history.
+- AI suggestions will share the card flow in T023; none are produced yet.
