@@ -1,4 +1,5 @@
 import NextCupKit
+import PhotosUI
 import SwiftData
 import SwiftUI
 
@@ -34,6 +35,12 @@ struct BeanEditorView: View {
   @State private var loaded = false
   @State private var error: String?
   @FocusState private var focused: Bool
+  @State private var scanQueue: AIQueue?
+  @State private var scan: AIRequest?
+  @State private var scanFeature = AIFeature.bagRecognition
+  @State private var pickerShown = false
+  @State private var pickedPhoto: PhotosPickerItem?
+  @State private var scanMessage: String?
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -69,6 +76,7 @@ struct BeanEditorView: View {
             .listRowInsets(EdgeInsets()).listRowBackground(DS.bg)
             .accessibilityIdentifier("beans.editor.error")
         }
+        photoFill
         basics
         origin
         roast
@@ -93,12 +101,49 @@ struct BeanEditorView: View {
         }
       }
       .task { load() }
+      .photosPicker(isPresented: $pickerShown, selection: $pickedPhoto, matching: .images)
+      .onChange(of: pickedPhoto) { _, item in if let item { startScan(item) } }
+      .onChange(of: scan?.status) { _, status in if status != nil { finishScan() } }
       .interactiveDismissDisabled(hasChanges)
     }
     .accessibilityIdentifier("beans.editor")
   }
 
   // MARK: Sections
+
+  private var scanning: Bool { scan?.status == .queued || scan?.status == .sending }
+
+  private var photoFill: some View {
+    Section {
+      if let scan, scanning {
+        HStack {
+          Text(scan.status == .queued ? "Waiting for a connection" : "Reading the photo")
+            .foregroundStyle(DS.ink2)
+          Spacer()
+          Button("Cancel") { scanQueue?.cancel(scan) }
+            .accessibilityIdentifier("beans.editor.scan.cancel")
+        }
+        .frame(minHeight: DS.Size.control)
+      } else {
+        Menu {
+          Button("Read a bag label") { chooseScan(.bagRecognition) }
+          Button("Describe a coffee photo") { chooseScan(.photoInterpretation) }
+        } label: {
+          Label("Fill from a photo", systemImage: "text.viewfinder")
+            .frame(minHeight: DS.Size.control, alignment: .leading)
+        }
+        .accessibilityIdentifier("beans.editor.scan")
+      }
+      if let scanMessage {
+        StateBanner(kind: .error, message: scanMessage)
+          .listRowInsets(EdgeInsets()).listRowBackground(DS.bg)
+          .accessibilityIdentifier("beans.editor.scan.error")
+      }
+    } footer: {
+      Text("Sent to your AI provider with your key. You review every field before saving.")
+    }
+    .listRowBackground(DS.paper)
+  }
 
   private var basics: some View {
     Section("Bean") {
@@ -214,6 +259,71 @@ struct BeanEditorView: View {
     original = fields
     originalWeightText = weightText
     loaded = true
+  }
+
+  private func chooseScan(_ feature: AIFeature) {
+    scanFeature = feature
+    scanMessage = nil
+    pickerShown = true
+  }
+
+  private func startScan(_ item: PhotosPickerItem) {
+    pickedPhoto = nil
+    let feature = scanFeature
+    let preferences = AIPreferences()
+    guard let provider = preferences.provider(for: feature),
+      let model = preferences.modelID(for: feature)
+    else {
+      scanMessage = "Choose a provider and model for \(feature.title) in Settings → AI first."
+      return
+    }
+    Task {
+      guard let raw = try? await item.loadTransferable(type: Data.self),
+        let photo = PhotoSanitizer.sanitized(raw)
+      else {
+        scanMessage = "That photo could not be read."
+        return
+      }
+      let queue = scanQueue ?? AIQueue.live(context: context)
+      queue.onDone = nil
+      if scanQueue == nil {
+        queue.startMonitoring()
+        scanQueue = queue
+      }
+      do {
+        scan = try queue.enqueue(
+          BagRecognition.payload(photo: photo, feature: feature), feature: feature,
+          provider: provider, modelID: model)
+      } catch {
+        scanMessage = "The request could not be queued. \(error.localizedDescription)"
+      }
+    }
+  }
+
+  /// Fills the form from a finished scan. Nothing is saved: the user reviews and taps Save.
+  private func finishScan() {
+    guard let scan else { return }
+    switch scan.status {
+    case .done:
+      switch BagRecognition.draft(from: scan) {
+      case .success(let draft):
+        BagRecognition.fill(&fields, with: draft)
+        hasRoastDate = fields.roastDate != nil
+        if weightText.isEmpty, let grams = fields.bagWeightG {
+          weightText = RecipeFormat.weight(grams, units, withSymbol: false)
+        }
+      case .failure(let failure):
+        scanMessage = failure.errorDescription
+      }
+      self.scan = nil
+    case .failed:
+      scanMessage = scan.errorMessage ?? "The photo could not be read."
+      self.scan = nil
+    case .cancelled:
+      self.scan = nil
+    case .queued, .sending:
+      break
+    }
   }
 
   private func save() {

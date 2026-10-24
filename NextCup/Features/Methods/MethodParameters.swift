@@ -1,15 +1,16 @@
 import Foundation
 
 /// Which brew form fields a method switches on. Dose and water are always
-/// shown: a brew cannot be saved without them. Yield and TDS are kept on a
-/// method untouched, but the form has no field for them yet, so the editor does
-/// not offer them.
+/// shown: a brew cannot be saved without them. Yield is kept on a method
+/// untouched, but the form has no field for it yet, so the editor does not offer it.
 enum MethodParameters {
   /// Needed to save any brew, so a method cannot turn them off.
   static let required: [BrewParameter] = [.dose, .water]
 
   /// The optional fields the brew form can show today, in form order.
-  static let optional: [BrewParameter] = [.temperature, .time, .grind, .rating, .notes, .photo]
+  static let optional: [BrewParameter] = [
+    .temperature, .time, .grind, .tds, .rating, .notes, .photo,
+  ]
 
   /// The fields the form shows for a method that tracks these parameters.
   static func shown(tracked: [BrewParameter]) -> Set<BrewParameter> {
@@ -32,7 +33,7 @@ enum MethodParameters {
   }
 
   /// A new tracked list: the chosen optional fields plus whatever the editor
-  /// does not offer (yield, TDS) and the required pair, in a stable order.
+  /// does not offer (yield) and the required pair, in a stable order.
   static func merged(existing: [BrewParameter], chosen: Set<BrewParameter>) -> [BrewParameter] {
     let kept = Set(existing).subtracting(optional)
     let result = kept.union(chosen).union(required)

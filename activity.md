@@ -484,3 +484,88 @@ Not done or not verified:
 - Tests: `NextCupTests/AISuggestionsTests.swift` (8 tests).
 - Commands: `swift format lint --strict ...` clean; `xcodebuild ... test -only-testing:NextCupTests` → 174 tests passed.
 - Not done / untested: no button yet starts a diagnosis or insights request from the UI (nothing calls `enqueue` with these payloads; no screenshots, no UI test, no real provider call). `swift test` for the package and the UI test bundle were not re-run (package untouched).
+
+## T024 — Photo interpretation and bag recognition → bean draft
+
+- Added `NextCup/Features/AI/BagRecognition.swift` (schema, payload, `draft(from:)`, `fill`) and a "Fill from a photo" menu in `BeanEditorView` (PhotosPicker, photo sanitized, queued through `AIQueue`). Both `bagRecognition` and `photoInterpretation` produce a `BeanFields` draft; the editor fills only empty fields and the user taps Save. No `Bean` is inserted by the AI path.
+- Tests: `NextCupTests/BagRecognitionTests.swift` (schema validation, blank/future values dropped, no blind save, no call without key, queue round trip with stub transport).
+- Commands: `swift format lint --strict` clean; `swift test --package-path Packages/NextCupKit` 138 passed; `xcodebuild test` full run: all app unit tests passed, 2 UI tests failed (`testBrewAgainRepeatsASavedBrew`, `testChangingUnitsInSettingsUpdatesRecipesAndTheBrewForm`); both passed when rerun alone (flaky under full run, not touched by this change).
+- Not done / untested: no simulator screenshots (light, dark, largest text) and no VoiceOver check of the new editor row; no real provider call (no key, no network by rule); camera capture not added (PhotosPicker only).
+
+## 2026-10-24 — T025 paper-journal import
+
+- Added `NextCupKit/Import/PaperImport.swift` (label-based text → `PaperBrewDraft` with per-field confidence, units to g/°C/s, implausible values and "3OO g"-style misreads rejected into notes; AI schema, payload, and answer mapping through the same rules), `NextCup/Features/Import/` (`PaperScanner` Vision `RecognizeTextRequest` on device, `PaperImportModel`, `PaperImportView`), a journal toolbar entry, and a data-inventory row.
+- Behavior: one brew per page; Vision read needs no key; "Read with my AI key" only shows with a key and a Paper import model chosen, goes through `AIQueue`. Review marks low-confidence fields (<0.6) with a CHECK label and kraft background, editing a field clears its mark; Save stays disabled until "I checked these against the page" is on, and any edit (field, date, method) turns it off again. Auto-filing: method and bean matched by normalized name to saved ones; an unknown bean is kept as a written name, never created.
+- Commands: `swift test --package-path Packages/NextCupKit` 151 passed; `swift format lint --strict` clean; app build succeeded; `xcodebuild test -only-testing:NextCupTests` 193 passed (includes 12 paper import tests with a synthetic page recognized by real Vision, AI stub-transport tests); UI test `testPaperImportCannotSaveUntilConfirmed` passed.
+- Screenshots (`ralph/screenshots/`): `T025-choose-{light,dark,largest-text}.png`, `T025-review-{light,dark,largest-text}.png`, `T025-review-lower-{light,dark,largest-text}.png` (via `testPaperImportScreenshots`, skipped unless `ralph/screenshots/.capture` exists).
+- Untested / honest gaps: full `xcodebuild test` (incl. whole UI suite) exceeded the 10-minute tool limit and was stopped, so the rest of the UI suite was not rerun after this change; real handwriting not tested (only typed synthetic text); the CHECK highlight was verified in unit tests only, no screenshot because the synthetic page reads with high confidence; no VoiceOver pass; no camera capture (PhotosPicker only); no real AI provider call; page date is chosen by the user (not read from the page); the UI-test store has no seeded methods, so method filing is covered by the unit test, not the screenshots.
+
+## T026 — Live Activity (widget extension) — IN PROGRESS, not done
+
+- Changed: new `NextCupLiveActivity` widget extension target (hand-edited `project.pbxproj`, embedded in the app, `NSSupportsLiveActivities`); Lock Screen + Dynamic Island views using `Text(timerInterval:)` and DS tokens (`Tokens.swift` and `TimerActivityAttributes.swift` compiled into both targets). `TimerSession` mirrors start/pause/resume/step change to a `TimerActivityControlling` (real `LiveTimerActivity`; `NoTimerActivity` under `-inMemoryStore`) and ends it when the brew finishes. New deep link `nextcup://timer/<recipeID>?dose=<g>` → `TimerDestination`, which reopens the timer and adopts the saved run.
+- Commands: `swift test` 151 passed; `swift format lint --strict` clean; app + extension build succeeded; full `xcodebuild test`: 40 UI tests, 0 failures (16 skipped, capture-gated), but one new unit test failed (extra update at init). Fixed; `-only-testing:NextCupTests` then TEST SUCCEEDED (includes the new Live Activity and timer DeepLink tests). The full suite was not rerun after that one-line fix.
+- NOT done, so Status is `in progress`: no Lock Screen / Dynamic Island screenshots. That needs a driven simulator run with a real activity (UI tests use `NoTimerActivity`, and no tool here taps or locks the simulator). Tap-to-open is unit-tested (link round trip) but not exercised on a device.
+- Known limit: without push updates the step label in the activity only changes while the app process runs; the clock itself is system-driven and stays correct. No VoiceOver pass on the activity.
+
+## 2026-10-24 — T027 roaster discovery S10
+
+- Added `NextCup/Features/Discovery/` (model + `RoasterService`, `MapKitRoasterSearch` with `DeviceLocation`, `RoasterDiscoveryView`), a map button on the Beans toolbar opening S10 as a sheet, and `NSLocationWhenInUseUsageDescription` in `Config/NextCup-Info.plist`.
+- Location is requested only on tapping "Use my location" and used for one search, never stored. Denied or unavailable shows a notice; the typed city always works. Only a saved roaster is written (name, city, website, its coordinates, `savedFromMap`); an existing same-name roaster is reused; unsaving keeps a roaster that beans use.
+- Commands: `swift format lint --strict` on all targets: clean. `xcodebuild build`: succeeded. Full `xcodebuild test`: all passed except the new empty/error UI test, whose menu-based text clearing was flaky; fixed (delete keys) and re-run alone: passed. The denied-location UI test passed in a targeted run. New unit suite `RoasterDiscoveryTests` ran in the full run with no failures. The full suite was not rerun after the UI-test fix; `swift test` for the package was not rerun (no package change).
+- NOT done, so Status is `in progress`: no light/dark/largest-text screenshots of S10 (no tool here taps through to the sheet), no VoiceOver pass, and `MKLocalSearch` and the real location prompt were never exercised (UI tests use `-roasterStub`). Saved-roaster removal has no Undo toast (it is re-savable). `docs/data-inventory.md` already lists MapKit; not re-verified.
+
+## 2026-10-24 — T028 flavor explorer (screenshots pending)
+
+- Added `Taxonomy.words(for:in:)` (+ package test) and `Features/Explore/FlavorExplorerView.swift`: every bucket of flavor, origin, process, roast and brewer is a row; a bucket opens its mapped words (bundle + user aliases), your beans carrying it (link to bean) and the buckets seen together on those beans (link onward). Entry: "Flavors" toolbar link on Explore.
+- Commands: `swift test --package-path Packages/NextCupKit` passed (152 tests); `swift format lint --strict` clean; `xcodebuild test -only-testing:...testFlavorExplorerReachesEveryBucket` passed (every one of the 26 buckets reachable, citrus detail opens).
+- Not done: simulator screenshots (light, dark, largest text), VoiceOver pass, `/impeccable` polish/audit, full-suite `xcodebuild test`, `/goal` (not invoked in this session). T028 stays `in progress` until those are done.
+
+## 2026-10-24 — T026 to T028 closed out (Sonnet, supervised)
+
+- Verified alone after the loop: 152 package, 210 app, 43 UI tests (16 skipped, capture-gated), lint, tokens.
+- Added `testCaptureRoasterAndFlavorScreenshots`; screenshots `ralph/screenshots/T027-*` and `T028-*` (light, dark, largest text). Looking at them found a real bug: the keyboard stayed up over the roaster results after Search. Fixed (focus is dropped on search).
+- T027 and T028 set to `done` with these gaps: VoiceOver not run, real `MKLocalSearch` and the real location prompt never exercised (stubs only).
+- T026 set to `blocked` (B012): no Lock Screen or Dynamic Island evidence; needs a manual pass.
+
+## 2026-10-24 — T029 COULD set: TDS/extraction, water profiles, App Intents
+
+- TDS: `BrewDraft.tds`; the brew form shows a TDS stepper (0.05 steps, stepping below clears) and an Extraction readout (`BrewMath.extractionYield`, beverage taken as water poured, marked `shortcut:` in code) when the method tracks TDS or no method is chosen. TDS is now offered in the method editor (`MethodParameters.optional`); the old test that said the editor must not offer it was rewritten to match.
+- Water profiles: `BrewDraft.waterProfileID`; a Water menu on the form with "New water profile…" (name, optional hardness ppm, refused if not a positive number, same name reuses the profile). Brew again keeps the water, not the TDS. Deleting a profile keeps the brew.
+- App Intents (`Features/Intents/BrewIntents.swift`): Log a brew, Brew again (latest saved non-draft brew), Start recipe (recipe entity); each opens the existing `nextcup://` link. Siri phrases via `AppShortcutsProvider`.
+- Tests: `NextCupTests/CouldSetTests.swift` (9 tests: TDS steps/clears, extraction value, save and edit round trip, brew again, bad water input and dedupe, profile delete, the three intent links).
+- Commands: `swift test --package-path Packages/NextCupKit` 152 passed; `swift format lint --strict` clean; `xcodebuild ... -only-testing:NextCupTests test` TEST SUCCEEDED (220 tests; the one earlier failure was the rewritten methods test). Last run began before a pure reformat of `MethodParameters.optional`.
+- Not done / untested: full `xcodebuild test` with the UI suite was started once and killed by the time limit (simulator diagnostics hung), so UI tests were not run; no screenshots (light, dark, largest text) of the TDS tile or Water menu; no VoiceOver pass; the intents were never run from Shortcuts or Siri (only their links are unit-tested); the second `ModelContainer` an intent opens was not exercised on a device; DataExchange export/import of `tds` and water profiles was not checked; no UI to edit or delete a water profile after creating it.
+
+## 2026-10-24 - no task ready
+
+- The only `pending` task is T030. It depends on T001-T028, and T026 is `blocked` (B012: Live Activity screenshots and tap/end behavior need a manual simulator or device pass by the owner).
+- No work done and no commit. Unblock by closing B012 (set T026 `done`), or by the owner agreeing to run T030 with T026 listed as an open gap.
+
+## 2026-10-24 — T026 Live Activity manual pass (Sonnet, simulator, B012)
+
+Driven on the iPhone 18 Pro simulator with the real app (Recipes, Balanced cone, Start brew, Start):
+- Lock Screen: the activity shows the recipe name, "Step 1 of 4", "Bloom", "Next: Pour" and an orange time on the right. Evidence `ralph/screenshots/T026-lockscreen-first-run-prompt.png`. That frame has the one-time "Allow Live Activities from Next Cup?" system prompt on top and the time reads "2:--"; I did not capture a clean frame after allowing, so the time text on the Lock Screen is not confirmed beyond that.
+- Dynamic Island (compact): cup icon and an orange countdown ("2:11"), `T026-dynamic-island-compact.png`.
+- Tapping the island opens the app on the running timer, in step 2 of 4 at 1:06 (in sync).
+- End early opens the brew form prefilled with the measured time (1:12) and a note that the brew ended early; going Home afterwards shows no activity (`T026-activity-ended.png`).
+- Not exercised: expanded Dynamic Island, Lock Screen at the largest text size, dark appearance, VoiceOver, a physical device. T026 is set to `done` with those gaps.
+
+## 2026-10-24 — T030 blocked (B013)
+
+- T030 is the only task left and all its dependencies (T001-T028) are `done`. It needs every row of `docs/compliance-checklist.md` and the data inventory checked against the code (network calls, SDKs, permissions, stored data, accessibility labels, UX baseline).
+- In this session `grep`, `git` and compound shell commands were denied approval, and a delegated read-only agent was denied the same way. Only `ls`, `swift test` and file reads worked. Without searching the code I cannot honestly give a PASS with evidence, and filling the checklist from the blueprint alone would be unverified claims.
+- Ran `swift test --package-path Packages/NextCupKit`: 152 tests passed. Nothing else run.
+- Changed: T030 set to `blocked`, B013 added to `docs/launch-blockers.md`. No checklist rows, no docs/ux-baseline.md written. The one thing the agent did get: every `import` in non-test code is an Apple framework or the local NextCupKit package (counts only, not confirmed against `project.pbxproj` or `Package.swift`).
+- Unblock: allow `grep`, `git ls-files` and `git commit` for this repo in the Ralph session, then rerun this task.
+
+## 2026-10-24 — T030 done by hand (Sonnet, supervised)
+
+The loop's iteration was blocked because `grep`, `git ls-files` and compound shell commands were refused in its session (B013). I did T030 directly:
+- Searched the code: no third-party packages (only the local one), Apple imports only, no analytics or logging, no web views, no StoreKit, no mail, no notifications; only `UserDefaults` among required-reason APIs; network only in `AIClient.swift`.
+- Found and fixed: no `PrivacyInfo.xcprivacy` (added, UserDefaults CA92.1, no tracking or collected data); the AI disclosure did not say the provider may charge the user's account (line added).
+- Wrote: `docs/compliance-checklist.md` (9 PASS, 6 NEEDS REVIEW, 4 NOT APPLICABLE, 1 BLOCKED), `docs/ux-baseline.md` (missing: photo zoom, shake/Cmd-Z undo, localization, keyboard shortcuts), `docs/claims-evidence.md`, a verified section in `docs/data-inventory.md`, and `docs/legal/privacy-policy-draft.md` (DRAFT, unreviewed, owner facts UNKNOWN).
+- Not done: Opus audit of the consent, data, vendor and deletion rows; VoiceOver; the Gate A and Gate B reviews.
+
+### Final verification of T024 to T030 (supervised, 2026-10-24)
+
+- Package 152, app unit 220, lint and tokens pass. UI suite: 44 tests (17 skipped, screenshot capture only). The full run is not reliably green: two full runs each had one different failure, both in keyboard-driven tests (`testBeansAddCorrectFilterAndDeleteWithUndo` after my manual simulator session, `testBrewFormDraftSurvivesRelaunch` on the next run, where the software keyboard's Done button could not be scrolled to). Each passed when rerun alone (the first after a simulator reboot). Treat as flaky keyboard handling in the UI tests, not as proven product bugs; the next step is to make those tests robust (no dependence on the software keyboard's Done button).

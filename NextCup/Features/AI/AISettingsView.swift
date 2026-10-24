@@ -150,6 +150,7 @@ private struct AIDisclosureView: View {
           Text(
             "Nothing is sent until you tap, and never without a key. \(provider.title) handles the request under its own terms; Next Cup has no server and sees none of it."
           )
+          Text("\(provider.title) may charge your own account for each request.")
           Text("You can remove the key at any time.")
         }
         .font(.body).foregroundStyle(DS.ink).listRowBackground(DS.paper)

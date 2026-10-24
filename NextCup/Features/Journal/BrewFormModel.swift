@@ -21,6 +21,7 @@ final class BrewFormModel {
   static let defaultWaterG = 250.0
   static let defaultTempC = 94.0
   static let defaultTimeS = 180
+  static let defaultTds = 1.35
   static let lastMethodKey = "brew.lastMethodID"
   static let lastGrinderKey = "brew.lastGrinderID"
 
@@ -108,7 +109,7 @@ final class BrewFormModel {
         DraftBean(
           beanID: $0.bean?.id, name: $0.bean?.name ?? $0.beanNameSnapshot, grams: $0.grams)
       },
-      grinderID: brew.grinder?.id)
+      grinderID: brew.grinder?.id, tds: brew.tds, waterProfileID: brew.waterProfile?.id)
   }
 
   private static func fresh(
@@ -151,6 +152,13 @@ final class BrewFormModel {
     BrewMath.ratioLabel(BrewMath.ratio(doseG: draft.doseG, waterG: draft.waterG))
   }
 
+  /// Extraction yield in percent, with the beverage taken as the water poured.
+  /// shortcut: ignores water the grounds keep, upgrade when a beverage weight is logged.
+  var extractionLabel: String? {
+    BrewMath.extractionYield(tds: draft.tds, beverageG: draft.waterG, doseG: draft.doseG)
+      .map { String(format: "%.1f%%", $0) }
+  }
+
   var canSave: Bool { draft.canSave && !isSaving && savedBrewID == nil }
 
   // MARK: Editing
@@ -178,6 +186,16 @@ final class BrewFormModel {
     }
     let shown = units.displayTemperature(celsius: current).rounded() + Double(direction)
     draft.tempC = units.celsius(fromDisplayTemperature: shown)
+  }
+
+  /// Moves TDS by 0.05 points; stepping below the first step clears it.
+  func stepTds(direction: Int) {
+    guard let current = draft.tds else {
+      draft.tds = Self.defaultTds
+      return
+    }
+    let next = ((current + Double(direction) * 0.05) / 0.05).rounded() * 0.05
+    draft.tds = next < 0.05 ? nil : next
   }
 
   func stepTime(direction: Int) {
@@ -229,6 +247,36 @@ final class BrewFormModel {
 
   func setGrinder(_ id: UUID?) {
     draft.grinderID = id
+  }
+
+  func setWaterProfile(_ id: UUID?) {
+    draft.waterProfileID = id
+  }
+
+  /// Adds a water profile (or finds the one with this name) and chooses it.
+  /// Hardness is optional; a value that is not a positive number is refused.
+  @discardableResult
+  func addWaterProfile(named name: String, hardnessPPM: String = "") -> Bool {
+    let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    let typed = hardnessPPM.trimmingCharacters(in: .whitespaces)
+    let hardness = Double(typed)
+    guard !clean.isEmpty, typed.isEmpty || (hardness ?? 0) > 0 else { return false }
+    let existing = (try? store.context.fetch(FetchDescriptor<WaterProfile>())) ?? []
+    if let match = existing.first(where: {
+      $0.name.compare(clean, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+    }) {
+      draft.waterProfileID = match.id
+      return true
+    }
+    let profile = WaterProfile(name: clean)
+    profile.ppmHardness = hardness
+    store.context.insert(profile)
+    if case .failure = store.save() {
+      store.context.rollback()
+      return false
+    }
+    draft.waterProfileID = profile.id
+    return true
   }
 
   /// Adds a grinder (or finds the one with this name) and chooses it.
@@ -449,6 +497,8 @@ final class BrewFormModel {
     brew.waterG = draft.waterG
     brew.tempC = draft.tempC
     brew.totalTimeS = draft.totalTimeS
+    brew.tds = draft.tds
+    brew.waterProfile = draft.waterProfileID.flatMap { try? store.find(WaterProfile.self, id: $0) }
     let grind = draft.grindSetting.trimmingCharacters(in: .whitespacesAndNewlines)
     brew.grindSetting = grind.isEmpty ? nil : grind
     brew.verdict = draft.verdict.flatMap(Verdict.init(rawValue:))

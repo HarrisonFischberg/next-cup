@@ -65,12 +65,14 @@ struct MethodsServiceTests {
     #expect(failure(harness.service.update(beta, name: "Gamma", chosen: [])) == .duplicateName)
   }
 
-  @Test func updateKeepsYieldAndTDSTheEditorDoesNotOffer() throws {
+  @Test func updateKeepsYieldTheEditorDoesNotOfferAndLetsTDSBeChosen() throws {
     let harness = try Harness()
     let method = try #require(harness.service.all().first)
     method.trackedParameters = [.dose, .yield, .tds, .grind, .photo]
     try harness.service.update(method, name: method.name, chosen: [.time]).get()
-    #expect(Set(method.trackedParameters) == [.dose, .water, .yield, .tds, .time])
+    #expect(Set(method.trackedParameters) == [.dose, .water, .yield, .time])
+    try harness.service.update(method, name: method.name, chosen: [.time, .tds]).get()
+    #expect(Set(method.trackedParameters) == [.dose, .water, .yield, .time, .tds])
   }
 
   @Test func dragMoveRenumbersWithoutGaps() throws {

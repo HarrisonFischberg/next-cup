@@ -25,6 +25,11 @@ struct BrewFormView: View {
   @Query(sort: \Bean.name) private var allBeans: [Bean]
   @Query(sort: \Grinder.name) private var grinders: [Grinder]
   @Query(sort: \Suggestion.createdAt, order: .reverse) private var suggestions: [Suggestion]
+  @Query(sort: \WaterProfile.name) private var waters: [WaterProfile]
+  @State private var addingWater = false
+  @State private var newWaterName = ""
+  @State private var newWaterHardness = ""
+  @State private var waterError: String?
   @State private var addingGrinder = false
   @State private var newGrinderName = ""
   @State private var grinderError: String?
@@ -162,6 +167,7 @@ struct BrewFormView: View {
           grindField(binding.draft.grindSetting)
           grinderPicker(model)
         }
+        waterPicker(model)
         verdictRow(binding.draft.verdict)
         if fields.contains(.rating) {
           VStack(alignment: .leading, spacing: DS.Space.sm) {
@@ -520,6 +526,69 @@ struct BrewFormView: View {
       }
       ReadoutTile(title: "Ratio", value: model.ratioLabel ?? "—")
         .accessibilityIdentifier("brewform.ratio")
+      if fields.contains(.tds) {
+        StepperTile(
+          title: "TDS", value: model.draft.tds.map { String(format: "%.2f", $0) } ?? "—",
+          unit: model.draft.tds == nil ? "" : "%",
+          down: { model.stepTds(direction: -1) }, up: { model.stepTds(direction: 1) },
+          minusLabel: "Decrease TDS by 0.05", plusLabel: "Increase TDS by 0.05"
+        )
+        .accessibilityIdentifier("brewform.tds")
+        ReadoutTile(title: "Extraction", value: model.extractionLabel ?? "—")
+          .accessibilityIdentifier("brewform.extraction")
+      }
+    }
+  }
+
+  private func waterPicker(_ model: BrewFormModel) -> some View {
+    let current = waters.first { $0.id == model.draft.waterProfileID }
+    return VStack(alignment: .leading, spacing: DS.Space.xs) {
+      Menu {
+        Button("None") { model.setWaterProfile(nil) }
+        ForEach(waters) { water in
+          Button(water.name) { model.setWaterProfile(water.id) }
+        }
+        Button("New water profile…") {
+          newWaterName = ""
+          newWaterHardness = ""
+          addingWater = true
+        }
+      } label: {
+        HStack {
+          VStack(alignment: .leading, spacing: 2) {
+            Text("WATER").font(DS.Font.label).foregroundStyle(DS.ink2)
+            Text(current?.name ?? "None chosen").font(DS.Font.headline).foregroundStyle(DS.ink)
+              .multilineTextAlignment(.leading)
+          }
+          Spacer(minLength: DS.Space.sm)
+          Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink)
+            .accessibilityHidden(true)
+        }
+        .padding(DS.Space.md).frame(minHeight: DS.Size.control)
+        .background(DS.paper, ignoresSafeAreaEdges: [])
+        .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+      }
+      .accessibilityLabel("Water")
+      .accessibilityValue(current?.name ?? "None chosen")
+      .accessibilityIdentifier("brewform.waterprofile")
+      if let waterError {
+        StateBanner(kind: .error, message: waterError, actionTitle: "Dismiss") {
+          self.waterError = nil
+        }
+      }
+    }
+    .alert("New water profile", isPresented: $addingWater) {
+      TextField("Name", text: $newWaterName)
+      TextField("Hardness in ppm (optional)", text: $newWaterHardness)
+        .keyboardType(.decimalPad)
+      Button("Cancel", role: .cancel) {}
+      Button("Add") {
+        waterError =
+          model.addWaterProfile(named: newWaterName, hardnessPPM: newWaterHardness)
+          ? nil : "The water profile could not be added. Check the name and hardness."
+      }
+    } message: {
+      Text("Its name is kept so brews can be compared by water.")
     }
   }
 
