@@ -19,6 +19,8 @@ extension AIProvider {
 @MainActor @Observable
 final class AIQueue {
   private(set) var isOnline = true
+  /// Called after a request finishes with schema-valid output.
+  var onDone: ((AIRequest) -> Void)?
   private let context: ModelContext
   private let client: AIClient
   private let monitor = NWPathMonitor()
@@ -38,7 +40,9 @@ final class AIQueue {
         AIProvider(rawValue: provider.rawValue).flatMap { (try? keychain.key(for: $0)) ?? nil }
       },
       disclosureAccepted: { AIPreferences().hasAcceptedDisclosure })
-    return AIQueue(context: context, client: client)
+    let queue = AIQueue(context: context, client: client)
+    queue.onDone = { AISuggestions.ingest($0, in: context) }
+    return queue
   }
 
   func startMonitoring() {
@@ -142,6 +146,7 @@ final class AIQueue {
       request.errorMessage = error.errorDescription
     }
     save(request)
+    if request.status == .done { onDone?(request) }
   }
 
   private func save(_ request: AIRequest) {
