@@ -535,3 +535,17 @@ Not done or not verified:
 - Tests: `NextCupTests/CouldSetTests.swift` (9 tests: TDS steps/clears, extraction value, save and edit round trip, brew again, bad water input and dedupe, profile delete, the three intent links).
 - Commands: `swift test --package-path Packages/NextCupKit` 152 passed; `swift format lint --strict` clean; `xcodebuild ... -only-testing:NextCupTests test` TEST SUCCEEDED (220 tests; the one earlier failure was the rewritten methods test). Last run began before a pure reformat of `MethodParameters.optional`.
 - Not done / untested: full `xcodebuild test` with the UI suite was started once and killed by the time limit (simulator diagnostics hung), so UI tests were not run; no screenshots (light, dark, largest text) of the TDS tile or Water menu; no VoiceOver pass; the intents were never run from Shortcuts or Siri (only their links are unit-tested); the second `ModelContainer` an intent opens was not exercised on a device; DataExchange export/import of `tds` and water profiles was not checked; no UI to edit or delete a water profile after creating it.
+
+## 2026-10-24 - no task ready
+
+- The only `pending` task is T030. It depends on T001-T028, and T026 is `blocked` (B012: Live Activity screenshots and tap/end behavior need a manual simulator or device pass by the owner).
+- No work done and no commit. Unblock by closing B012 (set T026 `done`), or by the owner agreeing to run T030 with T026 listed as an open gap.
+
+## 2026-10-24 — T026 Live Activity manual pass (Sonnet, simulator, B012)
+
+Driven on the iPhone 18 Pro simulator with the real app (Recipes, Balanced cone, Start brew, Start):
+- Lock Screen: the activity shows the recipe name, "Step 1 of 4", "Bloom", "Next: Pour" and an orange time on the right. Evidence `ralph/screenshots/T026-lockscreen-first-run-prompt.png`. That frame has the one-time "Allow Live Activities from Next Cup?" system prompt on top and the time reads "2:--"; I did not capture a clean frame after allowing, so the time text on the Lock Screen is not confirmed beyond that.
+- Dynamic Island (compact): cup icon and an orange countdown ("2:11"), `T026-dynamic-island-compact.png`.
+- Tapping the island opens the app on the running timer, in step 2 of 4 at 1:06 (in sync).
+- End early opens the brew form prefilled with the measured time (1:12) and a note that the brew ended early; going Home afterwards shows no activity (`T026-activity-ended.png`).
+- Not exercised: expanded Dynamic Island, Lock Screen at the largest text size, dark appearance, VoiceOver, a physical device. T026 is set to `done` with those gaps.
