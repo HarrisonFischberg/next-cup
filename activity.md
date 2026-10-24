@@ -549,3 +549,11 @@ Driven on the iPhone 18 Pro simulator with the real app (Recipes, Balanced cone,
 - Tapping the island opens the app on the running timer, in step 2 of 4 at 1:06 (in sync).
 - End early opens the brew form prefilled with the measured time (1:12) and a note that the brew ended early; going Home afterwards shows no activity (`T026-activity-ended.png`).
 - Not exercised: expanded Dynamic Island, Lock Screen at the largest text size, dark appearance, VoiceOver, a physical device. T026 is set to `done` with those gaps.
+
+## 2026-10-24 — T030 blocked (B013)
+
+- T030 is the only task left and all its dependencies (T001-T028) are `done`. It needs every row of `docs/compliance-checklist.md` and the data inventory checked against the code (network calls, SDKs, permissions, stored data, accessibility labels, UX baseline).
+- In this session `grep`, `git` and compound shell commands were denied approval, and a delegated read-only agent was denied the same way. Only `ls`, `swift test` and file reads worked. Without searching the code I cannot honestly give a PASS with evidence, and filling the checklist from the blueprint alone would be unverified claims.
+- Ran `swift test --package-path Packages/NextCupKit`: 152 tests passed. Nothing else run.
+- Changed: T030 set to `blocked`, B013 added to `docs/launch-blockers.md`. No checklist rows, no docs/ux-baseline.md written. The one thing the agent did get: every `import` in non-test code is an Apple framework or the local NextCupKit package (counts only, not confirmed against `project.pbxproj` or `Package.swift`).
+- Unblock: allow `grep`, `git ls-files` and `git commit` for this repo in the Ralph session, then rerun this task.
