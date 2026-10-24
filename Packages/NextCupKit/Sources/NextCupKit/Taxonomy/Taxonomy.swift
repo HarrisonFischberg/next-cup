@@ -116,6 +116,12 @@ public struct Taxonomy: Sendable, Equatable {
     bucketsByDimension[dimension] ?? []
   }
 
+  /// The bundled words that map to a bucket, normalized and sorted, for the
+  /// flavor explorer. User aliases are not included; the caller adds them.
+  public func words(for bucketKey: String, in dimension: Dimension) -> [String] {
+    (bundledMap[dimension] ?? [:]).filter { $0.value == bucketKey }.keys.sorted()
+  }
+
   public func bucket(key: String, in dimension: Dimension) -> Bucket? {
     buckets(in: dimension).first { $0.key == key }
   }
