@@ -14,6 +14,7 @@
 | B010 | Reference recon used a Chromium-based app binary with a fresh profile because stock Chrome is not installed; in-app screens of two references not captured | failed check | Builder | Recon completeness | ACCEPTED limitation, noted in `docs/rea-findings.md` |
 | B011 | Blueprint and task plan (`docs/blueprint.md`, `prd.md`) need owner approval before Phase 3B | approval | Owner | Phase 3B, 4 | RESOLVED 2026-10-21: owner approved (PR #1) |
 | B012 | T026 Live Activity: no Lock Screen or Dynamic Island screenshots, and the tap-to-open-timer and end-with-brew behavior were never exercised on a running activity. The simulator tool here cannot lock the device or tap a Live Activity | failed check | Owner (a manual pass on the simulator or a device) | T026 acceptance, Gate A | RESOLVED 2026-10-24 by a supervised simulator pass (see activity.md); gaps listed there |
+| B013 | T030 safeguards and UX baseline pass cannot be verified against the code: `grep`, `git` and compound shell commands are denied approval in the Ralph session | failed check | Owner (permission change) | T030, Gate A | OPEN |
 
 ## ASSUMED answers (skipped or interpreted at intake)
 
