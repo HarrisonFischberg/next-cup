@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 /// The tab shell. The selected tab persists in `UserDefaults` (not
@@ -70,8 +71,13 @@ private struct TabRoot: View {
   @ViewBuilder
   private var content: some View {
     switch tab {
+    case .journal:
+      JournalListView(router: router).navigationDestination(
+        for: DeepLink.self, destination: destination)
     case .recipes:
       RecipeLibraryView().navigationDestination(for: DeepLink.self, destination: destination)
+    case .settings:
+      SettingsRootView().navigationDestination(for: DeepLink.self, destination: destination)
     default:
       TabPlaceholder(tab: tab, router: router).navigationDestination(
         for: DeepLink.self, destination: destination)
@@ -88,7 +94,39 @@ private struct TabRoot: View {
       BrewFormView(seed: nil).background {
         Color.clear.accessibilityElement().accessibilityIdentifier(link.identifier)
       }
+    case .brew(let id): BrewDestination(link: link, brewID: id)
+    case .brewAgain(let id): BrewDestination(link: link, brewID: id, repeats: true)
     default: DestinationPlaceholder(link: link)
+    }
+  }
+}
+
+/// Opens a saved brew for editing, or a new brew that repeats it. A link to a
+/// brew that no longer exists lands on a screen that says so, never on a blank
+/// form.
+private struct BrewDestination: View {
+  let link: DeepLink
+  let brewID: UUID
+  var repeats = false
+  @Environment(\.modelContext) private var context
+
+  var body: some View {
+    if let brew = try? Store(context: context).find(Brew.self, id: brewID) {
+      BrewFormView(
+        seed: nil, editing: repeats ? nil : brew, repeating: repeats ? brew : nil
+      ).background {
+        Color.clear.accessibilityElement().accessibilityIdentifier(link.identifier)
+      }
+    } else {
+      ScrollView {
+        EmptyState(
+          title: "Brew not found",
+          message: "This brew is no longer in your journal. It may have been deleted.")
+      }
+      .background(DS.bg)
+      .navigationTitle(link.screenName)
+      .navigationBarTitleDisplayMode(.inline)
+      .accessibilityIdentifier(link.identifier)
     }
   }
 }

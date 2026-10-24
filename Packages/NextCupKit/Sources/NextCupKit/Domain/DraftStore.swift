@@ -38,6 +38,15 @@ public struct DraftStore: Sendable {
         .appendingPathComponent("brew-draft.json"))
   }
 
+  /// The draft file for a repeat of the saved brew `sourceID`, kept apart from
+  /// the new-brew draft so starting a repeat never overwrites unsaved typing.
+  public static func repeating(_ sourceID: UUID) -> DraftStore {
+    let standard = DraftStore.standard().fileURL
+    return DraftStore(
+      fileURL: standard.deletingLastPathComponent()
+        .appendingPathComponent("brew-again-\(sourceID.uuidString).json"))
+  }
+
   public static let atomicWrite: Writer = { data, url in
     try FileManager.default.createDirectory(
       at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
