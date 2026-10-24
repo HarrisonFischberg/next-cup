@@ -1,0 +1,146 @@
+import Foundation
+import NextCupKit
+import SwiftData
+import Testing
+
+@testable import NextCup
+
+@MainActor
+@Suite("Bag recognition")
+struct BagRecognitionTests {
+  private static var containers: [ModelContainer] = []
+
+  private func make() throws -> ModelContext {
+    // A dropped container crashes the test host, so keep every one alive.
+    let container = try NextCupContainer.make(inMemory: true)
+    Self.containers.append(container)
+    return container.mainContext
+  }
+
+  private func done(
+    _ json: String, feature: AIFeature = .bagRecognition, in context: ModelContext
+  ) -> AIRequest {
+    let request = AIRequest()
+    request.feature = feature
+    request.status = .done
+    request.resultJSON = Data(json.utf8)
+    context.insert(request)
+    return request
+  }
+
+  private let bag = """
+    {"name":"Finca Alta","roaster":"Test Roasters","originCountry":"Colombia","region":"Huila",\
+    "farm":"","process":"Washed","varietal":"Caturra","roastLevel":"light","roastDate":"2026-09-01",\
+    "bagWeightGrams":250,"flavorNotes":"panela, red apple","isDecaf":false}
+    """
+
+  @Test func labelBecomesADraftAndNoBeanIsSaved() throws {
+    let context = try make()
+    let fields = try BagRecognition.draft(from: done(bag, in: context)).get()
+    #expect(fields.name == "Finca Alta")
+    #expect(fields.roasterName == "Test Roasters")
+    #expect(fields.originCountry == "Colombia")
+    #expect(fields.farm.isEmpty)
+    #expect(fields.roastLevel == .light)
+    #expect(fields.roastDate != nil)
+    #expect(fields.bagWeightG == 250)
+    #expect(fields.flavorNotes == "panela, red apple")
+    #expect(try context.fetch(FetchDescriptor<Bean>()).isEmpty)
+    #expect(try context.fetch(FetchDescriptor<Roaster>()).isEmpty)
+  }
+
+  @Test func unreadableValuesStayBlank() throws {
+    let context = try make()
+    let json = bag.replacingOccurrences(of: #""bagWeightGrams":250"#, with: #""bagWeightGrams":0"#)
+      .replacingOccurrences(of: "2026-09-01", with: "2999-01-01")
+      .replacingOccurrences(of: #""roastLevel":"light""#, with: #""roastLevel":"""#)
+    let fields = try BagRecognition.draft(from: done(json, in: context)).get()
+    #expect(fields.bagWeightG == nil)
+    #expect(fields.roastDate == nil)
+    #expect(fields.roastLevel == nil)
+  }
+
+  @Test func answersOutsideTheSchemaAreDiscarded() throws {
+    let context = try make()
+    let bad = [
+      #"{"name":"Only a name"}"#,
+      bag.replacingOccurrences(of: #""roastLevel":"light""#, with: #""roastLevel":"charred""#),
+      bag.replacingOccurrences(of: #""isDecaf":false"#, with: #""isDecaf":"no""#),
+      "a bag of coffee",
+    ]
+    for json in bad {
+      #expect(BagRecognition.draft(from: done(json, in: context)) == .failure(.invalidResponse))
+    }
+    let other = done(bag, feature: .insights, in: context)
+    #expect(BagRecognition.draft(from: other) == .failure(.invalidResponse))
+    let queued = done(bag, in: context)
+    queued.status = .queued
+    #expect(BagRecognition.draft(from: queued) == .failure(.invalidResponse))
+  }
+
+  @Test func fillKeepsWhatWasTyped() throws {
+    let context = try make()
+    var fields = BeanFields()
+    fields.name = "My name"
+    fields.roastLevel = .dark
+    fields.bagWeightG = 340
+    let draft = try BagRecognition.draft(from: done(bag, in: context)).get()
+    BagRecognition.fill(&fields, with: draft)
+    #expect(fields.name == "My name")
+    #expect(fields.roastLevel == .dark)
+    #expect(fields.bagWeightG == 340)
+    #expect(fields.originCountry == "Colombia")
+    #expect(fields.roasterName == "Test Roasters")
+  }
+
+  @Test func payloadCarriesThePhotoAndTheSchema() {
+    let photo = Data([1, 2, 3])
+    let payload = BagRecognition.payload(photo: photo, feature: .bagRecognition)
+    #expect(payload.imageJPEG == photo)
+    #expect(payload.schema == BagRecognition.schema)
+    #expect(
+      BagRecognition.payload(photo: photo, feature: .photoInterpretation).userText
+        != payload.userText)
+  }
+
+  @Test func queueDeliversADraftAfterASend() async throws {
+    let context = try make()
+    let stub = StubBagTransport(
+      #"{"content":[{"type":"tool_use","input":\#(bag)}]}"#)
+    let client = AIClient(
+      transport: stub, key: { _ in "sk-test" }, disclosureAccepted: { true }, sleep: { _ in })
+    let queue = AIQueue(context: context, client: client)
+    let request = try queue.enqueue(
+      BagRecognition.payload(photo: Data([1]), feature: .bagRecognition),
+      feature: .bagRecognition, provider: .anthropic, modelID: "m")
+    await queue.waitForIdle()
+    #expect(request.status == .done)
+    #expect(try BagRecognition.draft(from: request).get().name == "Finca Alta")
+    #expect(try context.fetch(FetchDescriptor<Bean>()).isEmpty)
+  }
+
+  @Test func withoutAKeyNothingIsSentAndNoDraftExists() async throws {
+    let context = try make()
+    let stub = StubBagTransport("{}")
+    let client = AIClient(
+      transport: stub, key: { _ in nil }, disclosureAccepted: { true }, sleep: { _ in })
+    let queue = AIQueue(context: context, client: client)
+    let request = try queue.enqueue(
+      BagRecognition.payload(photo: Data([1]), feature: .bagRecognition),
+      feature: .bagRecognition, provider: .anthropic, modelID: "m")
+    await queue.waitForIdle()
+    #expect(request.status == .failed)
+    #expect(await stub.calls == 0)
+    #expect(BagRecognition.draft(from: request) == .failure(.invalidResponse))
+  }
+}
+
+private actor StubBagTransport: Transport {
+  private let body: String
+  private(set) var calls = 0
+  init(_ body: String) { self.body = body }
+  func send(_ request: URLRequest) async throws -> HTTPResult {
+    calls += 1
+    return HTTPResult(status: 200, body: Data(body.utf8))
+  }
+}

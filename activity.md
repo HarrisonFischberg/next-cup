@@ -484,3 +484,10 @@ Not done or not verified:
 - Tests: `NextCupTests/AISuggestionsTests.swift` (8 tests).
 - Commands: `swift format lint --strict ...` clean; `xcodebuild ... test -only-testing:NextCupTests` → 174 tests passed.
 - Not done / untested: no button yet starts a diagnosis or insights request from the UI (nothing calls `enqueue` with these payloads; no screenshots, no UI test, no real provider call). `swift test` for the package and the UI test bundle were not re-run (package untouched).
+
+## T024 — Photo interpretation and bag recognition → bean draft
+
+- Added `NextCup/Features/AI/BagRecognition.swift` (schema, payload, `draft(from:)`, `fill`) and a "Fill from a photo" menu in `BeanEditorView` (PhotosPicker, photo sanitized, queued through `AIQueue`). Both `bagRecognition` and `photoInterpretation` produce a `BeanFields` draft; the editor fills only empty fields and the user taps Save. No `Bean` is inserted by the AI path.
+- Tests: `NextCupTests/BagRecognitionTests.swift` (schema validation, blank/future values dropped, no blind save, no call without key, queue round trip with stub transport).
+- Commands: `swift format lint --strict` clean; `swift test --package-path Packages/NextCupKit` 138 passed; `xcodebuild test` full run: all app unit tests passed, 2 UI tests failed (`testBrewAgainRepeatsASavedBrew`, `testChangingUnitsInSettingsUpdatesRecipesAndTheBrewForm`); both passed when rerun alone (flaky under full run, not touched by this change).
+- Not done / untested: no simulator screenshots (light, dark, largest text) and no VoiceOver check of the new editor row; no real provider call (no key, no network by rule); camera capture not added (PhotosPicker only).
