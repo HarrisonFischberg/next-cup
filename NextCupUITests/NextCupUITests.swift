@@ -61,6 +61,39 @@ final class NextCupUITests: XCTestCase {
   }
 
   @MainActor
+  func testFlavorExplorerReachesEveryBucket() {
+    let app = launch()
+    app.tabBars.buttons["Explore"].tap()
+    let entry = element(app, "explore.flavors")
+    XCTAssertTrue(entry.waitForExistence(timeout: 10))
+    entry.tap()
+    XCTAssertTrue(element(app, "flavor.list").waitForExistence(timeout: 10))
+    let buckets = [
+      "flavor": [
+        "citrus", "stone-fruit", "berry", "tropical", "floral", "chocolate", "nutty", "caramel",
+        "spice", "roasted",
+      ],
+      "origin": ["east-africa", "central-america", "south-america", "asia-pacific", "caribbean"],
+      "process": ["washed", "natural", "honey", "experimental"],
+      "roast": ["light", "medium", "dark"],
+      "brewer": ["pourOver", "immersion", "espresso", "cold"],
+    ]
+    for (dimension, keys) in buckets {
+      for key in keys {
+        let row = element(app, "flavor.bucket.\(dimension).\(key)")
+        // The list is lazy: start from the top each time, then scroll down to the row.
+        for _ in 0..<6 { app.swipeDown() }
+        scrollUntilHittable(row, in: app)
+        XCTAssertTrue(row.isHittable, "bucket \(dimension).\(key) is not reachable")
+      }
+    }
+    for _ in 0..<14 { app.swipeDown() }
+    element(app, "flavor.bucket.flavor.citrus").tap()
+    XCTAssertTrue(element(app, "flavor.detail.flavor.citrus").waitForExistence(timeout: 10))
+    XCTAssertTrue(app.staticTexts["WORDS THAT MAP HERE"].exists)
+  }
+
+  @MainActor
   func testMalformedDeepLinkIsIgnored() {
     let app = launch(deepLink: "nextcup://recipe/not-a-uuid")
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
@@ -1252,5 +1285,213 @@ final class NextCupUITests: XCTestCase {
 
     XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 10))
     XCTAssertTrue(app.tabBars.buttons["Beans"].isSelected)
+  }
+
+  // MARK: Paper import (T025)
+
+  /// Saves review-screen screenshots to `ralph/screenshots` when `.capture` exists there.
+  @MainActor
+  func testPaperImportScreenshots() throws {
+    let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+      .deletingLastPathComponent().appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folder.appendingPathComponent(".capture").path),
+      "create ralph/screenshots/.capture to save screenshots")
+    let directory = folder.path
+    let variants: [(name: String, arguments: [String])] = [
+      ("light", []),
+      ("dark", ["-AppleInterfaceStyle", "Dark"]),
+      (
+        "largest-text",
+        ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+      ),
+    ]
+    for variant in variants {
+      let app = XCUIApplication()
+      app.launchArguments =
+        ["-inMemoryStore", "-resetNavigationState", "-resetDraft"] + variant.arguments
+      app.launch()
+      element(app, "journal.import").tap()
+      element(app, "import.sample").tap()
+      try shoot(app, "\(directory)/T025-choose-\(variant.name).png")
+      let read = element(app, "import.read.device")
+      scrollUntilHittable(read, in: app)
+      read.tap()
+      XCTAssertTrue(element(app, "import.review").waitForExistence(timeout: 30))
+      try shoot(app, "\(directory)/T025-review-\(variant.name).png")
+      app.swipeUp()
+      try shoot(app, "\(directory)/T025-review-lower-\(variant.name).png")
+      app.terminate()
+    }
+  }
+
+  private func shoot(_ app: XCUIApplication, _ path: String) throws {
+    try app.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: path))
+  }
+
+  @MainActor
+  func testPaperImportCannotSaveUntilConfirmed() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    element(app, "journal.import").tap()
+    XCTAssertTrue(element(app, "import.sheet").waitForExistence(timeout: 5))
+
+    element(app, "import.sample").tap()
+    let read = element(app, "import.read.device")
+    XCTAssertTrue(read.waitForExistence(timeout: 5))
+    read.tap()
+
+    XCTAssertTrue(element(app, "import.review").waitForExistence(timeout: 30), "page was not read")
+    let save = element(app, "import.save")
+    XCTAssertFalse(save.isEnabled, "Save must stay off until the page is confirmed")
+    let dose = element(app, "import.dose")
+    var swipes = 0
+    while !dose.exists && swipes < 6 {
+      app.swipeUp()
+      swipes += 1
+    }
+    XCTAssertEqual(dose.value as? String, "18")
+
+    // Editing a field after confirming asks for the confirmation again.
+    let confirm = element(app, "import.confirm")
+    scrollUntilHittable(confirm, in: app)
+    // The switch sits at the trailing edge of its row.
+    func flip() { confirm.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap() }
+    flip()
+    XCTAssertTrue(save.waitForExistence(timeout: 2) && save.isEnabled, "confirming enables Save")
+    flip()
+    XCTAssertFalse(save.isEnabled)
+    flip()
+    save.tap()
+
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 5))
+    let row = app.descendants(matching: .any)
+      .matching(NSPredicate(format: "label CONTAINS[c] 'Sample Blend'")).firstMatch
+    XCTAssertTrue(row.waitForExistence(timeout: 5), "the imported brew is in the journal")
+  }
+
+  // MARK: Roaster discovery (T027)
+
+  private func openRoasters(location: String, extraArguments: [String] = []) -> XCUIApplication {
+    let app = XCUIApplication()
+    app.launchArguments =
+      [
+        "-inMemoryStore", "-resetNavigationState", "-resetDraft", "-roasterStub", "-locationStub",
+        location,
+      ] + extraArguments
+    app.launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Beans"].tap()
+    let open = app.buttons["beans.roasters"]
+    XCTAssertTrue(open.waitForExistence(timeout: 5))
+    open.tap()
+    XCTAssertTrue(element(app, "roasters.screen").waitForExistence(timeout: 5))
+    return app
+  }
+
+  @MainActor
+  func testDeniedLocationFallsBackToATypedCityAndOnlySavedRoastersStay() {
+    let app = openRoasters(location: "denied")
+    app.buttons["roasters.locate"].tap()
+    XCTAssertTrue(
+      element(app, "roasters.locationNotice").waitForExistence(timeout: 5),
+      "denied location says so and offers the typed city")
+
+    let city = app.textFields["roasters.city"]
+    city.tap()
+    city.typeText("Sampletown")
+    app.buttons["roasters.search"].tap()
+    let first = app.buttons["roasters.toggle.Sample Roasters One"]
+    XCTAssertTrue(first.waitForExistence(timeout: 5), "typed city returns results")
+    XCTAssertTrue(element(app, "roasters.savedEmpty").exists, "searching saves nothing")
+
+    first.tap()
+    XCTAssertTrue(
+      element(app, "roasters.saved.Sample Roasters One").waitForExistence(timeout: 5),
+      "a saved roaster is listed under Saved")
+    XCTAssertFalse(
+      element(app, "roasters.saved.Sample Roasters Two").exists, "unsaved results are not kept")
+  }
+
+  @MainActor
+  func testRoasterSearchShowsEmptyAndErrorStatesWithARetry() {
+    let app = openRoasters(location: "granted")
+    let city = app.textFields["roasters.city"]
+    city.tap()
+    city.typeText("Nowhere")
+    app.buttons["roasters.search"].tap()
+    XCTAssertTrue(element(app, "roasters.empty").waitForExistence(timeout: 5))
+
+    city.tap()
+    city.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: "Nowhere".count))
+    city.typeText("Offline")
+    app.buttons["roasters.search"].tap()
+    XCTAssertTrue(element(app, "roasters.failed").waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      app.buttons.matching(NSPredicate(format: "label ==[c] 'Retry'")).firstMatch.exists)
+  }
+
+  // MARK: Screenshot capture for T027 and T028 (only runs when ralph/screenshots/.capture exists)
+
+  @MainActor
+  func testCaptureRoasterAndFlavorScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let sizeArguments =
+        variant.size.map { ["-UIPreferredContentSizeCategoryName", $0] } ?? []
+
+      // S10: results, saved roaster, then the denied-location notice.
+      let app = openRoasters(location: "granted", extraArguments: sizeArguments)
+      let city = app.textFields["roasters.city"]
+      city.tap()
+      city.typeText("Sampletown")
+      app.buttons["roasters.search"].tap()
+      let first = app.buttons["roasters.toggle.Sample Roasters One"]
+      XCTAssertTrue(first.waitForExistence(timeout: 5))
+      first.tap()
+      // At the largest text the Saved list can sit below the fold; the functional tests cover it.
+      if variant.size == nil {
+        XCTAssertTrue(
+          element(app, "roasters.saved.Sample Roasters One").waitForExistence(timeout: 5))
+      }
+      try save(app.screenshot(), "\(folderURL.path)/T027-results-\(variant.name).png")
+      app.terminate()
+
+      let denied = openRoasters(location: "denied", extraArguments: sizeArguments)
+      denied.buttons["roasters.locate"].tap()
+      XCTAssertTrue(element(denied, "roasters.locationNotice").waitForExistence(timeout: 5))
+      try save(denied.screenshot(), "\(folderURL.path)/T027-denied-\(variant.name).png")
+      denied.terminate()
+
+      // S-flavor: the list and one bucket's detail.
+      let flavor = XCUIApplication()
+      flavor.launchArguments =
+        ["-inMemoryStore", "-resetNavigationState", "-resetDraft"] + sizeArguments
+      flavor.launch()
+      flavor.tabBars.buttons["Explore"].tap()
+      let entry = element(flavor, "explore.flavors")
+      XCTAssertTrue(entry.waitForExistence(timeout: 10))
+      entry.tap()
+      XCTAssertTrue(element(flavor, "flavor.list").waitForExistence(timeout: 10))
+      try save(flavor.screenshot(), "\(folderURL.path)/T028-list-\(variant.name).png")
+      let citrus = element(flavor, "flavor.bucket.flavor.citrus")
+      scrollUntilHittable(citrus, in: flavor)
+      citrus.tap()
+      XCTAssertTrue(element(flavor, "flavor.detail.flavor.citrus").waitForExistence(timeout: 10))
+      try save(flavor.screenshot(), "\(folderURL.path)/T028-detail-\(variant.name).png")
+      flavor.terminate()
+    }
   }
 }

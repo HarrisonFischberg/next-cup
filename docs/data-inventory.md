@@ -49,3 +49,19 @@ Pending owner approval of `docs/blueprint.md` §6.
 | Third-party SDKs | None |
 | AI keys (T021) | Keychain generic-password items, `WhenUnlockedThisDeviceOnly`, service `app.rarecreatures.nextcup.ai`; cleared by delete all; no network call made yet |
 | AI disclosure version and per-feature provider/model IDs (T021) | `UserDefaults` only; contain no secrets |
+| Paper import (T025) | Photo of a journal page chosen with `PhotosPicker` (no library permission). Text is read on device by Apple Vision with no network. Only on an explicit tap of "Read with my AI key" is the metadata-stripped photo sent to the user's chosen provider (existing OpenAI/Anthropic rows). The page photo is kept on the saved brew only after the user confirms; nothing is stored before that |
+
+## Verified against the code (T030, 2026-10-24)
+
+Checked by search of `NextCup`, `NextCupLiveActivity` and `Packages/NextCupKit/Sources` on `build/phase-4f`.
+
+| Item | Result |
+| --- | --- |
+| Third-party SDKs | None. The project references only the local `NextCupKit` package; imports are Apple frameworks |
+| Analytics, crash reporting, ads, tracking | None found; `PrivacyInfo.xcprivacy` added: no tracking, no collected data |
+| Network endpoints | Only `api.anthropic.com` and `api.openai.com` in `AIClient.swift`, reached through `URLSessionTransport`; MapKit search is Apple's service |
+| Required-reason APIs | `UserDefaults` only (reason CA92.1); no file-timestamp, disk-space or uptime APIs found |
+| Permissions | Location when in use (string in `Config/NextCup-Info.plist`); photos via `PhotosPicker` (no permission); no camera, contacts, microphone, Bluetooth or notifications |
+| Logging | No `print`, `NSLog`, `os_log` or `Logger` in app code |
+| Planned flows not built | Bluetooth scales, Apple Health, iCloud sync, creator-recipe import: none present in code |
+| Not verified | Runtime network capture; widget extension has no privacy manifest (no required-reason API found); on-device backup contents were not inspected beyond tests |

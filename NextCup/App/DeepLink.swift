@@ -9,6 +9,8 @@ enum DeepLink: Hashable, Sendable {
   case brewAgain(UUID)
   case recipe(UUID)
   case bean(UUID)
+  /// The running guided timer for a recipe at the dose it was started with (Live Activity tap).
+  case timer(recipeID: UUID, doseG: Double)
 
   static let scheme = "nextcup"
 
@@ -35,6 +37,13 @@ enum DeepLink: Hashable, Sendable {
     case "bean":
       guard let id = UUID(uuidString: target) else { return nil }
       self = .bean(id)
+    case "timer":
+      let dose = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+        .first { $0.name == "dose" }?.value.flatMap(Double.init)
+      guard let id = UUID(uuidString: target), let dose, dose.isFinite, dose > 0 else {
+        return nil
+      }
+      self = .timer(recipeID: id, doseG: dose)
     default:
       return nil
     }
@@ -43,7 +52,7 @@ enum DeepLink: Hashable, Sendable {
   var tab: AppTab {
     switch self {
     case .newBrew, .brew, .brewAgain: .journal
-    case .recipe: .recipes
+    case .recipe, .timer: .recipes
     case .bean: .beans
     }
   }
@@ -55,6 +64,8 @@ enum DeepLink: Hashable, Sendable {
     case .brewAgain(let id): URL(string: "\(Self.scheme)://brew-again/\(id.uuidString)")!
     case .recipe(let id): URL(string: "\(Self.scheme)://recipe/\(id.uuidString)")!
     case .bean(let id): URL(string: "\(Self.scheme)://bean/\(id.uuidString)")!
+    case .timer(let id, let doseG):
+      URL(string: "\(Self.scheme)://timer/\(id.uuidString)?dose=\(doseG)")!
     }
   }
 
@@ -66,6 +77,7 @@ enum DeepLink: Hashable, Sendable {
     case .brewAgain: "Brew again"
     case .recipe: "Recipe"
     case .bean: "Bean"
+    case .timer: "Timer"
     }
   }
 
@@ -76,6 +88,7 @@ enum DeepLink: Hashable, Sendable {
     case .brewAgain(let id): "destination.brew-again.\(id.uuidString)"
     case .recipe(let id): "destination.recipe.\(id.uuidString)"
     case .bean(let id): "destination.bean.\(id.uuidString)"
+    case .timer(let id, _): "destination.timer.\(id.uuidString)"
     }
   }
 }

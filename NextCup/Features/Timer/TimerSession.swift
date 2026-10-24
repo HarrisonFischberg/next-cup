@@ -43,6 +43,12 @@ enum TimerEnvironment {
     return SystemTimerClock()
   }()
 
+  /// UI tests never start a real Live Activity.
+  static let activity: any TimerActivityControlling = {
+    AppBootstrap.usesInMemoryStore
+      ? NoTimerActivity() as any TimerActivityControlling : LiveTimerActivity()
+  }()
+
   /// An in-memory run (UI tests) never touches the real saved timer.
   static let stateStore: any TimerStateStore = {
     AppBootstrap.usesInMemoryStore
@@ -78,15 +84,18 @@ final class TimerSession {
   @ObservationIgnored private var engine: TimerEngine
   @ObservationIgnored private let haptics: any TimerHaptics
   @ObservationIgnored private var lastIndex: Int?
+  @ObservationIgnored private let activity: any TimerActivityControlling
 
   /// Picks up the saved timer when it belongs to this same plan; otherwise starts clean.
   init(
     setup: TimerSetup, clock: any TimerClock = TimerEnvironment.clock,
     store: any TimerStateStore = TimerEnvironment.stateStore,
-    haptics: any TimerHaptics = SystemTimerHaptics()
+    haptics: any TimerHaptics = SystemTimerHaptics(),
+    activity: any TimerActivityControlling = TimerEnvironment.activity
   ) {
     self.setup = setup
     self.haptics = haptics
+    self.activity = activity
     if let restored = TimerEngine.restore(clock: clock, store: store), restored.plan == setup.plan {
       engine = restored
     } else {
@@ -94,7 +103,11 @@ final class TimerSession {
     }
     state = engine.state()
     lastIndex = state.currentIndex
-    if case .finished = state.phase { complete(state) }
+    if case .finished = state.phase {
+      complete(state)
+    } else if state.phase != .notStarted {
+      activity.update(setup: setup, state: state)
+    }
   }
 
   // MARK: Controls
@@ -154,11 +167,11 @@ final class TimerSession {
   }
 
   /// Only whole-second, step and phase changes reach the view, so it redraws once a second.
+  /// The Live Activity hears only about phase and step changes; its clock runs itself.
   private func publish(_ latest: TimerState) {
-    let changed =
-      Int(latest.elapsedS) != Int(state.elapsedS) || latest.phase != state.phase
-      || latest.currentIndex != state.currentIndex
-    if changed { state = latest }
+    let moved = latest.phase != state.phase || latest.currentIndex != state.currentIndex
+    if moved || Int(latest.elapsedS) != Int(state.elapsedS) { state = latest }
+    if moved { activity.update(setup: setup, state: latest) }
   }
 
   private func complete(_ finished: TimerState) {
@@ -168,6 +181,7 @@ final class TimerSession {
     state = finished
     outcome = TimerOutcome(elapsedS: finished.elapsedS, endedEarly: early)
     haptics.play(.finish)
+    activity.end()
     engine.discard()
   }
 }
