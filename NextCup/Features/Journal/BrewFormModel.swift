@@ -31,43 +31,81 @@ final class BrewFormModel {
   private(set) var photoError: String?
 
   let seed: BrewFormSeed?
+  /// The saved brew being edited, or `nil` for a new brew.
+  let editingID: UUID?
+  /// The saved brew this form repeats ("Brew again"), or `nil`.
+  let repeatingID: UUID?
   private let store: Store
   private let draftStore: DraftStore
   private let defaults: UserDefaults
   private let simulatesSaveFailure: Bool
   private var autosave: Task<Void, Never>?
 
+  var isEditing: Bool { editingID != nil }
+
   /// Opens the form: restores a saved draft when one belongs here, otherwise
-  /// starts from the timer's seed or a blank brew.
+  /// starts from the saved brew being edited, the timer's seed or a blank brew.
+  /// An edit and a repeat keep their own draft files, so they never touch a new
+  /// brew's draft.
   init(
-    seed: BrewFormSeed?, store: Store, draftStore: DraftStore = .standard(),
-    defaults: UserDefaults = .standard, simulatesSaveFailure: Bool = false
+    seed: BrewFormSeed?, editing brew: Brew? = nil, repeating source: Brew? = nil, store: Store,
+    draftStore: DraftStore = .standard(), defaults: UserDefaults = .standard,
+    simulatesSaveFailure: Bool = false
   ) {
     self.seed = seed
+    self.editingID = brew?.id
+    self.repeatingID = source?.id
     self.store = store
     self.draftStore = draftStore
     self.defaults = defaults
     self.simulatesSaveFailure = simulatesSaveFailure
 
+    func belongs(_ saved: BrewDraft) -> Bool {
+      if let brew { return saved.id == brew.id }
+      if let source { return saved.sourceKey == BrewDraft.repeatKey(for: source.id) }
+      return seed == nil || saved.sourceKey == seed?.sessionKey
+    }
+    func opening() -> BrewDraft {
+      Self.fresh(
+        seed: seed, editing: brew, repeating: source, store: store, defaults: defaults)
+    }
     switch draftStore.load() {
-    case .draft(let saved) where seed == nil || saved.sourceKey == seed?.sessionKey:
+    case .draft(let saved) where belongs(saved):
       draft = saved
       notice = FormNotice(kind: .info, message: "Restored your unsaved brew.")
     case .discardedCorrupt:
-      draft = Self.fresh(seed: seed, store: store, defaults: defaults)
+      draft = opening()
       notice = FormNotice(
         kind: .info, message: "A damaged draft could not be read and was discarded.")
     default:
-      draft = Self.fresh(seed: seed, store: store, defaults: defaults)
+      draft = opening()
     }
-    // A form opened from a timer run is saved at once, so the time reached
-    // survives a crash before the first edit.
-    if seed != nil { flushDraft() }
+    // A form opened from a timer run or a repeat is saved at once, so the values
+    // it carries survive a crash before the first edit.
+    if seed != nil || source != nil { flushDraft() }
   }
 
-  private static func fresh(seed: BrewFormSeed?, store: Store, defaults: UserDefaults)
-    -> BrewDraft
-  {
+  private static func saved(_ brew: Brew) -> BrewDraft {
+    BrewDraft(
+      id: brew.id, date: brew.date, methodID: brew.method?.id, recipeID: brew.recipe?.id,
+      doseG: brew.doseG, waterG: brew.waterG, tempC: brew.tempC, totalTimeS: brew.totalTimeS,
+      grindSetting: brew.grindSetting ?? "", verdict: brew.verdict?.rawValue,
+      ratingHalfSteps: brew.ratingHalfSteps ?? 0, notes: brew.notes, photo: brew.photo,
+      targets: brew.targetsJSON.flatMap { try? JSONDecoder().decode(BrewTargets.self, from: $0) })
+  }
+
+  private static func fresh(
+    seed: BrewFormSeed?, editing brew: Brew?, repeating source: Brew?, store: Store,
+    defaults: UserDefaults
+  ) -> BrewDraft {
+    if let brew { return saved(brew) }
+    if let source {
+      let beans = (source.beans ?? []).map {
+        DraftBean(
+          beanID: $0.bean?.id, name: $0.bean?.name ?? $0.beanNameSnapshot, grams: $0.grams)
+      }
+      return BrewDraft.repeating(saved(source), sourceID: source.id, beans: beans)
+    }
     if let seed {
       let method = (try? store.find(Recipe.self, id: seed.recipeID))?.method
       return BrewDraft(
@@ -232,5 +270,21 @@ final class BrewFormModel {
     brew.photo = draft.photo
     brew.targetsJSON = draft.targets.flatMap { try? JSONEncoder().encode($0) }
     brew.isDraft = false
+    if let beans = draft.beans { applyBeans(beans, to: brew) }
+  }
+
+  /// Gives the brew the repeated beans, their shares scaled to this brew's dose.
+  /// A bean that has since been deleted keeps its name, so the journal still
+  /// reads the same.
+  private func applyBeans(_ beans: [DraftBean], to brew: Brew) {
+    let total = beans.reduce(0) { $0 + $1.grams }
+    let dose = draft.doseG ?? 0
+    brew.beans = beans.map { entry in
+      let share = total > 0 ? entry.grams / total : 1 / Double(beans.count)
+      let use = BrewBean(grams: dose * share, beanNameSnapshot: entry.name)
+      store.context.insert(use)
+      use.bean = entry.beanID.flatMap { try? store.find(Bean.self, id: $0) }
+      return use
+    }
   }
 }

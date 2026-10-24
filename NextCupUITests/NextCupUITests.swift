@@ -275,6 +275,345 @@ final class NextCupUITests: XCTestCase {
       "Save (\(save.frame)) must sit above the keyboard (\(keyboard.frame))")
   }
 
+  // MARK: Journal (S01)
+
+  /// Logs one brew from the empty journal, with a note to search for, and
+  /// returns to the list.
+  @MainActor
+  private func logBrew(_ app: XCUIApplication, note: String) {
+    app.buttons["Log a brew"].firstMatch.tap()
+    XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 5))
+    app.buttons["Increase Dose"].tap()
+    app.buttons["Increase Water"].tap()
+    let notes = element(app, "brewform.notes")
+    scrollUntilHittable(notes, in: app)
+    notes.tap()
+    notes.typeText(note)
+    app.buttons["Save brew"].tap()
+    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
+    app.buttons["Done"].tap()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 5))
+  }
+
+  @MainActor
+  private func journalRow(_ app: XCUIApplication, containing text: String) -> XCUIElement {
+    app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", text)).firstMatch
+  }
+
+  /// F01 end to end: log a brew, find it by search, edit it, and delete it with Undo.
+  @MainActor
+  func testJournalLogsFindsEditsAndDeletesABrewWithUndo() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    XCTAssertTrue(app.staticTexts["NO BREWS YET"].exists, "empty journal offers the next action")
+
+    logBrew(app, note: "Washed Ethiopia sweet")
+    XCTAssertTrue(journalRow(app, containing: "Washed Ethiopia sweet").waitForExistence(timeout: 5))
+    XCTAssertFalse(app.staticTexts["NO BREWS YET"].exists)
+
+    // Search finds it; a miss shows the way out.
+    let search = app.searchFields.firstMatch
+    search.tap()
+    search.typeText("zzzz")
+    XCTAssertTrue(app.staticTexts["NO MATCHES"].waitForExistence(timeout: 5))
+    app.buttons["Clear filters"].tap()
+    XCTAssertTrue(journalRow(app, containing: "Washed Ethiopia sweet").waitForExistence(timeout: 5))
+    search.tap()
+    search.typeText("ethiopia")
+    let row = journalRow(app, containing: "Washed Ethiopia sweet")
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+    XCTAssertTrue(row.label.contains("15 g"), "row shows the dose, got \(row.label)")
+
+    // Edit: the form opens on the saved values; Save changes the same brew.
+    row.tap()
+    XCTAssertTrue(element(app, "brewform.edit").waitForExistence(timeout: 5))
+    XCTAssertTrue(text(app, in: "brewform.dose").hasPrefix("15"))
+    app.buttons["Increase Dose"].tap()
+    app.buttons["Save brew"].tap()
+    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
+    app.buttons["Done"].tap()
+    XCTAssertTrue(
+      journalRow(app, containing: "15.1 g").waitForExistence(timeout: 5),
+      "list shows the edited dose: \(app.debugDescription)")
+
+    // Delete with Undo: the row goes, Undo brings it back untouched.
+    let edited = journalRow(app, containing: "Washed Ethiopia sweet")
+    edited.swipeLeft()
+    app.buttons["Delete"].tap()
+    XCTAssertTrue(app.staticTexts["Brew deleted"].waitForExistence(timeout: 5))
+    XCTAssertFalse(journalRow(app, containing: "Washed Ethiopia sweet").exists)
+    app.buttons["UNDO"].tap()
+    XCTAssertTrue(journalRow(app, containing: "Washed Ethiopia sweet").waitForExistence(timeout: 5))
+
+    // Delete again and let the toast run out: the brew stays gone.
+    journalRow(app, containing: "Washed Ethiopia sweet").swipeLeft()
+    app.buttons["Delete"].tap()
+    XCTAssertTrue(app.staticTexts["NO BREWS YET"].waitForExistence(timeout: 5))
+    let gone = NSPredicate(format: "exists == false")
+    expectation(for: gone, evaluatedWith: app.staticTexts["Brew deleted"])
+    waitForExpectations(timeout: 12)
+    XCTAssertTrue(app.staticTexts["NO BREWS YET"].exists)
+  }
+
+  /// X2: "Brew again" opens a new brew with the old amounts and none of the old
+  /// notes, and saving it adds a second brew.
+  @MainActor
+  func testBrewAgainRepeatsASavedBrew() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    logBrew(app, note: "Washed Ethiopia sweet")
+    let row = journalRow(app, containing: "Washed Ethiopia sweet")
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+
+    // Leading swipe is the quick path; the context menu and VoiceOver action
+    // reach the same screen.
+    row.swipeRight()
+    app.buttons["Brew again"].tap()
+    XCTAssertTrue(element(app, "brewform.again").waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["BREW AGAIN"].exists)
+    XCTAssertTrue(text(app, in: "brewform.dose").hasPrefix("15"), "dose carried over")
+    XCTAssertTrue(text(app, in: "brewform.time").hasPrefix("—"), "time starts empty")
+    XCTAssertEqual(
+      element(app, "brewform.notes").value as? String ?? "", "", "the old notes are not copied")
+
+    app.buttons["Save brew"].tap()
+    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
+    app.buttons["Done"].tap()
+    let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'journal.row.'"))
+    XCTAssertTrue(
+      rows.element(boundBy: 1).waitForExistence(timeout: 5), "the repeat is a second brew")
+    XCTAssertEqual(rows.count, 2)
+    XCTAssertTrue(
+      journalRow(app, containing: "Washed Ethiopia sweet").exists, "the first is intact")
+  }
+
+  /// T013: customizing a built-in saves a separate copy; the original is untouched.
+  @MainActor
+  func testCustomizingABuiltInRecipeSavesACopy() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Recipes"].tap()
+    let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'"))
+      .firstMatch
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+    row.tap()
+    element(app, "recipe.menu").tap()
+    app.buttons["Customize"].tap()
+    XCTAssertTrue(element(app, "recipe.editor").waitForExistence(timeout: 5))
+    let name = element(app, "recipe.editor.name")
+    XCTAssertEqual(name.value as? String, "Balanced cone (copy)")
+    let dose = element(app, "recipe.editor.dose")
+    XCTAssertEqual(dose.value as? String, "15")
+    dose.tap()
+    dose.typeText(XCUIKeyboardKey.delete.rawValue + XCUIKeyboardKey.delete.rawValue + "18")
+    app.buttons["recipe.editor.save"].tap()
+    XCTAssertTrue(element(app, "recipe.editor").waitForNonExistence(timeout: 5))
+
+    // Back in the library, both recipes exist with their own doses.
+    app.navigationBars.buttons.element(boundBy: 0).tap()
+    let copy = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone (copy)'"))
+      .firstMatch
+    XCTAssertTrue(copy.waitForExistence(timeout: 5))
+    XCTAssertTrue(copy.label.contains("18"), "the copy carries the new dose: \(copy.label)")
+    let original = app.buttons.matching(
+      NSPredicate(format: "label CONTAINS[c] 'Balanced cone' AND NOT label CONTAINS[c] 'copy'")
+    ).firstMatch
+    XCTAssertTrue(original.exists)
+    XCTAssertTrue(original.label.contains("15 g"), "the original is unchanged: \(original.label)")
+  }
+
+  private func openMethods(_ app: XCUIApplication) {
+    app.tabBars.buttons["Settings"].tap()
+    XCTAssertTrue(element(app, "settings.methods").waitForExistence(timeout: 5))
+    element(app, "settings.methods").tap()
+    XCTAssertTrue(element(app, "methods.screen").waitForExistence(timeout: 5))
+  }
+
+  private func addMethod(_ app: XCUIApplication, name: String, switchOff: String) {
+    app.buttons["methods.add"].tap()
+    let field = element(app, "methods.editor.name")
+    XCTAssertTrue(field.waitForExistence(timeout: 5))
+    field.tap()
+    field.typeText(name)
+    app.keyboards.buttons["Done"].tap()
+    // The switch element spans the row; its thumb is at the trailing edge.
+    app.switches[switchOff].coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+    XCTAssertEqual(app.switches[switchOff].value as? String, "0", "\(switchOff) is switched off")
+    app.buttons["methods.editor.save"].tap()
+    XCTAssertTrue(element(app, "methods.row.\(name)").waitForExistence(timeout: 5))
+  }
+
+  /// T012: add a method with a field switched off, move it up without a drag,
+  /// hide another, and see the brew form follow.
+  @MainActor
+  func testMethodsAddReorderHideAndShapeTheBrewForm() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    openMethods(app)
+    addMethod(app, name: "Moka pot", switchOff: "Temperature")
+
+    // The new method is last; "Move up" in its editor puts it above the old last.
+    let rows = app.descendants(matching: .any).matching(
+      NSPredicate(format: "identifier BEGINSWITH 'methods.row.'"))
+    let before = rows.count
+    XCTAssertEqual(rows.element(boundBy: before - 1).identifier, "methods.row.Moka pot")
+    element(app, "methods.row.Moka pot").tap()
+    XCTAssertTrue(element(app, "methods.editor.name").waitForExistence(timeout: 5))
+    XCTAssertEqual(
+      app.switches["Temperature"].value as? String, "0", "the switch stayed off after saving")
+    XCTAssertEqual(app.switches["Grind setting"].value as? String, "1")
+    let up = element(app, "methods.editor.up")
+    var swipes = 0
+    while !up.isHittable && swipes < 6 {
+      app.swipeUp()
+      swipes += 1
+    }
+    XCTAssertTrue(up.isHittable, "Move up is reachable by scrolling")
+    up.tap()
+    app.buttons["methods.editor.cancel"].tap()
+    XCTAssertTrue(element(app, "methods.screen").waitForExistence(timeout: 5))
+    XCTAssertEqual(rows.element(boundBy: before - 2).identifier, "methods.row.Moka pot")
+
+    // Hiding keeps the row, marked, and takes it out of the picker.
+    let press = element(app, "methods.row.Press pot")
+    press.swipeLeft()
+    app.buttons["Hide"].tap()
+    XCTAssertTrue(
+      element(app, "methods.row.Press pot").label.contains("hidden"),
+      "hidden rows stay in the list: \(element(app, "methods.row.Press pot").label)")
+
+    app.tabBars.buttons["Journal"].tap()
+    app.buttons["Log a brew"].tap()
+    XCTAssertTrue(element(app, "brewform.blank").waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      element(app, "brewform.temperature").exists, "the first method tracks temperature")
+    element(app, "brewform.method").tap()
+    XCTAssertTrue(app.buttons["Moka pot"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.buttons["Press pot"].exists, "a hidden method is not offered")
+    app.buttons["Moka pot"].tap()
+    XCTAssertTrue(element(app, "brewform.grind").waitForExistence(timeout: 5))
+    XCTAssertFalse(
+      element(app, "brewform.temperature").exists, "temperature is off for Moka pot")
+    XCTAssertTrue(element(app, "brewform.dose").exists && element(app, "brewform.water").exists)
+  }
+
+  /// Writes the methods list, editor and shaped form in light, dark and the
+  /// largest text size. Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureMethodsScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      if let size = variant.size {
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
+      }
+      app.launch()
+      XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+      app.tabBars.buttons["Settings"].tap()
+      XCTAssertTrue(element(app, "settings.methods").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/settings-\(variant.name).png")
+      element(app, "settings.methods").tap()
+      XCTAssertTrue(element(app, "methods.screen").waitForExistence(timeout: 5))
+      let press = element(app, "methods.row.Press pot")
+      scrollUntilHittable(press, in: app)
+      press.swipeLeft()
+      app.buttons["Hide"].tap()
+      try save(app.screenshot(), "\(folderURL.path)/methods-list-\(variant.name).png")
+      for _ in 0..<6 { app.swipeDown() }
+      element(app, "methods.row.Cone dripper").tap()
+      XCTAssertTrue(element(app, "methods.editor.name").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/methods-editor-\(variant.name).png")
+      app.terminate()
+    }
+  }
+
+  /// Writes journal screenshots in light, dark and the largest text size.
+  /// Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureJournalScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      if let size = variant.size {
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
+      }
+      app.launch()
+      XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+      try save(app.screenshot(), "\(folderURL.path)/journal-empty-\(variant.name).png")
+      logBrew(app, note: "Washed Ethiopia sweet")
+      XCTAssertTrue(journalRow(app, containing: "Washed Ethiopia").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/journal-list-\(variant.name).png")
+      journalRow(app, containing: "Washed Ethiopia").swipeLeft()
+      app.buttons["Delete"].tap()
+      XCTAssertTrue(app.staticTexts["Brew deleted"].waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/journal-undo-\(variant.name).png")
+      app.terminate()
+    }
+  }
+
+  /// Writes "Brew again" screenshots in light, dark and the largest text size.
+  /// Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureBrewAgainScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      if let size = variant.size {
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
+      }
+      app.launch()
+      XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+      logBrew(app, note: "Washed Ethiopia sweet")
+      let row = journalRow(app, containing: "Washed Ethiopia")
+      XCTAssertTrue(row.waitForExistence(timeout: 5))
+      row.swipeRight()
+      try save(app.screenshot(), "\(folderURL.path)/journal-brew-again-swipe-\(variant.name).png")
+      app.buttons["Brew again"].tap()
+      XCTAssertTrue(element(app, "brewform.again").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/brewform-again-\(variant.name).png")
+      app.terminate()
+    }
+  }
+
   /// Writes form screenshots in light, dark and the largest text size.
   /// Runs only while `ralph/screenshots/.capture` exists.
   @MainActor

@@ -10,6 +10,11 @@ import UIKit
 /// pushes it up instead of covering it.
 struct BrewFormView: View {
   let seed: BrewFormSeed?
+  /// A saved brew to change. Its values open in the form and Save updates it.
+  var editing: Brew?
+  /// A saved brew to repeat: its method, beans, amounts and grind open in a new
+  /// brew, with the time reset.
+  var repeating: Brew?
   var onSaved: (() -> Void)?
 
   @Environment(\.modelContext) private var context
@@ -41,12 +46,14 @@ struct BrewFormView: View {
       }
     }
     .background(DS.bg)
-    .navigationTitle("New brew")
+    .navigationTitle(editing != nil ? "Edit brew" : (repeating != nil ? "Brew again" : "New brew"))
     .navigationBarTitleDisplayMode(.inline)
     .task {
       guard model == nil else { return }
       model = BrewFormModel(
-        seed: seed, store: Store(context: context),
+        seed: seed, editing: editing, repeating: repeating, store: Store(context: context),
+        draftStore: editing.map { .editing($0.id) } ?? repeating.map { .repeating($0.id) }
+          ?? .standard(),
         simulatesSaveFailure: Self.simulatesSaveFailure)
     }
   }
@@ -87,7 +94,10 @@ struct BrewFormView: View {
   private var savedState: some View {
     ScrollView {
       EmptyState(
-        title: "Brew saved", message: "It is in your journal. The draft has been cleared.",
+        title: "Brew saved",
+        message: editing != nil
+          ? "Your changes are in your journal."
+          : "It is in your journal. The draft has been cleared.",
         actionTitle: "Done",
         action: {
           onSaved?()
@@ -115,15 +125,18 @@ struct BrewFormView: View {
         }
         methodPicker(binding.draft, model)
         brewedRow(binding.draft.date)
-        tiles(model)
-        grindField(binding.draft.grindSetting)
+        let fields = shownFields(for: model.draft.methodID)
+        tiles(model, fields)
+        if fields.contains(.grind) { grindField(binding.draft.grindSetting) }
         verdictRow(binding.draft.verdict)
-        VStack(alignment: .leading, spacing: DS.Space.sm) {
-          Text("GRADE").font(DS.Font.label).foregroundStyle(DS.ink2)
-          GradeScale(halfSteps: binding.draft.ratingHalfSteps)
+        if fields.contains(.rating) {
+          VStack(alignment: .leading, spacing: DS.Space.sm) {
+            Text("GRADE").font(DS.Font.label).foregroundStyle(DS.ink2)
+            GradeScale(halfSteps: binding.draft.ratingHalfSteps)
+          }
         }
-        photoRow(model)
-        notesField(binding.draft.notes)
+        if fields.contains(.photo) { photoRow(model) }
+        if fields.contains(.notes) { notesField(binding.draft.notes) }
       }
       .padding(DS.Space.lg)
       // Behind the fields, so a tap on empty space dismisses the keyboard
@@ -144,7 +157,11 @@ struct BrewFormView: View {
     // identifiers of every element inside it.
     .background {
       Color.clear.accessibilityElement()
-        .accessibilityIdentifier(seed == nil ? "brewform.blank" : "brewform.prefilled")
+        .accessibilityIdentifier(
+          model.isEditing
+            ? "brewform.edit"
+            : (model.repeatingID != nil
+              ? "brewform.again" : (seed == nil ? "brewform.blank" : "brewform.prefilled")))
     }
   }
 
@@ -152,9 +169,15 @@ struct BrewFormView: View {
 
   private func header(_ model: BrewFormModel) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
-      Text("NEW BREW").font(DS.Font.display).foregroundStyle(DS.ink)
+      Text(model.isEditing ? "EDIT BREW" : (model.repeatingID != nil ? "BREW AGAIN" : "NEW BREW"))
+        .font(DS.Font.display).foregroundStyle(DS.ink)
         .dynamicTypeSize(...DS.displayCap)
         .accessibilityAddTraits(.isHeader)
+      if let beans = model.draft.beans, !beans.isEmpty {
+        Text("Same beans: " + beans.map(\.name).joined(separator: ", "))
+          .font(.subheadline).foregroundStyle(DS.ink2)
+          .accessibilityIdentifier("brewform.beans")
+      }
       if let seed {
         Text([seed.recipeName, seed.methodName].compactMap { $0 }.joined(separator: " · "))
           .font(.subheadline).foregroundStyle(DS.ink2)
@@ -216,7 +239,15 @@ struct BrewFormView: View {
     .accessibilityElement(children: .contain)
   }
 
-  private func tiles(_ model: BrewFormModel) -> some View {
+  /// The fields the chosen method tracks. With no method chosen, every field shows.
+  private func shownFields(for methodID: UUID?) -> Set<BrewParameter> {
+    guard let method = methods.first(where: { $0.id == methodID }) else {
+      return Set(BrewParameter.allCases)
+    }
+    return MethodParameters.shown(tracked: method.trackedParameters)
+  }
+
+  private func tiles(_ model: BrewFormModel, _ fields: Set<BrewParameter>) -> some View {
     let targets = model.draft.targets
     let columns =
       dts.isAccessibilitySize
@@ -252,25 +283,29 @@ struct BrewFormView: View {
         }
       )
       .accessibilityIdentifier("brewform.water")
-      StepperTile(
-        title: "Temperature",
-        value: model.draft.tempC.map {
-          String(format: "%.0f", units.displayTemperature(celsius: $0))
-        }
-          ?? "—",
-        unit: model.draft.tempC == nil ? "" : units.temperatureSymbol,
-        target: targets?.tempC.map { RecipeFormat.temperature($0, units) },
-        down: { model.stepTemperature(direction: -1, units: units) },
-        up: { model.stepTemperature(direction: 1, units: units) }
-      )
-      .accessibilityIdentifier("brewform.temperature")
-      StepperTile(
-        title: "Time", value: model.draft.totalTimeS.map(RecipeFormat.clock) ?? "—",
-        target: targets?.totalTimeS.map(RecipeFormat.clock),
-        down: { model.stepTime(direction: -1) }, up: { model.stepTime(direction: 1) },
-        minusLabel: "Decrease Time by 5 seconds", plusLabel: "Increase Time by 5 seconds"
-      )
-      .accessibilityIdentifier("brewform.time")
+      if fields.contains(.temperature) {
+        StepperTile(
+          title: "Temperature",
+          value: model.draft.tempC.map {
+            String(format: "%.0f", units.displayTemperature(celsius: $0))
+          }
+            ?? "—",
+          unit: model.draft.tempC == nil ? "" : units.temperatureSymbol,
+          target: targets?.tempC.map { RecipeFormat.temperature($0, units) },
+          down: { model.stepTemperature(direction: -1, units: units) },
+          up: { model.stepTemperature(direction: 1, units: units) }
+        )
+        .accessibilityIdentifier("brewform.temperature")
+      }
+      if fields.contains(.time) {
+        StepperTile(
+          title: "Time", value: model.draft.totalTimeS.map(RecipeFormat.clock) ?? "—",
+          target: targets?.totalTimeS.map(RecipeFormat.clock),
+          down: { model.stepTime(direction: -1) }, up: { model.stepTime(direction: 1) },
+          minusLabel: "Decrease Time by 5 seconds", plusLabel: "Increase Time by 5 seconds"
+        )
+        .accessibilityIdentifier("brewform.time")
+      }
       ReadoutTile(title: "Ratio", value: model.ratioLabel ?? "—")
         .accessibilityIdentifier("brewform.ratio")
     }
