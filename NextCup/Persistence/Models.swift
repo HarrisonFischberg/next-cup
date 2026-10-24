@@ -6,6 +6,7 @@ import SwiftData
 /// so the schema stays CloudKit-compatible (blueprint §2).
 protocol Identified: PersistentModel {
   var id: UUID { get set }
+  var createdAt: Date { get set }
   var updatedAt: Date { get set }
 }
 

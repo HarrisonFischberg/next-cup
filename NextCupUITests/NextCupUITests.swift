@@ -101,6 +101,41 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(water.label.contains("250"))
   }
 
+  @MainActor
+  func testChangingUnitsInSettingsUpdatesRecipesAndTheBrewForm() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Settings"].tap()
+    let weight = element(app, "settings.units.weight")
+    XCTAssertTrue(weight.waitForExistence(timeout: 5))
+    weight.buttons["Ounces (oz)"].tap()
+    defer {  // the setting outlives the app run, so put it back
+      app.tabBars.buttons["Settings"].tap()
+      element(app, "settings.units.weight").buttons["Grams (g)"].tap()
+    }
+
+    app.tabBars.buttons["Recipes"].tap()
+    let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'"))
+      .firstMatch
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+    row.tap()
+    let water = element(app, "recipe.water")
+    XCTAssertTrue(water.waitForExistence(timeout: 5))
+    XCTAssertTrue(water.label.contains("oz"), "recipe water in ounces, got \(water.label)")
+    XCTAssertFalse(water.label.contains("250"), "grams value still shown: \(water.label)")
+
+    app.tabBars.buttons["Journal"].tap()
+    app.buttons["Log a brew"].firstMatch.tap()
+    // A blank form has no dose yet; stepping gives it the default, shown in ounces.
+    let increase = app.buttons["Increase Dose"]
+    XCTAssertTrue(increase.waitForExistence(timeout: 5))
+    increase.tap()
+    let dose = element(app, "brewform.dose")
+    XCTAssertTrue(dose.waitForExistence(timeout: 5))
+    let shown = text(app, in: "brewform.dose")
+    XCTAssertTrue(shown.contains("oz"), "brew form dose in ounces, got \(shown)")
+  }
+
   /// Opens a recipe's detail with a sped-up timer clock and taps Start brew.
   @MainActor
   private func openTimer(speed: Int, extraArguments: [String] = []) -> XCUIApplication {
@@ -1132,6 +1167,75 @@ final class NextCupUITests: XCTestCase {
 
   private func save(_ screenshot: XCUIScreenshot, _ path: String) throws {
     try screenshot.pngRepresentation.write(to: URL(fileURLWithPath: path))
+  }
+
+  // MARK: Your data (T019)
+
+  /// Opens Settings → Your data, deletes everything, and takes it back with Undo.
+  @MainActor
+  private func runDataFlow(_ app: XCUIApplication, shot: (String) throws -> Void) throws {
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Settings"].tap()
+    let link = element(app, "settings.data")
+    XCTAssertTrue(link.waitForExistence(timeout: 5))
+    link.tap()
+    let delete = element(app, "data.deleteAll")
+    XCTAssertTrue(element(app, "data.export.json").waitForExistence(timeout: 5))
+    try shot("data-screen")
+
+    scrollUntilHittable(delete, in: app)
+    delete.tap()
+    XCTAssertTrue(
+      element(app, "data.toast").waitForExistence(timeout: 5), app.debugDescription)
+    try shot("data-deleted")
+    app.buttons.matching(NSPredicate(format: "label ==[c] 'Undo'")).firstMatch.tap()
+    // The message sits at the top of the list; at large text it is scrolled off.
+    var swipes = 0
+    while !element(app, "data.message").exists && swipes < 12 {
+      app.swipeDown()
+      swipes += 1
+    }
+    XCTAssertTrue(element(app, "data.message").exists)
+    XCTAssertFalse(element(app, "data.toast").exists)
+  }
+
+  @MainActor
+  func testYourDataDeleteAllCanBeUndone() throws {
+    try runDataFlow(launch()) { _ in }
+  }
+
+  @MainActor
+  func testCaptureDataLight() throws { try captureData("light", appearance: .light, size: nil) }
+
+  @MainActor
+  func testCaptureDataDark() throws { try captureData("dark", appearance: .dark, size: nil) }
+
+  @MainActor
+  func testCaptureDataLargestText() throws {
+    try captureData(
+      "largest-text", appearance: .light, size: "UICTContentSizeCategoryAccessibilityXXXL")
+  }
+
+  @MainActor
+  private func captureData(
+    _ variant: String, appearance: XCUIDevice.Appearance, size: String?
+  ) throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    defer { XCUIDevice.shared.appearance = .light }
+    XCUIDevice.shared.appearance = appearance
+    let app = XCUIApplication()
+    app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+    if let size { app.launchArguments += ["-UIPreferredContentSizeCategoryName", size] }
+    app.launch()
+    try runDataFlow(app) { name in
+      try save(app.screenshot(), "\(folderURL.path)/T019-\(name)-\(variant).png")
+    }
+    app.terminate()
   }
 
   @MainActor
