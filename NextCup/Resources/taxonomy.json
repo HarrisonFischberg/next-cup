@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "dimensions": {
     "origin": {
       "buckets": [
@@ -72,10 +72,13 @@
       ],
       "map": {
         "ultralight": "light",
+        "ultra light": "light",
         "light": "light",
         "mediumlight": "light",
+        "medium light": "light",
         "medium": "medium",
         "mediumdark": "dark",
+        "medium dark": "dark",
         "dark": "dark"
       }
     },

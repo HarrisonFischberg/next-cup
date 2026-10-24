@@ -76,6 +76,10 @@ private struct TabRoot: View {
         for: DeepLink.self, destination: destination)
     case .recipes:
       RecipeLibraryView().navigationDestination(for: DeepLink.self, destination: destination)
+    case .beans:
+      BeanLibraryView().navigationDestination(for: DeepLink.self, destination: destination)
+    case .explore:
+      ExploreView().navigationDestination(for: DeepLink.self, destination: destination)
     case .settings:
       SettingsRootView().navigationDestination(for: DeepLink.self, destination: destination)
     default:
@@ -96,7 +100,7 @@ private struct TabRoot: View {
       }
     case .brew(let id): BrewDestination(link: link, brewID: id)
     case .brewAgain(let id): BrewDestination(link: link, brewID: id, repeats: true)
-    default: DestinationPlaceholder(link: link)
+    case .bean(let id): BeanDestination(link: link, beanID: id)
     }
   }
 }
@@ -157,20 +161,5 @@ private struct TabPlaceholder: View {
     case .explore: "Recommendations and the flavor explorer will be here."
     case .settings: "Units, data and privacy controls will be here."
     }
-  }
-}
-
-/// Stands in for a linked screen until its task builds it.
-private struct DestinationPlaceholder: View {
-  let link: DeepLink
-
-  var body: some View {
-    ScrollView {
-      EmptyState(title: link.screenName, message: "This screen is not built yet.")
-    }
-    .background(DS.bg)
-    .navigationTitle(link.screenName)
-    .navigationBarTitleDisplayMode(.inline)
-    .accessibilityIdentifier(link.identifier)
   }
 }

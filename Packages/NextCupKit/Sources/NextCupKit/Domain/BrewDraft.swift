@@ -54,16 +54,19 @@ public struct BrewDraft: Codable, Equatable, Sendable {
   public var photo: Data?
   public var targets: BrewTargets?
   public var endedEarly: Bool
-  /// Beans carried over by "Brew again". `nil` for a brew that did not start that
-  /// way, so saving an edit never touches the beans already on the brew.
+  /// The beans in the brew, as shares of the dose (`grams` holds the share, so the
+  /// dose can change and each bean still takes its part). `nil` for a draft that
+  /// predates bean choice: saving it leaves the brew's beans alone.
   public var beans: [DraftBean]?
+  /// The grinder used, if one was chosen. Old drafts without it read as `nil`.
+  public var grinderID: UUID?
 
   public init(
     id: UUID = UUID(), sourceKey: String? = nil, date: Date = Date(), methodID: UUID? = nil,
     recipeID: UUID? = nil, doseG: Double? = nil, waterG: Double? = nil, tempC: Double? = nil,
     totalTimeS: Int? = nil, grindSetting: String = "", verdict: String? = nil,
     ratingHalfSteps: Int = 0, notes: String = "", photo: Data? = nil, targets: BrewTargets? = nil,
-    endedEarly: Bool = false, beans: [DraftBean]? = nil
+    endedEarly: Bool = false, beans: [DraftBean]? = nil, grinderID: UUID? = nil
   ) {
     self.id = id
     self.sourceKey = sourceKey
@@ -82,6 +85,7 @@ public struct BrewDraft: Codable, Equatable, Sendable {
     self.targets = targets
     self.endedEarly = endedEarly
     self.beans = beans
+    self.grinderID = grinderID
   }
 
   /// Identifies a "Brew again" draft, so reopening the same repeat restores it.
@@ -99,7 +103,7 @@ public struct BrewDraft: Codable, Equatable, Sendable {
       id: id, sourceKey: repeatKey(for: sourceID), date: now, methodID: source.methodID,
       recipeID: source.recipeID, doseG: source.doseG, waterG: source.waterG,
       tempC: source.tempC, totalTimeS: nil, grindSetting: source.grindSetting,
-      targets: source.targets, beans: beans)
+      targets: source.targets, beans: beans, grinderID: source.grinderID)
   }
 
   /// A brew needs the two numbers every derived value rests on.

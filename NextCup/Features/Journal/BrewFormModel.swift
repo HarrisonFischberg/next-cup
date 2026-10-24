@@ -22,6 +22,7 @@ final class BrewFormModel {
   static let defaultTempC = 94.0
   static let defaultTimeS = 180
   static let lastMethodKey = "brew.lastMethodID"
+  static let lastGrinderKey = "brew.lastGrinderID"
 
   var draft: BrewDraft
   private(set) var notice: FormNotice?
@@ -29,6 +30,17 @@ final class BrewFormModel {
   private(set) var isSaving = false
   private(set) var savedBrewID: UUID?
   private(set) var photoError: String?
+  /// The suggestion the user has answered on this form, so its card stays visible
+  /// with Undo after it leaves the waiting list.
+  private(set) var handledSuggestionID: UUID?
+  private(set) var suggestionError: String?
+  /// What the rules made of the brew just saved: the suggestion, or why none.
+  private(set) var madeSuggestion: Suggestion?
+  private(set) var dialInNote: String?
+  private var followedSuggestionID: UUID?
+  /// The draft value and suggested value before an answer, kept for Undo.
+  private var undoDraftValue: String?
+  private var undoToValue: String?
 
   let seed: BrewFormSeed?
   /// The saved brew being edited, or `nil` for a new brew.
@@ -91,7 +103,12 @@ final class BrewFormModel {
       doseG: brew.doseG, waterG: brew.waterG, tempC: brew.tempC, totalTimeS: brew.totalTimeS,
       grindSetting: brew.grindSetting ?? "", verdict: brew.verdict?.rawValue,
       ratingHalfSteps: brew.ratingHalfSteps ?? 0, notes: brew.notes, photo: brew.photo,
-      targets: brew.targetsJSON.flatMap { try? JSONDecoder().decode(BrewTargets.self, from: $0) })
+      targets: brew.targetsJSON.flatMap { try? JSONDecoder().decode(BrewTargets.self, from: $0) },
+      beans: (brew.beans ?? []).sorted { $0.createdAt < $1.createdAt }.map {
+        DraftBean(
+          beanID: $0.bean?.id, name: $0.bean?.name ?? $0.beanNameSnapshot, grams: $0.grams)
+      },
+      grinderID: brew.grinder?.id)
   }
 
   private static func fresh(
@@ -100,7 +117,7 @@ final class BrewFormModel {
   ) -> BrewDraft {
     if let brew { return saved(brew) }
     if let source {
-      let beans = (source.beans ?? []).map {
+      let beans = (source.beans ?? []).sorted { $0.createdAt < $1.createdAt }.map {
         DraftBean(
           beanID: $0.bean?.id, name: $0.bean?.name ?? $0.beanNameSnapshot, grams: $0.grams)
       }
@@ -117,7 +134,15 @@ final class BrewFormModel {
     let visible = (try? store.context.fetch(FetchDescriptor<BrewMethod>())) ?? []
     let fallback = visible.filter { !$0.isHidden }.min { $0.sortOrder < $1.sortOrder }
     let method = visible.first { $0.id == remembered && !$0.isHidden } ?? fallback
-    return BrewDraft(methodID: method?.id)
+    return BrewDraft(methodID: method?.id, grinderID: rememberedGrinder(store, defaults))
+  }
+
+  /// The grinder used last, if it still exists.
+  private static func rememberedGrinder(_ store: Store, _ defaults: UserDefaults) -> UUID? {
+    guard let id = defaults.string(forKey: lastGrinderKey).flatMap(UUID.init(uuidString:)) else {
+      return nil
+    }
+    return (try? store.find(Grinder.self, id: id)) == nil ? nil : id
   }
 
   // MARK: Derived
@@ -163,6 +188,71 @@ final class BrewFormModel {
     draft.totalTimeS = max(0, current + direction * 5)
   }
 
+  // MARK: Beans and grinder
+
+  /// Each bean's share of the dose in percent, in the order of `draft.beans`.
+  var beanShares: [Double] {
+    BlendShares.percentages(parts: (draft.beans ?? []).map(\.grams))
+  }
+
+  /// What each bean contributes at the dose now set, in grams.
+  var beanGrams: [Double] {
+    BlendShares.grams(dose: draft.doseG ?? 0, parts: (draft.beans ?? []).map(\.grams))
+  }
+
+  /// Adds a bean to the blend at an even share. A bean already in it is ignored.
+  func addBean(_ bean: Bean) {
+    var beans = draft.beans ?? []
+    guard !beans.contains(where: { $0.beanID == bean.id }) else { return }
+    let shares = BlendShares.appending(to: beans.map(\.grams))
+    beans.append(DraftBean(beanID: bean.id, name: bean.name, grams: 0))
+    for index in beans.indices { beans[index].grams = shares[index] }
+    draft.beans = beans
+  }
+
+  func removeBean(at index: Int) {
+    guard var beans = draft.beans, beans.indices.contains(index) else { return }
+    let shares = BlendShares.removing(at: index, from: beans.map(\.grams))
+    beans.remove(at: index)
+    for position in beans.indices { beans[position].grams = shares[position] }
+    draft.beans = beans
+  }
+
+  /// Moves one bean's share by `points` percent; the others give or take the rest.
+  func stepShare(at index: Int, by points: Double) {
+    guard var beans = draft.beans, beans.indices.contains(index), beans.count > 1 else { return }
+    let current = BlendShares.percentages(parts: beans.map(\.grams))
+    let next = BlendShares.rebalanced(current, setting: index, to: current[index] + points)
+    for position in beans.indices { beans[position].grams = next[position] }
+    draft.beans = beans
+  }
+
+  func setGrinder(_ id: UUID?) {
+    draft.grinderID = id
+  }
+
+  /// Adds a grinder (or finds the one with this name) and chooses it.
+  @discardableResult
+  func addGrinder(named name: String) -> Bool {
+    let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !clean.isEmpty else { return false }
+    let existing = (try? store.context.fetch(FetchDescriptor<Grinder>())) ?? []
+    if let match = existing.first(where: {
+      $0.name.compare(clean, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+    }) {
+      draft.grinderID = match.id
+      return true
+    }
+    let grinder = Grinder(name: clean)
+    store.context.insert(grinder)
+    if case .failure = store.save() {
+      store.context.rollback()
+      return false
+    }
+    draft.grinderID = grinder.id
+    return true
+  }
+
   /// Re-encodes the picked photo without location or camera metadata before it
   /// is kept anywhere. A file that is not an image changes nothing.
   func attachPhoto(_ data: Data) async {
@@ -179,6 +269,85 @@ final class BrewFormModel {
 
   func removePhoto() {
     draft.photo = nil
+  }
+
+  // MARK: Dial-in suggestion
+
+  /// Applies the suggested change to this brew, or the user's edited value (in
+  /// canonical text). The answer is stored first; the form changes only once the
+  /// store confirms it.
+  func applySuggestion(_ suggestion: Suggestion, editedTo edited: String? = nil) {
+    suggestionError = nil
+    let parameter = suggestion.field
+    let original = suggestion.toValue
+    let applied = edited ?? original
+    var next = draft
+    guard !applied.trimmingCharacters(in: .whitespaces).isEmpty,
+      SuggestionApplication.set(applied, for: parameter, in: &next)
+    else {
+      suggestionError = "That value could not be used. Nothing was changed."
+      return
+    }
+    let previous = SuggestionApplication.value(of: parameter, in: draft)
+    suggestion.toValue = applied
+    suggestion.state = edited == nil ? .accepted : .edited
+    suggestion.updatedAt = Date()
+    guard answered(suggestion, restoring: original) else { return }
+    undoDraftValue = previous
+    undoToValue = original
+    followedSuggestionID = suggestion.id
+    draft = next
+    UINotificationFeedbackGenerator().notificationOccurred(.success)
+  }
+
+  func dismissSuggestion(_ suggestion: Suggestion) {
+    suggestionError = nil
+    let original = suggestion.toValue
+    suggestion.state = .dismissed
+    suggestion.updatedAt = Date()
+    guard answered(suggestion, restoring: original) else { return }
+    undoDraftValue = nil
+    undoToValue = original
+    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+  }
+
+  /// Takes the answer back: the draft value returns to what it was and the
+  /// suggestion waits again.
+  func undoSuggestionAnswer(_ suggestion: Suggestion) {
+    suggestionError = nil
+    let applied = suggestion.state == .accepted || suggestion.state == .edited
+    let answer = (suggestion.state, suggestion.toValue)
+    suggestion.state = .proposed
+    suggestion.toValue = undoToValue ?? suggestion.toValue
+    suggestion.updatedAt = Date()
+    switch store.save() {
+    case .success:
+      if applied, let undoDraftValue {
+        SuggestionApplication.set(undoDraftValue, for: suggestion.field, in: &draft)
+      }
+      undoDraftValue = nil
+      followedSuggestionID = nil
+      handledSuggestionID = nil
+    case .failure(.saveFailed(let message)):
+      store.context.rollback()
+      suggestion.state = answer.0
+      suggestion.toValue = answer.1
+      suggestionError = "The suggestion was not changed. \(message)"
+    }
+  }
+
+  /// Stores a suggestion's new state. A failed write is rolled back and shown.
+  private func answered(_ suggestion: Suggestion, restoring original: String) -> Bool {
+    switch store.save() {
+    case .success:
+      handledSuggestionID = suggestion.id
+      return true
+    case .failure(.saveFailed(let message)):
+      store.context.rollback()
+      suggestion.toValue = original
+      suggestionError = "The suggestion was not saved. \(message)"
+      return false
+    }
   }
 
   // MARK: Autosave
@@ -237,13 +406,31 @@ final class BrewFormModel {
     if let methodID = draft.methodID {
       defaults.set(methodID.uuidString, forKey: Self.lastMethodKey)
     }
+    if let grinderID = draft.grinderID {
+      defaults.set(grinderID.uuidString, forKey: Self.lastGrinderKey)
+    }
     savedBrewID = draft.id
+    makeSuggestion()
     if case .failure = draftStore.clear() {
       notice = FormNotice(
         kind: .info, message: "Saved. An old draft file could not be removed.")
     }
     UINotificationFeedbackGenerator().notificationOccurred(.success)
     return true
+  }
+
+  /// Asks the dial-in rules what to change next. The brew is already saved, so a
+  /// failure here is a note, never a lost brew.
+  private func makeSuggestion() {
+    guard let brew = try? store.find(Brew.self, id: draft.id) else { return }
+    switch SuggestionService(store: store).propose(for: brew) {
+    case .success(.change):
+      madeSuggestion = (brew.suggestionsMade ?? []).first { $0.source == .rules }
+    case .success(.keep(let reason)):
+      dialInNote = reason
+    case .failure:
+      dialInNote = "The brew is saved, but its dial-in suggestion could not be stored."
+    }
   }
 
   private func failSave(_ message: String) -> Bool {
@@ -270,18 +457,22 @@ final class BrewFormModel {
     brew.photo = draft.photo
     brew.targetsJSON = draft.targets.flatMap { try? JSONEncoder().encode($0) }
     brew.isDraft = false
+    brew.grinder = draft.grinderID.flatMap { try? store.find(Grinder.self, id: $0) }
+    if let followedSuggestionID {
+      brew.suggestionFollowed = try? store.find(Suggestion.self, id: followedSuggestionID)
+    }
     if let beans = draft.beans { applyBeans(beans, to: brew) }
   }
 
-  /// Gives the brew the repeated beans, their shares scaled to this brew's dose.
-  /// A bean that has since been deleted keeps its name, so the journal still
-  /// reads the same.
+  /// Gives the brew its beans, each taking its share of this brew's dose, so a
+  /// blend deducts from every bag. The beans the brew had before are removed, or
+  /// their grams would still count against those bags. A bean that has since been
+  /// deleted keeps its name, so the journal still reads the same.
   private func applyBeans(_ beans: [DraftBean], to brew: Brew) {
-    let total = beans.reduce(0) { $0 + $1.grams }
-    let dose = draft.doseG ?? 0
-    brew.beans = beans.map { entry in
-      let share = total > 0 ? entry.grams / total : 1 / Double(beans.count)
-      let use = BrewBean(grams: dose * share, beanNameSnapshot: entry.name)
+    let grams = BlendShares.grams(dose: draft.doseG ?? 0, parts: beans.map(\.grams))
+    for old in brew.beans ?? [] { store.context.delete(old) }
+    brew.beans = zip(beans, grams).map { entry, share in
+      let use = BrewBean(grams: share, beanNameSnapshot: entry.name)
       store.context.insert(use)
       use.bean = entry.beanID.flatMap { try? store.find(Bean.self, id: $0) }
       return use
