@@ -1336,4 +1336,64 @@ final class NextCupUITests: XCTestCase {
       .matching(NSPredicate(format: "label CONTAINS[c] 'Sample Blend'")).firstMatch
     XCTAssertTrue(row.waitForExistence(timeout: 5), "the imported brew is in the journal")
   }
+
+  // MARK: Roaster discovery (T027)
+
+  private func openRoasters(location: String) -> XCUIApplication {
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-inMemoryStore", "-resetNavigationState", "-resetDraft", "-roasterStub", "-locationStub",
+      location,
+    ]
+    app.launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Beans"].tap()
+    let open = app.buttons["beans.roasters"]
+    XCTAssertTrue(open.waitForExistence(timeout: 5))
+    open.tap()
+    XCTAssertTrue(element(app, "roasters.screen").waitForExistence(timeout: 5))
+    return app
+  }
+
+  @MainActor
+  func testDeniedLocationFallsBackToATypedCityAndOnlySavedRoastersStay() {
+    let app = openRoasters(location: "denied")
+    app.buttons["roasters.locate"].tap()
+    XCTAssertTrue(
+      element(app, "roasters.locationNotice").waitForExistence(timeout: 5),
+      "denied location says so and offers the typed city")
+
+    let city = app.textFields["roasters.city"]
+    city.tap()
+    city.typeText("Sampletown")
+    app.buttons["roasters.search"].tap()
+    let first = app.buttons["roasters.toggle.Sample Roasters One"]
+    XCTAssertTrue(first.waitForExistence(timeout: 5), "typed city returns results")
+    XCTAssertTrue(element(app, "roasters.savedEmpty").exists, "searching saves nothing")
+
+    first.tap()
+    XCTAssertTrue(
+      element(app, "roasters.saved.Sample Roasters One").waitForExistence(timeout: 5),
+      "a saved roaster is listed under Saved")
+    XCTAssertFalse(
+      element(app, "roasters.saved.Sample Roasters Two").exists, "unsaved results are not kept")
+  }
+
+  @MainActor
+  func testRoasterSearchShowsEmptyAndErrorStatesWithARetry() {
+    let app = openRoasters(location: "granted")
+    let city = app.textFields["roasters.city"]
+    city.tap()
+    city.typeText("Nowhere")
+    app.buttons["roasters.search"].tap()
+    XCTAssertTrue(element(app, "roasters.empty").waitForExistence(timeout: 5))
+
+    city.tap()
+    city.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: "Nowhere".count))
+    city.typeText("Offline")
+    app.buttons["roasters.search"].tap()
+    XCTAssertTrue(element(app, "roasters.failed").waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      app.buttons.matching(NSPredicate(format: "label ==[c] 'Retry'")).firstMatch.exists)
+  }
 }

@@ -15,5 +15,7 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Next Cup uses your location once, when you ask, to find coffee roasters near you. It is not stored.</string>
 </dict>
 </plist>
