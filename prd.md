@@ -104,7 +104,7 @@ Type checks, per the platform profile.
 | T017 | `Recommender` + Explore tab recommendations with explanation | T016, T014 | Synthetic-history ranking tests; explanation built only from computed facts; cold start labelled as default | package + app tests | done |
 | T018 | Rule-based dial-in + `Suggestion` cards (accept / edit / dismiss), shown on next brew and in history (X4) | T011 | Rules tests per verdict; persistence tests; suggestion visible on the next brew of that bean | package + UI tests | done |
 | T019 | Export CSV/JSON, merge import with preview, daily backup keep 7, restore, delete all with Undo where possible | T010, T014 | Export → wipe → import round trip lossless; conflicts never overwrite silently; delete all clears store, drafts, backups, keys | app tests | done |
-| T020 | Settings: units everywhere (X8), privacy summary, about, data controls | T019 | Changing units updates journal, recipes, timer, form (UI test) | UI tests | pending |
+| T020 | Settings: units everywhere (X8), privacy summary, about, data controls | T019 | Changing units updates journal, recipes, timer, form (UI test) | UI tests | done |
 | T021 | `KeychainStore`, AI disclosure, per-feature model picker | T020 | Disclosure shown once before the first call; key not in UserDefaults, logs, or backups | app tests | pending |
 | T022 | `AIClient` (Anthropic, OpenAI) over a `Transport` protocol, schema-validated output; `AIQueue` with offline status and cancel | T021 | Stub transport proves no call without key + tap; retry max 3; invalid JSON never becomes a suggestion | package + app tests | pending |
 | T023 | AI brew diagnosis and insights as `Suggestion`s | T018, T022 | Same card flow as rules; stored with source brew and model ID | app tests | pending |

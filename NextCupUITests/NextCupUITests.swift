@@ -101,6 +101,41 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(water.label.contains("250"))
   }
 
+  @MainActor
+  func testChangingUnitsInSettingsUpdatesRecipesAndTheBrewForm() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Settings"].tap()
+    let weight = element(app, "settings.units.weight")
+    XCTAssertTrue(weight.waitForExistence(timeout: 5))
+    weight.buttons["Ounces (oz)"].tap()
+    defer {  // the setting outlives the app run, so put it back
+      app.tabBars.buttons["Settings"].tap()
+      element(app, "settings.units.weight").buttons["Grams (g)"].tap()
+    }
+
+    app.tabBars.buttons["Recipes"].tap()
+    let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'"))
+      .firstMatch
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+    row.tap()
+    let water = element(app, "recipe.water")
+    XCTAssertTrue(water.waitForExistence(timeout: 5))
+    XCTAssertTrue(water.label.contains("oz"), "recipe water in ounces, got \(water.label)")
+    XCTAssertFalse(water.label.contains("250"), "grams value still shown: \(water.label)")
+
+    app.tabBars.buttons["Journal"].tap()
+    app.buttons["Log a brew"].firstMatch.tap()
+    // A blank form has no dose yet; stepping gives it the default, shown in ounces.
+    let increase = app.buttons["Increase Dose"]
+    XCTAssertTrue(increase.waitForExistence(timeout: 5))
+    increase.tap()
+    let dose = element(app, "brewform.dose")
+    XCTAssertTrue(dose.waitForExistence(timeout: 5))
+    let shown = text(app, in: "brewform.dose")
+    XCTAssertTrue(shown.contains("oz"), "brew form dose in ounces, got \(shown)")
+  }
+
   /// Opens a recipe's detail with a sped-up timer clock and taps Start brew.
   @MainActor
   private func openTimer(speed: Int, extraArguments: [String] = []) -> XCUIApplication {

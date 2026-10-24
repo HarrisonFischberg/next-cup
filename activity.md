@@ -443,3 +443,20 @@ Not done or not verified:
 - Undo restores data only, not backups or keys.
 - The share sheet and the file-importer sheet were not exercised on screen.
 - `/impeccable polish` and `/impeccable audit` and a VoiceOver pass were not run.
+
+## 2026-10-24 — T020 settings: units, privacy summary, about
+
+What changed:
+- `SettingsRootView`: Units section (weight g/oz, temperature °C/°F segmented pickers) writing the `UnitStorage` keys that journal, recipe detail, timer and brew form already read through `@AppStorage`; Privacy page (`PrivacySummaryView`); About section with version. Data controls were already under "Your data" (T019).
+- UI test `testChangingUnitsInSettingsUpdatesRecipesAndTheBrewForm`: switches to ounces, checks recipe water and the brew form dose tile, then restores grams.
+
+Commands and results:
+- `swift format lint --recursive --strict ...`: clean.
+- `xcodebuild ... test` (full app + UI suite): TEST SUCCEEDED, 38 executed, 15 skipped, 0 failures. Two earlier full runs failed (5 and 8 failures); my first version of the new test failed because a blank form shows no unit until the dose has a value, so it now steps the dose first. I could not read the failure messages of the other failing tests in those runs (xcresulttool was not permitted), and they passed in the final run, so whether they were order or timing flakes is unconfirmed.
+- Not re-run in this task: `swift test --package-path Packages/NextCupKit` (no package code changed).
+
+Not done or not verified:
+- No screenshots saved to `ralph/screenshots/` (light, dark, largest text) for the Settings screen.
+- `/impeccable polish`, `/impeccable audit` and a VoiceOver pass were not run.
+- The timer screen under ounces is covered by code reading only (it reads the same `@AppStorage` keys), not by the UI test; the journal rows likewise.
+- The 15 skipped UI tests were not examined.
