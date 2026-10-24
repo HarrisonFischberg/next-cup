@@ -1372,12 +1372,13 @@ final class NextCupUITests: XCTestCase {
 
   // MARK: Roaster discovery (T027)
 
-  private func openRoasters(location: String) -> XCUIApplication {
+  private func openRoasters(location: String, extraArguments: [String] = []) -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchArguments = [
-      "-inMemoryStore", "-resetNavigationState", "-resetDraft", "-roasterStub", "-locationStub",
-      location,
-    ]
+    app.launchArguments =
+      [
+        "-inMemoryStore", "-resetNavigationState", "-resetDraft", "-roasterStub", "-locationStub",
+        location,
+      ] + extraArguments
     app.launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
     app.tabBars.buttons["Beans"].tap()
@@ -1428,5 +1429,69 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "roasters.failed").waitForExistence(timeout: 5))
     XCTAssertTrue(
       app.buttons.matching(NSPredicate(format: "label ==[c] 'Retry'")).firstMatch.exists)
+  }
+
+  // MARK: Screenshot capture for T027 and T028 (only runs when ralph/screenshots/.capture exists)
+
+  @MainActor
+  func testCaptureRoasterAndFlavorScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let sizeArguments =
+        variant.size.map { ["-UIPreferredContentSizeCategoryName", $0] } ?? []
+
+      // S10: results, saved roaster, then the denied-location notice.
+      let app = openRoasters(location: "granted", extraArguments: sizeArguments)
+      let city = app.textFields["roasters.city"]
+      city.tap()
+      city.typeText("Sampletown")
+      app.buttons["roasters.search"].tap()
+      let first = app.buttons["roasters.toggle.Sample Roasters One"]
+      XCTAssertTrue(first.waitForExistence(timeout: 5))
+      first.tap()
+      // At the largest text the Saved list can sit below the fold; the functional tests cover it.
+      if variant.size == nil {
+        XCTAssertTrue(
+          element(app, "roasters.saved.Sample Roasters One").waitForExistence(timeout: 5))
+      }
+      try save(app.screenshot(), "\(folderURL.path)/T027-results-\(variant.name).png")
+      app.terminate()
+
+      let denied = openRoasters(location: "denied", extraArguments: sizeArguments)
+      denied.buttons["roasters.locate"].tap()
+      XCTAssertTrue(element(denied, "roasters.locationNotice").waitForExistence(timeout: 5))
+      try save(denied.screenshot(), "\(folderURL.path)/T027-denied-\(variant.name).png")
+      denied.terminate()
+
+      // S-flavor: the list and one bucket's detail.
+      let flavor = XCUIApplication()
+      flavor.launchArguments =
+        ["-inMemoryStore", "-resetNavigationState", "-resetDraft"] + sizeArguments
+      flavor.launch()
+      flavor.tabBars.buttons["Explore"].tap()
+      let entry = element(flavor, "explore.flavors")
+      XCTAssertTrue(entry.waitForExistence(timeout: 10))
+      entry.tap()
+      XCTAssertTrue(element(flavor, "flavor.list").waitForExistence(timeout: 10))
+      try save(flavor.screenshot(), "\(folderURL.path)/T028-list-\(variant.name).png")
+      let citrus = element(flavor, "flavor.bucket.flavor.citrus")
+      scrollUntilHittable(citrus, in: flavor)
+      citrus.tap()
+      XCTAssertTrue(element(flavor, "flavor.detail.flavor.citrus").waitForExistence(timeout: 10))
+      try save(flavor.screenshot(), "\(folderURL.path)/T028-detail-\(variant.name).png")
+      flavor.terminate()
+    }
   }
 }

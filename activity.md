@@ -519,3 +519,10 @@ Not done or not verified:
 - Added `Taxonomy.words(for:in:)` (+ package test) and `Features/Explore/FlavorExplorerView.swift`: every bucket of flavor, origin, process, roast and brewer is a row; a bucket opens its mapped words (bundle + user aliases), your beans carrying it (link to bean) and the buckets seen together on those beans (link onward). Entry: "Flavors" toolbar link on Explore.
 - Commands: `swift test --package-path Packages/NextCupKit` passed (152 tests); `swift format lint --strict` clean; `xcodebuild test -only-testing:...testFlavorExplorerReachesEveryBucket` passed (every one of the 26 buckets reachable, citrus detail opens).
 - Not done: simulator screenshots (light, dark, largest text), VoiceOver pass, `/impeccable` polish/audit, full-suite `xcodebuild test`, `/goal` (not invoked in this session). T028 stays `in progress` until those are done.
+
+## 2026-10-24 — T026 to T028 closed out (Sonnet, supervised)
+
+- Verified alone after the loop: 152 package, 210 app, 43 UI tests (16 skipped, capture-gated), lint, tokens.
+- Added `testCaptureRoasterAndFlavorScreenshots`; screenshots `ralph/screenshots/T027-*` and `T028-*` (light, dark, largest text). Looking at them found a real bug: the keyboard stayed up over the roaster results after Search. Fixed (focus is dropped on search).
+- T027 and T028 set to `done` with these gaps: VoiceOver not run, real `MKLocalSearch` and the real location prompt never exercised (stubs only).
+- T026 set to `blocked` (B012): no Lock Screen or Dynamic Island evidence; needs a manual pass.

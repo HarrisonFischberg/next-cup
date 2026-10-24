@@ -11,6 +11,7 @@ struct RoasterDiscoveryView: View {
 
   @Environment(\.modelContext) private var context
   @Environment(\.dynamicTypeSize) private var dts
+  @FocusState private var cityFocused: Bool
   @Query(filter: #Predicate<Roaster> { $0.savedFromMap }, sort: \Roaster.name)
   private var saved: [Roaster]
   @State private var model = RoasterDiscoveryModel.live()
@@ -61,6 +62,7 @@ struct RoasterDiscoveryView: View {
         : AnyLayout(HStackLayout(spacing: DS.Space.sm))
       layout {
         TextField("City", text: $model.city)
+          .focused($cityFocused)
           .textContentType(.addressCity)
           .submitLabel(.search)
           .textInputAutocapitalization(.words)
@@ -95,6 +97,7 @@ struct RoasterDiscoveryView: View {
   }
 
   private func searchCity() {
+    cityFocused = false  // the keyboard would hide the results
     Task { await model.searchCity() }
   }
 
