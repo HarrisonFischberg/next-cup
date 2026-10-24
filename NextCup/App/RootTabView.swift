@@ -101,6 +101,7 @@ private struct TabRoot: View {
     case .brew(let id): BrewDestination(link: link, brewID: id)
     case .brewAgain(let id): BrewDestination(link: link, brewID: id, repeats: true)
     case .bean(let id): BeanDestination(link: link, beanID: id)
+    case .timer(let id, let doseG): TimerDestination(link: link, recipeID: id, doseG: doseG)
     }
   }
 }
