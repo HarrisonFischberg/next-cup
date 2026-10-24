@@ -20,8 +20,24 @@ struct SettingsRootView: View {
         .accessibilityIdentifier("settings.methods")
       } header: {
         Text("Brewing")
+      }
+      Section {
+        NavigationLink {
+          DataSettingsView()
+        } label: {
+          VStack(alignment: .leading, spacing: 2) {
+            Text("Your data").font(DS.Font.headline).foregroundStyle(DS.ink)
+            Text("Export, import, backups and delete all").font(.footnote)
+              .foregroundStyle(DS.ink2)
+          }
+          .frame(minHeight: DS.Size.control, alignment: .leading)
+        }
+        .listRowBackground(DS.paper)
+        .accessibilityIdentifier("settings.data")
+      } header: {
+        Text("Data")
       } footer: {
-        Text("Units, data and privacy controls will be here.")
+        Text("Units and privacy controls will be here.")
       }
     }
     .listStyle(.insetGrouped)

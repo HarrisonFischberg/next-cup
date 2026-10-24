@@ -422,3 +422,24 @@ Untested / honest gaps:
 - The Edit alert was not driven in a UI test (unit tests cover edit values and units). Ounce/°F paths covered by unit tests only.
 - The journal row line is asserted by the UI test but not viewed in a screenshot; neither is the edit-form history.
 - AI suggestions will share the card flow in T023; none are produced yet.
+
+## T019 — Export, merge import, backup, delete all
+
+Added `Persistence/DataArchive.swift` (record types, one per model), `Persistence/DataExchange.swift` (exporter, importer with preview, daily backup keep 7, eraser), `Features/Settings/DataSettingsView.swift` (Settings → Your data), a launch backup hook in `NextCupApp`, `createdAt` on the `Identified` protocol, and `DataExchangeTests` (11 tests). Built-ins match by `builtInKey` on import. Conflicts keep the local row unless the user picks the imported one. Delete all wipes store, drafts folder, backups, the app's preference domain (selected tab kept) and generic-password Keychain items, then reseeds; Undo re-imports an in-memory snapshot for 8 s.
+
+Commands and results:
+- `swift format lint --recursive --strict ...`: clean.
+- `swift test --package-path Packages/NextCupKit`: 125 tests passed.
+- `xcodebuild ... build`: succeeded.
+- `xcodebuild ... test` (all app + UI tests): TEST SUCCEEDED.
+- UI test `testYourDataDeleteAllCanBeUndone` plus capture tests passed.
+
+Screenshots (`ralph/screenshots/`): `T019-data-screen-{light,dark,largest-text}.png`, `T019-data-deleted-{light,dark,largest-text}.png`.
+
+Not done or not verified:
+- `AIRequest` rows are not exported (transient queue).
+- An edit that only changes a built-in recipe's steps is not flagged as a conflict.
+- Keychain wipe is tested through an injected stub only; nothing writes Keychain items yet. Re-check against `KeychainStore` in T021.
+- Undo restores data only, not backups or keys.
+- The share sheet and the file-importer sheet were not exercised on screen.
+- `/impeccable polish` and `/impeccable audit` and a VoiceOver pass were not run.

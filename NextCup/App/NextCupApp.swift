@@ -24,6 +24,7 @@ struct NextCupApp: App {
       case .success(let container):
         RootTabView()
           .modelContainer(container)
+          .task { if !AppBootstrap.usesInMemoryStore { BackupStatus.runDaily(container) } }
       case .failure(let error):
         StartupFailureView(error: error) { startup = AppBootstrap.start() }
       }
