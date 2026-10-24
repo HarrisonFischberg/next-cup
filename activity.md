@@ -557,3 +557,11 @@ Driven on the iPhone 18 Pro simulator with the real app (Recipes, Balanced cone,
 - Ran `swift test --package-path Packages/NextCupKit`: 152 tests passed. Nothing else run.
 - Changed: T030 set to `blocked`, B013 added to `docs/launch-blockers.md`. No checklist rows, no docs/ux-baseline.md written. The one thing the agent did get: every `import` in non-test code is an Apple framework or the local NextCupKit package (counts only, not confirmed against `project.pbxproj` or `Package.swift`).
 - Unblock: allow `grep`, `git ls-files` and `git commit` for this repo in the Ralph session, then rerun this task.
+
+## 2026-10-24 — T030 done by hand (Sonnet, supervised)
+
+The loop's iteration was blocked because `grep`, `git ls-files` and compound shell commands were refused in its session (B013). I did T030 directly:
+- Searched the code: no third-party packages (only the local one), Apple imports only, no analytics or logging, no web views, no StoreKit, no mail, no notifications; only `UserDefaults` among required-reason APIs; network only in `AIClient.swift`.
+- Found and fixed: no `PrivacyInfo.xcprivacy` (added, UserDefaults CA92.1, no tracking or collected data); the AI disclosure did not say the provider may charge the user's account (line added).
+- Wrote: `docs/compliance-checklist.md` (9 PASS, 6 NEEDS REVIEW, 4 NOT APPLICABLE, 1 BLOCKED), `docs/ux-baseline.md` (missing: photo zoom, shake/Cmd-Z undo, localization, keyboard shortcuts), `docs/claims-evidence.md`, a verified section in `docs/data-inventory.md`, and `docs/legal/privacy-policy-draft.md` (DRAFT, unreviewed, owner facts UNKNOWN).
+- Not done: Opus audit of the consent, data, vendor and deletion rows; VoiceOver; the Gate A and Gate B reviews.
