@@ -569,3 +569,8 @@ The loop's iteration was blocked because `grep`, `git ls-files` and compound she
 ### Final verification of T024 to T030 (supervised, 2026-10-24)
 
 - Package 152, app unit 220, lint and tokens pass. UI suite: 44 tests (17 skipped, screenshot capture only). The full run is not reliably green: two full runs each had one different failure, both in keyboard-driven tests (`testBeansAddCorrectFilterAndDeleteWithUndo` after my manual simulator session, `testBrewFormDraftSurvivesRelaunch` on the next run, where the software keyboard's Done button could not be scrolled to). Each passed when rerun alone (the first after a simulator reboot). Treat as flaky keyboard handling in the UI tests, not as proven product bugs; the next step is to make those tests robust (no dependence on the software keyboard's Done button).
+
+## 2026-10-25 — UI test hardening (Sonnet)
+
+- `testBrewFormDraftSurvivesRelaunch` and the methods editor now dismiss the keyboard with Return instead of the keyboard's Done key (not always hittable); `testBeansAddCorrectFilterAndDeleteWithUndo` waits for the label with a predicate instead of reading it at once.
+- All three pass when run together (alone, 308 s). A full run right after had 12 failures, mostly waits timing out; a second simulator (iPhone 17) was booted and the three-test rerun took about 100 s per test instead of about 30 s, so the machine was loaded. The full suite has not been re-confirmed green since; rerun it on a quiet machine.
