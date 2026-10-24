@@ -1134,6 +1134,75 @@ final class NextCupUITests: XCTestCase {
     try screenshot.pngRepresentation.write(to: URL(fileURLWithPath: path))
   }
 
+  // MARK: Your data (T019)
+
+  /// Opens Settings → Your data, deletes everything, and takes it back with Undo.
+  @MainActor
+  private func runDataFlow(_ app: XCUIApplication, shot: (String) throws -> Void) throws {
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Settings"].tap()
+    let link = element(app, "settings.data")
+    XCTAssertTrue(link.waitForExistence(timeout: 5))
+    link.tap()
+    let delete = element(app, "data.deleteAll")
+    XCTAssertTrue(element(app, "data.export.json").waitForExistence(timeout: 5))
+    try shot("data-screen")
+
+    scrollUntilHittable(delete, in: app)
+    delete.tap()
+    XCTAssertTrue(
+      element(app, "data.toast").waitForExistence(timeout: 5), app.debugDescription)
+    try shot("data-deleted")
+    app.buttons.matching(NSPredicate(format: "label ==[c] 'Undo'")).firstMatch.tap()
+    // The message sits at the top of the list; at large text it is scrolled off.
+    var swipes = 0
+    while !element(app, "data.message").exists && swipes < 12 {
+      app.swipeDown()
+      swipes += 1
+    }
+    XCTAssertTrue(element(app, "data.message").exists)
+    XCTAssertFalse(element(app, "data.toast").exists)
+  }
+
+  @MainActor
+  func testYourDataDeleteAllCanBeUndone() throws {
+    try runDataFlow(launch()) { _ in }
+  }
+
+  @MainActor
+  func testCaptureDataLight() throws { try captureData("light", appearance: .light, size: nil) }
+
+  @MainActor
+  func testCaptureDataDark() throws { try captureData("dark", appearance: .dark, size: nil) }
+
+  @MainActor
+  func testCaptureDataLargestText() throws {
+    try captureData(
+      "largest-text", appearance: .light, size: "UICTContentSizeCategoryAccessibilityXXXL")
+  }
+
+  @MainActor
+  private func captureData(
+    _ variant: String, appearance: XCUIDevice.Appearance, size: String?
+  ) throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    defer { XCUIDevice.shared.appearance = .light }
+    XCUIDevice.shared.appearance = appearance
+    let app = XCUIApplication()
+    app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+    if let size { app.launchArguments += ["-UIPreferredContentSizeCategoryName", size] }
+    app.launch()
+    try runDataFlow(app) { name in
+      try save(app.screenshot(), "\(folderURL.path)/T019-\(name)-\(variant).png")
+    }
+    app.terminate()
+  }
+
   @MainActor
   func testSelectedTabRestoresAfterRelaunch() {
     let app = launch()
