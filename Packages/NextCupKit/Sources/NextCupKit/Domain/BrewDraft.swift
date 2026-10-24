@@ -60,13 +60,18 @@ public struct BrewDraft: Codable, Equatable, Sendable {
   public var beans: [DraftBean]?
   /// The grinder used, if one was chosen. Old drafts without it read as `nil`.
   public var grinderID: UUID?
+  /// Total dissolved solids of the cup in percent, if measured.
+  public var tds: Double?
+  /// The water used, if a profile was chosen.
+  public var waterProfileID: UUID?
 
   public init(
     id: UUID = UUID(), sourceKey: String? = nil, date: Date = Date(), methodID: UUID? = nil,
     recipeID: UUID? = nil, doseG: Double? = nil, waterG: Double? = nil, tempC: Double? = nil,
     totalTimeS: Int? = nil, grindSetting: String = "", verdict: String? = nil,
     ratingHalfSteps: Int = 0, notes: String = "", photo: Data? = nil, targets: BrewTargets? = nil,
-    endedEarly: Bool = false, beans: [DraftBean]? = nil, grinderID: UUID? = nil
+    endedEarly: Bool = false, beans: [DraftBean]? = nil, grinderID: UUID? = nil, tds: Double? = nil,
+    waterProfileID: UUID? = nil
   ) {
     self.id = id
     self.sourceKey = sourceKey
@@ -86,6 +91,8 @@ public struct BrewDraft: Codable, Equatable, Sendable {
     self.endedEarly = endedEarly
     self.beans = beans
     self.grinderID = grinderID
+    self.tds = tds
+    self.waterProfileID = waterProfileID
   }
 
   /// Identifies a "Brew again" draft, so reopening the same repeat restores it.
@@ -103,7 +110,8 @@ public struct BrewDraft: Codable, Equatable, Sendable {
       id: id, sourceKey: repeatKey(for: sourceID), date: now, methodID: source.methodID,
       recipeID: source.recipeID, doseG: source.doseG, waterG: source.waterG,
       tempC: source.tempC, totalTimeS: nil, grindSetting: source.grindSetting,
-      targets: source.targets, beans: beans, grinderID: source.grinderID)
+      targets: source.targets, beans: beans, grinderID: source.grinderID,
+      waterProfileID: source.waterProfileID)
   }
 
   /// A brew needs the two numbers every derived value rests on.

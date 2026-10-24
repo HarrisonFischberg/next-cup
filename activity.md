@@ -526,3 +526,12 @@ Not done or not verified:
 - Added `testCaptureRoasterAndFlavorScreenshots`; screenshots `ralph/screenshots/T027-*` and `T028-*` (light, dark, largest text). Looking at them found a real bug: the keyboard stayed up over the roaster results after Search. Fixed (focus is dropped on search).
 - T027 and T028 set to `done` with these gaps: VoiceOver not run, real `MKLocalSearch` and the real location prompt never exercised (stubs only).
 - T026 set to `blocked` (B012): no Lock Screen or Dynamic Island evidence; needs a manual pass.
+
+## 2026-10-24 — T029 COULD set: TDS/extraction, water profiles, App Intents
+
+- TDS: `BrewDraft.tds`; the brew form shows a TDS stepper (0.05 steps, stepping below clears) and an Extraction readout (`BrewMath.extractionYield`, beverage taken as water poured, marked `shortcut:` in code) when the method tracks TDS or no method is chosen. TDS is now offered in the method editor (`MethodParameters.optional`); the old test that said the editor must not offer it was rewritten to match.
+- Water profiles: `BrewDraft.waterProfileID`; a Water menu on the form with "New water profile…" (name, optional hardness ppm, refused if not a positive number, same name reuses the profile). Brew again keeps the water, not the TDS. Deleting a profile keeps the brew.
+- App Intents (`Features/Intents/BrewIntents.swift`): Log a brew, Brew again (latest saved non-draft brew), Start recipe (recipe entity); each opens the existing `nextcup://` link. Siri phrases via `AppShortcutsProvider`.
+- Tests: `NextCupTests/CouldSetTests.swift` (9 tests: TDS steps/clears, extraction value, save and edit round trip, brew again, bad water input and dedupe, profile delete, the three intent links).
+- Commands: `swift test --package-path Packages/NextCupKit` 152 passed; `swift format lint --strict` clean; `xcodebuild ... -only-testing:NextCupTests test` TEST SUCCEEDED (220 tests; the one earlier failure was the rewritten methods test). Last run began before a pure reformat of `MethodParameters.optional`.
+- Not done / untested: full `xcodebuild test` with the UI suite was started once and killed by the time limit (simulator diagnostics hung), so UI tests were not run; no screenshots (light, dark, largest text) of the TDS tile or Water menu; no VoiceOver pass; the intents were never run from Shortcuts or Siri (only their links are unit-tested); the second `ModelContainer` an intent opens was not exercised on a device; DataExchange export/import of `tds` and water profiles was not checked; no UI to edit or delete a water profile after creating it.
