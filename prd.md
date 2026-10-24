@@ -111,7 +111,7 @@ Type checks, per the platform profile.
 | T024 | Photo interpretation and bag recognition → bean draft | T022, T014 | Bag result fills a bean draft for review, never saves blind | app tests | done |
 | T025 | Paper import S-import: Vision OCR without a key, AI with a key, review screen, auto-filing | T013, T016, T022 | Save blocked until confirmed; field-mapping tests with synthetic images; low-confidence fields highlighted | app + UI tests | done |
 | T026 | Live Activity (widget extension) mirrored from `TimerEngine` | T008 | Snapshot of Lock Screen and Dynamic Island; tap deep-links to timer; ends with the brew | app tests + sim screenshot | in progress |
-| T027 | Roaster discovery S10 (MapKit, location in context, typed-city fallback) | T014 | Denied-location path works; only saved roasters persist | UI tests | pending |
+| T027 | Roaster discovery S10 (MapKit, location in context, typed-city fallback) | T014 | Denied-location path works; only saved roasters persist | UI tests | in progress |
 | T028 | Flavor explorer (taxonomy browser linking flavors, origins, processes) | T016 | Every bucket reachable; VoiceOver navigable | UI tests | pending |
 | T029 | COULD set: TDS/extraction UI, water profiles, App Intents | T019 | Each behind its own acceptance test; may be dropped without blocking Gate A if the owner agrees | app tests | pending |
 | T030 | Safeguards and UX baseline pass (Phases 5, 5B): privacy policy draft, data inventory verified against code, asset licenses, accessibility evidence, `docs/ux-baseline.md` | T001–T028 | All 20 rows in `docs/compliance-checklist.md` have status and evidence; no unexplained UX baseline gaps | per row | pending |
