@@ -58,6 +58,22 @@ struct SettingsRootView: View {
       }
       Section {
         NavigationLink {
+          AISettingsView()
+        } label: {
+          VStack(alignment: .leading, spacing: 2) {
+            Text("AI").font(DS.Font.headline).foregroundStyle(DS.ink)
+            Text("Your own keys and a model for each feature").font(.footnote)
+              .foregroundStyle(DS.ink2)
+          }
+          .frame(minHeight: DS.Size.control, alignment: .leading)
+        }
+        .listRowBackground(DS.paper)
+        .accessibilityIdentifier("settings.ai")
+      } header: {
+        Text("AI")
+      }
+      Section {
+        NavigationLink {
           DataSettingsView()
         } label: {
           VStack(alignment: .leading, spacing: 2) {

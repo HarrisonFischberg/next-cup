@@ -460,3 +460,10 @@ Not done or not verified:
 - `/impeccable polish`, `/impeccable audit` and a VoiceOver pass were not run.
 - The timer screen under ounces is covered by code reading only (it reads the same `@AppStorage` keys), not by the UI test; the journal rows likewise.
 - The 15 skipped UI tests were not examined.
+
+## 2026-10-24 — T021 Keychain, AI disclosure, model picker
+
+- Added `NextCup/Features/AI/AIConfig.swift` (`KeychainStore`, `AIPreferences`) and `AISettingsView.swift` (key entry per provider, one-time disclosure sheet shown before the first key is saved, provider + model ID per feature). Linked from Settings → AI. Tests in `NextCupTests/AIConfigTests.swift`.
+- Keys: Keychain only (`WhenUnlockedThisDeviceOnly`); `DataEraser.clearKeychain` already wipes them on delete all. Preferences hold only disclosure version and provider/model IDs.
+- Commands: `swift format lint --strict` clean; `xcodebuild ... -only-testing:NextCupTests test` 158 tests passed; AIConfigTests 5/5.
+- Untested: no screenshots (light/dark/largest text) and no VoiceOver check of Settings → AI or the disclosure sheet; UI tests were not run. The model "picker" is a free-text model ID per feature because the model list needs `GET /v1/models` (network, T022); no model ID is hardcoded.
