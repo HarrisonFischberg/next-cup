@@ -6,26 +6,29 @@ documented reason from actual app behavior. Missing tools or credentials are
 BLOCKED, never PASS.
 
 Item text: `~/.claude/skills/new-app/references/safeguards.md`.
+Filled 2026-10-24 (T030, Sonnet) from the code at the head of `build/phase-4f`.
+The skill has Opus audit rows 1, 2, 6, 7, 8, 20 (consent, data, vendors,
+deletion) before Gate A; that audit has not happened.
 
 | # | Safeguard | Status | Applicability / rationale | Remediation | Files / routes | Tests or checks | Evidence | Owner / open items |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Privacy policy | | | | | | | |
-| 2 | Terms of service | | | | | | | |
-| 3 | Refund policy | | | | | | | |
-| 4 | Cookie policy | | | | | | | |
-| 5 | Cookie consent banner | | | | | | | |
-| 6 | Form consents | | | | | | | |
-| 7 | No unnecessary data | | | | | | | |
-| 8 | Third-party SDK audit | | | | | | | |
-| 9 | No dark patterns | | | | | | | |
-| 10 | No hidden fees | | | | | | | |
-| 11 | No fake reviews | | | | | | | |
-| 12 | No unsupported claims | | | | | | | |
-| 13 | Alt text | | | | | | | |
-| 14 | Color contrast (WCAG 2.2 AA) | | | | | | | |
-| 15 | Keyboard navigation | | | | | | | |
-| 16 | Business details | | | | | | | |
-| 17 | Children's data | | | | | | | |
-| 18 | Email unsubscribe | | | | | | | |
-| 19 | Asset and code licenses | | | | | | | |
-| 20 | Data deletion request | | | | | | | |
+| 1 | Privacy policy | NEEDS REVIEW | Applies: the app handles journal data, photos, optional location and optional AI requests. | Draft written from the code. Owner must supply contact, entity, minimum age and a hosted URL, and get qualified review (B005, B006, B013). In-app link not added until a URL exists. | `docs/legal/privacy-policy-draft.md`, `docs/data-inventory.md` | Statements checked against code: no SDKs, no analytics, Keychain-only keys, no server (see rows 7, 8) | Draft only; not published | Owner + legal review |
+| 2 | Terms of service | NEEDS REVIEW | Free app, no accounts or purchases. Apple's standard licence applies by default. | Owner decides whether custom terms are wanted; AI provider terms are the user's own agreement with the provider (disclosed before first AI call). | AI disclosure: `NextCup/Features/AI/AISettingsView.swift` | `disclosureIsOnceAndVersioned`, `noDisclosureMeansNoCall` | Test names in `NextCupTests` | Owner |
+| 3 | Refund policy | NOT APPLICABLE | No purchases, subscriptions or paid features (PRODUCT.md; no StoreKit import). | None | n/a | grep: no StoreKit in code | n/a | n/a |
+| 4 | Cookie policy | NOT APPLICABLE | Native app with no web view, cookies, pixels or SDK identifiers. | None | n/a | grep: no WKWebView/SFSafariViewController uses for tracking; no third-party packages | n/a | n/a |
+| 5 | Cookie consent banner | NOT APPLICABLE | No cookies or tracking to consent to. | None | n/a | as row 4 | n/a | n/a |
+| 6 | Form consents | PASS | The only consent is the AI disclosure before the first AI call; no marketing, newsletter or account forms. | None | `AISettingsView.swift` (disclosure), `AIConfig.swift` (versioned) | Unit: `disclosureIsOnceAndVersioned`, `noDisclosureMeansNoCall`; no prechecked consent | Tests in `NextCupTests/AIConfigTests.swift` | n/a |
+| 7 | No unnecessary data | PASS | Permissions: location when in use, on a tap only, with a typed-city fallback; photos via the system picker (no library permission); no camera capture, contacts, tracking or logging. | Photo EXIF/GPS stripped before storing or sending; location never stored beyond roasters the user saves. | `Config/NextCup-Info.plist` (location string only), `NextCup/Features/Discovery`, photo sanitizer in `NextCupKit` | `sanitizedPhotoHasNoGPSExifOrTIFFMetadata`; `testDeniedLocationFallsBack...`; grep: no print/NSLog/os_log/Logger in app code | UI test and unit test names | n/a |
+| 8 | Third-party SDK audit | PASS | Zero third-party packages: the Xcode project references only the local `NextCupKit`; imports are Apple frameworks only (SwiftUI, SwiftData, MapKit, Vision, ActivityKit, WidgetKit, AppIntents, Security, Network, PhotosUI, ImageIO, CoreLocation). | None. Added `PrivacyInfo.xcprivacy` (no tracking, no collected data, UserDefaults reason CA92.1). | `Packages/NextCupKit/Package.swift`, `NextCup.xcodeproj` (one XCLocalSwiftPackageReference), `NextCup/PrivacyInfo.xcprivacy` | import scan and grep for analytics/crash SDK names: none | Commands recorded in `activity.md` (T030) | n/a. Not run: dependency vulnerability scan (nothing to scan); widget extension has no privacy manifest (it uses no required-reason APIs found by grep) |
+| 9 | No dark patterns | PASS | No paywall, streaks, badges, notifications or countdown pressure; destructive actions use Undo toasts; delete-all is undoable. | None | `DESIGN.md` Do's and Don'ts; `NextCup/Features/Settings/DataSettingsView.swift` | `undoAfterDeleteAllRestoresTheData`; journal swipe-delete with Undo (T010 UI test) | Reviewer judgment from the screens; no external review | Owner to confirm in a hands-on pass |
+| 10 | No hidden fees | PASS | App is free. The only possible cost is the user's own AI provider charges; the disclosure now says the provider may charge the user's account (added in T030). | None | `AISettingsView.swift` | Copy change; no automated test for the wording | Disclosure text in code | n/a |
+| 11 | No fake reviews | PASS | No testimonials, ratings or reviews anywhere in the app or repo copy. | None | n/a | grep for testimonial/review copy in app strings: none | n/a | n/a |
+| 12 | No unsupported claims | NEEDS REVIEW | Claims in the app: "Nothing is sent until you tap, and never without a key"; "Next Cup has no server"; "photo sent without location or camera metadata"; recommendations "built only from computed facts". | Each is backed by a test or code path (see `docs/claims-evidence.md`). Not claimed anywhere: "Data Not Collected" label, store ratings, comparisons to other apps. | `docs/claims-evidence.md` | `noDisclosureMeansNoCall`, `sanitizedPhotoHasNoGPSExifOrTIFFMetadata` | See claims-evidence | Owner before any marketing copy |
+| 13 | Alt text | NEEDS REVIEW | Native app: accessibility labels on icon-only buttons, adjustable grade control, combined rows. | Labels are set in code; VoiceOver was never run. | Throughout `NextCup/Features`, `design/DesignSystem/Components.swift` | None automated | n/a | VoiceOver pass on device or simulator by a person |
+| 14 | Color contrast (WCAG 2.2 AA) | PASS | Token pairs measured in both appearances. | None for tokens. Screens that use system controls (segmented control, tab bar, list chrome) were not measured. | `docs/design/tokens/*.json` | `contrast.py` on both files: 14 pairs each, 0 failing AA; `design/check_tokens.py` in sync | `docs/design/system.md` | n/a |
+| 15 | Keyboard navigation / assistive tech | NEEDS REVIEW | Dynamic Type verified at the largest accessibility size in screenshots for the main screens; Reduce Motion handled in the design system; controls 44 pt or larger. | VoiceOver, Switch Control and Full Keyboard Access focus ring were not run. | `design/DesignSystem`, `ralph/screenshots/*largest-text*` | Screenshot evidence only | `ralph/screenshots/` | Person with VoiceOver |
+| 16 | Business details | BLOCKED | Legal entity, address, contact, support URL are UNKNOWN (never invented). | Owner supplies them. | `docs/launch-blockers.md` (B005, B013) | n/a | n/a | Owner |
+| 17 | Children's data | NEEDS REVIEW | Not directed at children; collects no personal data; minimum age is UNKNOWN. | Owner picks the App Store age rating and a minimum age. | `docs/launch-blockers.md` | n/a | n/a | Owner |
+| 18 | Email unsubscribe | NOT APPLICABLE | The app sends no email and collects no email address. | None | n/a | grep: no mail/SMTP code | n/a | n/a |
+| 19 | Asset and code licenses | PASS | No third-party code or fonts shipped; fonts are Apple-bundled; icons are SF Symbols; bundled recipes, methods and taxonomy were written for Next Cup. | None. Content originality is asserted by the author, not independently checked against sources. | `docs/asset-licenses.md` | Package and project scan (row 8) | `docs/asset-licenses.md` | Owner for content originality sign-off |
+| 20 | Data deletion request | PASS | In-app: Settings > Your data deletes the store, drafts, backups and AI keys, then reseeds the built-ins, with Undo for a short time. Export is in the same screen. | None | `DataSettingsView.swift` | `deleteAllClearsStoreDraftsBackupsKeysAndReseeds`, `undoAfterDeleteAllRestoresTheData`, `exportWipeImportIsLossless` | Test names in `NextCupTests` | n/a. Provider-side deletion of AI requests is up to the provider (disclosed) |
