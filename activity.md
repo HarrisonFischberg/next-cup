@@ -467,3 +467,12 @@ Not done or not verified:
 - Keys: Keychain only (`WhenUnlockedThisDeviceOnly`); `DataEraser.clearKeychain` already wipes them on delete all. Preferences hold only disclosure version and provider/model IDs.
 - Commands: `swift format lint --strict` clean; `xcodebuild ... -only-testing:NextCupTests test` 158 tests passed; AIConfigTests 5/5.
 - Untested: no screenshots (light/dark/largest text) and no VoiceOver check of Settings → AI or the disclosure sheet; UI tests were not run. The model "picker" is a free-text model ID per feature because the model list needs `GET /v1/models` (network, T022); no model ID is hardcoded.
+
+## 2026-10-24 — T022 AIClient, Transport, AIQueue
+
+- `NextCupKit/AI/`: `JSONSchema` (small schema type: builds the provider schema, validates output exactly, tells booleans from numbers), `AIClient` (`Transport` protocol + `URLSessionTransport`; Anthropic `/v1/messages` with a forced tool, OpenAI `/v1/responses` with strict `json_schema`; optional JPEG; 60 s timeout). Refused before any I/O without accepted disclosure or a key; 401 is "key rejected"; 429/5xx retried with doubling backoff, 3 attempts max; offline is not retried; output that is not schema-valid JSON throws `invalidResponse` and is never retried.
+- App: `Features/AI/AIQueue.swift` (@Observable over `AIRequest`: enqueue is the only way a call starts, offline stays `queued` with a message, cancel, retry, `NWPathMonitor` resumes the queue; image kept as the request attachment). `AIQueue.live` wires Keychain keys and the stored disclosure flag.
+- Nothing creates a `Suggestion` from AI output yet (T023); a failed request creates none (tested).
+- Commands: `swift test --package-path Packages/NextCupKit` 138 passed (14 new `AIClientTests` with a stub transport: no key, no disclosure, request shape per provider, 401, retry cap 3, backoff, invalid outputs, offline). `xcodebuild ... -only-testing:NextCupTests test` 166 passed incl. 8 new `AIQueueTests`. `swift format lint --recursive --strict` clean.
+- A first full `xcodebuild test` reported TEST FAILED; the cause was my queue tests dropping their `ModelContainer` (known host crash, see T002); containers are now kept alive. The full UI suite was not re-run after that fix (no UI code changed).
+- Untested: real network calls (none made, by rule), the real provider response shapes beyond what the docs describe, `NWPathMonitor` on a device, `GET /v1/models`. No screenshots (no UI). `/goal` not invoked as a tool.
