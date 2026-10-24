@@ -60,7 +60,7 @@ struct SuggestionService {
 
   /// A newer brew of the same beans makes an unanswered suggestion from an older
   /// one stale. It is dismissed so the list never offers two for one bean.
-  private func supersedeOlder(than brew: Brew, keeping fresh: Suggestion) {
+  func supersedeOlder(than brew: Brew, keeping fresh: Suggestion) {
     let all = (try? store.context.fetch(FetchDescriptor<Suggestion>())) ?? []
     for other in all where other.id != fresh.id && other.state == .proposed {
       guard let source = other.sourceBrew, source.id != brew.id, source.date <= brew.date,

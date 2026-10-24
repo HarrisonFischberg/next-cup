@@ -476,3 +476,11 @@ Not done or not verified:
 - Commands: `swift test --package-path Packages/NextCupKit` 138 passed (14 new `AIClientTests` with a stub transport: no key, no disclosure, request shape per provider, 401, retry cap 3, backoff, invalid outputs, offline). `xcodebuild ... -only-testing:NextCupTests test` 166 passed incl. 8 new `AIQueueTests`. `swift format lint --recursive --strict` clean.
 - A first full `xcodebuild test` reported TEST FAILED; the cause was my queue tests dropping their `ModelContainer` (known host crash, see T002); containers are now kept alive. The full UI suite was not re-run after that fix (no UI code changed).
 - Untested: real network calls (none made, by rule), the real provider response shapes beyond what the docs describe, `NWPathMonitor` on a device, `GET /v1/models`. No screenshots (no UI). `/goal` not invoked as a tool.
+
+## T023 — AI brew diagnosis and insights as Suggestions
+
+- Added `NextCup/Features/AI/AISuggestions.swift`: prompt/payload builders for diagnosis (one brew) and insights (up to 8 brews of one bean), a strict schema (field in grind/water/temperature/time, toValue, rationale), and `ingest(request:in:)` that makes a `Suggestion` (`source = .ai`, `modelID`, `sourceBrew`, `fromValue` read from the brew, id = request id so repeats never double). Unusable answers (bad field, non-numeric value, no brew, wrong feature) store nothing.
+- `AIQueue` gained `onDone`, set in `live(context:)` to ingest; `SuggestionService.supersedeOlder` is now internal so a newer AI card dismisses the stale one, same as rules. The existing card, accept/edit/dismiss/undo and next-brew match work unchanged.
+- Tests: `NextCupTests/AISuggestionsTests.swift` (8 tests).
+- Commands: `swift format lint --strict ...` clean; `xcodebuild ... test -only-testing:NextCupTests` → 174 tests passed.
+- Not done / untested: no button yet starts a diagnosis or insights request from the UI (nothing calls `enqueue` with these payloads; no screenshots, no UI test, no real provider call). `swift test` for the package and the UI test bundle were not re-run (package untouched).
