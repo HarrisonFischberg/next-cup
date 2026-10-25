@@ -50,10 +50,20 @@ struct StyleTests {
     }
   }
 
-  @Test func tenFlavorsWithSteelAndKraftFirst() {
-    #expect(AppStyle.allCases.count == 10)
-    #expect(AppStyle.allCases.first == .steelKraft)
-    #expect(Set(AppStyle.allCases.map(\.title)).count == 10)
+  @Test func bloomFirstThenTheTenEarlierFlavors() {
+    #expect(AppStyle.allCases.count == 11)
+    #expect(AppStyle.allCases.first == .bloom)
+    #expect(Set(AppStyle.allCases.map(\.title)).count == 11)
+  }
+
+  @Test func everyoneMovesToBloomOnceThenKeepsTheirChoice() {
+    let d = UserDefaults(suiteName: "bloom.\(UUID().uuidString)")!
+    d.set(AppStyle.terracotta.rawValue, forKey: AppStyle.storageKey)
+    AppStyle.adoptBloomOnce(d)
+    #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.bloom.rawValue)
+    d.set(AppStyle.nightMint.rawValue, forKey: AppStyle.storageKey)
+    AppStyle.adoptBloomOnce(d)
+    #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.nightMint.rawValue)
   }
 
   @Test func defaultFlavorKeepsTheOriginalShape() {
@@ -125,14 +135,14 @@ struct StyleTests {
     defer { defaults.set(saved, forKey: AppStyle.storageKey) }
 
     defaults.removeObject(forKey: AppStyle.storageKey)
-    #expect(AppStyle.current == .steelKraft)
+    #expect(AppStyle.current == .bloom)
 
     defaults.set(AppStyle.terracotta.rawValue, forKey: AppStyle.storageKey)
     #expect(AppStyle.current == .terracotta)
     #expect(DS.palette.bg.light == AppStyle.terracotta.palette.bg.light)
 
     defaults.set("not-a-style", forKey: AppStyle.storageKey)
-    #expect(AppStyle.current == .steelKraft)
+    #expect(AppStyle.current == .bloom)
   }
 
   @Test func appearanceModesMapToColorSchemes() {

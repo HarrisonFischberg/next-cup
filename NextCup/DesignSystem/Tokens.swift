@@ -411,8 +411,9 @@ struct Flavor {
   func number(_ style: SwiftUI.Font.TextStyle, _ weight: SwiftUI.Font.Weight) -> SwiftUI.Font {
     switch numbers {
     case .monospaced: .system(style, design: .monospaced, weight: weight)
-    case .serif: .system(style, design: .serif, weight: weight == .bold ? .semibold : weight)
-      .monospacedDigit()
+    case .serif:
+      .system(style, design: .serif, weight: weight == .bold ? .semibold : weight)
+        .monospacedDigit()
     case .rounded: .system(style, design: .rounded, weight: weight).monospacedDigit()
     case .condensed:
       .custom(

@@ -222,10 +222,13 @@ struct BrewFormView: View {
 
   private func header(_ model: BrewFormModel) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
-      Text((model.isEditing ? "Edit brew" : (model.repeatingID != nil ? "Brew again" : "New brew")).dsTitle)
-        .font(DS.Font.display).foregroundStyle(DS.ink)
-        .dynamicTypeSize(...DS.displayCap)
-        .accessibilityAddTraits(.isHeader)
+      Text(
+        (model.isEditing ? "Edit brew" : (model.repeatingID != nil ? "Brew again" : "New brew"))
+          .dsTitle
+      )
+      .font(DS.Font.display).foregroundStyle(DS.ink)
+      .dynamicTypeSize(...DS.displayCap)
+      .accessibilityAddTraits(.isHeader)
       if let seed {
         Text([seed.recipeName, seed.methodName].compactMap { $0 }.joined(separator: " · "))
           .font(.subheadline).foregroundStyle(DS.ink2)
@@ -658,7 +661,8 @@ struct BrewFormView: View {
             .frame(maxWidth: .infinity, minHeight: DS.Size.control)
             .foregroundStyle(DS.ink)
             .background(DS.paper, in: RoundedRectangle(cornerRadius: DS.radius))
-            .overlay(RoundedRectangle(cornerRadius: DS.radius).strokeBorder(DS.line, lineWidth: DS.rule))
+            .overlay(
+              RoundedRectangle(cornerRadius: DS.radius).strokeBorder(DS.line, lineWidth: DS.rule))
         }
         .accessibilityLabel("Add a photo")
         .accessibilityIdentifier("brewform.photo")

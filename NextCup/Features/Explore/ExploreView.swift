@@ -139,7 +139,7 @@ private struct BeanRecommendationCard: View {
         }
         Hairline()
         NavigationLink(value: DeepLink.newBrew) {
-          Text("LOG A BREW").font(DS.Font.headline).foregroundStyle(DS.ink)
+          Text("Log a brew".dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
             .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
             .padding(.horizontal, DS.Space.md)
         }
@@ -147,7 +147,7 @@ private struct BeanRecommendationCard: View {
         if canAsk {
           Hairline()
           Button(action: onAsk) {
-            Text("ASK AI ABOUT THIS COFFEE").font(DS.Font.headline).foregroundStyle(DS.ink)
+            Text("Ask AI about this coffee".dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
               .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
               .padding(.horizontal, DS.Space.md)
           }
@@ -162,7 +162,7 @@ private struct BeanRecommendationCard: View {
   private var header: some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
       NavigationLink(value: DeepLink.bean(bean.id)) {
-        Text(bean.name.uppercased()).font(DS.Font.headline).foregroundStyle(DS.ink)
+        Text(bean.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
           .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
       }
       .accessibilityAddTraits(.isHeader)
@@ -195,7 +195,7 @@ private struct RecommendationRow: View {
     VStack(alignment: .leading, spacing: DS.Space.sm) {
       HStack(alignment: .firstTextBaseline, spacing: DS.Space.sm) {
         if let rank { Text("\(rank)").font(DS.Font.data).foregroundStyle(DS.ink2) }
-        Text(item.methodName.uppercased()).font(DS.Font.headline).foregroundStyle(DS.ink)
+        Text(item.methodName.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
         if item.isDefault { Tag(text: "Default") }
       }
       if let recipe = item.recipeName {
