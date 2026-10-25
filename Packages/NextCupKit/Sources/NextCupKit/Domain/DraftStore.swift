@@ -50,8 +50,7 @@ public struct DraftStore: Sendable {
   public static let atomicWrite: Writer = { data, url in
     try FileManager.default.createDirectory(
       at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try data.write(
-      to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    try data.write(to: url, options: [.atomic, .completeFileProtection])
   }
 
   public func save(_ draft: BrewDraft) -> Result<Void, DraftError> {

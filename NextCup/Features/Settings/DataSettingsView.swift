@@ -25,8 +25,7 @@ struct DataSettingsView: View {
   @Environment(\.modelContext) private var context
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @AppStorage(BackupStatus.errorKey) private var backupError = ""
-  @State private var files: DataExporter.Files?
-  @State private var exportError: String?
+  @State private var shared: SharedFiles?
   @State private var showImporter = false
   @State private var plan: ImportPlan?
   @State private var message: String?
@@ -65,7 +64,10 @@ struct DataSettingsView: View {
     .safeAreaInset(edge: .bottom, spacing: 0) { toast }
     .navigationTitle("Your data")
     .navigationBarTitleDisplayMode(.inline)
-    .task { prepare() }
+    .task { backups = BackupStore.standard().list() }
+    .background {
+      Color.clear.sheet(item: $shared, onDismiss: removeExport) { ActivityView(items: $0.urls) }
+    }
     .fileImporter(isPresented: $showImporter, allowedContentTypes: [.json]) { result in
       switch result {
       case .success(let url): open(url)
@@ -95,26 +97,24 @@ struct DataSettingsView: View {
 
   private var exportSection: some View {
     Section {
-      if let exportError {
-        Text(exportError).font(.footnote).foregroundStyle(DS.ink)
-      } else if let files {
-        ShareLink(item: files.json) {
-          row("Export everything (JSON)", "Lossless; can be imported again")
-        }
-        .listRowBackground(DS.paper).accessibilityIdentifier("data.export.json")
-        ShareLink(items: files.csv) { row("Export for a spreadsheet (CSV)", "Brews and beans") }
-          .listRowBackground(DS.paper).accessibilityIdentifier("data.export.csv")
-      } else {
-        HStack(spacing: DS.Space.sm) {
-          ProgressView()
-          Text("Preparing export…").font(.footnote).foregroundStyle(DS.ink2)
-        }
-        .frame(minHeight: DS.Size.control).listRowBackground(DS.paper)
+      Button {
+        export { [$0.json] }
+      } label: {
+        row("Export everything (JSON)", "Lossless; can be imported again")
       }
+      .listRowBackground(DS.paper).accessibilityIdentifier("data.export.json")
+      Button {
+        export { $0.csv }
+      } label: {
+        row("Export for a spreadsheet (CSV)", "Brews and beans")
+      }
+      .listRowBackground(DS.paper).accessibilityIdentifier("data.export.csv")
     } header: {
       Text("Export")
     } footer: {
-      Text("Photos are included in the JSON file only.")
+      Text(
+        "Photos are included in the JSON file only. "
+          + "The file is deleted when you close the share sheet.")
     }
   }
 
@@ -186,13 +186,22 @@ struct DataSettingsView: View {
 
   private func prepare() {
     backups = BackupStore.standard().list()
+  }
+
+  /// The files exist only between the tap and the closing of the share sheet.
+  private func export(_ pick: (DataExporter.Files) -> [URL]) {
     do {
-      files = try DataExporter(store: store).write(into: FileManager.default.temporaryDirectory)
-      exportError = nil
+      let files = try DataExporter(store: store).write(into: FileManager.default.temporaryDirectory)
+      shared = SharedFiles(urls: pick(files))
+      errorMessage = nil
     } catch {
-      files = nil
-      exportError = "The export could not be prepared. \(error.localizedDescription)"
+      errorMessage = "The export could not be prepared. \(error.localizedDescription)"
     }
+  }
+
+  private func removeExport() {
+    try? FileManager.default.removeItem(
+      at: FileManager.default.temporaryDirectory.appendingPathComponent("NextCupExport"))
   }
 
   private func open(_ url: URL) {
@@ -226,7 +235,8 @@ struct DataSettingsView: View {
     let eraser = DataEraser(
       store: store, defaults: .standard,
       defaultsDomain: Bundle.main.bundleIdentifier ?? "NextCup",
-      draftsDirectory: DraftDirectory.url, backups: .standard())
+      draftsDirectory: DraftDirectory.url, backups: .standard(),
+      externalData: DataEraser.externalDataDirectory(of: context))
     switch eraser.eraseAll(reseeding: content) {
     case .success(let snapshot):
       UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -266,6 +276,22 @@ struct DataSettingsView: View {
 private struct PlanBox: Identifiable {
   let id = UUID()
   let plan: ImportPlan
+}
+
+private struct SharedFiles: Identifiable {
+  let id = UUID()
+  let urls: [URL]
+}
+
+/// The system share sheet. `ShareLink` needs its files to exist before the tap.
+private struct ActivityView: UIViewControllerRepresentable {
+  let items: [URL]
+
+  func makeUIViewController(context: Context) -> UIActivityViewController {
+    UIActivityViewController(activityItems: items, applicationActivities: nil)
+  }
+
+  func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
 
 enum DraftDirectory {

@@ -1,7 +1,8 @@
 # Data inventory
 
-Planned flows, recorded at intake (2026-10-21). Nothing is built yet; each row
-is verified against the code in Phase 5.
+Flows recorded at intake (2026-10-21) and verified against the code in Phase 5.
+The table directly below is the intake plan; "Current flows" at the end of this
+file is the refreshed list that matches the code (T034).
 
 | Data collected | Purpose | Collection point | Recipient / storage | Retention | Deletion mechanism |
 | --- | --- | --- | --- | --- | --- |
@@ -28,9 +29,9 @@ needs a decision in the blueprint and then a row in the table above.
 | Café check-ins with location | Source A | Place and date on device; MapKit search | Narrower than intake's roaster search; decide in blueprint |
 | Live Activity / widgets for the brew timer | Source C | Timer state on device | No new recipient |
 
-Discovery inventory for the current repository: no app code exists yet, so
-there are no routes, SDKs, cookies, storage, emails, fonts or licenses to
-inventory. Rerun this section in Phase 5 against the built code.
+Discovery inventory at intake: no app code existed, so there was nothing to
+inventory. It was rerun against the built code in Phase 5 (see the verified and
+current-flow tables below).
 
 ## Phase 3 blueprint decisions (2026-10-21)
 
@@ -65,3 +66,21 @@ Checked by search of `NextCup`, `NextCupLiveActivity` and `Packages/NextCupKit/S
 | Logging | No `print`, `NSLog`, `os_log` or `Logger` in app code |
 | Planned flows not built | Bluetooth scales, Apple Health, iCloud sync, creator-recipe import: none present in code |
 | Not verified | Runtime network capture; widget extension has no privacy manifest (no required-reason API found); on-device backup contents were not inspected beyond tests |
+
+## Current flows (T034, 2026-10-24)
+
+Refreshed against the code on `build/phase-5`. Replaces the "nothing built yet" wording above.
+
+| Data | Where it lives or goes | Retention | Removed by |
+| --- | --- | --- | --- |
+| AI request log (`AIRequest`: feature, provider, model ID, status, payload, attached photo, result, error) | On device, SwiftData; the payload and photo go to the user's chosen provider only on a tap | Payload and photo are emptied when a request ends, fails or is cancelled (T032); the result and status stay with the brew | Delete the brew (cascade); delete all data |
+| Export files (JSON and CSV, all journal fields, photos in JSON) | `tmp/NextCupExport`, created only when the user taps Export | Removed when the share sheet closes | Closing the sheet; delete all data empties `tmp` |
+| Automatic backups | Application Support/Backups, complete file protection, newest 7 | 7 days of files | Delete all data |
+| Brew-form drafts | Application Support/Drafts, complete file protection | Until the brew is saved or discarded | Delete all data |
+| Timer snapshot (start time, pauses, recipe) | On device so a relaunch restores a running brew | Until the brew ends | Delete all data (preferences domain cleared) |
+| Live Activity content (recipe name, method name, current and next step, start and end dates, `nextcup://` link) | Lock Screen and Dynamic Island on this device; no push token, no server | Until the brew ends or the user dismisses it | Delete all data ends a running activity |
+| Typed city or map region for roaster search | Sent to Apple MapKit local search as the search text and region; the app keeps no copy | Apple's terms | Not stored by the app |
+| Reduced-accuracy location | `NSLocationDefaultAccuracyReduced` asks iOS for approximate location; used once per search, not stored | Not stored | Revoke permission in iOS Settings |
+| Saved roaster name, city, website, coordinates | On device (`Roaster`), only for roasters the user chose to save | Until deleted | Delete the roaster; delete all data |
+| Photos and AI attachments stored outside the database | SwiftData external-data folder next to the store | While the owning row exists | Delete all data empties the folder |
+| Export compliance | `ITSAppUsesNonExemptEncryption = NO`: only Apple's standard HTTPS to the two AI providers | n/a | n/a |
