@@ -695,3 +695,23 @@ Not done (so Status stays `pending`):
 - Flavors are approximations: I did not read `docs/design/archive/*.swift.txt` (grep and those large files were not worth the budget), so the five T035 flavors' radius, density and control style come from `docs/design/directions.md`, not the concept code. Steel & Kraft is `regular` density (not compact) to keep the default unchanged.
 - Serif and rounded display faces were not checked for wrapping in layouts sized for DIN Condensed. Any `static let` elsewhere that caches a `DS` value could not be searched for (grep blocked); the tree rebuild covers it.
 - UI tests that touched `settings.style` (removed inline picker) were not run.
+
+## 2026-10-25 — T038 evidence pass (Sonnet) — Status stays `pending`
+
+What changed:
+- Added `NextCupUITests/FlavorCaptureUITests.swift`: one test per flavor (light and dark) plus largest text for Steel & Kraft, Café Page and Roaster Poster; each saves journal, brew form and timer screenshots to `docs/design/flavors/`. It skips unless `docs/design/flavors/.capture` exists (marker removed after the run).
+- Ran it: 73 PNGs written (10 flavors x 3 screens x light/dark, plus 3 x 3 largest text).
+
+Commands and results:
+- `python3 design/check_tokens.py`: "tokens in sync".
+- `swift format lint --recursive --strict ...`: clean.
+- `xcodebuild ... -only-testing:NextCupTests test -quiet`: no errors printed (no per-test count read).
+- `xcodebuild ... -only-testing:NextCupUITests/FlavorCaptureUITests test -quiet`: ran 378 s, screenshots produced; no summary line printed, so pass/fail per test is inferred from the files.
+- Viewed: roasterPoster-timer-light (sticker offset and condensed numerals render), cafePage-brewform-largest-text (serif display, reflows, Save visible), steelKraft-journal-light (default looks as before).
+
+Still not done (so Status stays `pending`):
+- `python3 design/contrast.py` needs approval in this session; run it once on `docs/design/tokens/*.json`. AA is enforced by `StyleTests` meanwhile.
+- Bean detail screenshots (needs a created bean) and the other 7 largest-text-free looks were not reviewed by eye; I viewed 3 of 73.
+- `/impeccable critique` and `polish` per flavor, VoiceOver, Increase Contrast, Reduce Transparency, Differentiate Without Color: not run.
+- Full UI suite not re-run after the flavor change (tests that used the removed inline `settings.style` picker unverified).
+- Seen in Roaster Poster timer: the large nav title blurs behind the bar; not investigated.
