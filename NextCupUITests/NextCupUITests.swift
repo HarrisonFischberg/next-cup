@@ -294,7 +294,7 @@ final class NextCupUITests: XCTestCase {
     mid.press(forDuration: 0.05, thenDragTo: higher)
     grind.tap()
     grind.typeText("21 clicks")
-    app.keyboards.buttons["Done"].tap()  // dismisses the keyboard and the draft stays
+    grind.typeText("\n")  // Return dismisses the keyboard; the Done key is not always hittable
     sleep(1)  // autosave waits for typing to pause
 
     app.terminate()
@@ -502,8 +502,8 @@ final class NextCupUITests: XCTestCase {
     let field = element(app, "methods.editor.name")
     XCTAssertTrue(field.waitForExistence(timeout: 5))
     field.tap()
-    field.typeText(name)
-    app.keyboards.buttons["Done"].tap()
+    // Return dismisses the keyboard; the Done key is not always hittable.
+    field.typeText(name + "\n")
     // The switch element spans the row; its thumb is at the trailing edge.
     app.switches[switchOff].coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
     XCTAssertEqual(app.switches[switchOff].value as? String, "0", "\(switchOff) is switched off")
@@ -847,9 +847,10 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(amount.waitForExistence(timeout: 5))
     amount.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 5) + "100")
     app.alerts.buttons["Save"].tap()
-    XCTAssertTrue(
-      remaining.waitForExistence(timeout: 5) && remaining.label.contains("100 g of 250 g"),
-      "got \(remaining.label)")
+    // The label updates after the alert closes; wait for it instead of reading it at once.
+    let updated = NSPredicate(format: "label CONTAINS %@", "100 g of 250 g")
+    expectation(for: updated, evaluatedWith: remaining)
+    waitForExpectations(timeout: 10)
     app.navigationBars.buttons.element(boundBy: 0).tap()
     XCTAssertTrue(element(app, "beans.row.Washed Ethiopia").label.contains("100 g left"))
 
