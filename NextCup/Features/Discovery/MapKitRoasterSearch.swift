@@ -17,6 +17,8 @@ struct MapKitRoasterSearch: RoasterSearching {
         latitudinalMeters: Self.radiusMeters, longitudinalMeters: Self.radiusMeters)
     case .city(let city):
       request.naturalLanguageQuery = "coffee roaster in \(city)"
+    case .named(let name):
+      request.naturalLanguageQuery = "\(name) coffee roaster"
     }
     request.resultTypes = .pointOfInterest
     let response = try await MKLocalSearch(request: request).start()
@@ -65,9 +67,12 @@ struct DeviceLocation: LocationProviding {
   /// location tap take the denied path.
   struct StubRoasterSearch: RoasterSearching {
     func search(_ area: SearchArea) async throws -> [RoasterPlace] {
-      if case .city(let city) = area {
-        if city.lowercased() == "nowhere" { return [] }
-        if city.lowercased() == "offline" { throw URLError(.notConnectedToInternet) }
+      switch area {
+      case .city(let text), .named(let text):
+        if text.lowercased() == "nowhere" { return [] }
+        if text.lowercased() == "offline" { throw URLError(.notConnectedToInternet) }
+      case .near:
+        break
       }
       return [
         RoasterPlace(
@@ -88,6 +93,14 @@ struct DeviceLocation: LocationProviding {
     func currentLocation() async -> LocationOutcome { outcome }
   }
 #endif
+
+/// The real MapKit search, or the stub when a UI test passes `-roasterStub`.
+func liveRoasterSearcher() -> RoasterSearching {
+  #if DEBUG
+    if ProcessInfo.processInfo.arguments.contains("-roasterStub") { return StubRoasterSearch() }
+  #endif
+  return MapKitRoasterSearch()
+}
 
 extension RoasterDiscoveryModel {
   /// The real search and location, or the stubs when a UI test asks for them.
