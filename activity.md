@@ -634,3 +634,8 @@ Untested / honest gaps:
 - The external-data folder name `.<store>_SUPPORT/_EXTERNAL_DATA` is assumed from SwiftData's layout and was tested only with a stand-in folder.
 - The cleared-disclosure assertion uses a stand-in key; it proves the whole preferences domain is wiped, not the real key names.
 - Delete-all ending a real Live Activity was tested with an injected closure only.
+
+## 2026-10-25 — T032 to T034 verified (Sonnet, supervised)
+
+- Package 153 and app unit 245 pass, lint clean. UI suite: 45 tests, two failures in the full run (`testExploreShowsLabelledDefaultForANewBean`, `testEndEarlyOpensTheFormWithTheTimeReached`); both pass when rerun alone, as the beans test did earlier. Full UI runs get flakier as they get longer (about 18 minutes); not claimed green.
+- Changed after the loop: drafts use the default file protection (complete protection could lose a draft saved as the phone locks); `docs/legal/PRIVACY.md` rewritten to list exactly what each AI action sends, reduced-accuracy location, backup retention and the crash-data wording.
