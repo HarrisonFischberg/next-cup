@@ -66,10 +66,6 @@ struct TimerView: View {
     }
     .onChange(of: scenePhase) { _, phase in if phase == .active { session.tick() } }
     .onChange(of: state.currentIndex) { _, index in announce(stepAt: index) }
-    .onChange(of: session.outcome) { _, outcome in
-      guard let outcome else { return }
-      seed = setup.seed(elapsedS: outcome.elapsedS, endedEarly: outcome.endedEarly)
-    }
     .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
     .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
   }
@@ -179,12 +175,25 @@ struct TimerView: View {
     }
   }
 
+  /// The finish is its own moment: what was reached against the target, then one
+  /// next step. Nothing moves on until the user taps it.
   private var finishedBanner: some View {
-    StateBanner(
-      kind: .info,
-      message: session.outcome?.endedEarly == true
-        ? "Brew ended at \(RecipeFormat.clock(Int(state.elapsedS))). Log it with the time reached."
-        : "Brew complete at \(RecipeFormat.clock(Int(state.elapsedS))). Log how it tasted.")
+    let early = session.outcome?.endedEarly == true
+    return VStack(alignment: .leading, spacing: DS.Space.xs) {
+      Text((early ? "Brew ended" : "Brew complete").dsTitle).font(DS.Font.display)
+        .foregroundStyle(DS.ink).dynamicTypeSize(...DS.displayCap)
+        .accessibilityAddTraits(.isHeader)
+      Text(
+        "\(RecipeFormat.clock(Int(state.elapsedS))) · target \(RecipeFormat.clock(setup.plan.totalDurationS)). "
+          + (early ? "Log it with the time reached." : "Taste it, then log how it was.")
+      )
+      .font(.body).foregroundStyle(DS.ink2)
+    }
+    .padding(DS.Space.lg)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(DS.crema.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.controlRadius))
+    .accessibilityElement(children: .combine)
+    .accessibilityIdentifier("timer.finished")
   }
 
   private var steps: some View {
@@ -251,7 +260,7 @@ struct TimerView: View {
     case .notStarted: "Start"
     case .running: "Pause"
     case .paused: "Resume"
-    case .finished: logged ? "Brew logged" : "Log this brew"
+    case .finished: logged ? "Brew logged" : "Taste and log"
     }
   }
 

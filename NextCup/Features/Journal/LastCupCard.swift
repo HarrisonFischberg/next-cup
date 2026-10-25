@@ -56,9 +56,9 @@ struct LastCupCard: View {
         }
         .accessibilityIdentifier("journal.brewAgain")
         Button(action: quickLog) {
-          Text("Quick log").font(.body.weight(.semibold)).padding(.horizontal, DS.Space.xl)
-            .frame(minHeight: 54).foregroundStyle(DS.ink)
-            .overlay(Capsule().strokeBorder(DS.line, lineWidth: 1))
+          // Quiet on purpose: Brew again is the card's one standout.
+          Text("Quick log").font(.body.weight(.semibold)).padding(.horizontal, DS.Space.md)
+            .frame(minHeight: 54).foregroundStyle(DS.ink2)
         }
       }
       .buttonStyle(.plain)

@@ -12,6 +12,7 @@ struct DeepLinkTests {
     #expect(DeepLink(url: URL(string: "nextcup://brew/\(id.uuidString)")!) == .brew(id))
     #expect(DeepLink(url: URL(string: "nextcup://recipe/\(id.uuidString)")!) == .recipe(id))
     #expect(DeepLink(url: URL(string: "nextcup://bean/\(id.uuidString)")!) == .bean(id))
+    #expect(DeepLink(url: URL(string: "nextcup://settings")!) == .settings)
   }
 
   @Test func eachLinkTargetsItsTab() {
@@ -19,10 +20,11 @@ struct DeepLinkTests {
     #expect(DeepLink.brew(id).tab == .journal)
     #expect(DeepLink.recipe(id).tab == .recipes)
     #expect(DeepLink.bean(id).tab == .beans)
+    #expect(DeepLink.settings.tab == .journal)
   }
 
   @Test func urlRoundTrips() {
-    for link in [DeepLink.newBrew, .brew(id), .recipe(id), .bean(id)] {
+    for link in [DeepLink.newBrew, .brew(id), .recipe(id), .bean(id), .settings] {
       #expect(DeepLink(url: link.url) == link)
     }
   }
@@ -71,7 +73,7 @@ struct DeepLinkTests {
   }
 
   @Test func everyTabHasATitleAndSymbol() {
-    #expect(AppTab.allCases.map(\.title) == ["Journal", "Recipes", "Beans", "Explore", "Settings"])
+    #expect(AppTab.allCases.map(\.title) == ["Journal", "Recipes", "Beans", "Explore"])
     #expect(AppTab.allCases.allSatisfy { !$0.symbol.isEmpty })
   }
 }

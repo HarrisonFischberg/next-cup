@@ -7,6 +7,9 @@ import SwiftUI
 struct RootTabView: View {
   @AppStorage(AppTab.storageKey) private var storedTab = AppTab.journal.rawValue
   @State private var router = AppRouter()
+  @AppStorage(OnboardingView.doneKey) private var onboarded = false
+  @Environment(\.modelContext) private var context
+  @State private var showsOnboarding = false
 
   private var selection: Binding<AppTab> {
     Binding(
@@ -24,6 +27,18 @@ struct RootTabView: View {
     }
     .tint(DS.ink)
     .onOpenURL { handle($0) }
+    .fullScreenCover(isPresented: $showsOnboarding) {
+      OnboardingView { tab in
+        storedTab = tab.rawValue
+        showsOnboarding = false
+      }
+    }
+    .onAppear {
+      showsOnboarding = Self.needsOnboarding(onboarded: onboarded, context: context)
+      // A new look rebuilds the whole tree; reopen Settings where the change was made.
+      guard UserDefaults.standard.bool(forKey: FlavorPicker.returnKey) else { return }
+      handle(DeepLink.settings.url)
+    }
     #if DEBUG
       .task {
         // UI tests cannot send a URL to the app, so they pass one as an argument.
@@ -36,6 +51,20 @@ struct RootTabView: View {
         }
       }
     #endif
+  }
+
+  /// First run only: someone upgrading with brews already logged never sees it.
+  /// UI tests skip it unless they ask for it.
+  private static func needsOnboarding(onboarded: Bool, context: ModelContext) -> Bool {
+    let arguments = ProcessInfo.processInfo.arguments
+    if arguments.contains("-showOnboarding") { return true }
+    guard !onboarded, !AppBootstrap.usesInMemoryStore else { return false }
+    let brews = (try? context.fetchCount(FetchDescriptor<Brew>())) ?? 0
+    if brews > 0 {
+      UserDefaults.standard.set(true, forKey: OnboardingView.doneKey)
+      return false
+    }
+    return true
   }
 
   private func handle(_ url: URL) {
@@ -55,7 +84,7 @@ private struct TabRoot: View {
     case .journal: stack(path: $router.journalPath)
     case .recipes: stack(path: $router.recipesPath)
     case .beans: stack(path: $router.beansPath)
-    case .explore, .settings: stack(path: nil)
+    case .explore: stack(path: nil)
     }
   }
 
@@ -80,11 +109,6 @@ private struct TabRoot: View {
       BeanLibraryView().navigationDestination(for: DeepLink.self, destination: destination)
     case .explore:
       ExploreView().navigationDestination(for: DeepLink.self, destination: destination)
-    case .settings:
-      SettingsRootView().navigationDestination(for: DeepLink.self, destination: destination)
-    default:
-      TabPlaceholder(tab: tab, router: router).navigationDestination(
-        for: DeepLink.self, destination: destination)
     }
   }
 
@@ -102,6 +126,7 @@ private struct TabRoot: View {
     case .brewAgain(let id): BrewDestination(link: link, brewID: id, repeats: true)
     case .bean(let id): BeanDestination(link: link, beanID: id)
     case .timer(let id, let doseG): TimerDestination(link: link, recipeID: id, doseG: doseG)
+    case .settings: SettingsRootView()
     }
   }
 }
@@ -132,35 +157,6 @@ private struct BrewDestination: View {
       .navigationTitle(link.screenName)
       .navigationBarTitleDisplayMode(.inline)
       .accessibilityIdentifier(link.identifier)
-    }
-  }
-}
-
-/// Stands in for each tab's screen until its task builds it.
-private struct TabPlaceholder: View {
-  let tab: AppTab
-  let router: AppRouter
-
-  var body: some View {
-    ScrollView {
-      EmptyState(
-        title: tab.title, message: message,
-        actionTitle: tab == .journal ? "Log a brew" : nil,
-        action: tab == .journal ? { router.open(.newBrew) } : nil)
-    }
-    .background(DS.bg)
-    .navigationTitle(tab.title)
-    .navigationBarTitleDisplayMode(.inline)
-    .accessibilityIdentifier("tab.root.\(tab.rawValue)")
-  }
-
-  private var message: String {
-    switch tab {
-    case .journal: "Your brews will be listed here."
-    case .recipes: "Recipes you can follow and scale will be listed here."
-    case .beans: "Your bags and roasters will be listed here."
-    case .explore: "Recommendations and the flavor explorer will be here."
-    case .settings: "Units, data and privacy controls will be here."
     }
   }
 }

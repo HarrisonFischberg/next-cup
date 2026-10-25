@@ -73,6 +73,15 @@ struct BeanFields: Equatable {
   }
 }
 
+extension BeanFields {
+  /// How many fields differ from `other`, for "Filled 6 fields" after a scan.
+  /// shortcut: compares each stored property by its description, fine for these value fields.
+  func changedCount(to other: BeanFields) -> Int {
+    zip(Mirror(reflecting: self).children, Mirror(reflecting: other).children)
+      .filter { String(describing: $0.value) != String(describing: $1.value) }.count
+  }
+}
+
 /// Add, change, move and delete beans (S03, S04). A failed write is rolled back
 /// and returned, so the library never shows a change that was not kept. Deleting
 /// a bean keeps every brew: each keeps the bean's name as logged.

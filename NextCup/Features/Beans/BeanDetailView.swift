@@ -60,15 +60,17 @@ struct BeanDetailView: View {
         }
         header
         readouts
-        freezer
+        if let trend { trendLine(trend) }
+        BestSoFarCard(summary: bean.bestSoFar, units: units)
         attributes
         if !bean.bagFlavorNotes.isEmpty { flavor }
-        BestSoFarCard(summary: bean.bestSoFar, units: units)
+        freezer
         brews
       }
       .padding(DS.Space.lg)
     }
     .background(DS.bg)
+    .safeAreaInset(edge: .bottom, spacing: 0) { brewBar }
     .navigationTitle(bean.name)
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {
@@ -88,6 +90,69 @@ struct BeanDetailView: View {
       Text(
         "Weigh the bag and enter what is left in \(units.weight == .grams ? "grams" : "ounces").")
     }
+  }
+
+  // MARK: Brew this bean
+
+  /// The brew to repeat: the best graded one (newest on a tie), else the newest.
+  private var bestBrew: Brew? {
+    let used = (bean.brewUses ?? []).compactMap(\.brew).filter { !$0.isDraft }
+    return used.max {
+      ($0.ratingHalfSteps ?? 0, $0.date) < ($1.ratingHalfSteps ?? 0, $1.date)
+    }
+  }
+
+  /// The screen's one primary action: brew with this bag, starting from what worked.
+  private var brewBar: some View {
+    Group {
+      if let best = bestBrew {
+        NavigationLink(value: DeepLink.brewAgain(best.id)) { brewLabel }
+      } else {
+        NavigationLink {
+          BrewFormView(seed: nil, startingBean: bean)
+        } label: {
+          brewLabel
+        }
+      }
+    }
+    .buttonStyle(SteelButtonStyle())
+    .accessibilityHint(
+      bestBrew == nil ? "Opens a new brew with this bean" : "Starts from its best brew"
+    )
+    .accessibilityIdentifier("bean.brew")
+    .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.md)
+    .background(DS.bg, ignoresSafeAreaEdges: .bottom)
+    .overlay(alignment: .top) { Hairline() }
+  }
+
+  private var brewLabel: some View {
+    Text("Brew this bean".dsTitle).font(DS.Font.din(26, relativeTo: .title2)).tracking(1)
+      .dynamicTypeSize(...DS.displayCap)
+      .frame(maxWidth: .infinity, minHeight: DS.Size.primary)
+  }
+
+  // MARK: Dial-in trend
+
+  /// First and latest grade of this bean's graded brews, oldest first. Needs two.
+  private var trend: (first: Int, last: Int, count: Int)? {
+    let graded = bean.brewSamples.filter { ($0.ratingHalfSteps ?? 0) > 0 }.sorted {
+      $0.date < $1.date
+    }
+    guard graded.count >= 2, let first = graded.first?.ratingHalfSteps,
+      let last = graded.last?.ratingHalfSteps
+    else { return nil }
+    return (first, last, graded.count)
+  }
+
+  private func trendLine(_ trend: (first: Int, last: Int, count: Int)) -> some View {
+    let grade = { (h: Int) in h % 2 == 0 ? "\(h / 2)" : String(format: "%.1f", Double(h) / 2) }
+    return VStack(alignment: .leading, spacing: 2) {
+      Text("DIAL-IN").font(DS.Font.label).foregroundStyle(DS.ink2)
+      Text("Grade \(grade(trend.first)) → \(grade(trend.last)) over \(trend.count) brews")
+        .font(DS.Font.mono(.title3, .bold)).foregroundStyle(DS.ink)
+    }
+    .accessibilityElement(children: .combine)
+    .accessibilityIdentifier("bean.trend")
   }
 
   // MARK: Sections

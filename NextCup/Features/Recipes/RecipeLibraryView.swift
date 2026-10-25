@@ -39,7 +39,8 @@ struct RecipeLibraryView: View {
       if recipes.isEmpty {
         EmptyState(
           title: "No recipes yet",
-          message: "Starter recipes load with the app. Recipes you create will be listed here.")
+          message: "Starter recipes load with the app. Recipes you create will be listed here.",
+          actionTitle: "New recipe", action: { editor = .new })
       } else if matches.isEmpty {
         EmptyState(
           title: "No matches", message: "No recipe matches “\(search)”. Try a method or a name.",
@@ -75,12 +76,12 @@ struct RecipeLibraryView: View {
 
   private func section(_ title: String, _ members: [Recipe]) -> some View {
     VStack(alignment: .leading, spacing: 0) {
+      // A quiet label: the recipes, not their group, are what the eye should find.
       Text(title.uppercased()).font(DS.Font.label).tracking(0.5)
-        .foregroundStyle(DS.onSteel)
-        .padding(.horizontal, DS.Space.md).frame(
+        .foregroundStyle(DS.ink2)
+        .padding(.horizontal, DS.Space.xs).frame(
           maxWidth: .infinity, minHeight: 32, alignment: .leading
         )
-        .background(DS.steel, ignoresSafeAreaEdges: [])
         .accessibilityAddTraits(.isHeader)
       PaperBox {
         VStack(spacing: 0) {

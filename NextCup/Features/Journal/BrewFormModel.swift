@@ -38,6 +38,8 @@ final class BrewFormModel {
   /// What the rules made of the brew just saved: the suggestion, or why none.
   private(set) var madeSuggestion: Suggestion?
   private(set) var dialInNote: String?
+  /// Set when this brew's grade beats every earlier graded brew of one of its beans.
+  private(set) var newBest: (bean: String, halfSteps: Int, previous: Int)?
   private var followedSuggestionID: UUID?
   /// The draft value and suggested value before an answer, kept for Undo.
   private var undoDraftValue: String?
@@ -459,12 +461,30 @@ final class BrewFormModel {
     }
     savedBrewID = draft.id
     makeSuggestion()
+    noteNewBest()
     if case .failure = draftStore.clear() {
       notice = FormNotice(
         kind: .info, message: "Saved. An old draft file could not be removed.")
     }
     UINotificationFeedbackGenerator().notificationOccurred(.success)
     return true
+  }
+
+  /// A new best needs an earlier graded brew of the same bean to beat.
+  private func noteNewBest() {
+    guard let brew = try? store.find(Brew.self, id: draft.id),
+      let grade = brew.ratingHalfSteps, grade > 0
+    else { return }
+    for use in brew.beans ?? [] {
+      guard let bean = use.bean else { continue }
+      let earlier = (bean.brewUses ?? []).compactMap(\.brew)
+        .filter { !$0.isDraft && $0.id != brew.id }
+        .compactMap(\.ratingHalfSteps).filter { $0 > 0 }
+      if let previous = earlier.max(), grade > previous {
+        newBest = (bean.name, grade, previous)
+        return
+      }
+    }
   }
 
   /// Asks the dial-in rules what to change next. The brew is already saved, so a

@@ -12,6 +12,12 @@ struct FlavorPicker: View {
   @AppStorage(MakeItYours.densityKey) private var density = Density.regular.rawValue
   @AppStorage(MakeItYours.fontKey) private var font = FontChoice.standard.rawValue
   @Environment(\.dynamicTypeSize) private var dts
+  @State private var showsAll = false
+
+  /// Bloom, plus the chosen look when it is another; the rest wait behind More looks.
+  private var shown: [AppStyle] {
+    showsAll ? AppStyle.allCases : AppStyle.allCases.filter { $0 == .bloom || $0.rawValue == style }
+  }
 
   private var columns: [GridItem] {
     Array(
@@ -22,12 +28,18 @@ struct FlavorPicker: View {
   var body: some View {
     VStack(alignment: .leading, spacing: DS.Space.lg) {
       LazyVGrid(columns: columns, spacing: DS.Space.md) {
-        ForEach(AppStyle.allCases) { option in
+        ForEach(shown) { option in
           FlavorTile(style: option, isSelected: style == option.rawValue) {
             Self.keepPlace()
             style = option.rawValue
           }
         }
+      }
+      if !showsAll {
+        Button("More looks (\(AppStyle.allCases.count - shown.count))") { showsAll = true }
+          .font(.body.weight(.semibold)).foregroundStyle(DS.ink)
+          .frame(maxWidth: .infinity, minHeight: DS.Size.minTap)
+          .accessibilityIdentifier("settings.flavors.more")
       }
       if style == AppStyle.makeItYours.rawValue { makeItYours }
     }

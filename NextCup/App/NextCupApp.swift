@@ -18,6 +18,8 @@ struct NextCupApp: App {
     if ProcessInfo.processInfo.arguments.contains("-resetNavigationState") {
       UserDefaults.standard.removeObject(forKey: AppTab.storageKey)
       JournalStorage.reset()
+      UserDefaults.standard.removeObject(forKey: GettingStartedCard.dismissedKey)
+      UserDefaults.standard.removeObject(forKey: FlavorPicker.returnKey)
     }
     // UI tests start without a draft left by an earlier test; relaunches omit this.
     if ProcessInfo.processInfo.arguments.contains("-resetDraft") {
