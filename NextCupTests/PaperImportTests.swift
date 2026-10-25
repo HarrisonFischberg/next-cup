@@ -168,7 +168,7 @@ struct PaperImportAppTests {
   ) {
     let stub = PaperImportStubTransport(body)
     let client = AIClient(
-      transport: stub, key: { _ in key }, disclosureAccepted: { true }, sleep: { _ in })
+      transport: stub, key: { _ in key }, disclosureAccepted: { _ in true }, sleep: { _ in })
     let model = PaperImportModel(
       store: Store(context: context), makeQueue: { AIQueue(context: $0, client: client) })
     return (model, stub)

@@ -129,6 +129,19 @@ final class PaperImportModel {
 
   var isWaitingForConnection: Bool { aiRequest?.status == .queued }
 
+  /// The provider chosen for Paper import, once a model is chosen too.
+  var aiProvider: AIProvider? {
+    let preferences = AIPreferences()
+    return preferences.modelID(for: .paperImport) == nil
+      ? nil : preferences.provider(for: .paperImport)
+  }
+
+  /// The import screen is going away: nothing may stay queued behind it.
+  func leave() {
+    reading?.cancel()
+    queue?.cancelAll()
+  }
+
   func cancelReading() {
     reading?.cancel()
     if let aiRequest { queue?.cancel(aiRequest) }

@@ -27,10 +27,13 @@ struct AIClientTests {
   }
 
   private func client(
-    _ stub: StubTransport, key: String? = "sk-test", disclosed: Bool = true
+    _ stub: StubTransport, key: String? = "sk-test",
+    disclosed: Set<AIProviderKind> = [
+      .anthropic, .openAI,
+    ]
   ) -> AIClient {
     AIClient(
-      transport: stub, key: { _ in key }, disclosureAccepted: { disclosed },
+      transport: stub, key: { _ in key }, disclosureAccepted: { disclosed.contains($0) },
       sleep: { _ in })
   }
 
@@ -66,7 +69,16 @@ struct AIClientTests {
   @Test func noDisclosureMeansNoCall() async {
     let stub = StubTransport([])
     await #expect(throws: AIError.disclosureNotAccepted) {
-      try await client(stub, disclosed: false).send(payload(), provider: .anthropic, model: "m")
+      try await client(stub, disclosed: []).send(payload(), provider: .anthropic, model: "m")
+    }
+    #expect(await stub.requests.isEmpty)
+  }
+
+  @Test func disclosureForOneProviderDoesNotUnlockAnother() async {
+    let stub = StubTransport([])
+    await #expect(throws: AIError.disclosureNotAccepted) {
+      try await client(stub, disclosed: [.anthropic]).send(
+        payload(), provider: .openAI, model: "m")
     }
     #expect(await stub.requests.isEmpty)
   }
@@ -126,7 +138,7 @@ struct AIClientTests {
     let waits = Waits()
     let stub = StubTransport([status(500), status(500), ok(anthropicBody)])
     let client = AIClient(
-      transport: stub, key: { _ in "k" }, disclosureAccepted: { true },
+      transport: stub, key: { _ in "k" }, disclosureAccepted: { _ in true },
       backoff: .seconds(1), sleep: { await waits.add($0) })
     _ = try await client.send(payload(), provider: .anthropic, model: "m")
     #expect(await waits.values == [.seconds(1), .seconds(2)])

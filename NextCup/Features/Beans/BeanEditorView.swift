@@ -43,6 +43,8 @@ struct BeanEditorView: View {
   @State private var scanMessage: String?
   @State private var matchShown = false
   @State private var matchedRoaster: String?
+  @State private var disclosureProvider: AIProvider?
+  @State private var deferredItem: PhotosPickerItem?
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -118,6 +120,19 @@ struct BeanEditorView: View {
           },
           onSkip: { matchShown = false })
       }
+      .sheet(item: $disclosureProvider) { provider in
+        AIDisclosureView(provider: provider) {
+          AIPreferences().acceptDisclosure(for: provider)
+          disclosureProvider = nil
+          if let item = deferredItem { startScan(item) }
+          deferredItem = nil
+        } cancel: {
+          disclosureProvider = nil
+          deferredItem = nil
+        }
+      }
+      // A request still waiting must not be sent after the user has left.
+      .onDisappear { scanQueue?.cancelAll() }
       .interactiveDismissDisabled(hasChanges)
     }
     .accessibilityIdentifier("beans.editor")
@@ -313,6 +328,11 @@ struct BeanEditorView: View {
       let model = preferences.modelID(for: feature)
     else {
       scanMessage = "Choose a provider and model for \(feature.title) in Settings → AI first."
+      return
+    }
+    guard preferences.hasAcceptedDisclosure(for: provider) else {
+      deferredItem = item
+      disclosureProvider = provider
       return
     }
     Task {

@@ -17,6 +17,7 @@ struct PaperImportView: View {
     .rawValue
   @State private var model: PaperImportModel
   @State private var picked: PhotosPickerItem?
+  @State private var disclosureProvider: AIProvider?
   @FocusState private var focused: Bool
 
   init(context: ModelContext, close: @escaping () -> Void) {
@@ -61,6 +62,16 @@ struct PaperImportView: View {
       }
       .onChange(of: picked) { _, item in if let item { load(item) } }
       .onChange(of: model.aiRequest?.status) { _, _ in model.aiStatusChanged() }
+      .sheet(item: $disclosureProvider) { provider in
+        AIDisclosureView(provider: provider) {
+          AIPreferences().acceptDisclosure(for: provider)
+          disclosureProvider = nil
+          model.readWithAI()
+        } cancel: {
+          disclosureProvider = nil
+        }
+      }
+      .onDisappear { model.leave() }
       .interactiveDismissDisabled(model.phase != .choose)
     }
     .accessibilityIdentifier("import.sheet")
@@ -124,7 +135,13 @@ struct PaperImportView: View {
           .accessibilityIdentifier("import.read.device")
           if aiReady {
             Button {
-              model.readWithAI()
+              if let provider = model.aiProvider,
+                !AIPreferences().hasAcceptedDisclosure(for: provider)
+              {
+                disclosureProvider = provider
+              } else {
+                model.readWithAI()
+              }
             } label: {
               Label("Read with my AI key", systemImage: "sparkles")
                 .frame(minHeight: DS.Size.control, alignment: .leading)
