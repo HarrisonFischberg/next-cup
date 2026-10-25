@@ -6,6 +6,9 @@
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
+	<!-- T037: Open Food Facts (world.openfoodfacts.org) receives only a scanned barcode number,
+	     after a scan, to look up product name and brand. Not user data, not tracking, so no
+	     new collected type; camera photos fall under Photos or Videos below. -->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
 		<dict>

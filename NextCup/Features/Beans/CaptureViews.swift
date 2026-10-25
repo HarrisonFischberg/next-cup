@@ -1,3 +1,4 @@
+import AVFoundation
 import SwiftUI
 import UIKit
 import VisionKit
@@ -43,6 +44,16 @@ enum BarcodeScanner {
   @MainActor static var isAvailable: Bool {
     DataScannerViewController.isSupported && DataScannerViewController.isAvailable
   }
+
+  /// `isAvailable` is false until camera access is granted, so ask first on a supported device.
+  @MainActor static func requestIfNeeded() async -> Bool {
+    if DataScannerViewController.isSupported,
+      AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined
+    {
+      _ = await AVCaptureDevice.requestAccess(for: .video)
+    }
+    return isAvailable
+  }
 }
 
 /// Full-screen live scanner for retail barcodes (EAN-8, EAN-13, UPC-E). Returns
@@ -78,16 +89,19 @@ private struct ScannerRepresentable: UIViewControllerRepresentable {
       recognizedDataTypes: [.barcode(symbologies: [.ean8, .ean13, .upce])],
       qualityLevel: .balanced, isHighlightingEnabled: true)
     scanner.delegate = context.coordinator
-    try? scanner.startScanning()
     return scanner
   }
 
-  func updateUIViewController(_ controller: DataScannerViewController, context: Context) {}
+  // Scanning starts once the controller is on screen; starting it in make can silently fail.
+  func updateUIViewController(_ controller: DataScannerViewController, context: Context) {
+    guard !controller.isScanning, !context.coordinator.done else { return }
+    Task { @MainActor in try? controller.startScanning() }
+  }
   func makeCoordinator() -> Coordinator { Coordinator(onCode: onCode) }
 
   @MainActor final class Coordinator: NSObject, DataScannerViewControllerDelegate {
     let onCode: (String) -> Void
-    private var done = false
+    private(set) var done = false
     init(onCode: @escaping (String) -> Void) { self.onCode = onCode }
 
     func dataScanner(
