@@ -10,7 +10,11 @@ Every material claim the app or its drafts make, with what supports it. Updated 
 | Keys are kept only on this device | Keychain `WhenUnlockedThisDeviceOnly`; `keychainRoundTrip`; no key in `UserDefaults` (T021 test) | Verified |
 | "Location is not stored" (privacy draft) | Only saved roasters persist (`testDeniedLocationFallsBack...`); roaster rows hold the roaster's coordinates, not the user's | Verified for the stub path; real `MKLocalSearch` and the real prompt not exercised |
 | "Delete everything" removes store, drafts, backups, keys | `deleteAllClearsStoreDraftsBackupsKeysAndReseeds` | Verified |
+| AI photos and request text are deleted when a request ends | `AIQueueTests` (purge on done, failed, cancelled; cancelled paper import leaves no photo); `discardingTheResultLeavesNoAnswerOnTheRow` for answers | Verified in unit tests |
+| The AI notice is accepted per provider and lists exactly what each action sends | `AIConfigTests`, `AIClientTests` (per provider and versioned); the notice text is generated from `AIFeature.sends`, which a test compares with the payload builders | Verified in unit tests; no screenshot of the sheet |
+| The AI preview is the payload that is sent | `AIAskModelTests` compares the stored payload with the preview; request bodies are covered in `AIClientTests` | Partly verified: the stub does not capture the final request bytes |
+| Location is requested at reduced accuracy | `NSLocationDefaultAccuracyReduced` in `Config/NextCup-Info.plist`, asserted in `DataExchangeTests` | Verified by test; the user can still allow precise in the iOS prompt |
 | Recommendations are explained only from computed facts | T017 tests (explanation built from computed values) | Verified in unit tests |
-| Data Not Collected (App Store privacy label) | Privacy manifest declares no collected data and no tracking | NOT CLAIMED anywhere yet; owner decides when filling the store form |
+| App Store privacy label | Privacy manifest declares Photos or Videos and Other User Content (App Functionality, not linked, no tracking) because data can go to an AI provider on the user's tap | Decision recorded 2026-10-25; "Data Not Collected" is NOT claimed; the store form must say the same |
 
 Never claimed: store ratings, user counts, comparisons with other apps, legal compliance.

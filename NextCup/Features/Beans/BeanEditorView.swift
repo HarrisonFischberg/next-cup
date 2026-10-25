@@ -373,6 +373,7 @@ struct BeanEditorView: View {
       case .failure(let failure):
         scanMessage = failure.errorDescription
       }
+      scan.discardResult()
       self.scan = nil
     case .failed:
       scanMessage = scan.errorMessage ?? "The photo could not be read."

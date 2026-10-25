@@ -115,6 +115,7 @@ final class PaperImportModel {
       guard let result = PaperImport.draft(fromAI: request.resultJSON ?? Data()) else {
         return fail(AIError.invalidResponse.errorDescription ?? "The answer was discarded.")
       }
+      request.discardResult()
       aiRequest = nil
       show(result)
     case .failed:
