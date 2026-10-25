@@ -62,3 +62,29 @@ Needs authoritative research or qualified review; not treated as universal:
 - Health data: only if Apple Health caffeine export is adopted (candidate
   from discovery); would need its own review.
 - Creator recipe import: copyright and each platform's terms (B004).
+
+## Owner answers, 2026-10-25
+
+| Item | Answer | Effect |
+| --- | --- | --- |
+| Legal entity / trading name | Rare Creatures LLC | Used in the policy and the checklist; no other entity details assumed |
+| Public contact and privacy contact | hello@rarecreatures.app | Used in the policy |
+| Website / support host | rarecreatures.app (existing studio site) | Policy and support page not published; URL not final |
+| Business address, state of formation | Not given | Still UNKNOWN; needed if Apple or the EU asks for a trader address |
+| Minimum age | "any age" | Not directed at children; no personal data collected, so no age gate. App Store age rating to be set by the owner (expected 4+); no COPPA collection to disclose |
+| Privacy policy | Reuse and adapt the owner's existing policies for Next Cup | Written in `docs/legal/PRIVACY.md` in the style of the Keepsake policy; still unreviewed by a lawyer |
+| Hands-on VoiceOver, real AI call, real location prompt | "I don't think we need any of this" | Recorded as NOT TESTED, accepted by the owner; not claimed anywhere |
+| Photo zoom, shake-to-undo | Not needed; an undo button is enough | Closed as decided (Undo toasts exist) |
+| Localization, keyboard shortcuts | Later | Deferred, recorded |
+| Bean photo | Must match a real bean company and use that company's information | New task T031 |
+
+## Decisions delegated to the builder, 2026-10-25 (owner: "you make the decision on all of the still open")
+
+| Open item | Decision | Why | Reversible? |
+| --- | --- | --- | --- |
+| Privacy label | Declare Photos or Videos and Other User Content (App Functionality, not linked, no tracking); do not claim Data Not Collected | Data can leave the device to a third party on the user's tap; over-declaring is the safer error | Yes, one manifest edit and the store form |
+| Publish the policy on rarecreatures.app | Not yet. Publish when external TestFlight or the App Store needs a URL, after a lawyer has read it | A branch push to that repo creates a public preview and a merge goes live; unreviewed legal text should not be public | Yes |
+| Lawyer review | Needed before external TestFlight or the App Store; not needed for internal TestFlight | Internal testers are the team | n/a |
+| Merge PR #11 | Merge | Owner delegated open items and approved the earlier stack | Yes |
+| Second Opus pass on the fixed code | Run it now | Rows 6, 7, 8, 20 cannot be PASS without it | n/a |
+| Flaky UI suite | Run the UI tests in short batches with a simulator restart between batches (`scripts/run-ui-tests.sh`) | Failures grow with run length and vanish when rerun alone | Yes |

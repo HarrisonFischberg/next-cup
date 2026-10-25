@@ -26,6 +26,7 @@ struct BrewFormView: View {
   @Query(sort: \Grinder.name) private var grinders: [Grinder]
   @Query(sort: \Suggestion.createdAt, order: .reverse) private var suggestions: [Suggestion]
   @Query(sort: \WaterProfile.name) private var waters: [WaterProfile]
+  @State private var askingAI = false
   @State private var addingWater = false
   @State private var newWaterName = ""
   @State private var newWaterHardness = ""
@@ -177,7 +178,11 @@ struct BrewFormView: View {
         }
         if fields.contains(.photo) { photoRow(model) }
         if fields.contains(.notes) { notesField(binding.draft.notes) }
-        if let editing { SuggestionHistory(brew: editing, units: units) }
+        if let editing {
+          SuggestionHistory(brew: editing, units: units)
+          SteelButton(title: "Ask AI about this brew", kind: .secondary) { askingAI = true }
+            .accessibilityIdentifier("brewform.ai")
+        }
       }
       .padding(DS.Space.lg)
       // Behind the fields, so a tap on empty space dismisses the keyboard
@@ -187,6 +192,13 @@ struct BrewFormView: View {
       }
     }
     .scrollDismissesKeyboard(.interactively)
+    .sheet(isPresented: $askingAI) {
+      if let editing {
+        AIAskView(
+          model: AIAskModel(feature: .diagnosis, brews: [editing], context: context),
+          close: { askingAI = false })
+      }
+    }
     .safeAreaInset(edge: .bottom, spacing: 0) { saveBar(model) }
     .toolbar {
       ToolbarItemGroup(placement: .keyboard) {

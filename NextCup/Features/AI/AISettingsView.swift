@@ -36,7 +36,7 @@ struct AISettingsView: View {
     .onAppear { saved = Set(AIProvider.allCases.filter(keychain.hasKey)) }
     .sheet(item: $pending) { provider in
       AIDisclosureView(provider: provider) {
-        AIPreferences().acceptDisclosure()
+        AIPreferences().acceptDisclosure(for: provider)
         pending = nil
         store(provider)
       } cancel: {
@@ -59,7 +59,7 @@ struct AISettingsView: View {
           "API key",
           text: Binding(get: { drafts[provider] ?? "" }, set: { drafts[provider] = $0 })
         )
-        .textContentType(.password).textInputAutocapitalization(.never).autocorrectionDisabled()
+        .textContentType(nil).textInputAutocapitalization(.never).autocorrectionDisabled()
         .submitLabel(.done).frame(minHeight: DS.Size.control).listRowBackground(DS.paper)
         .accessibilityIdentifier("ai.key.\(provider.rawValue)")
         Button("Save key") { requestSave(provider) }
@@ -75,7 +75,11 @@ struct AISettingsView: View {
   }
 
   private func requestSave(_ provider: AIProvider) {
-    if AIPreferences().hasAcceptedDisclosure { store(provider) } else { pending = provider }
+    if AIPreferences().hasAcceptedDisclosure(for: provider) {
+      store(provider)
+    } else {
+      pending = provider
+    }
   }
 
   private func store(_ provider: AIProvider) {
@@ -130,46 +134,7 @@ private struct FeatureModelRow: View {
     .padding(.vertical, DS.Space.xs)
     .listRowBackground(DS.paper)
     .accessibilityElement(children: .contain)
-  }
-}
-
-/// Shown once, before the first key is saved and so before any AI call.
-private struct AIDisclosureView: View {
-  let provider: AIProvider
-  let agree: () -> Void
-  let cancel: () -> Void
-
-  var body: some View {
-    NavigationStack {
-      List {
-        Section {
-          Text(
-            "When you tap an AI action, Next Cup sends the brew, notes and a slice of your history to \(provider.title) with your own key."
-          )
-          Text("A photo, if you add one, is sent without location or camera metadata.")
-          Text(
-            "Nothing is sent until you tap, and never without a key. \(provider.title) handles the request under its own terms; Next Cup has no server and sees none of it."
-          )
-          Text("\(provider.title) may charge your own account for each request.")
-          Text("You can remove the key at any time.")
-        }
-        .font(.body).foregroundStyle(DS.ink).listRowBackground(DS.paper)
-      }
-      .listStyle(.insetGrouped)
-      .scrollContentBackground(.hidden)
-      .background(DS.bg)
-      .navigationTitle("Before you use AI")
-      .navigationBarTitleDisplayMode(.inline)
-      .safeAreaInset(edge: .bottom) {
-        VStack(spacing: DS.Space.sm) {
-          SteelButton(title: "I understand", action: agree)
-            .accessibilityIdentifier("ai.disclosure.agree")
-          SteelButton(title: "Not now", kind: .secondary, action: cancel)
-            .accessibilityIdentifier("ai.disclosure.cancel")
-        }
-        .padding(DS.Space.lg).background(DS.bg)
-      }
-    }
-    .accessibilityIdentifier("ai.disclosure")
+    // The picker shows Anthropic by default; write it so the choice is real.
+    .onAppear { if AIPreferences().provider(for: feature) == nil { provider = provider } }
   }
 }

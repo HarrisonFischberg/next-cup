@@ -86,14 +86,14 @@ public struct AIClient: Sendable {
 
   let transport: any Transport
   let key: @Sendable (AIProviderKind) -> String?
-  let disclosureAccepted: @Sendable () -> Bool
+  let disclosureAccepted: @Sendable (AIProviderKind) -> Bool
   let sleep: @Sendable (Duration) async throws -> Void
   let backoff: Duration
 
   public init(
     transport: any Transport,
     key: @escaping @Sendable (AIProviderKind) -> String?,
-    disclosureAccepted: @escaping @Sendable () -> Bool,
+    disclosureAccepted: @escaping @Sendable (AIProviderKind) -> Bool,
     backoff: Duration = .seconds(2),
     sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
   ) {
@@ -107,7 +107,7 @@ public struct AIClient: Sendable {
   public func send(_ payload: AIRequestPayload, provider: AIProviderKind, model: String)
     async throws -> AIResult
   {
-    guard disclosureAccepted() else { throw AIError.disclosureNotAccepted }
+    guard disclosureAccepted(provider) else { throw AIError.disclosureNotAccepted }
     guard let apiKey = key(provider), !apiKey.isEmpty else { throw AIError.noKey }
     let request = try Self.request(payload, provider: provider, model: model, key: apiKey)
 

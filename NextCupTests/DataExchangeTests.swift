@@ -102,9 +102,10 @@ import Testing
   )
     -> DataEraser
   {
+    // No scratch folders: the real tmp holds the other tests' files.
     DataEraser(
       store: env.store, defaults: env.defaults, defaultsDomain: env.suite, draftsDirectory: drafts,
-      backups: backups, clearKeys: keys)
+      backups: backups, clearKeys: keys, endActivity: {}, scratchDirectories: [])
   }
 
   // MARK: Round trip
@@ -291,9 +292,21 @@ import Testing
     try backups.backUp { Data("{}".utf8) }
     env.defaults.set("x", forKey: "brew.lastMethodID")
     var keysCleared = false
+    var activityEnded = false
+    let scratch = tempDir()
+    try Data("x".utf8).write(to: scratch.appendingPathComponent("NextCupExport.json"))
+    let external = tempDir()
+    try Data("photo".utf8).write(to: external.appendingPathComponent("0001"))
+    env.defaults.set(true, forKey: "ai.disclosure.accepted.anthropic")
+    let aiRequest = AIRequest()
+    env.store.context.insert(aiRequest)
+    try env.store.save().get()
 
-    let snapshot = try eraser(env, drafts: drafts, backups: backups, keys: { keysCleared = true })
-      .eraseAll(reseeding: try BuiltInContent(bundle: .main)).get()
+    var subject = eraser(env, drafts: drafts, backups: backups, keys: { keysCleared = true })
+    subject.endActivity = { activityEnded = true }
+    subject.scratchDirectories = [scratch]
+    subject.externalData = external
+    let snapshot = try subject.eraseAll(reseeding: try BuiltInContent(bundle: .main)).get()
 
     let context = env.store.context
     #expect(try context.fetchCount(FetchDescriptor<Brew>()) == 0)
@@ -304,7 +317,18 @@ import Testing
     #expect(backups.list().isEmpty)
     #expect(env.defaults.string(forKey: "brew.lastMethodID") == nil)
     #expect(keysCleared)
+    #expect(activityEnded)
+    #expect(try context.fetchCount(FetchDescriptor<AIRequest>()) == 0)
+    #expect(env.defaults.object(forKey: "ai.disclosure.accepted.anthropic") == nil)
+    #expect(try FileManager.default.contentsOfDirectory(atPath: scratch.path).isEmpty)
+    #expect(try FileManager.default.contentsOfDirectory(atPath: external.path).isEmpty)
     #expect(snapshot.brews.count == 1)
+  }
+
+  @Test func releaseSettingsAreInTheInfoPlist() {
+    let info = Bundle.main.infoDictionary
+    #expect(info?["ITSAppUsesNonExemptEncryption"] as? Bool == false)
+    #expect(info?["NSLocationDefaultAccuracyReduced"] as? Bool == true)
   }
 
   @Test func undoAfterDeleteAllRestoresTheData() throws {

@@ -350,8 +350,7 @@ struct BackupStore: Sendable {
     let url = directory.appendingPathComponent("backup-\(stamp).json")
     guard !FileManager.default.fileExists(atPath: url.path) else { return nil }
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    try make().write(
-      to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    try make().write(to: url, options: [.atomic, .completeFileProtection])
     for old in list().dropFirst(keep) { try? FileManager.default.removeItem(at: old.url) }
     return url
   }
@@ -385,9 +384,34 @@ struct DataEraser {
   let draftsDirectory: URL
   let backups: BackupStore
   var clearKeys: @MainActor () -> Void = DataEraser.clearKeychain
+  var endActivity: @MainActor () -> Void = { LiveTimerActivity().end() }
+  /// Folders whose contents are emptied: caches and tmp hold exports and AI photos.
+  var scratchDirectories: [URL] = DataEraser.systemScratch
+  /// SwiftData keeps photos and AI attachments as loose files here; `nil` for an
+  /// in-memory store.
+  var externalData: URL?
+
+  static var systemScratch: [URL] {
+    FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
+      + [FileManager.default.temporaryDirectory]
+  }
 
   static func clearKeychain() {
     SecItemDelete([kSecClass: kSecClassGenericPassword] as CFDictionary)
+  }
+
+  /// `.<store name>_SUPPORT/_EXTERNAL_DATA` next to the store file.
+  static func externalDataDirectory(of context: ModelContext) -> URL? {
+    guard let url = context.container.configurations.first?.url else { return nil }
+    return url.deletingLastPathComponent()
+      .appendingPathComponent(".\(url.deletingPathExtension().lastPathComponent)_SUPPORT")
+      .appendingPathComponent("_EXTERNAL_DATA", isDirectory: true)
+  }
+
+  private static func empty(_ directory: URL) {
+    let items =
+      try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+    for item in items ?? [] { try? FileManager.default.removeItem(at: item) }
   }
 
   func eraseAll(reseeding content: BuiltInContent) -> Result<DataArchive, StoreError> {
@@ -412,6 +436,10 @@ struct DataEraser {
       }
       try? FileManager.default.removeItem(at: draftsDirectory)
       try backups.removeAll()
+      endActivity()
+      for directory in scratchDirectories + [externalData].compactMap({ $0 }) {
+        Self.empty(directory)
+      }
       // The selected tab stays, so the screen the user is on (and its Undo toast)
       // does not jump away.
       let tab = defaults.object(forKey: AppTab.storageKey)

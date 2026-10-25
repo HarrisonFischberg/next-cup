@@ -41,6 +41,10 @@ struct BeanEditorView: View {
   @State private var pickerShown = false
   @State private var pickedPhoto: PhotosPickerItem?
   @State private var scanMessage: String?
+  @State private var matchShown = false
+  @State private var matchedRoaster: String?
+  @State private var disclosureProvider: AIProvider?
+  @State private var deferredItem: PhotosPickerItem?
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -104,6 +108,31 @@ struct BeanEditorView: View {
       .photosPicker(isPresented: $pickerShown, selection: $pickedPhoto, matching: .images)
       .onChange(of: pickedPhoto) { _, item in if let item { startScan(item) } }
       .onChange(of: scan?.status) { _, status in if status != nil { finishScan() } }
+      .sheet(isPresented: $matchShown) {
+        RoasterMatchView(
+          name: fields.roasterName.trimmingCharacters(in: .whitespaces),
+          onPick: { place in
+            matchedRoaster = place.name
+            fields.roasterName = place.name
+            fields.roasterCity = place.city ?? ""
+            fields.roasterWebsite = place.website
+            matchShown = false
+          },
+          onSkip: { matchShown = false })
+      }
+      .sheet(item: $disclosureProvider) { provider in
+        AIDisclosureView(provider: provider) {
+          AIPreferences().acceptDisclosure(for: provider)
+          disclosureProvider = nil
+          if let item = deferredItem { startScan(item) }
+          deferredItem = nil
+        } cancel: {
+          disclosureProvider = nil
+          deferredItem = nil
+        }
+      }
+      // A request still waiting must not be sent after the user has left.
+      .onDisappear { scanQueue?.cancelAll() }
       .interactiveDismissDisabled(hasChanges)
     }
     .accessibilityIdentifier("beans.editor")
@@ -170,6 +199,30 @@ struct BeanEditorView: View {
         }
       }
       .frame(minHeight: DS.Size.control)
+      .onChange(of: fields.roasterName) { _, name in
+        // Typing a different roaster drops the city and website of the matched one.
+        if name != (matchedRoaster ?? original.roasterName) {
+          fields.roasterCity = ""
+          fields.roasterWebsite = nil
+        }
+      }
+      if !fields.roasterName.trimmingCharacters(in: .whitespaces).isEmpty {
+        Button {
+          matchShown = true
+        } label: {
+          Label("Find this roaster on the map", systemImage: "mappin.and.ellipse")
+            .frame(minHeight: DS.Size.control, alignment: .leading)
+        }
+        .accessibilityIdentifier("beans.editor.matchRoaster")
+        if !fields.roasterCity.isEmpty {
+          Text(
+            [fields.roasterCity, fields.roasterWebsite?.host()].compactMap { $0 }
+              .joined(separator: " · ")
+          )
+          .font(.footnote).foregroundStyle(DS.ink2)
+          .accessibilityIdentifier("beans.editor.roasterMatch")
+        }
+      }
       Toggle("Decaf", isOn: $fields.isDecaf).frame(minHeight: DS.Size.control)
         .accessibilityIdentifier("beans.editor.decaf")
     }
@@ -275,6 +328,11 @@ struct BeanEditorView: View {
       let model = preferences.modelID(for: feature)
     else {
       scanMessage = "Choose a provider and model for \(feature.title) in Settings → AI first."
+      return
+    }
+    guard preferences.hasAcceptedDisclosure(for: provider) else {
+      deferredItem = item
+      disclosureProvider = provider
       return
     }
     Task {

@@ -30,6 +30,8 @@ enum BeanError: Error, Equatable {
 struct BeanFields: Equatable {
   var name = ""
   var roasterName = ""
+  var roasterCity = ""
+  var roasterWebsite: URL?
   var originCountry = ""
   var region = ""
   var farm = ""
@@ -47,6 +49,8 @@ struct BeanFields: Equatable {
   init(_ bean: Bean) {
     name = bean.name
     roasterName = bean.roaster?.name ?? ""
+    roasterCity = bean.roaster?.city ?? ""
+    roasterWebsite = bean.roaster?.website
     originCountry = bean.originCountry ?? ""
     region = bean.region ?? ""
     farm = bean.farm ?? ""
@@ -99,6 +103,10 @@ struct BeanService {
     target.status = fields.status
     target.isDecaf = fields.isDecaf
     target.roaster = roaster(named: fields.roasterName)
+    if let roaster = target.roaster {
+      if let city = Self.clean(fields.roasterCity) { roaster.city = city }
+      if let website = fields.roasterWebsite { roaster.website = website }
+    }
     target.updatedAt = Date()
     return commit { target }
   }
