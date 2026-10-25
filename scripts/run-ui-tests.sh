@@ -13,8 +13,10 @@ run_batch() {
   [ ${#args[@]} -eq 0 ] && return
   xcrun simctl shutdown "$DEV" 2>/dev/null; sleep 3; xcrun simctl boot "$DEV" 2>/dev/null; sleep 10
   echo "== batch of ${#args[@]}"
-  if ! xcodebuild -project "$PROJECT" -scheme NextCup -destination "platform=iOS Simulator,name=$DEV" \
-      -derivedDataPath "$DD" "${args[@]}" test 2>&1 | grep -E "error:|TEST (SUCCEEDED|FAILED)"; then :; fi
+  out=$(xcodebuild -project "$PROJECT" -scheme NextCup -destination "platform=iOS Simulator,name=$DEV" \
+      -derivedDataPath "$DD" "${args[@]}" test 2>&1)
+  echo "$out" | grep -E "error:|TEST (SUCCEEDED|FAILED)"
+  echo "$out" | grep -q "TEST SUCCEEDED" || fail=1
   args=()
 }
 for t in $tests; do
@@ -22,3 +24,4 @@ for t in $tests; do
   if [ $((n % SIZE)) -eq 0 ]; then run_batch; fi
 done
 run_batch
+exit $fail
