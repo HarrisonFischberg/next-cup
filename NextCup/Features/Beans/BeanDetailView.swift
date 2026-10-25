@@ -94,7 +94,7 @@ struct BeanDetailView: View {
 
   private var header: some View {
     VStack(alignment: .leading, spacing: DS.Space.sm) {
-      Text(bean.name.uppercased()).font(DS.Font.display).foregroundStyle(DS.ink)
+      Text(bean.name.dsTitle).font(DS.Font.display).foregroundStyle(DS.ink)
         .accessibilityAddTraits(.isHeader)
       if !bean.subtitle.isEmpty {
         Text(bean.subtitle).font(.callout).foregroundStyle(DS.ink2)
@@ -314,7 +314,7 @@ private struct BrewUseRow: View {
   var body: some View {
     HStack(alignment: .firstTextBaseline, spacing: DS.Space.sm) {
       VStack(alignment: .leading, spacing: 2) {
-        Text((brew.method?.name ?? "Brew").uppercased()).font(DS.Font.headline)
+        Text((brew.method?.name ?? "Brew").dsTitle).font(DS.Font.headline)
           .foregroundStyle(DS.ink)
         Text(brew.date.formatted(date: .abbreviated, time: .shortened))
           .font(.footnote).foregroundStyle(DS.ink2)

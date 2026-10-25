@@ -107,7 +107,7 @@ struct RecipeLibraryView: View {
 
   private func row(_ recipe: Recipe) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
-      Text(recipe.name.uppercased()).font(DS.Font.headline).foregroundStyle(DS.ink)
+      Text(recipe.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
       Text(summary(recipe)).font(DS.Font.mono(.footnote)).foregroundStyle(DS.ink2)
       if let method = recipe.method?.name {
         Text(method).font(.footnote).foregroundStyle(DS.ink2)

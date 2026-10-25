@@ -6,7 +6,7 @@ import SwiftUI
 struct FlavorPicker: View {
   static let returnKey = "settings.returnToAppearance"
 
-  @AppStorage(AppStyle.storageKey) private var style = AppStyle.steelKraft.rawValue
+  @AppStorage(AppStyle.storageKey) private var style = AppStyle.bloom.rawValue
   @AppStorage(MakeItYours.accentKey) private var accent = Swatch.all[2].id
   @AppStorage(MakeItYours.cornersKey) private var corners = Corners.soft.rawValue
   @AppStorage(MakeItYours.densityKey) private var density = Density.regular.rawValue

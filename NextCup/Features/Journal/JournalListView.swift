@@ -123,6 +123,15 @@ struct JournalListView: View {
         .listRowInsets(EdgeInsets())
         .listRowBackground(DS.bg)
       }
+      if DS.isBloom, let last = logged.first {
+        LastCupCard(
+          brew: last, brewedDays: LastCupCard.brewedDays(logged),
+          brewAgain: { brewAgain(last) }, quickLog: { router.open(.newBrew) }
+        )
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(DS.bg)
+        .listRowSeparator(.hidden)
+      }
       ForEach(shown) { brew in
         NavigationLink(value: DeepLink.brew(brew.id)) {
           BrewRow(brew: brew, units: units)
@@ -317,8 +326,10 @@ struct FilterMenu<Content: View>: View {
       }
       .padding(.horizontal, DS.Space.md).padding(.vertical, DS.Space.xs)
       .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
-      .background(DS.paper, ignoresSafeAreaEdges: [])
-      .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+      .background(DS.paper, in: RoundedRectangle(cornerRadius: DS.controlRadius))
+      .overlay(
+        RoundedRectangle(cornerRadius: DS.controlRadius)
+          .strokeBorder(DS.line, lineWidth: DS.isBloom ? 1 : DS.rule))
     }
     .accessibilityLabel(title)
     .accessibilityValue(value)
@@ -331,9 +342,29 @@ private struct BrewRow: View {
   let units: UnitPreferences
 
   var body: some View {
+    HStack(alignment: .top, spacing: DS.Space.md) {
+      if DS.isBloom { RingGlyph(color: ringColor) }
+      details
+    }
+    .padding(DS.Space.md)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .accessibilityElement(children: .combine)
+  }
+
+  /// Bloom's row ring, by taste verdict (the verdict is also written in the row).
+  private var ringColor: Color {
+    switch brew.verdict {
+    case .balanced: DS.sage
+    case .sour, .weak: DS.crema
+    case .bitter, .strong: DS.espresso
+    case nil: DS.line
+    }
+  }
+
+  private var details: some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
       HStack(alignment: .firstTextBaseline, spacing: DS.Space.sm) {
-        Text((brew.method?.name ?? "Brew").uppercased()).font(DS.Font.headline)
+        Text((brew.method?.name ?? "Brew").dsTitle).font(DS.Font.headline)
           .foregroundStyle(DS.ink)
         Spacer(minLength: DS.Space.sm)
         if let grade = brew.ratingHalfSteps, grade > 0 { GradeBadge(halfSteps: grade) }
@@ -354,9 +385,6 @@ private struct BrewRow: View {
           .accessibilityIdentifier("journal.row.dialin")
       }
     }
-    .padding(DS.Space.md)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .accessibilityElement(children: .combine)
   }
 
   private var numbers: String? {

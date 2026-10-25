@@ -85,11 +85,17 @@ enum DS {
       .custom("AmericanTypewriter", size: size, relativeTo: style)
     }
     /// Page title: recipe name, screen heading.
-    static var display: SwiftUI.Font { din(34, relativeTo: .title) }
+    static var display: SwiftUI.Font {
+      DS.flavor.caps ? din(34, relativeTo: .title) : .system(.largeTitle, design: .serif)
+    }
     /// Row and button names.
-    static var headline: SwiftUI.Font { din(21, relativeTo: .headline) }
+    static var headline: SwiftUI.Font {
+      DS.flavor.caps ? din(21, relativeTo: .headline) : .system(.title3, design: .serif)
+    }
     /// Column headers, tile labels. Always set uppercase.
-    static var label: SwiftUI.Font { din(16, relativeTo: .footnote) }
+    static var label: SwiftUI.Font {
+      DS.flavor.caps ? din(16, relativeTo: .footnote) : .system(.caption, weight: .semibold)
+    }
     /// Measured values in tables and lists.
     static var data: SwiftUI.Font { mono(.callout, .bold) }
     /// Measured values in tiles.
@@ -162,6 +168,7 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 /// Ten flavors. Each is a palette plus a `Flavor` (type, corners, density, control and
 /// number style). Palettes are mirrored in docs/design/tokens/<name>.json.
 enum AppStyle: String, CaseIterable, Identifiable {
+  case bloom
   case steelKraft, charcoalCrema, quietCeramic, terracotta, lateNightCafe
   case nightMint, espressoBlack, cafePage, roasterPoster, makeItYours
 
@@ -169,13 +176,22 @@ enum AppStyle: String, CaseIterable, Identifiable {
 
   /// Read live so `DS` colors and fonts follow the Settings choice.
   static var current: AppStyle {
-    UserDefaults.standard.string(forKey: storageKey).flatMap(AppStyle.init) ?? .steelKraft
+    UserDefaults.standard.string(forKey: storageKey).flatMap(AppStyle.init) ?? .bloom
+  }
+
+  /// Moves everyone onto Bloom once, the first launch after it ships. A launch
+  /// argument (UI tests) still wins, because the argument domain is read first.
+  static func adoptBloomOnce(_ d: UserDefaults = .standard) {
+    guard !d.bool(forKey: "style.bloomAdopted") else { return }
+    d.set(AppStyle.bloom.rawValue, forKey: storageKey)
+    d.set(true, forKey: "style.bloomAdopted")
   }
 
   var id: String { rawValue }
 
   var title: String {
     switch self {
+    case .bloom: "Bloom"
     case .steelKraft: "Steel & Kraft"
     case .charcoalCrema: "Charcoal & Crema"
     case .quietCeramic: "Quiet Ceramic"
@@ -192,6 +208,7 @@ enum AppStyle: String, CaseIterable, Identifiable {
   /// One line for the picker tile's accessibility hint.
   var mood: String {
     switch self {
+    case .bloom: "Cream, serif, brew rings"
     case .steelKraft: "Spec sheet, square, one orange"
     case .charcoalCrema: "Ledger, Didot numerals"
     case .quietCeramic: "Calm, airy, celadon"
@@ -208,6 +225,10 @@ enum AppStyle: String, CaseIterable, Identifiable {
   /// Everything but color that sets a flavor apart.
   var flavor: Flavor {
     switch self {
+    case .bloom:
+      Flavor(
+        displayDesign: .serif, displayWeight: .regular, radius: 24, density: .airy,
+        control: .pill, numbers: .serif, caps: false)
     case .steelKraft:
       Flavor(
         displayFont: "DINCondensed-Bold", radius: 3, density: .regular, control: .square,
@@ -254,6 +275,14 @@ enum AppStyle: String, CaseIterable, Identifiable {
 
   private var basePalette: Palette {
     switch self {
+    case .bloom:
+      Palette(
+        bg: P(0xF5EFE6, 0x17110D), paper: P(0xFBF8F3, 0x221A14), steel: P(0x2B1D14, 0x2E241C),
+        onSteel: P(0xFBF8F3, 0xF3EADF), ink: P(0x2B1D14, 0xF3EADF), ink2: P(0x6E5E52, 0xB8A898),
+        line: P(0x8F7C6C, 0x7A6B5E), signal: P(0x9A5222, 0xE0A06A),
+        onSignal: P(0xFFFFFF, 0x17110D), signalOnSteel: P(0xE0A06A, 0xE0A06A),
+        kraft: P(0xEDE3D6, 0x2E241C), onKraft: P(0x2B1D14, 0xF3EADF),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x55684A, 0xA9BC97))
     case .steelKraft:
       Palette(
         bg: P(0xD9C4A0, 0x1B1D1F), paper: P(0xEFE6D3, 0x26292C), steel: P(0x2B2F33, 0x30353A),
@@ -358,7 +387,7 @@ enum Density: String, CaseIterable, Identifiable {
 enum ControlStyle { case square, pill, sticker }
 
 /// How measured values are set.
-enum NumberStyle { case monospaced, rounded, condensed }
+enum NumberStyle { case monospaced, rounded, condensed, serif }
 
 struct Flavor {
   var bodyDesign: SwiftUI.Font.Design?
@@ -370,6 +399,8 @@ struct Flavor {
   var density: Density
   var control: ControlStyle
   var numbers: NumberStyle
+  /// Display text in capitals (spec-sheet flavors) or as written (Bloom).
+  var caps = true
 
   /// Display text. A named face scales from `size`; the system face uses the text style.
   func display(_ size: CGFloat, relativeTo style: SwiftUI.Font.TextStyle) -> SwiftUI.Font {
@@ -380,6 +411,8 @@ struct Flavor {
   func number(_ style: SwiftUI.Font.TextStyle, _ weight: SwiftUI.Font.Weight) -> SwiftUI.Font {
     switch numbers {
     case .monospaced: .system(style, design: .monospaced, weight: weight)
+    case .serif: .system(style, design: .serif, weight: weight == .bold ? .semibold : weight)
+      .monospacedDigit()
     case .rounded: .system(style, design: .rounded, weight: weight).monospacedDigit()
     case .condensed:
       .custom(
@@ -391,10 +424,16 @@ struct Flavor {
   var readout: SwiftUI.Font {
     switch numbers {
     case .monospaced: .system(size: 104, weight: .bold, design: .monospaced)
+    case .serif: .system(size: 96, weight: .regular, design: .serif).monospacedDigit()
     case .rounded: .system(size: 104, weight: .bold, design: .rounded).monospacedDigit()
     case .condensed: .custom("DINCondensed-Bold", size: 120)
     }
   }
+}
+
+extension String {
+  /// A title as the flavor sets it: capitals for spec-sheet flavors, as written for Bloom.
+  var dsTitle: String { DS.flavor.caps ? uppercased() : self }
 }
 
 extension SwiftUI.Font.TextStyle {

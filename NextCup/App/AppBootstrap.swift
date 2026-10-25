@@ -29,6 +29,12 @@ enum AppBootstrap {
       if case .failure(let error) = seeder.seed(content) {
         return .failure(.init(message: describe(error)))
       }
+      #if DEBUG
+        // Screenshots only: a few sample brews in the throwaway in-memory store.
+        if inMemory, ProcessInfo.processInfo.arguments.contains("-demoBrews") {
+          DemoBrews.insert(into: container.mainContext)
+        }
+      #endif
       return .success(container)
     } catch {
       return .failure(.init(message: error.localizedDescription))
@@ -45,3 +51,33 @@ enum AppBootstrap {
 struct StartupError: Error, Equatable {
   let message: String
 }
+
+#if DEBUG
+  enum DemoBrews {
+    static func insert(into context: ModelContext) {
+      let methods = (try? context.fetch(FetchDescriptor<BrewMethod>())) ?? []
+      let samples: [(String, Int, Double, Double, Int, Int, Verdict)] = [
+        ("Geometry", 0, 15, 250, 185, 9, .balanced),
+        ("Kenya Rukira", 1, 18, 300, 240, 8, .sour),
+        ("Monarch", 1, 18, 290, 200, 7, .bitter),
+        ("Geometry", 3, 15, 250, 200, 8, .balanced),
+        ("Southern Weather", 4, 20, 320, 210, 7, .weak),
+      ]
+      for (name, daysAgo, dose, water, time, grade, verdict) in samples {
+        let brew = Brew(
+          date: Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now)!
+            .addingTimeInterval(-3600))
+        brew.doseG = dose
+        brew.waterG = water
+        brew.totalTimeS = time
+        brew.ratingHalfSteps = grade
+        brew.verdict = verdict
+        brew.method = methods.first
+        let part = BrewBean(grams: dose, beanNameSnapshot: name)
+        brew.beans = [part]
+        context.insert(brew)
+      }
+      try? context.save()
+    }
+  }
+#endif

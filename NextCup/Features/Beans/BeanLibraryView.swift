@@ -277,7 +277,7 @@ private struct BeanRow: View {
   var body: some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
       HStack(alignment: .firstTextBaseline, spacing: DS.Space.sm) {
-        Text(bean.name.uppercased()).font(DS.Font.headline).foregroundStyle(DS.ink)
+        Text(bean.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
         if bean.isDecaf { Tag(text: "Decaf") }
         Spacer(minLength: DS.Space.sm)
         if let grade = bean.ratingHalfSteps, grade > 0 { GradeBadge(halfSteps: grade) }

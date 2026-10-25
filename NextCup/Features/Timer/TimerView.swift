@@ -78,7 +78,7 @@ struct TimerView: View {
 
   private var header: some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
-      Text(setup.recipeName.uppercased()).font(DS.Font.display).foregroundStyle(DS.ink)
+      Text(setup.recipeName.dsTitle).font(DS.Font.display).foregroundStyle(DS.ink)
         .dynamicTypeSize(...DS.displayCap)
         .accessibilityAddTraits(.isHeader)
       Text(
@@ -91,7 +91,55 @@ struct TimerView: View {
     }
   }
 
-  private var readout: some View {
+  @ViewBuilder private var readout: some View {
+    if DS.isBloom { bloomReadout } else { steelReadout }
+  }
+
+  /// Bloom: one large ring with a dot at each step change, the time in its centre,
+  /// and the live step's target set large beneath it.
+  private var bloomReadout: some View {
+    let total = Double(setup.plan.totalDurationS)
+    return VStack(spacing: DS.Space.lg) {
+      ZStack {
+        TimerRing(
+          fraction: total > 0 ? state.elapsedS / total : 0,
+          stepFractions: total > 0
+            ? setup.plan.steps.dropFirst().map { Double($0.startOffsetS) / total } : [])
+        VStack(spacing: 2) {
+          Text(RecipeFormat.clock(Int(state.elapsedS)))
+            .font(DS.Font.readout).foregroundStyle(DS.ink)
+            .minimumScaleFactor(0.5).lineLimit(1)
+            .dynamicTypeSize(...DS.readoutCap)
+            .accessibilityLabel("Elapsed time")
+            .accessibilityValue(RecipeFormat.spokenTime(Int(state.elapsedS)))
+            .accessibilityAddTraits(.updatesFrequently)
+            .accessibilityIdentifier("timer.elapsed")
+          Text("of \(RecipeFormat.clock(setup.plan.totalDurationS))")
+            .font(.subheadline).foregroundStyle(DS.ink2)
+        }
+        .padding(DS.Space.xxl)
+      }
+      .frame(width: 290, height: 290)
+      .frame(maxWidth: .infinity)
+      VStack(spacing: DS.Space.xs) {
+        Text(statusLine).font(.caption.weight(.semibold)).tracking(0.8).foregroundStyle(DS.signal)
+          .multilineTextAlignment(.center)
+          .accessibilityIdentifier("timer.status")
+        if let step = state.current {
+          Text(step.targetCumulativeWaterG.map { "to \(RecipeFormat.weight($0, units))" } ?? step.label)
+            .font(.system(size: 46, design: .serif)).foregroundStyle(DS.ink)
+            .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.6).lineLimit(1)
+          if !step.instruction.isEmpty {
+            Text(step.instruction).font(.body).foregroundStyle(DS.ink2)
+              .multilineTextAlignment(.center)
+          }
+        }
+      }
+      .frame(maxWidth: .infinity)
+    }
+  }
+
+  private var steelReadout: some View {
     let total = Double(setup.plan.totalDurationS)
     return InstrumentPanel {
       VStack(alignment: .leading, spacing: DS.Space.md) {

@@ -50,9 +50,9 @@ struct SteelButtonStyle: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     let shape = RoundedRectangle(cornerRadius: DS.controlRadius, style: .continuous)
     configuration.label
-      .foregroundStyle(kind == .primary ? DS.onSignal : DS.onSteel)
-      .background(kind == .primary ? DS.signal : DS.steel, in: shape)
-      .overlay(shape.strokeBorder(DS.line, lineWidth: DS.rule))
+      .foregroundStyle(kind == .primary ? DS.onSignal : (DS.isBloom ? DS.ink : DS.onSteel))
+      .background(kind == .primary ? DS.signal : (DS.isBloom ? .clear : DS.steel), in: shape)
+      .overlay(shape.strokeBorder(DS.line, lineWidth: DS.isBloom ? 1 : DS.rule))
       .background {
         if DS.flavor.control == .sticker {
           shape.fill(kind == .primary ? DS.line : DS.signal).offset(x: 3, y: 3)
@@ -76,7 +76,7 @@ struct SteelButton: View {
     Button(action: action) {
       HStack(spacing: DS.Space.sm) {
         if isLoading { ProgressView().tint(kind == .primary ? DS.onSignal : DS.onSteel) }
-        Text(title.uppercased()).font(DS.Font.din(kind == .primary ? 26 : 22, relativeTo: .title2))
+        Text(title.dsTitle).font(DS.Font.din(kind == .primary ? 26 : 22, relativeTo: .title2))
           .tracking(1)
       }
       .dynamicTypeSize(...DS.displayCap)
@@ -127,9 +127,9 @@ struct ColumnHeader: View {
       Spacer()
       Text(trailing)
     }
-    .font(DS.Font.label).textCase(.uppercase).foregroundStyle(DS.onSteel)
+    .font(DS.Font.label).textCase(.uppercase).foregroundStyle(DS.isBloom ? DS.ink2 : DS.onSteel)
     .padding(.horizontal, DS.Space.md).frame(minHeight: 32)
-    .background(DS.steel, ignoresSafeAreaEdges: [])
+    .background(DS.isBloom ? .clear : DS.steel, ignoresSafeAreaEdges: [])
     .accessibilityHidden(true)
   }
 }
@@ -156,7 +156,7 @@ struct OperationRow: View {
     layout {
       Text(time).font(DS.Font.data).fixedSize().frame(minWidth: 52, alignment: .leading)
       VStack(alignment: .leading, spacing: 2) {
-        Text(name.uppercased()).font(DS.Font.din(live ? 26 : 20, relativeTo: .title3))
+        Text(name.dsTitle).font(DS.Font.din(live ? 26 : 20, relativeTo: .title3))
         if let instruction, live || showsInstruction {
           Text(instruction).font(live ? .subheadline : .footnote)
             .foregroundStyle(live ? DS.onSignal : DS.ink2)
@@ -280,7 +280,7 @@ struct ChoiceButton: View {
   let action: () -> Void
   var body: some View {
     Button(action: action) {
-      Text(title.uppercased()).font(DS.Font.din(20, relativeTo: .headline))
+      Text(title.dsTitle).font(DS.Font.din(20, relativeTo: .headline))
         .lineLimit(1).minimumScaleFactor(0.6)
         .frame(maxWidth: .infinity, minHeight: DS.Size.control)
         .foregroundStyle(isSelected ? DS.onSignal : DS.ink)
@@ -345,9 +345,11 @@ struct GradeBadge: View {
         ? "—"
         : (halfSteps % 2 == 0 ? "\(halfSteps / 2)" : String(format: "%.1f", Double(halfSteps) / 2))
     )
-    .font(DS.Font.mono(.title3, .bold)).foregroundStyle(DS.onSignal)
+    .font(DS.isBloom ? .system(.title2, design: .serif) : DS.Font.mono(.title3, .bold))
+    .foregroundStyle(DS.isBloom ? DS.ink : DS.onSignal)
     .fixedSize().padding(.horizontal, DS.Space.sm)
-    .frame(minWidth: DS.Size.minTap, minHeight: 32).background(DS.signal, ignoresSafeAreaEdges: [])
+    .frame(minWidth: DS.Size.minTap, minHeight: 32)
+    .background(DS.isBloom ? .clear : DS.signal, ignoresSafeAreaEdges: [])
     .accessibilityLabel(halfSteps == 0 ? "Unrated" : "Grade \(Double(halfSteps) / 2) of 5")
   }
 }
@@ -380,7 +382,7 @@ struct SteelToast: View {
     layout {
       Text(message).font(.subheadline.weight(.semibold)).lineLimit(dts.isAccessibilitySize ? 4 : 2)
       if !dts.isAccessibilitySize { Spacer(minLength: DS.Space.sm) }
-      Button(actionTitle.uppercased(), action: action)
+      Button(actionTitle.dsTitle, action: action)
         .font(DS.Font.din(20, relativeTo: .headline)).foregroundStyle(DS.signalOnSteel)
         .frame(minWidth: DS.Size.minTap, minHeight: DS.Size.minTap)
     }
@@ -430,7 +432,7 @@ struct StateBanner: View {
 
   @ViewBuilder private var actionButton: some View {
     if let actionTitle, let action {
-      Button(actionTitle.uppercased(), action: action)
+      Button(actionTitle.dsTitle, action: action)
         .font(DS.Font.din(18, relativeTo: .headline)).foregroundStyle(DS.ink)
         .frame(minWidth: DS.Size.minTap, minHeight: DS.Size.minTap)
     }
@@ -445,7 +447,7 @@ struct EmptyState: View {
   var action: (() -> Void)?
   var body: some View {
     VStack(alignment: .leading, spacing: DS.Space.md) {
-      Text(title.uppercased()).font(DS.Font.display).foregroundStyle(DS.ink)
+      Text(title.dsTitle).font(DS.Font.display).foregroundStyle(DS.ink)
       Text(message).font(.body).foregroundStyle(DS.ink2)
       if let actionTitle, let action { SteelButton(title: actionTitle, action: action) }
     }

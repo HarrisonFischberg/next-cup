@@ -222,7 +222,7 @@ struct BrewFormView: View {
 
   private func header(_ model: BrewFormModel) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
-      Text(model.isEditing ? "EDIT BREW" : (model.repeatingID != nil ? "BREW AGAIN" : "NEW BREW"))
+      Text((model.isEditing ? "Edit brew" : (model.repeatingID != nil ? "Brew again" : "New brew")).dsTitle)
         .font(DS.Font.display).foregroundStyle(DS.ink)
         .dynamicTypeSize(...DS.displayCap)
         .accessibilityAddTraits(.isHeader)
@@ -261,8 +261,7 @@ struct BrewFormView: View {
           .accessibilityHidden(true)
       }
       .padding(DS.Space.md).frame(minHeight: DS.Size.control)
-      .background(DS.paper, ignoresSafeAreaEdges: [])
-      .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+      .panel(DS.paper)
     }
     .accessibilityLabel("Method")
     .accessibilityValue(current?.name ?? "None chosen")
@@ -308,12 +307,11 @@ struct BrewFormView: View {
           Button(bean.name) { model.addBean(bean) }
         }
       } label: {
-        Text(chosen.isEmpty ? "ADD A BEAN" : "ADD ANOTHER BEAN")
+        Text((chosen.isEmpty ? "Add a bean" : "Add another bean").dsTitle)
           .font(DS.Font.din(22, relativeTo: .title3))
           .frame(maxWidth: .infinity, minHeight: DS.Size.control)
           .foregroundStyle(DS.ink)
-          .background(DS.paper, ignoresSafeAreaEdges: [])
-          .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+          .panel(DS.paper)
       }
       .disabled(available.isEmpty)
       .accessibilityLabel(chosen.isEmpty ? "Add a bean" : "Add another bean")
@@ -339,7 +337,7 @@ struct BrewFormView: View {
       + (isBlend ? "  ·  " + String(format: "%.0f%%", share) : "")
     return layout {
       VStack(alignment: .leading, spacing: 2) {
-        Text(entry.name.uppercased()).font(DS.Font.headline).foregroundStyle(DS.ink)
+        Text(entry.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
         HStack(spacing: DS.Space.sm) {
           Text(amount).font(DS.Font.mono(.footnote)).foregroundStyle(DS.ink2)
           if isDecaf { Tag(text: "Decaf") }
@@ -427,8 +425,7 @@ struct BrewFormView: View {
             .accessibilityHidden(true)
         }
         .padding(DS.Space.md).frame(minHeight: DS.Size.control)
-        .background(DS.paper, ignoresSafeAreaEdges: [])
-        .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+        .panel(DS.paper)
       }
       .accessibilityLabel("Grinder")
       .accessibilityValue(current?.name ?? "None chosen")
@@ -577,8 +574,7 @@ struct BrewFormView: View {
             .accessibilityHidden(true)
         }
         .padding(DS.Space.md).frame(minHeight: DS.Size.control)
-        .background(DS.paper, ignoresSafeAreaEdges: [])
-        .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+        .panel(DS.paper)
       }
       .accessibilityLabel("Water")
       .accessibilityValue(current?.name ?? "None chosen")
@@ -621,8 +617,7 @@ struct BrewFormView: View {
         .submitLabel(.done).focused($focused, equals: .grind)
         .onSubmit { focused = nil }
         .padding(DS.Space.md).frame(minHeight: DS.Size.control)
-        .background(DS.paper, ignoresSafeAreaEdges: [])
-        .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+        .panel(DS.paper)
         .accessibilityLabel("Grind setting")
         .accessibilityIdentifier("brewform.grind")
     }
@@ -659,11 +654,11 @@ struct BrewFormView: View {
         SteelButton(title: "Remove photo", kind: .secondary) { model.removePhoto() }
       } else {
         PhotosPicker(selection: $pickedPhoto, matching: .images) {
-          Text("ADD A PHOTO").font(DS.Font.din(22, relativeTo: .title3))
+          Text("Add a photo".dsTitle).font(DS.Font.din(22, relativeTo: .title3))
             .frame(maxWidth: .infinity, minHeight: DS.Size.control)
             .foregroundStyle(DS.ink)
-            .background(DS.paper, ignoresSafeAreaEdges: [])
-            .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+            .background(DS.paper, in: RoundedRectangle(cornerRadius: DS.radius))
+            .overlay(RoundedRectangle(cornerRadius: DS.radius).strokeBorder(DS.line, lineWidth: DS.rule))
         }
         .accessibilityLabel("Add a photo")
         .accessibilityIdentifier("brewform.photo")
