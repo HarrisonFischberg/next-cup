@@ -39,7 +39,8 @@ struct LastCupCard: View {
         }
         .frame(width: 220, height: 220)
         HStack {
-          stat(brew.ratingHalfSteps.map { String(format: "%.1f", Double($0) / 2) }, "rating", DS.crema)
+          stat(
+            brew.ratingHalfSteps.map { String(format: "%.1f", Double($0) / 2) }, "rating", DS.crema)
           stat(brew.totalTimeS.map(RecipeFormat.clock), "time", DS.espresso)
           stat(BrewMath.ratioLabel(ratio), "ratio", DS.sage)
         }
@@ -72,7 +73,8 @@ struct LastCupCard: View {
           ForEach(week, id: \.self) { day in
             VStack(spacing: 6) {
               CupMark(filled: brewedDays.contains(day))
-              Text(day.formatted(.dateTime.weekday(.narrow))).font(.caption).foregroundStyle(DS.ink2)
+              Text(day.formatted(.dateTime.weekday(.narrow))).font(.caption).foregroundStyle(
+                DS.ink2)
             }
             .frame(maxWidth: .infinity)
           }
@@ -86,7 +88,9 @@ struct LastCupCard: View {
 
   private var week: [Date] {
     let today = Calendar.current.startOfDay(for: .now)
-    return (0..<7).reversed().compactMap { Calendar.current.date(byAdding: .day, value: -$0, to: today) }
+    return (0..<7).reversed().compactMap {
+      Calendar.current.date(byAdding: .day, value: -$0, to: today)
+    }
   }
 
   private func stat(_ value: String?, _ name: String, _ color: Color) -> some View {

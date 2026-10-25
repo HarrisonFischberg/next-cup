@@ -126,9 +126,11 @@ struct TimerView: View {
           .multilineTextAlignment(.center)
           .accessibilityIdentifier("timer.status")
         if let step = state.current {
-          Text(step.targetCumulativeWaterG.map { "to \(RecipeFormat.weight($0, units))" } ?? step.label)
-            .font(.system(size: 46, design: .serif)).foregroundStyle(DS.ink)
-            .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.6).lineLimit(1)
+          Text(
+            step.targetCumulativeWaterG.map { "to \(RecipeFormat.weight($0, units))" } ?? step.label
+          )
+          .font(.system(size: 46, design: .serif)).foregroundStyle(DS.ink)
+          .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.6).lineLimit(1)
           if !step.instruction.isEmpty {
             Text(step.instruction).font(.body).foregroundStyle(DS.ink2)
               .multilineTextAlignment(.center)

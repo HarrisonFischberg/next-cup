@@ -9,7 +9,9 @@ final class NextCupUITests: XCTestCase {
 
   private func launch(deepLink: String? = nil) -> XCUIApplication {
     let app = XCUIApplication()
-    app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+    app.launchArguments = [
+      "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+    ]
     if let deepLink { app.launchArguments += ["-deepLink", deepLink] }
     app.launch()
     return app
@@ -197,7 +199,10 @@ final class NextCupUITests: XCTestCase {
   private func openTimer(speed: Int, extraArguments: [String] = []) -> XCUIApplication {
     let app = XCUIApplication()
     app.launchArguments =
-      ["-inMemoryStore", "-resetNavigationState", "-resetDraft", "-timerSpeed", "\(speed)"]
+      [
+        "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+        "-timerSpeed", "\(speed)",
+      ]
       + extraArguments
     app.launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
@@ -288,7 +293,10 @@ final class NextCupUITests: XCTestCase {
   private func openBlankForm(extraArguments: [String] = []) -> XCUIApplication {
     let app = XCUIApplication()
     app.launchArguments =
-      ["-inMemoryStore", "-resetNavigationState", "-resetDraft", "-deepLink", "nextcup://brew/new"]
+      [
+        "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+        "-deepLink", "nextcup://brew/new",
+      ]
       + extraArguments
     app.launch()
     XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 10))
@@ -321,7 +329,9 @@ final class NextCupUITests: XCTestCase {
     sleep(1)  // autosave waits for typing to pause
 
     app.terminate()
-    app.launchArguments = ["-inMemoryStore", "-deepLink", "nextcup://brew/new"]
+    app.launchArguments = [
+      "-inMemoryStore", "-appStyle", "steelKraft", "-deepLink", "nextcup://brew/new",
+    ]
     app.launch()
     XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 10))
     XCTAssertTrue(element(app, "brewform.notice").waitForExistence(timeout: 5))
@@ -340,7 +350,9 @@ final class NextCupUITests: XCTestCase {
     XCTAssertFalse(element(app, "brewform.saved").exists)
 
     app.terminate()
-    app.launchArguments = ["-inMemoryStore", "-deepLink", "nextcup://brew/new"]
+    app.launchArguments = [
+      "-inMemoryStore", "-appStyle", "steelKraft", "-deepLink", "nextcup://brew/new",
+    ]
     app.launch()
     XCTAssertTrue(element(app, "brewform.notice").waitForExistence(timeout: 10))
     app.buttons["Save brew"].tap()
@@ -494,7 +506,8 @@ final class NextCupUITests: XCTestCase {
     for variant in variants {
       let app = XCUIApplication()
       app.launchArguments =
-        ["-inMemoryStore", "-resetNavigationState", "-resetDraft"] + variant.args
+        ["-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft"]
+        + variant.args
       app.launch()
       XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
       logBrew(app, note: "Washed Ethiopia sweet")
@@ -651,7 +664,9 @@ final class NextCupUITests: XCTestCase {
     for variant in variants {
       XCUIDevice.shared.appearance = variant.appearance
       let app = XCUIApplication()
-      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      app.launchArguments = [
+        "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      ]
       if let size = variant.size {
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
       }
@@ -694,7 +709,9 @@ final class NextCupUITests: XCTestCase {
     for variant in variants {
       XCUIDevice.shared.appearance = variant.appearance
       let app = XCUIApplication()
-      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      app.launchArguments = [
+        "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      ]
       if let size = variant.size {
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
       }
@@ -731,7 +748,9 @@ final class NextCupUITests: XCTestCase {
     for variant in variants {
       XCUIDevice.shared.appearance = variant.appearance
       let app = XCUIApplication()
-      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      app.launchArguments = [
+        "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      ]
       if let size = variant.size {
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
       }
@@ -770,7 +789,9 @@ final class NextCupUITests: XCTestCase {
     for variant in variants {
       XCUIDevice.shared.appearance = variant.appearance
       let app = XCUIApplication()
-      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      app.launchArguments = [
+        "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      ]
       if let size = variant.size {
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
       }
@@ -874,7 +895,7 @@ final class NextCupUITests: XCTestCase {
     for variant in variants {
       XCUIDevice.shared.appearance = variant.appearance
       let app = XCUIApplication()
-      app.launchArguments = ["-inMemoryStore", "-resetNavigationState"]
+      app.launchArguments = ["-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState"]
       if let size = variant.size {
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
       }
@@ -997,7 +1018,9 @@ final class NextCupUITests: XCTestCase {
     for variant in variants {
       XCUIDevice.shared.appearance = variant.appearance
       let app = XCUIApplication()
-      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      app.launchArguments = [
+        "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      ]
       if let size = variant.size {
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
       }
@@ -1105,7 +1128,9 @@ final class NextCupUITests: XCTestCase {
     for variant in variants {
       XCUIDevice.shared.appearance = variant.appearance
       let app = XCUIApplication()
-      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      app.launchArguments = [
+        "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      ]
       if let size = variant.size {
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
       }
@@ -1171,7 +1196,9 @@ final class NextCupUITests: XCTestCase {
     for variant in variants {
       XCUIDevice.shared.appearance = variant.appearance
       let app = XCUIApplication()
-      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      app.launchArguments = [
+        "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      ]
       if let size = variant.size {
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
       }
@@ -1295,7 +1322,9 @@ final class NextCupUITests: XCTestCase {
     XCUIDevice.shared.appearance = appearance
     do {
       let app = XCUIApplication()
-      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      app.launchArguments = [
+        "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      ]
       if let size { app.launchArguments += ["-UIPreferredContentSizeCategoryName", size] }
       app.launch()
       try runDialInFlow(app) { name in
@@ -1369,7 +1398,9 @@ final class NextCupUITests: XCTestCase {
     defer { XCUIDevice.shared.appearance = .light }
     XCUIDevice.shared.appearance = appearance
     let app = XCUIApplication()
-    app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+    app.launchArguments = [
+      "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+    ]
     if let size { app.launchArguments += ["-UIPreferredContentSizeCategoryName", size] }
     app.launch()
     try runDataFlow(app) { name in
@@ -1387,7 +1418,7 @@ final class NextCupUITests: XCTestCase {
 
     app.terminate()
     // Relaunch without the reset flag, as the user would.
-    app.launchArguments = ["-inMemoryStore"]
+    app.launchArguments = ["-inMemoryStore", "-appStyle", "steelKraft"]
     app.launch()
 
     XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 10))
@@ -1416,7 +1447,8 @@ final class NextCupUITests: XCTestCase {
     for variant in variants {
       let app = XCUIApplication()
       app.launchArguments =
-        ["-inMemoryStore", "-resetNavigationState", "-resetDraft"] + variant.arguments
+        ["-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft"]
+        + variant.arguments
       app.launch()
       element(app, "journal.import").tap()
       element(app, "import.sample").tap()
@@ -1483,7 +1515,8 @@ final class NextCupUITests: XCTestCase {
     let app = XCUIApplication()
     app.launchArguments =
       [
-        "-inMemoryStore", "-resetNavigationState", "-resetDraft", "-roasterStub", "-locationStub",
+        "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+        "-roasterStub", "-locationStub",
         location,
       ] + extraArguments
     app.launch()
@@ -1585,7 +1618,8 @@ final class NextCupUITests: XCTestCase {
       // S-flavor: the list and one bucket's detail.
       let flavor = XCUIApplication()
       flavor.launchArguments =
-        ["-inMemoryStore", "-resetNavigationState", "-resetDraft"] + sizeArguments
+        ["-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft"]
+        + sizeArguments
       flavor.launch()
       flavor.tabBars.buttons["Explore"].tap()
       let entry = element(flavor, "explore.flavors")

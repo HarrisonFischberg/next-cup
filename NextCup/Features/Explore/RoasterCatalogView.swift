@@ -17,7 +17,7 @@ struct RoasterCatalogView: View {
             CatalogRoasterView(roaster: roaster, checkedOn: catalog.checkedOn)
           } label: {
             VStack(alignment: .leading, spacing: DS.Space.xs) {
-              Text(roaster.name.uppercased()).font(DS.Font.headline).foregroundStyle(DS.ink)
+              Text(roaster.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
               Text("\(roaster.place)  ·  \(roaster.coffees.count) coffees")
                 .font(.footnote).foregroundStyle(DS.ink2)
             }
@@ -99,7 +99,7 @@ private struct CatalogCoffeeView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: DS.Space.lg) {
-        Text(coffee.name.uppercased()).font(DS.Font.display).foregroundStyle(DS.ink)
+        Text(coffee.name.dsTitle).font(DS.Font.display).foregroundStyle(DS.ink)
           .dynamicTypeSize(...DS.displayCap)
           .accessibilityAddTraits(.isHeader)
         Text("\(roaster.name)  ·  \(CatalogText.facts(coffee))").font(.subheadline)
@@ -185,7 +185,7 @@ private struct StarterCard: View {
   var body: some View {
     PaperBox {
       VStack(alignment: .leading, spacing: DS.Space.sm) {
-        Text(starter.name.uppercased()).font(DS.Font.headline).foregroundStyle(DS.ink)
+        Text(starter.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
           .accessibilityAddTraits(.isHeader)
         ForEach(values, id: \.0) { row in
           HStack(alignment: .firstTextBaseline) {

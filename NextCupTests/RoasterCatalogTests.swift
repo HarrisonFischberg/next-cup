@@ -12,8 +12,12 @@ struct RoasterCatalogTests {
     try RoasterCatalog(bundle: .main)
   }
 
+  /// Held by the suite: a context outlives its container only by accident.
+  private let container: ModelContainer
+
+  init() throws { container = try NextCupContainer.make(inMemory: true) }
+
   private func service() throws -> (CatalogService, ModelContext) {
-    let container = try NextCupContainer.make(inMemory: true)
     let context = container.mainContext
     return (CatalogService(store: Store(context: context)), context)
   }
