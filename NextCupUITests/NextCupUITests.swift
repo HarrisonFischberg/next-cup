@@ -94,6 +94,29 @@ final class NextCupUITests: XCTestCase {
   }
 
   @MainActor
+  func testCatalogCoffeeStartsAStarterBrew() {
+    let app = launch()
+    app.tabBars.buttons["Explore"].tap()
+    let entry = element(app, "explore.catalog")
+    XCTAssertTrue(entry.waitForExistence(timeout: 10))
+    entry.tap()
+    let roaster = element(app, "catalog.roaster.huckleberry")
+    XCTAssertTrue(roaster.waitForExistence(timeout: 10))
+    roaster.tap()
+    let coffee = element(app, "catalog.coffee.huck-ethiopia-haro-beddame")
+    XCTAssertTrue(coffee.waitForExistence(timeout: 10))
+    coffee.tap()
+    XCTAssertTrue(element(app, "catalog.coffee").waitForExistence(timeout: 10))
+    element(app, "catalog.add").tap()
+    XCTAssertTrue(element(app, "catalog.message").waitForExistence(timeout: 5))
+    let brew = element(app, "catalog.brew.pourOver")
+    scrollUntilHittable(brew, in: app)
+    brew.tap()
+    XCTAssertTrue(element(app, "timer.status").waitForExistence(timeout: 10))
+    XCTAssertTrue(element(app, "timer.status").label.hasPrefix("READY"))
+  }
+
+  @MainActor
   func testMalformedDeepLinkIsIgnored() {
     let app = launch(deepLink: "nextcup://recipe/not-a-uuid")
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
@@ -685,6 +708,45 @@ final class NextCupUITests: XCTestCase {
       app.buttons["Delete"].tap()
       XCTAssertTrue(app.staticTexts["Brew deleted"].waitForExistence(timeout: 5))
       try save(app.screenshot(), "\(folderURL.path)/journal-undo-\(variant.name).png")
+      app.terminate()
+    }
+  }
+
+  /// Writes roaster catalog screenshots in light, dark and the largest text size.
+  /// Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureCatalogScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      if let size = variant.size {
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
+      }
+      app.launch()
+      app.tabBars.buttons["Explore"].tap()
+      element(app, "explore.catalog").tap()
+      XCTAssertTrue(element(app, "catalog.roaster.huckleberry").waitForExistence(timeout: 10))
+      try save(app.screenshot(), "\(folderURL.path)/catalog-roasters-\(variant.name).png")
+      element(app, "catalog.roaster.huckleberry").tap()
+      let coffee = element(app, "catalog.coffee.huck-ethiopia-haro-beddame")
+      XCTAssertTrue(coffee.waitForExistence(timeout: 10))
+      try save(app.screenshot(), "\(folderURL.path)/catalog-coffees-\(variant.name).png")
+      coffee.tap()
+      XCTAssertTrue(element(app, "catalog.add").waitForExistence(timeout: 10))
+      try save(app.screenshot(), "\(folderURL.path)/catalog-coffee-\(variant.name).png")
       app.terminate()
     }
   }

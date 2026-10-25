@@ -727,3 +727,12 @@ Still not done (so Status stays `pending`):
 - `python3 design/contrast.py`: all pairs pass WCAG AA for all ten flavors and every Make It Yours swatch, light and dark. `check_tokens.py`: tokens in sync.
 - Visual critique of the 70-shot sheet (`docs/design/flavors/flavor-sheet-1.png`, `-2.png`): flavors read as distinct; the "nav title blur" was the timer auto-scrolling step 1 to centre, pushing the recipe header under the bar. Fixed in `TimerView` (no scroll for step 1).
 - Deferred, not done: bean detail screenshots and per-flavor VoiceOver/Increase Contrast passes. The full UI suite runs at release verification.
+
+## 2026-10-25 — T036 roaster catalog in Explore
+
+- Added `StarterRecipes` (NextCupKit): four starter recipes per coffee from roast band and process; fermented processes start 1 °C cooler; a missing roast level assumes medium and says so in the note.
+- App: `RoasterCatalog` (decode + validation of `catalog.json`), `CatalogService` (Add to my beans reuses bean and roaster; starter recipe saved once under `starter.<coffee>.<style>`), `RoasterCatalogView` (Explore toolbar "Roaster catalog" > roaster > coffee > starter recipes with Add and Brew). Starter recipes are labelled Next Cup's, not the roaster's.
+- Commands: `swift test --package-path Packages/NextCupKit` 160 tests passed. `xcodebuild ... test -only-testing:NextCupTests`: `Roaster catalog` suite passed; `testCatalogCoffeeStartsAStarterBrew` UI test passed; `testCaptureCatalogScreenshots` passed.
+- Screenshots in `ralph/screenshots/`: `catalog-{roasters,coffees,coffee}-{light,dark,largest-text}.png`.
+- NOT caused by T036, seen on HEAD after commit 99bde4d (Bloom default, made by someone else mid-session): `StyleTests` `tenFlavorsWithSteelAndKraftFirst` and `choicePersistsAndDrivesTokens` fail (they expect 10 styles with Steel & Kraft first/default; `AppStyle` now has `bloom`), and `swift format lint --strict` reports errors in `Tokens.swift`, `BrewFormView.swift`, `LastCupCard.swift`, `TimerView.swift`. My files lint clean. Left untouched; needs an owner or supervisor decision.
+- Untested: full `NextCupUITests` suite (only the new tests ran); VoiceOver pass on the catalog screens; catalog facts were supplied by the supervisor and not re-verified.
