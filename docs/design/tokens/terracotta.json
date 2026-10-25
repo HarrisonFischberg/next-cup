@@ -1,0 +1,15 @@
+{
+  "_about": "Terracotta Hand-Thrown. Source of truth for the terracotta palette in NextCup/DesignSystem/Tokens.swift (design/check_tokens.py). Contrast: python3 design/contrast.py and StyleTests",
+  "light": {
+    "bg": "#F3E3CF", "paper": "#E8C7A2", "steel": "#4A2515", "on-steel": "#FFF3E4",
+    "ink": "#3A1F14", "ink-2": "#6B4332", "line": "#6B4332", "signal": "#962F14",
+    "on-signal": "#FFF3E4", "signal-on-steel": "#F0A07A", "kraft": "#D9B48A",
+    "on-kraft": "#3A1F14", "error": "#9A2A16", "ok": "#1F5A1F"
+  },
+  "dark": {
+    "bg": "#2A1710", "paper": "#3D2318", "steel": "#4A2B1E", "on-steel": "#F7E6D2",
+    "ink": "#F7E6D2", "ink-2": "#D4B59B", "line": "#A88670", "signal": "#E58A63",
+    "on-signal": "#2A1710", "signal-on-steel": "#F0A07A", "kraft": "#D9B48A",
+    "on-kraft": "#3A1F14", "error": "#FFA58A", "ok": "#7FD18A"
+  }
+}

@@ -1,18 +1,29 @@
 #!/usr/bin/env python3
-"""Fail if NextCup/DesignSystem/Tokens.swift colors drift from docs/design/tokens/*.json.
+"""Fail if the palettes in NextCup/DesignSystem/Tokens.swift drift from docs/design/tokens/*.json.
+steelKraft is tokens.light.json + tokens.dark.json; every other style is <style>.json.
 usage: python3 design/check_tokens.py   (run from the repo root)"""
 import json, re, sys
 swift = open("NextCup/DesignSystem/Tokens.swift").read()
-light = json.load(open("docs/design/tokens/tokens.light.json"))["color"]
-dark = json.load(open("docs/design/tokens/tokens.dark.json"))["color"]
+tokens = "docs/design/tokens/"
 camel = lambda k: re.sub(r"-(\w)", lambda m: m.group(1).upper(), k)
-found = {m.group(1): (m.group(2).upper(), m.group(3).upper()) for m in re.finditer(r"static let (\w+) = Color\(light: 0x([0-9A-Fa-f]{6}), dark: 0x([0-9A-Fa-f]{6})\)", swift)}
+
+def load(style):
+    if style == "steelKraft":
+        return json.load(open(tokens + "tokens.light.json"))["color"], json.load(open(tokens + "tokens.dark.json"))["color"]
+    data = json.load(open(tokens + style + ".json"))
+    return data["light"], data["dark"]
+
 bad = 0
-for key in light:
-    name = camel(key)
-    want = (light[key].lstrip("#").upper(), dark[key].lstrip("#").upper())
-    if found.get(name) != want:
-        print(f"DRIFT {name}: swift={found.get(name)} json={want}"); bad += 1
-extra = set(found) - {camel(k) for k in light}
-for e in sorted(extra): print(f"EXTRA in swift, not in json: {e}"); bad += 1
+blocks = re.findall(r"case \.(\w+):\s*Palette\((.*?)\)\n(?=\s*(?:case|\}))", swift, re.S)
+if len(blocks) != 5:
+    print(f"expected 5 palettes, found {len(blocks)}"); sys.exit(1)
+for style, body in blocks:
+    found = {m.group(1): (m.group(2).upper(), m.group(3).upper()) for m in re.finditer(r"(\w+): P\(0x([0-9A-Fa-f]{6}), 0x([0-9A-Fa-f]{6})\)", body)}
+    light, dark = load(style)
+    for key in light:
+        want = (light[key].lstrip("#").upper(), dark[key].lstrip("#").upper())
+        if found.get(camel(key)) != want:
+            print(f"DRIFT {style}.{camel(key)}: swift={found.get(camel(key))} json={want}"); bad += 1
+    for e in sorted(set(found) - {camel(k) for k in light}):
+        print(f"EXTRA in swift, not in json: {style}.{e}"); bad += 1
 print("tokens in sync" if not bad else f"{bad} problem(s)"); sys.exit(1 if bad else 0)
