@@ -33,6 +33,9 @@ struct DataSettingsView: View {
   @State private var backups: [BackupStore.Backup] = []
   @State private var erasedSnapshot: DataArchive?
   @State private var undoTimer: Task<Void, Never>?
+  /// Export and import show their real stages: they are where trust matters most.
+  @State private var stages: [String]?
+  @State private var stage = 0
 
   private static let undoSeconds = 8
 
@@ -51,6 +54,10 @@ struct DataSettingsView: View {
       if let message {
         Text(message).font(.footnote).foregroundStyle(DS.ink)
           .accessibilityIdentifier("data.message")
+          .listRowBackground(DS.paper)
+      }
+      if let stages {
+        StagedProgress(stages: stages, current: stage)
           .listRowBackground(DS.paper)
       }
       exportSection
@@ -189,13 +196,32 @@ struct DataSettingsView: View {
   }
 
   /// The files exist only between the tap and the closing of the share sheet.
-  private func export(_ pick: (DataExporter.Files) -> [URL]) {
-    do {
-      let files = try DataExporter(store: store).write(into: FileManager.default.temporaryDirectory)
-      shared = SharedFiles(urls: pick(files))
-      errorMessage = nil
-    } catch {
-      errorMessage = "The export could not be prepared. \(error.localizedDescription)"
+  private func export(_ pick: @escaping (DataExporter.Files) -> [URL]) {
+    guard stages == nil else { return }
+    Task {
+      var start = Date()
+      let brews =
+        (try? context.fetchCount(FetchDescriptor<Brew>(predicate: #Predicate { !$0.isDraft }))) ?? 0
+      let beans = (try? context.fetchCount(FetchDescriptor<Bean>())) ?? 0
+      stages = [
+        "Gathering \(brews) \(brews == 1 ? "brew" : "brews") and \(beans) \(beans == 1 ? "bean" : "beans")",
+        "Writing the file", "Ready to share",
+      ]
+      stage = 0
+      await StagedProgress.hold(since: start)
+      stage = 1
+      start = Date()
+      do {
+        let files = try DataExporter(store: store).write(
+          into: FileManager.default.temporaryDirectory)
+        await StagedProgress.hold(since: start)
+        stage = 2
+        shared = SharedFiles(urls: pick(files))
+        errorMessage = nil
+      } catch {
+        errorMessage = "The export could not be prepared. \(error.localizedDescription)"
+      }
+      stages = nil
     }
   }
 
@@ -208,10 +234,21 @@ struct DataSettingsView: View {
     let scoped = url.startAccessingSecurityScopedResource()
     defer { if scoped { url.stopAccessingSecurityScopedResource() } }
     do {
+      stages = ["Checking the file", "Comparing with your journal", "Ready to review"]
+      stage = 0
       let archive = try DataImporter.decode(Data(contentsOf: url))
-      plan = try DataImporter(store: store).plan(for: archive)
+      stage = 1
+      let checked = try DataImporter(store: store).plan(for: archive)
+      stage = 2
+      Task {
+        // Long enough to read the stages; the review sheet then shows the counts.
+        try? await Task.sleep(for: .milliseconds(600))
+        stages = nil
+        plan = checked
+      }
       errorMessage = nil
     } catch {
+      stages = nil
       errorMessage = error.localizedDescription
     }
   }

@@ -13,7 +13,9 @@ struct ExploreView: View {
   @Query private var storedAliases: [TaxonomyAlias]
   @Environment(\.modelContext) private var context
   @State private var insightsBean: Bean?
-  @AppStorage(AppTab.storageKey) private var storedTab = AppTab.explore.rawValue
+  @State private var taxonomy = ExploreModel.taxonomy
+  @State private var addingBean = false
+  @State private var showsRoasters = false
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -31,45 +33,29 @@ struct ExploreView: View {
 
   var body: some View {
     Group {
-      if let taxonomy = ExploreModel.taxonomy {
+      if let taxonomy {
         content(taxonomy)
       } else {
         ScrollView {
-          StateBanner(
-            kind: .error,
-            message:
-              "The flavor vocabulary could not be read, so recommendations are unavailable. Reinstalling the app restores it."
-          )
+          VStack(alignment: .leading, spacing: DS.Space.lg) {
+            StateBanner(
+              kind: .error,
+              message:
+                "The flavor vocabulary could not be read, so recommendations are unavailable.",
+              actionTitle: "Try again", action: { taxonomy = try? Taxonomy(bundle: .main) }
+            )
+            .accessibilityIdentifier("explore.error")
+            moreSections
+          }
           .padding(DS.Space.lg)
-          .accessibilityIdentifier("explore.error")
         }
       }
     }
     .background(DS.bg)
     .navigationTitle("Explore")
     .navigationBarTitleDisplayMode(.inline)
-    .toolbar {
-      if let catalog = RoasterCatalog.shared {
-        ToolbarItem(placement: .topBarLeading) {
-          NavigationLink {
-            RoasterCatalogView(catalog: catalog)
-          } label: {
-            Label("Roaster catalog", systemImage: "storefront")
-          }
-          .accessibilityIdentifier("explore.catalog")
-        }
-      }
-      if let taxonomy = ExploreModel.taxonomy {
-        ToolbarItem(placement: .topBarTrailing) {
-          NavigationLink {
-            FlavorExplorerView(taxonomy: taxonomy)
-          } label: {
-            Label("Flavors", systemImage: "book")
-          }
-          .accessibilityIdentifier("explore.flavors")
-        }
-      }
-    }
+    .sheet(isPresented: $addingBean) { BeanEditorView(target: .new) { addingBean = false } }
+    .sheet(isPresented: $showsRoasters) { RoasterDiscoveryView { showsRoasters = false } }
     // A marker, not an identifier on the list: that would replace the
     // identifiers of the cards inside it.
     .background {
@@ -77,16 +63,81 @@ struct ExploreView: View {
     }
   }
 
+  /// Roasters and flavors as labeled sections under the recommendations, not
+  /// icon-only toolbar buttons.
+  @ViewBuilder private var moreSections: some View {
+    VStack(alignment: .leading, spacing: DS.Space.sm) {
+      Text("ROASTERS").font(DS.Font.label).foregroundStyle(DS.ink2)
+        .accessibilityAddTraits(.isHeader)
+      PaperBox {
+        VStack(spacing: 0) {
+          if let catalog = RoasterCatalog.shared {
+            NavigationLink {
+              RoasterCatalogView(catalog: catalog)
+            } label: {
+              sectionRow("Roaster catalog", "Coffees with starter recipes", "storefront")
+            }
+            .accessibilityIdentifier("explore.catalog")
+            Hairline()
+          }
+          Button {
+            showsRoasters = true
+          } label: {
+            sectionRow("Find roasters near me", "Search the map while you use the app", "map")
+          }
+          .accessibilityIdentifier("explore.roasters")
+        }
+      }
+      .buttonStyle(.plain)
+    }
+    if let taxonomy {
+      VStack(alignment: .leading, spacing: DS.Space.sm) {
+        Text("FLAVORS").font(DS.Font.label).foregroundStyle(DS.ink2)
+          .accessibilityAddTraits(.isHeader)
+        PaperBox {
+          NavigationLink {
+            FlavorExplorerView(taxonomy: taxonomy)
+          } label: {
+            sectionRow("Flavor explorer", "Origins, processes and tasting words", "book")
+          }
+          .buttonStyle(.plain)
+          .accessibilityIdentifier("explore.flavors")
+        }
+      }
+    }
+  }
+
+  private func sectionRow(_ title: String, _ detail: String, _ symbol: String) -> some View {
+    HStack(spacing: DS.Space.md) {
+      Image(systemName: symbol).foregroundStyle(DS.ink2).frame(width: 24).accessibilityHidden(true)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(title).font(DS.Font.headline).foregroundStyle(DS.ink)
+        Text(detail).font(.footnote).foregroundStyle(DS.ink2)
+      }
+      Spacer(minLength: DS.Space.sm)
+      Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+        .foregroundStyle(DS.ink2).accessibilityHidden(true)
+    }
+    .padding(DS.Space.md)
+    .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
+    .contentShape(Rectangle())
+    .accessibilityElement(children: .combine)
+  }
+
   @ViewBuilder
   private func content(_ taxonomy: Taxonomy) -> some View {
     let planned = ExploreModel.planned(beans)
     if planned.isEmpty {
       ScrollView {
-        EmptyState(
-          title: "Nothing to plan yet",
-          message:
-            "Add a bean you are brewing and Explore suggests a method and starting values for it.",
-          actionTitle: "Add a bean", action: { storedTab = AppTab.beans.rawValue })
+        VStack(alignment: .leading, spacing: DS.Space.lg) {
+          EmptyState(
+            title: "Nothing to plan yet",
+            message:
+              "Add a bean you are brewing and Explore suggests a method and starting values for it.",
+            actionTitle: "Add a bean", action: { addingBean = true })
+          moreSections.padding(.horizontal, DS.Space.lg)
+        }
+        .padding(.bottom, DS.Space.lg)
       }
       .accessibilityIdentifier("explore.empty")
     } else {
@@ -101,8 +152,10 @@ struct ExploreView: View {
             BeanRecommendationCard(
               bean: bean, buckets: refs,
               result: Recommender.recommend(for: refs, history: history), units: units,
-              canAsk: !brews(of: bean).isEmpty, onAsk: { insightsBean = bean })
+              canAsk: !brews(of: bean).isEmpty, featured: bean.id == planned.first?.id,
+              onAsk: { insightsBean = bean })
           }
+          moreSections
         }
         .padding(DS.Space.lg)
       }
@@ -126,24 +179,38 @@ private struct BeanRecommendationCard: View {
   let result: RecommendationResult
   let units: UnitPreferences
   let canAsk: Bool
+  /// The first card is the screen's standout; the rest show only their top pick.
+  let featured: Bool
   let onAsk: () -> Void
 
   var body: some View {
     PaperBox {
       VStack(alignment: .leading, spacing: 0) {
         header
-        ForEach(Array(result.items.enumerated()), id: \.offset) { index, item in
+        ForEach(
+          Array(result.items.prefix(featured ? result.items.count : 1).enumerated()), id: \.offset
+        ) { index, item in
           Hairline()
           RecommendationRow(
             item: item, rank: result.items.count > 1 ? index + 1 : nil, units: units)
         }
         Hairline()
-        NavigationLink(value: DeepLink.newBrew) {
-          Text("Log a brew".dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
-            .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
-            .padding(.horizontal, DS.Space.md)
+        if featured {
+          NavigationLink(value: DeepLink.newBrew) {
+            Text("Log a brew".dsTitle).font(DS.Font.din(24, relativeTo: .title2)).tracking(1)
+              .frame(maxWidth: .infinity, minHeight: DS.Size.primary)
+          }
+          .buttonStyle(SteelButtonStyle())
+          .padding(DS.Space.md)
+          .accessibilityIdentifier("explore.brew.\(bean.name)")
+        } else {
+          NavigationLink(value: DeepLink.newBrew) {
+            Text("Log a brew".dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
+              .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
+              .padding(.horizontal, DS.Space.md)
+          }
+          .accessibilityIdentifier("explore.brew.\(bean.name)")
         }
-        .accessibilityIdentifier("explore.brew.\(bean.name)")
         if canAsk {
           Hairline()
           Button(action: onAsk) {

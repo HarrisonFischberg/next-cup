@@ -17,7 +17,7 @@ final class AppRouter {
     case .journal: journalPath = [link]
     case .recipes: recipesPath = [link]
     case .beans: beansPath = [link]
-    case .explore, .settings: break
+    case .explore: break
     }
   }
 }
