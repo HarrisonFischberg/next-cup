@@ -18,3 +18,7 @@
 | Asset | Source | License | Notes |
 | --- | --- | --- | --- |
 | `NextCup/Resources/methods.json`, `recipes.json`, `taxonomy.json` | Written for Next Cup | Original | Generic method and recipe text; no creator or reference-app recipes. SF Symbol names used by name only |
+
+## App icon (2026-10-25)
+
+`NextCup/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`: drawn in code for Next Cup (steel background, kraft cup with a signal-orange level and scale marks). Original; placeholder until the brand phase.

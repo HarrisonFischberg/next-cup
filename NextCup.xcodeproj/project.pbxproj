@@ -386,7 +386,9 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nextcup.app;
+				DEVELOPMENT_TEAM = KTV2G3Z883;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -406,7 +408,9 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nextcup.app;
+				DEVELOPMENT_TEAM = KTV2G3Z883;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -421,7 +425,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nextcup.app.tests;
+				DEVELOPMENT_TEAM = KTV2G3Z883;
+				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NextCup.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NextCup";
@@ -436,7 +441,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nextcup.app.tests;
+				DEVELOPMENT_TEAM = KTV2G3Z883;
+				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NextCup.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NextCup";
@@ -450,7 +456,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nextcup.app.uitests;
+				DEVELOPMENT_TEAM = KTV2G3Z883;
+				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_TARGET_NAME = NextCup;
@@ -464,7 +471,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nextcup.app.uitests;
+				DEVELOPMENT_TEAM = KTV2G3Z883;
+				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_TARGET_NAME = NextCup;
@@ -481,7 +489,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Next Cup Timer";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nextcup.app.liveactivity;
+				DEVELOPMENT_TEAM = KTV2G3Z883;
+				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup.liveactivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -499,7 +508,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Next Cup Timer";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.nextcup.app.liveactivity;
+				DEVELOPMENT_TEAM = KTV2G3Z883;
+				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup.liveactivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;

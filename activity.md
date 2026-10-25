@@ -639,3 +639,9 @@ Untested / honest gaps:
 
 - Package 153 and app unit 245 pass, lint clean. UI suite: 45 tests, two failures in the full run (`testExploreShowsLabelledDefaultForANewBean`, `testEndEarlyOpensTheFormWithTheTimeReached`); both pass when rerun alone, as the beans test did earlier. Full UI runs get flakier as they get longer (about 18 minutes); not claimed green.
 - Changed after the loop: drafts use the default file protection (complete protection could lose a draft saved as the phone locks); `docs/legal/PRIVACY.md` rewritten to list exactly what each AI action sends, reduced-accuracy location, backup retention and the crash-data wording.
+
+## 2026-10-25 — TestFlight preparation (Opus, supervised)
+
+- Bundle IDs moved to the studio's convention: `app.rarecreatures.nextcup` (+ `.liveactivity`, `.tests`, `.uitests`); team `KTV2G3Z883` set, as in the studio's other apps.
+- Added an app icon (asset catalog, single 1024 px image) and `scripts/archive-testflight.sh` with `scripts/ExportOptions-testflight.plist`, adapted from sunglasses-at-night.
+- `scripts/archive-testflight.sh --no-upload` succeeded: Release archive signed for team KTV2G3Z883, version 0.1, build 20261025.0532, icon present. Nothing uploaded. The upload needs the App Store Connect app record, which the owner creates.
