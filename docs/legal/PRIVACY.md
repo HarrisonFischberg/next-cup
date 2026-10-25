@@ -48,9 +48,9 @@ Next Cup is not directed at children and collects no personal information from a
 - **Remove your AI key** in Settings > AI to stop every AI request.
 - Deny location in iOS Settings; delete the app to remove its data from this phone.
 
-## App Store privacy label (proposed, to confirm against Apple's definitions before submission)
+## App Store privacy label (decision recorded 2026-10-25, to confirm in App Store Connect)
 
-**Data Not Collected.** The app declares no tracking and no collected data in its privacy manifest. AI requests and map searches go from your device to services you choose to use, under their own policies.
+Not "Data Not Collected". Because a photo or your notes can go to OpenAI or Anthropic when you tap an AI action, the label declares **Photos or Videos** and **Other User Content**, used for App Functionality, not linked to you and not used for tracking. The app's privacy manifest says the same. Rare Creatures LLC itself receives none of this data; the declaration is deliberately cautious.
 
 ## Contact
 
