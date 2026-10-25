@@ -1,0 +1,15 @@
+{
+  "_about": "Roaster Poster. Source of truth for the roasterPoster palette in NextCup/DesignSystem/Tokens.swift (design/check_tokens.py). Contrast: python3 design/contrast.py and StyleTests",
+  "light": {
+    "bg": "#FFFFFF", "paper": "#F1F7F2", "steel": "#0B0B0B", "on-steel": "#F2F5F2",
+    "ink": "#0B0B0B", "ink-2": "#4A4F4B", "line": "#0B0B0B", "signal": "#1E7A3E",
+    "on-signal": "#FFFFFF", "signal-on-steel": "#8FF0A4", "kraft": "#D9F2DF",
+    "on-kraft": "#0B0B0B", "error": "#9A1B0A", "ok": "#2A6A2A"
+  },
+  "dark": {
+    "bg": "#121413", "paper": "#1C201D", "steel": "#1C201D", "on-steel": "#F2F5F2",
+    "ink": "#F2F5F2", "ink-2": "#A7AFA9", "line": "#F2F5F2", "signal": "#8FF0A4",
+    "on-signal": "#0B0B0B", "signal-on-steel": "#8FF0A4", "kraft": "#233326",
+    "on-kraft": "#F2F5F2", "error": "#FF9C85", "ok": "#7FD18A"
+  }
+}

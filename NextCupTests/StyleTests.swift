@@ -43,13 +43,80 @@ struct StyleTests {
   }
 
   @Test(arguments: AppStyle.allCases)
-  func displayFontIsInstalled(style: AppStyle) {
-    #expect(UIFont(name: style.displayFont, size: 20) != nil, "\(style.displayFont)")
+  func namedFontsAreInstalled(style: AppStyle) {
+    let condensed = style.flavor.numbers == .condensed ? "DINCondensed-Bold" : nil
+    for name in [style.flavor.displayFont, condensed].compactMap({ $0 }) {
+      #expect(UIFont(name: name, size: 20) != nil, "\(name)")
+    }
   }
 
-  @Test func fiveStylesWithSteelAndKraftFirst() {
-    #expect(AppStyle.allCases.count == 5)
+  @Test func tenFlavorsWithSteelAndKraftFirst() {
+    #expect(AppStyle.allCases.count == 10)
     #expect(AppStyle.allCases.first == .steelKraft)
+    #expect(Set(AppStyle.allCases.map(\.title)).count == 10)
+  }
+
+  @Test func defaultFlavorKeepsTheOriginalShape() {
+    let steel = AppStyle.steelKraft.flavor
+    #expect(steel.radius == 3 && steel.density == .regular && steel.control == .square)
+    #expect(steel.displayFont == "DINCondensed-Bold" && steel.numbers == .monospaced)
+  }
+
+  @Test func flavorsDifferInShapeAndControl() {
+    #expect(AppStyle.roasterPoster.flavor.control == .sticker)
+    #expect(AppStyle.nightMint.flavor.control == .pill)
+    #expect(AppStyle.nightMint.flavor.density == .airy)
+    #expect(AppStyle.cafePage.flavor.displayDesign == .serif)
+    #expect(AppStyle.espressoBlack.palette.bg.dark == 0x000000)
+  }
+
+  @Test(arguments: Swatch.all)
+  func everySwatchPassesAAOnBothGrounds(swatch: Swatch) {
+    let p = swatch.applied(to: AppStyle.makeItYours.palette)
+    for (name, fg, bg, need) in pairs(p) {
+      #expect(ratio(fg.light, bg.light) >= need, "\(swatch.id) light \(name)")
+      #expect(ratio(fg.dark, bg.dark) >= need, "\(swatch.id) dark \(name)")
+    }
+  }
+
+  @Test func makeItYoursReadsItsChoices() {
+    let defaults = UserDefaults.standard
+    let keys = [
+      AppStyle.storageKey, MakeItYours.accentKey, MakeItYours.cornersKey, MakeItYours.densityKey,
+      MakeItYours.fontKey,
+    ]
+    let saved = keys.map { defaults.object(forKey: $0) }
+    defer { for (key, value) in zip(keys, saved) { defaults.set(value, forKey: key) } }
+
+    defaults.set(AppStyle.makeItYours.rawValue, forKey: AppStyle.storageKey)
+    defaults.set("sage", forKey: MakeItYours.accentKey)
+    defaults.set("round", forKey: MakeItYours.cornersKey)
+    defaults.set("compact", forKey: MakeItYours.densityKey)
+    defaults.set("serif", forKey: MakeItYours.fontKey)
+    #expect(DS.palette.signal.light == 0x3F6B4A)
+    #expect(DS.radius == 24 && DS.controlRadius == 999)
+    #expect(DS.flavor.density == .compact && DS.flavor.displayDesign == .serif)
+
+    // Nothing is cached: the next choice shows at once.
+    defaults.set("honey", forKey: MakeItYours.accentKey)
+    defaults.set("square", forKey: MakeItYours.cornersKey)
+    #expect(DS.palette.signal.light == 0x8A5A00)
+    #expect(DS.radius == 2 && DS.controlRadius == 2)
+
+    defaults.set("nonsense", forKey: MakeItYours.accentKey)
+    #expect(DS.palette.signal.light == 0xB4531F)
+  }
+
+  @Test func switchingFlavorChangesColorsSpaceAndShapeAtOnce() {
+    let defaults = UserDefaults.standard
+    let saved = defaults.object(forKey: AppStyle.storageKey)
+    defer { defaults.set(saved, forKey: AppStyle.storageKey) }
+
+    defaults.set(AppStyle.steelKraft.rawValue, forKey: AppStyle.storageKey)
+    let (steelSpace, steelRadius) = (DS.Space.lg, DS.radius)
+    defaults.set(AppStyle.nightMint.rawValue, forKey: AppStyle.storageKey)
+    #expect(DS.palette.bg.dark == 0x0E1513)
+    #expect(DS.Space.lg > steelSpace && DS.radius > steelRadius)
   }
 
   @Test func choicePersistsAndDrivesTokens() {
