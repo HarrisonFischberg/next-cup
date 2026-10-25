@@ -5,6 +5,8 @@ import SwiftUI
 @main
 struct NextCupApp: App {
   @State private var startup = AppBootstrap.start()
+  @AppStorage(AppearanceMode.storageKey) private var appearance = AppearanceMode.system.rawValue
+  @AppStorage(AppStyle.storageKey) private var style = AppStyle.steelKraft.rawValue
 
   init() {
     // UI tests start from a known tab; relaunches in the same test omit this.
@@ -20,17 +22,22 @@ struct NextCupApp: App {
 
   var body: some Scene {
     WindowGroup {
-      switch startup {
-      case .success(let container):
-        RootTabView()
-          .modelContainer(container)
-          .task {
-            AIQueue.expireStale(in: container.mainContext)
-            if !AppBootstrap.usesInMemoryStore { BackupStatus.runDaily(container) }
-          }
-      case .failure(let error):
-        StartupFailureView(error: error) { startup = AppBootstrap.start() }
+      Group {
+        switch startup {
+        case .success(let container):
+          RootTabView()
+            .modelContainer(container)
+            .task {
+              AIQueue.expireStale(in: container.mainContext)
+              if !AppBootstrap.usesInMemoryStore { BackupStatus.runDaily(container) }
+            }
+        case .failure(let error):
+          StartupFailureView(error: error) { startup = AppBootstrap.start() }
+        }
       }
+      .preferredColorScheme((AppearanceMode(rawValue: appearance) ?? .system).colorScheme)
+      // DS tokens are read, not observed, so a new style rebuilds the tree.
+      .id(style)
     }
   }
 }

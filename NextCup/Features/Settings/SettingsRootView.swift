@@ -7,6 +7,9 @@ struct SettingsRootView: View {
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
 
+  @AppStorage(AppearanceMode.storageKey) private var appearance = AppearanceMode.system.rawValue
+  @AppStorage(AppStyle.storageKey) private var style = AppStyle.steelKraft.rawValue
+
   private var appVersion: String {
     let info = Bundle.main.infoDictionary
     let version = info?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -87,6 +90,26 @@ struct SettingsRootView: View {
         .accessibilityIdentifier("settings.data")
       } header: {
         Text("Data")
+      }
+      // Below the rows that existing flows reach, so they stay on the first screen.
+      Section {
+        Picker("Appearance", selection: $appearance) {
+          ForEach(AppearanceMode.allCases) { Text($0.title).tag($0.rawValue) }
+        }
+        .pickerStyle(.segmented)
+        .frame(minHeight: DS.Size.control)
+        .listRowBackground(DS.paper)
+        .accessibilityIdentifier("settings.appearance")
+        Picker("Style", selection: $style) {
+          ForEach(AppStyle.allCases) { Text($0.title).tag($0.rawValue) }
+        }
+        .pickerStyle(.inline)
+        .listRowBackground(DS.paper)
+        .accessibilityIdentifier("settings.style")
+      } header: {
+        Text("Appearance")
+      } footer: {
+        Text("A style changes colors and headline fonts. Layout stays the same.")
       }
       Section {
         NavigationLink {

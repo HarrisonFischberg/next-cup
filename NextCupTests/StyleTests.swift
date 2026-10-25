@@ -1,0 +1,76 @@
+import Foundation
+import Testing
+import UIKit
+
+@testable import NextCup
+
+@Suite("Appearance and style", .serialized)
+struct StyleTests {
+  private func luminance(_ hex: UInt32) -> Double {
+    func channel(_ shift: UInt32) -> Double {
+      let v = Double((hex >> shift) & 0xFF) / 255
+      return v <= 0.03928 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
+    }
+    return 0.2126 * channel(16) + 0.7152 * channel(8) + 0.0722 * channel(0)
+  }
+
+  private func ratio(_ a: UInt32, _ b: UInt32) -> Double {
+    let (hi, lo) = (max(luminance(a), luminance(b)), min(luminance(a), luminance(b)))
+    return (hi + 0.05) / (lo + 0.05)
+  }
+
+  /// The same pairs as docs/design/tokens/tokens.light.json: (foreground, background, needed ratio).
+  private func pairs(_ p: Palette) -> [(String, P, P, Double)] {
+    [
+      ("ink/bg", p.ink, p.bg, 4.5), ("ink2/bg", p.ink2, p.bg, 4.5),
+      ("ink/paper", p.ink, p.paper, 4.5), ("ink2/paper", p.ink2, p.paper, 4.5),
+      ("onSteel/steel", p.onSteel, p.steel, 4.5),
+      ("signalOnSteel/steel", p.signalOnSteel, p.steel, 4.5),
+      ("onSignal/signal", p.onSignal, p.signal, 4.5), ("onKraft/kraft", p.onKraft, p.kraft, 4.5),
+      ("error/bg", p.error, p.bg, 4.5), ("error/paper", p.error, p.paper, 4.5),
+      ("ok/paper", p.ok, p.paper, 4.5),
+      ("line/bg", p.line, p.bg, 3), ("line/paper", p.line, p.paper, 3),
+      ("signal/bg", p.signal, p.bg, 3),
+    ]
+  }
+
+  @Test(arguments: AppStyle.allCases)
+  func everyPairPassesAA(style: AppStyle) {
+    for (name, fg, bg, need) in pairs(style.palette) {
+      #expect(ratio(fg.light, bg.light) >= need, "\(style.title) light \(name)")
+      #expect(ratio(fg.dark, bg.dark) >= need, "\(style.title) dark \(name)")
+    }
+  }
+
+  @Test(arguments: AppStyle.allCases)
+  func displayFontIsInstalled(style: AppStyle) {
+    #expect(UIFont(name: style.displayFont, size: 20) != nil, "\(style.displayFont)")
+  }
+
+  @Test func fiveStylesWithSteelAndKraftFirst() {
+    #expect(AppStyle.allCases.count == 5)
+    #expect(AppStyle.allCases.first == .steelKraft)
+  }
+
+  @Test func choicePersistsAndDrivesTokens() {
+    let defaults = UserDefaults.standard
+    let saved = defaults.object(forKey: AppStyle.storageKey)
+    defer { defaults.set(saved, forKey: AppStyle.storageKey) }
+
+    defaults.removeObject(forKey: AppStyle.storageKey)
+    #expect(AppStyle.current == .steelKraft)
+
+    defaults.set(AppStyle.terracotta.rawValue, forKey: AppStyle.storageKey)
+    #expect(AppStyle.current == .terracotta)
+    #expect(DS.palette.bg.light == AppStyle.terracotta.palette.bg.light)
+
+    defaults.set("not-a-style", forKey: AppStyle.storageKey)
+    #expect(AppStyle.current == .steelKraft)
+  }
+
+  @Test func appearanceModesMapToColorSchemes() {
+    #expect(AppearanceMode.system.colorScheme == nil)
+    #expect(AppearanceMode.light.colorScheme == .light)
+    #expect(AppearanceMode.dark.colorScheme == .dark)
+  }
+}

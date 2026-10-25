@@ -645,3 +645,23 @@ Untested / honest gaps:
 - Bundle IDs moved to the studio's convention: `app.rarecreatures.nextcup` (+ `.liveactivity`, `.tests`, `.uitests`); team `KTV2G3Z883` set, as in the studio's other apps.
 - Added an app icon (asset catalog, single 1024 px image) and `scripts/archive-testflight.sh` with `scripts/ExportOptions-testflight.plist`, adapted from sunglasses-at-night.
 - `scripts/archive-testflight.sh --no-upload` succeeded: Release archive signed for team KTV2G3Z883, version 0.1, build 20261025.0532, icon present. Nothing uploaded. The upload needs the App Store Connect app record, which the owner creates.
+
+## 2026-10-25 — T035 Appearance and style (Sonnet) — code done, screenshots outstanding
+
+What changed:
+- `Tokens.swift`: `AppearanceMode` (System/Light/Dark), `AppStyle` (Steel & Kraft default, Charcoal & Crema, Quiet Ceramic, Terracotta, Late-Night Café) with a `Palette` per style and a display font per style. `DS` colors and `DS.Font.display/headline/label/din` are now computed from `AppStyle.current` (UserDefaults). Styles live in `Tokens.swift`, not a new file, because the Live Activity extension compiles that file alone (the widget keeps the default style; it cannot read the app's defaults).
+- `NextCupApp`: `.preferredColorScheme` from the appearance setting; `.id(style)` rebuilds the tree on a style change so every `DS` read refreshes.
+- Settings: Appearance section (segmented mode, inline style list), placed below Data so the existing Settings rows stay on the first screen (first placement pushed `settings.methods` and `settings.data` below the fold and broke two UI tests).
+- Tokens: `docs/design/tokens/{charcoalCrema,quietCeramic,terracotta,lateNightCafe}.json`; `design/check_tokens.py` checks all five palettes; new `design/contrast.py`. Terracotta light `ok` darkened to #1F5A1F (it was 4.11:1 on paper).
+- Tests: `StyleTests` (every pair AA in light and dark for all five styles, fonts installed, choice persists and drives tokens, appearance mapping).
+
+Commands and results:
+- `swift format lint --recursive --strict ...`: clean. `python3 design/check_tokens.py`: tokens in sync.
+- `xcodebuild ... test -only-testing:NextCupTests`: passed (after the Terracotta fix).
+- `xcodebuild ... test -only-testing:NextCupUITests`: all passed except `testMethodsAddReorderHideAndShapeTheBrewForm` and `testYourDataDeleteAllCanBeUndone`; after moving the Appearance section both passed when rerun together. The full UI suite was not rerun end to end after that move.
+
+Untested / honest gaps:
+- `python3 design/contrast.py` could not be run in this session (command needed approval); the same AA pairs are enforced by `StyleTests` instead. Run it once.
+- No screenshots (light, dark, largest text, journal and timer in each style) and no VoiceOver pass; the Status stays `pending` for that reason.
+- Not checked: wrapping of the serif display faces (Didot, Hiragino Mincho, Cochin, Bodoni) in layouts sized for DIN Condensed; any `static let` elsewhere that caches a `DS` color would not update live (could not grep).
+- No test that the style persists across a relaunch beyond `UserDefaults` round-trip.
