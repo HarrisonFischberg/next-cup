@@ -94,3 +94,16 @@ These supersede older rows above where they disagree:
 - The privacy manifest declares Photos or Videos and Other User Content as collected (App Functionality, not linked), not "no data".
 - Roaster match sends Apple the roaster name plus "coffee roaster" and nothing else.
 - Network calls exist (AI providers, Apple Maps search); older text saying none were made is out of date.
+
+## Camera and barcode (T037, 2026-10-25)
+
+New vendor: **Open Food Facts** (Open Food Facts association, open database, no key, no account).
+
+| Data | Where it lives or goes | Retention | Removed by |
+| --- | --- | --- | --- |
+| Scanned barcode number (8 to 14 digits, validated) | Sent once, after a scan, to `world.openfoodfacts.org/api/v2/product/<code>.json?fields=product_name,brands` with the user agent `NextCup/1.0 (iOS; hello@rarecreatures.app)`; no other data, no identifier, no location | Not stored by the app; Open Food Facts server logs per its terms | Not stored by the app |
+| Product name and first brand from Open Food Facts | Filled into the bean form for review; saved only when the user taps Save | As the bean | Delete the bean; delete all data |
+| Camera photos (brew, bag) | Taken only on a tap through the system camera; treated exactly like library photos (metadata stripped; brew photos stay on device, bag photos go to the AI provider only on a tap) | As before | As before |
+| Live barcode video | Processed on device by VisionKit; not recorded or sent | Not stored | n/a |
+
+Supersedes "No camera is used" above. Network endpoints are now the two AI providers, Apple Maps search and Open Food Facts.

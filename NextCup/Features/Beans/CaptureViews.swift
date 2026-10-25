@@ -1,0 +1,108 @@
+import SwiftUI
+import UIKit
+import VisionKit
+
+/// Whether this device can take a photo (the Simulator cannot).
+enum Camera {
+  static var isAvailable: Bool { UIImagePickerController.isSourceTypeAvailable(.camera) }
+}
+
+/// The system camera. Returns JPEG data, or nil when the user cancels.
+struct CameraPicker: UIViewControllerRepresentable {
+  let onFinish: (Data?) -> Void
+
+  func makeUIViewController(context: Context) -> UIImagePickerController {
+    let picker = UIImagePickerController()
+    picker.sourceType = .camera
+    picker.delegate = context.coordinator
+    return picker
+  }
+
+  func updateUIViewController(_ controller: UIImagePickerController, context: Context) {}
+  func makeCoordinator() -> Coordinator { Coordinator(onFinish: onFinish) }
+
+  final class Coordinator: NSObject, UIImagePickerControllerDelegate,
+    UINavigationControllerDelegate
+  {
+    let onFinish: (Data?) -> Void
+    init(onFinish: @escaping (Data?) -> Void) { self.onFinish = onFinish }
+
+    func imagePickerController(
+      _ picker: UIImagePickerController,
+      didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
+    ) {
+      onFinish((info[.originalImage] as? UIImage)?.jpegData(compressionQuality: 0.85))
+    }
+
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) { onFinish(nil) }
+  }
+}
+
+/// Whether live barcode scanning works here: needs a camera, a supported device and permission.
+enum BarcodeScanner {
+  @MainActor static var isAvailable: Bool {
+    DataScannerViewController.isSupported && DataScannerViewController.isAvailable
+  }
+}
+
+/// Full-screen live scanner for retail barcodes (EAN-8, EAN-13, UPC-E). Returns
+/// the first code it reads; nothing is looked up until it does.
+struct BarcodeScannerView: View {
+  let onCode: (String) -> Void
+  let onCancel: () -> Void
+
+  var body: some View {
+    ZStack(alignment: .bottom) {
+      ScannerRepresentable(onCode: onCode).ignoresSafeArea()
+      VStack(spacing: DS.Space.md) {
+        Text("Point at the barcode on the bag")
+          .font(.headline).foregroundStyle(.white)
+          .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.sm)
+          .background(.black.opacity(0.55), in: Capsule())
+        Button("Cancel", action: onCancel)
+          .font(.body.weight(.semibold)).foregroundStyle(.white)
+          .frame(minWidth: 120, minHeight: DS.Size.control)
+          .background(.black.opacity(0.55), in: Capsule())
+          .accessibilityIdentifier("beans.scanner.cancel")
+      }
+      .padding(.bottom, DS.Space.xxl)
+    }
+  }
+}
+
+private struct ScannerRepresentable: UIViewControllerRepresentable {
+  let onCode: (String) -> Void
+
+  func makeUIViewController(context: Context) -> DataScannerViewController {
+    let scanner = DataScannerViewController(
+      recognizedDataTypes: [.barcode(symbologies: [.ean8, .ean13, .upce])],
+      qualityLevel: .balanced, isHighlightingEnabled: true)
+    scanner.delegate = context.coordinator
+    try? scanner.startScanning()
+    return scanner
+  }
+
+  func updateUIViewController(_ controller: DataScannerViewController, context: Context) {}
+  func makeCoordinator() -> Coordinator { Coordinator(onCode: onCode) }
+
+  @MainActor final class Coordinator: NSObject, DataScannerViewControllerDelegate {
+    let onCode: (String) -> Void
+    private var done = false
+    init(onCode: @escaping (String) -> Void) { self.onCode = onCode }
+
+    func dataScanner(
+      _ scanner: DataScannerViewController, didAdd items: [RecognizedItem],
+      allItems: [RecognizedItem]
+    ) {
+      guard !done else { return }
+      for case .barcode(let code) in items {
+        guard let value = code.payloadStringValue else { continue }
+        done = true
+        scanner.stopScanning()
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        onCode(value)
+        return
+      }
+    }
+  }
+}
