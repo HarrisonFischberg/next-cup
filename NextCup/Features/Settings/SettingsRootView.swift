@@ -8,7 +8,6 @@ struct SettingsRootView: View {
     .rawValue
 
   @AppStorage(AppearanceMode.storageKey) private var appearance = AppearanceMode.system.rawValue
-  @AppStorage(AppStyle.storageKey) private var style = AppStyle.steelKraft.rawValue
 
   private var appVersion: String {
     let info = Bundle.main.infoDictionary
@@ -18,6 +17,19 @@ struct SettingsRootView: View {
   }
 
   var body: some View {
+    ScrollViewReader { proxy in
+      list
+        .onAppear {
+          // Changing a flavor rebuilds the app; come back to the section being edited.
+          let defaults = UserDefaults.standard
+          guard defaults.bool(forKey: FlavorPicker.returnKey) else { return }
+          defaults.removeObject(forKey: FlavorPicker.returnKey)
+          proxy.scrollTo("appearance", anchor: .top)
+        }
+    }
+  }
+
+  private var list: some View {
     List {
       Section {
         Picker("Weight", selection: $weightUnit) {
@@ -100,16 +112,14 @@ struct SettingsRootView: View {
         .frame(minHeight: DS.Size.control)
         .listRowBackground(DS.paper)
         .accessibilityIdentifier("settings.appearance")
-        Picker("Style", selection: $style) {
-          ForEach(AppStyle.allCases) { Text($0.title).tag($0.rawValue) }
-        }
-        .pickerStyle(.inline)
-        .listRowBackground(DS.paper)
-        .accessibilityIdentifier("settings.style")
+        FlavorPicker()
+          .id("appearance")
+          .listRowBackground(Color.clear)
+          .listRowInsets(EdgeInsets())
       } header: {
         Text("Appearance")
       } footer: {
-        Text("A style changes colors and headline fonts. Layout stays the same.")
+        Text("A flavor sets colors, type, corners and spacing. Pick one to try it.")
       }
       Section {
         NavigationLink {

@@ -11,6 +11,32 @@ struct Hairline: View {
   var body: some View { Rectangle().fill(DS.line).frame(height: DS.rule) }
 }
 
+/// A filled, bordered surface in the flavor's corner radius. Sticker flavors add a hard
+/// offset shadow in the accent (no blur), so the border and shadow carry state without color alone.
+private struct Panel: ViewModifier {
+  let fill: Color
+  var border = DS.line
+  var dash: [CGFloat] = []
+
+  func body(content: Content) -> some View {
+    let shape = RoundedRectangle(cornerRadius: DS.radius, style: .continuous)
+    content
+      .background(fill, in: shape)
+      .overlay(
+        shape.strokeBorder(border, style: StrokeStyle(lineWidth: DS.rule, dash: dash))
+      )
+      .background {
+        if DS.flavor.control == .sticker { shape.fill(DS.signal).offset(x: 3, y: 3) }
+      }
+  }
+}
+
+extension View {
+  func panel(_ fill: Color, border: Color = DS.line, dash: [CGFloat] = []) -> some View {
+    modifier(Panel(fill: fill, border: border, dash: dash))
+  }
+}
+
 // MARK: Buttons
 
 enum SteelKind { case primary, secondary }
@@ -22,10 +48,16 @@ struct SteelButtonStyle: ButtonStyle {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   func makeBody(configuration: Configuration) -> some View {
+    let shape = RoundedRectangle(cornerRadius: DS.controlRadius, style: .continuous)
     configuration.label
       .foregroundStyle(kind == .primary ? DS.onSignal : DS.onSteel)
-      .background(kind == .primary ? DS.signal : DS.steel, in: .rect(cornerRadius: DS.radius))
-      .overlay(RoundedRectangle(cornerRadius: DS.radius).strokeBorder(DS.line, lineWidth: DS.rule))
+      .background(kind == .primary ? DS.signal : DS.steel, in: shape)
+      .overlay(shape.strokeBorder(DS.line, lineWidth: DS.rule))
+      .background {
+        if DS.flavor.control == .sticker {
+          shape.fill(kind == .primary ? DS.line : DS.signal).offset(x: 3, y: 3)
+        }
+      }
       .offset(y: configuration.isPressed && !reduceMotion ? 2 : 0)
       .brightness(configuration.isPressed && reduceMotion ? -0.08 : 0)
       .opacity(enabled ? 1 : 0.4)
@@ -79,9 +111,7 @@ struct SpecCell: View {
 struct PaperBox<Content: View>: View {
   @ViewBuilder let content: Content
   var body: some View {
-    content
-      .background(DS.paper, ignoresSafeAreaEdges: [])
-      .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+    content.panel(DS.paper)
   }
 }
 
@@ -155,8 +185,7 @@ struct InstrumentPanel<Content: View>: View {
   var body: some View {
     content
       .padding(DS.Space.lg)
-      .background(DS.steel, ignoresSafeAreaEdges: [])
-      .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+      .panel(DS.steel)
   }
 }
 
@@ -209,8 +238,7 @@ struct StepperTile: View {
         stepButton("plus", label: plusLabel ?? "Increase \(title)", action: up)
       }
     }
-    .background(DS.paper, ignoresSafeAreaEdges: [])
-    .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+    .panel(DS.paper)
     .accessibilityElement(children: .contain)
   }
 
@@ -240,9 +268,7 @@ struct ReadoutTile: View {
       ).lineLimit(1)
     }
     .padding(DS.Space.md).frame(maxWidth: .infinity, alignment: .leading)
-    .overlay(
-      Rectangle().strokeBorder(DS.line, style: StrokeStyle(lineWidth: DS.rule, dash: [5, 3]))
-    )
+    .panel(.clear, dash: [5, 3])
     .accessibilityElement(children: .combine)
   }
 }
@@ -258,8 +284,7 @@ struct ChoiceButton: View {
         .lineLimit(1).minimumScaleFactor(0.6)
         .frame(maxWidth: .infinity, minHeight: DS.Size.control)
         .foregroundStyle(isSelected ? DS.onSignal : DS.ink)
-        .background(isSelected ? DS.signal : DS.paper, ignoresSafeAreaEdges: [])
-        .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+        .panel(isSelected ? DS.signal : DS.paper)
     }
     .accessibilityLabel(title)
     .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -335,9 +360,7 @@ struct KraftNote<Content: View>: View {
   var body: some View {
     content
       .padding(DS.Space.md).frame(maxWidth: .infinity, alignment: .leading)
-      .background(DS.kraft, ignoresSafeAreaEdges: [])
-      .overlay(
-        Rectangle().strokeBorder(DS.line, style: StrokeStyle(lineWidth: DS.rule, dash: [5, 3])))
+      .panel(DS.kraft, dash: [5, 3])
   }
 }
 
@@ -365,8 +388,7 @@ struct SteelToast: View {
     .foregroundStyle(DS.onSteel)
     .padding(.horizontal, DS.Space.lg)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(DS.steel, ignoresSafeAreaEdges: [])
-    .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+    .panel(DS.steel)
     // `.contain`, not `.combine`: Undo must stay its own control for VoiceOver.
     .accessibilityElement(children: .contain)
   }
@@ -402,8 +424,7 @@ struct StateBanner: View {
     }
     .padding(DS.Space.md)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(DS.paper, ignoresSafeAreaEdges: [])
-    .overlay(Rectangle().strokeBorder(kind == .error ? DS.error : DS.line, lineWidth: DS.rule))
+    .panel(DS.paper, border: kind == .error ? DS.error : DS.line)
     .accessibilityElement(children: .combine)
   }
 

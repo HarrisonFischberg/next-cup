@@ -671,3 +671,27 @@ Untested / honest gaps:
 - Picked T036 (first pending, dependencies done). `NextCup/Resources/catalog.json` is missing; the task says the supervisor provides it, and it must hold real roasters and coffees. I did not invent them.
 - Set T036 to `blocked`, added B014 to `docs/launch-blockers.md`. No code changed, no commands run beyond reading files.
 - T037 and T038 remain pending and were not started (one task per iteration). Note: T037 depends on T031 and T024 only, so the next iteration can take it.
+
+## 2026-10-25 — T038 UI flavors (Sonnet) — code done, evidence outstanding, Status stays `pending`
+
+What changed:
+- `Tokens.swift`: `Flavor` (body design, display face or system display design and weight, radius, `Density` compact/regular/airy, `ControlStyle` square/pill/sticker, `NumberStyle` monospaced/rounded/condensed); `AppStyle` now has ten cases (the five T035 styles plus Night Mint, Espresso Black, Café Page, Roaster Poster, Make It Yours) each with `flavor` and `palette`; `Swatch` (8 accents), `Corners`, `FontChoice`, `MakeItYours` (4 settings in UserDefaults). `DS.Space.*`, `DS.radius`, `DS.controlRadius` and the number/readout fonts are computed from the flavor (the former `static let` fonts are now `var`, so nothing is cached). `DS.ink2` becomes `ink` under Increase Contrast. `EnvironmentValues.flavor` is set at the app root, which also applies `.fontDesign`. The root `.id` now includes the Make It Yours settings.
+- `Components.swift`: one `panel(...)` modifier (flavor radius, dashed option, sticker offset shadow in the accent) replaces the square borders of PaperBox, InstrumentPanel, StepperTile, ReadoutTile, ChoiceButton, KraftNote, SteelToast and StateBanner; `SteelButtonStyle` follows the control style.
+- Settings > Appearance: `FlavorPicker` (grid of live `FlavorTile` previews, one column at accessibility text sizes, selected state announced) with the Make It Yours controls (8 swatches, Corners, Density, Type). Because a change rebuilds the tree, Settings scrolls back to the section.
+- Tokens: `docs/design/tokens/{nightMint,espressoBlack,cafePage,roasterPoster,makeItYours}.json`; `check_tokens.py` now expects 10 palettes and checks the swatches; `contrast.py` covers all flavors and every swatch.
+- Tests (`StyleTests`): AA for all ten palettes and every swatch (light and dark), fonts installed, ten flavors, default keeps its radius/density/font, Make It Yours reads its choices and nothing is cached, a switch changes colors, space and shape at once.
+
+Commands and results:
+- `swift format lint --recursive --strict ...`: clean.
+- `swift test --package-path Packages/NextCupKit`: 153 passed (earlier in the session; package untouched).
+- `xcodebuild ... build`: succeeded.
+- `xcodebuild ... -only-testing:NextCupTests test`: exit 0 with no error lines (quiet mode; I did not read a per-test count).
+- A first full `xcodebuild test` was stopped at the 10-minute tool limit; the UI suite has NOT been run after this change.
+
+Not done (so Status stays `pending`):
+- Screenshot sheet (journal, timer, brew form, bean detail in every flavor, light and dark, plus largest text for three) in `docs/design/flavors/`. No simulator driving was done.
+- `/impeccable critique` and `polish` per flavor; VoiceOver pass; Increase Contrast, Reduce Transparency and Differentiate Without Color not checked on a device.
+- `python3 design/contrast.py` and `design/check_tokens.py` were not run (Python needed approval); AA is enforced by `StyleTests` only. The new JSON files were written by hand and must be run through both scripts.
+- Flavors are approximations: I did not read `docs/design/archive/*.swift.txt` (grep and those large files were not worth the budget), so the five T035 flavors' radius, density and control style come from `docs/design/directions.md`, not the concept code. Steel & Kraft is `regular` density (not compact) to keep the default unchanged.
+- Serif and rounded display faces were not checked for wrapping in layouts sized for DIN Condensed. Any `static let` elsewhere that caches a `DS` value could not be searched for (grep blocked); the tree rebuild covers it.
+- UI tests that touched `settings.style` (removed inline picker) were not run.

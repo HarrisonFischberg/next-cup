@@ -7,6 +7,10 @@ struct NextCupApp: App {
   @State private var startup = AppBootstrap.start()
   @AppStorage(AppearanceMode.storageKey) private var appearance = AppearanceMode.system.rawValue
   @AppStorage(AppStyle.storageKey) private var style = AppStyle.steelKraft.rawValue
+  @AppStorage(MakeItYours.accentKey) private var accent = ""
+  @AppStorage(MakeItYours.cornersKey) private var corners = ""
+  @AppStorage(MakeItYours.densityKey) private var density = ""
+  @AppStorage(MakeItYours.fontKey) private var font = ""
 
   init() {
     // UI tests start from a known tab; relaunches in the same test omit this.
@@ -36,8 +40,10 @@ struct NextCupApp: App {
         }
       }
       .preferredColorScheme((AppearanceMode(rawValue: appearance) ?? .system).colorScheme)
-      // DS tokens are read, not observed, so a new style rebuilds the tree.
-      .id(style)
+      .environment(\.flavor, AppStyle.current.flavor)
+      .fontDesign(AppStyle.current.flavor.bodyDesign)
+      // DS tokens are read, not observed, so a new flavor or Make It Yours choice rebuilds the tree.
+      .id([style, accent, corners, density, font].joined(separator: "|"))
     }
   }
 }

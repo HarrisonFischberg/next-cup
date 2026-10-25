@@ -9,13 +9,23 @@ enum DS {
 
   /// The palette of the style chosen in Settings; read each time so a change shows at once.
   static var palette: Palette { AppStyle.current.palette }
+  /// Shape, type and density of that style. Nothing is cached, so a switch shows at once.
+  static var flavor: Flavor { AppStyle.current.flavor }
 
   static var bg: Color { Color(palette.bg) }  // screen: kraft / gunmetal
   static var paper: Color { Color(palette.paper) }  // sheets, tables, tiles
   static var steel: Color { Color(palette.steel) }  // instrument panels, table headers
   static var onSteel: Color { Color(palette.onSteel) }
   static var ink: Color { Color(palette.ink) }  // primary text
-  static var ink2: Color { Color(palette.ink2) }  // secondary text
+  /// Secondary text; Increase Contrast swaps it for primary text.
+  static var ink2: Color {
+    let p = palette
+    return Color(
+      UIColor {
+        let pair = $0.accessibilityContrast == .high ? p.ink : p.ink2
+        return $0.userInterfaceStyle == .dark ? UIColor(hex: pair.dark) : UIColor(hex: pair.light)
+      })
+  }
   static var line: Color { Color(palette.line) }  // rules and control outlines (3:1 UI)
   static var signal: Color { Color(palette.signal) }  // the one accent
   static var onSignal: Color { Color(palette.onSignal) }
@@ -25,15 +35,18 @@ enum DS {
   static var error: Color { Color(palette.error) }
   static var ok: Color { Color(palette.ok) }
 
-  // MARK: Space (4-pt base)
+  // MARK: Space (4-pt base, scaled by the flavor's density)
 
   enum Space {
-    static let xs: CGFloat = 4
-    static let sm: CGFloat = 8
-    static let md: CGFloat = 12
-    static let lg: CGFloat = 16
-    static let xl: CGFloat = 24
-    static let xxl: CGFloat = 32
+    private static func scaled(_ value: CGFloat) -> CGFloat {
+      (value * DS.flavor.density.factor).rounded()
+    }
+    static var xs: CGFloat { scaled(4) }
+    static var sm: CGFloat { scaled(8) }
+    static var md: CGFloat { scaled(12) }
+    static var lg: CGFloat { scaled(16) }
+    static var xl: CGFloat { scaled(24) }
+    static var xxl: CGFloat { scaled(32) }
   }
 
   /// Minimum touch target and the control heights used on the brew station.
@@ -46,8 +59,10 @@ enum DS {
 
   // MARK: Shape
 
-  /// One corner radius. Panels, tiles and tables are square.
-  static let radius: CGFloat = 3
+  /// The flavor's corner radius for panels, tiles and tables.
+  static var radius: CGFloat { flavor.radius }
+  /// Buttons: the pill flavors round them fully.
+  static var controlRadius: CGFloat { flavor.control == .pill ? 999 : flavor.radius }
   static let hairline: CGFloat = 1
   static let rule: CGFloat = 1.5
 
@@ -57,12 +72,12 @@ enum DS {
     static func din(_ size: CGFloat, relativeTo style: SwiftUI.Font.TextStyle = .title)
       -> SwiftUI.Font
     {
-      .custom(AppStyle.current.displayFont, size: size, relativeTo: style)
+      DS.flavor.display(size, relativeTo: style)
     }
     static func mono(_ style: SwiftUI.Font.TextStyle, _ weight: SwiftUI.Font.Weight = .regular)
       -> SwiftUI.Font
     {
-      .system(style, design: .monospaced, weight: weight)
+      DS.flavor.number(style, weight)
     }
     static func typewriter(_ size: CGFloat, relativeTo style: SwiftUI.Font.TextStyle = .body)
       -> SwiftUI.Font
@@ -76,13 +91,13 @@ enum DS {
     /// Column headers, tile labels. Always set uppercase.
     static var label: SwiftUI.Font { din(16, relativeTo: .footnote) }
     /// Measured values in tables and lists.
-    static let data = mono(.callout, .bold)
+    static var data: SwiftUI.Font { mono(.callout, .bold) }
     /// Measured values in tiles.
-    static let dataLarge = mono(.title, .bold)
+    static var dataLarge: SwiftUI.Font { mono(.title, .bold) }
     /// The timer. Capped at xxxLarge by the screen; stays readable at arm's length.
-    static let readout = SwiftUI.Font.system(size: 104, weight: .bold, design: .monospaced)
+    static var readout: SwiftUI.Font { DS.flavor.readout }
     /// Notes on kraft.
-    static let note = typewriter(15)
+    static var note: SwiftUI.Font { typewriter(15) }
   }
 
   /// Cap for large display text so one control never exceeds the screen.
@@ -123,8 +138,8 @@ struct P {
 
 /// Every color role the design system uses, for one style.
 struct Palette {
-  let bg, paper, steel, onSteel, ink, ink2, line, signal, onSignal, signalOnSteel: P
-  let kraft, onKraft, error, ok: P
+  var bg, paper, steel, onSteel, ink, ink2, line, signal, onSignal, signalOnSteel: P
+  var kraft, onKraft, error, ok: P
 }
 
 /// The owner's choice of Light, Dark or the system setting.
@@ -144,10 +159,11 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
   }
 }
 
-/// Five looks that change colors and display fonts only; layout is shared.
-/// Palettes come from docs/design/archive/*.swift.txt mapped onto the DS roles.
+/// Ten flavors. Each is a palette plus a `Flavor` (type, corners, density, control and
+/// number style). Palettes are mirrored in docs/design/tokens/<name>.json.
 enum AppStyle: String, CaseIterable, Identifiable {
   case steelKraft, charcoalCrema, quietCeramic, terracotta, lateNightCafe
+  case nightMint, espressoBlack, cafePage, roasterPoster, makeItYours
 
   static let storageKey = "appStyle"
 
@@ -165,21 +181,78 @@ enum AppStyle: String, CaseIterable, Identifiable {
     case .quietCeramic: "Quiet Ceramic"
     case .terracotta: "Terracotta"
     case .lateNightCafe: "Late-Night Café"
+    case .nightMint: "Night Mint"
+    case .espressoBlack: "Espresso Black"
+    case .cafePage: "Café Page"
+    case .roasterPoster: "Roaster Poster"
+    case .makeItYours: "Make It Yours"
     }
   }
 
-  /// PostScript name of the bold display face.
-  var displayFont: String {
+  /// One line for the picker tile's accessibility hint.
+  var mood: String {
     switch self {
-    case .steelKraft: "DINCondensed-Bold"
-    case .charcoalCrema: "Didot-Bold"
-    case .quietCeramic: "HiraMinProN-W6"
-    case .terracotta: "Cochin-Bold"
-    case .lateNightCafe: "BodoniSvtyTwoOSITCTT-Bold"
+    case .steelKraft: "Spec sheet, square, one orange"
+    case .charcoalCrema: "Ledger, Didot numerals"
+    case .quietCeramic: "Calm, airy, celadon"
+    case .terracotta: "Warm clay, chunky chips"
+    case .lateNightCafe: "Amber menu card"
+    case .nightMint: "Calm mint, rounded"
+    case .espressoBlack: "True black, high contrast"
+    case .cafePage: "Serif headings on paper"
+    case .roasterPoster: "Loud stickers with offset shadow"
+    case .makeItYours: "Your accent, corners and type"
+    }
+  }
+
+  /// Everything but color that sets a flavor apart.
+  var flavor: Flavor {
+    switch self {
+    case .steelKraft:
+      Flavor(
+        displayFont: "DINCondensed-Bold", radius: 3, density: .regular, control: .square,
+        numbers: .monospaced)
+    case .charcoalCrema:
+      Flavor(
+        displayFont: "Didot-Bold", radius: 2, density: .regular, control: .square,
+        numbers: .monospaced)
+    case .quietCeramic:
+      Flavor(
+        displayFont: "HiraMinProN-W6", radius: 20, density: .airy, control: .pill,
+        numbers: .rounded)
+    case .terracotta:
+      Flavor(
+        bodyDesign: .rounded, displayFont: "Cochin-Bold", radius: 18, density: .regular,
+        control: .pill, numbers: .rounded)
+    case .lateNightCafe:
+      Flavor(
+        displayFont: "BodoniSvtyTwoOSITCTT-Bold", radius: 4, density: .airy, control: .square,
+        numbers: .monospaced)
+    case .nightMint:
+      Flavor(
+        bodyDesign: .rounded, displayDesign: .rounded, displayWeight: .semibold, radius: 20,
+        density: .airy, control: .pill, numbers: .rounded)
+    case .espressoBlack:
+      Flavor(
+        displayDesign: .default, displayWeight: .semibold, radius: 14, density: .regular,
+        control: .pill, numbers: .monospaced)
+    case .cafePage:
+      Flavor(
+        displayDesign: .serif, displayWeight: .semibold, radius: 18, density: .airy,
+        control: .square, numbers: .monospaced)
+    case .roasterPoster:
+      Flavor(
+        displayDesign: .rounded, displayWeight: .heavy, radius: 12, density: .regular,
+        control: .sticker, numbers: .condensed)
+    case .makeItYours: MakeItYours.current.flavor
     }
   }
 
   var palette: Palette {
+    self == .makeItYours ? MakeItYours.current.accent.applied(to: basePalette) : basePalette
+  }
+
+  private var basePalette: Palette {
     switch self {
     case .steelKraft:
       Palette(
@@ -221,6 +294,221 @@ enum AppStyle: String, CaseIterable, Identifiable {
         onSignal: P(0xF8EEDB, 0x17100C), signalOnSteel: P(0xF0AE4A, 0xF0AE4A),
         kraft: P(0xC9A15B, 0xC9A15B), onKraft: P(0x17100C, 0x17100C),
         error: P(0x9B2A14, 0xFF9F85), ok: P(0x2A6A2A, 0x7FD18A))
+    case .nightMint:
+      Palette(
+        bg: P(0xF4F8F7, 0x0E1513), paper: P(0xFFFFFF, 0x18211F), steel: P(0x13201D, 0x1F2B28),
+        onSteel: P(0xE3EEEB, 0xE3EEEB), ink: P(0x13201D, 0xE3EEEB), ink2: P(0x4F615C, 0x9FB3AE),
+        line: P(0x4F615C, 0x9FB3AE), signal: P(0x0F766E, 0x82D5C8),
+        onSignal: P(0xFFFFFF, 0x0E1513), signalOnSteel: P(0x82D5C8, 0x82D5C8),
+        kraft: P(0xCFE5DF, 0x2A3B37), onKraft: P(0x13201D, 0xE3EEEB),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
+    case .espressoBlack:
+      Palette(
+        bg: P(0xF2F2F7, 0x000000), paper: P(0xFFFFFF, 0x0D0D0D), steel: P(0x1C1C1E, 0x1C1C1E),
+        onSteel: P(0xF2F2F7, 0xF2F2F7), ink: P(0x000000, 0xFFFFFF), ink2: P(0x5C5C63, 0x9A9AA1),
+        line: P(0x5C5C63, 0x9A9AA1), signal: P(0x2F6B3F, 0x7EE2A0),
+        onSignal: P(0xFFFFFF, 0x000000), signalOnSteel: P(0x7EE2A0, 0x7EE2A0),
+        kraft: P(0xE4E4EA, 0x1F1F22), onKraft: P(0x000000, 0xFFFFFF),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
+    case .cafePage:
+      Palette(
+        bg: P(0xFBF8F3, 0x1A1816), paper: P(0xF3EEE6, 0x24211E), steel: P(0x2E2A33, 0x2F2B33),
+        onSteel: P(0xF3EEE6, 0xEDE7DD), ink: P(0x22201C, 0xEDE7DD), ink2: P(0x625C52, 0xABA396),
+        line: P(0x625C52, 0xABA396), signal: P(0x7A4A8C, 0xD6B3E3),
+        onSignal: P(0xFFFFFF, 0x1A1816), signalOnSteel: P(0xD6B3E3, 0xD6B3E3),
+        kraft: P(0xE6DAEC, 0x3A3140), onKraft: P(0x22201C, 0xEDE7DD),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
+    case .roasterPoster:
+      Palette(
+        bg: P(0xFFFFFF, 0x121413), paper: P(0xF1F7F2, 0x1C201D), steel: P(0x0B0B0B, 0x1C201D),
+        onSteel: P(0xF2F5F2, 0xF2F5F2), ink: P(0x0B0B0B, 0xF2F5F2), ink2: P(0x4A4F4B, 0xA7AFA9),
+        line: P(0x0B0B0B, 0xF2F5F2), signal: P(0x1E7A3E, 0x8FF0A4),
+        onSignal: P(0xFFFFFF, 0x0B0B0B), signalOnSteel: P(0x8FF0A4, 0x8FF0A4),
+        kraft: P(0xD9F2DF, 0x233326), onKraft: P(0x0B0B0B, 0xF2F5F2),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
+    case .makeItYours:
+      Palette(
+        bg: P(0xF7F6F4, 0x111111), paper: P(0xFFFFFF, 0x1C1C1E), steel: P(0x1A1A1A, 0x2C2C2E),
+        onSteel: P(0xF2F2F2, 0xF2F2F2), ink: P(0x1A1A1A, 0xF2F2F2), ink2: P(0x5E5E5E, 0xA0A0A5),
+        line: P(0x5E5E5E, 0xA0A0A5), signal: P(0xB4531F, 0xF0915A),
+        onSignal: P(0xFFFFFF, 0x111111), signalOnSteel: P(0xF0915A, 0xF0915A),
+        kraft: P(0xECE7DF, 0x2A2724), onKraft: P(0x1A1A1A, 0xF2F2F2),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
     }
+  }
+}
+
+// MARK: Flavor
+
+enum Density: String, CaseIterable, Identifiable {
+  case compact, regular, airy
+  var id: String { rawValue }
+  var title: String { rawValue.capitalized }
+  var factor: CGFloat {
+    switch self {
+    case .compact: 0.8
+    case .regular: 1
+    case .airy: 1.2
+    }
+  }
+}
+
+/// How buttons and panels are drawn: hard-cornered, fully rounded, or a bordered
+/// sticker with a hard offset shadow in the accent.
+enum ControlStyle { case square, pill, sticker }
+
+/// How measured values are set.
+enum NumberStyle { case monospaced, rounded, condensed }
+
+struct Flavor {
+  var bodyDesign: SwiftUI.Font.Design?
+  /// PostScript name of the display face; nil sets display text in the system font.
+  var displayFont: String?
+  var displayDesign: SwiftUI.Font.Design = .default
+  var displayWeight: SwiftUI.Font.Weight = .bold
+  var radius: CGFloat
+  var density: Density
+  var control: ControlStyle
+  var numbers: NumberStyle
+
+  /// Display text. A named face scales from `size`; the system face uses the text style.
+  func display(_ size: CGFloat, relativeTo style: SwiftUI.Font.TextStyle) -> SwiftUI.Font {
+    if let displayFont { return .custom(displayFont, size: size, relativeTo: style) }
+    return .system(style, design: displayDesign, weight: displayWeight)
+  }
+
+  func number(_ style: SwiftUI.Font.TextStyle, _ weight: SwiftUI.Font.Weight) -> SwiftUI.Font {
+    switch numbers {
+    case .monospaced: .system(style, design: .monospaced, weight: weight)
+    case .rounded: .system(style, design: .rounded, weight: weight).monospacedDigit()
+    case .condensed:
+      .custom(
+        "DINCondensed-Bold", size: UIFont.preferredFont(forTextStyle: style.uiKit).pointSize * 1.15,
+        relativeTo: style)
+    }
+  }
+
+  var readout: SwiftUI.Font {
+    switch numbers {
+    case .monospaced: .system(size: 104, weight: .bold, design: .monospaced)
+    case .rounded: .system(size: 104, weight: .bold, design: .rounded).monospacedDigit()
+    case .condensed: .custom("DINCondensed-Bold", size: 120)
+    }
+  }
+}
+
+extension SwiftUI.Font.TextStyle {
+  fileprivate var uiKit: UIFont.TextStyle {
+    switch self {
+    case .largeTitle: .largeTitle
+    case .title: .title1
+    case .title2: .title2
+    case .title3: .title3
+    case .headline: .headline
+    case .subheadline: .subheadline
+    case .callout: .callout
+    case .footnote: .footnote
+    case .caption: .caption1
+    case .caption2: .caption2
+    default: .body
+    }
+  }
+}
+
+private struct FlavorKey: EnvironmentKey {
+  static var defaultValue: Flavor { AppStyle.current.flavor }
+}
+
+extension EnvironmentValues {
+  /// The chosen flavor, set once at the app root.
+  var flavor: Flavor {
+    get { self[FlavorKey.self] }
+    set { self[FlavorKey.self] = newValue }
+  }
+}
+
+// MARK: Make It Yours
+
+/// An accent that passes AA on both grounds (docs/design/tokens/makeItYours.json).
+struct Swatch: Identifiable {
+  let id: String
+  let light: UInt32
+  let dark: UInt32
+
+  static let all = [
+    Swatch(id: "cherry", light: 0xB3202F, dark: 0xFF8A93),
+    Swatch(id: "honey", light: 0x8A5A00, dark: 0xF2B84B),
+    Swatch(id: "roast", light: 0xB4531F, dark: 0xF0915A),
+    Swatch(id: "sage", light: 0x3F6B4A, dark: 0x9CCBA6),
+    Swatch(id: "slate", light: 0x475A73, dark: 0xA9BCD6),
+    Swatch(id: "blueberry", light: 0x4B4FA8, dark: 0xA8ACF0),
+    Swatch(id: "crema", light: 0x7A5C3A, dark: 0xE0C097),
+    Swatch(id: "matcha", light: 0x4C6B1F, dark: 0xB5D86B),
+  ]
+
+  var title: String { id.capitalized }
+
+  /// The accent replaces `signal`; `signalOnSteel` takes the dark value on either steel.
+  func applied(to p: Palette) -> Palette {
+    var out = p
+    out.signal = P(light, dark)
+    out.signalOnSteel = P(dark, dark)
+    return out
+  }
+}
+
+enum Corners: String, CaseIterable, Identifiable {
+  case square, soft, round
+  var id: String { rawValue }
+  var title: String { rawValue.capitalized }
+  var radius: CGFloat {
+    switch self {
+    case .square: 2
+    case .soft: 12
+    case .round: 24
+    }
+  }
+}
+
+enum FontChoice: String, CaseIterable, Identifiable {
+  case standard, rounded, serif, mono
+  var id: String { rawValue }
+  var title: String { rawValue.capitalized }
+  var design: SwiftUI.Font.Design {
+    switch self {
+    case .standard: .default
+    case .rounded: .rounded
+    case .serif: .serif
+    case .mono: .monospaced
+    }
+  }
+}
+
+/// The four settings of the Make It Yours flavor, kept in UserDefaults.
+struct MakeItYours {
+  static let accentKey = "mine.accent"
+  static let cornersKey = "mine.corners"
+  static let densityKey = "mine.density"
+  static let fontKey = "mine.font"
+
+  var accent: Swatch
+  var corners: Corners
+  var density: Density
+  var font: FontChoice
+
+  var flavor: Flavor {
+    Flavor(
+      bodyDesign: font == .standard ? nil : font.design, displayDesign: font.design,
+      displayWeight: .semibold, radius: corners.radius, density: density,
+      control: corners == .round ? .pill : .square, numbers: .monospaced)
+  }
+
+  static var current: MakeItYours {
+    let d = UserDefaults.standard
+    return MakeItYours(
+      accent: Swatch.all.first { $0.id == d.string(forKey: accentKey) } ?? Swatch.all[2],
+      corners: d.string(forKey: cornersKey).flatMap(Corners.init) ?? .soft,
+      density: d.string(forKey: densityKey).flatMap(Density.init) ?? .regular,
+      font: d.string(forKey: fontKey).flatMap(FontChoice.init) ?? .standard)
   }
 }
