@@ -115,6 +115,7 @@ Type checks, per the platform profile.
 | T028 | Flavor explorer (taxonomy browser linking flavors, origins, processes) | T016 | Every bucket reachable; VoiceOver navigable | UI tests | done |
 | T029 | COULD set: TDS/extraction UI, water profiles, App Intents | T019 | Each behind its own acceptance test; may be dropped without blocking Gate A if the owner agrees | app tests | done |
 | T030 | Safeguards and UX baseline pass (Phases 5, 5B): privacy policy draft, data inventory verified against code, asset licenses, accessibility evidence, `docs/ux-baseline.md` | T001–T028 | All 20 rows in `docs/compliance-checklist.md` have status and evidence; no unexplained UX baseline gaps | per row | done |
+| T031 | Bag photo -> real roaster: after bag recognition, offer to match the roaster to a real business with Apple MapKit search (name, city, website from the map result), user picks, fields fill the bean's roaster | T024, T027 | A recognized roaster name searches MapKit; the user picks a result or skips; picked result fills roaster city and website and links the bean; nothing saves without confirmation; no network call other than MapKit; works with the stub in tests; empty and error states with retry | app tests | pending |
 
 ## Safeguard coverage
 

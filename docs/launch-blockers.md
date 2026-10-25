@@ -62,3 +62,18 @@ Needs authoritative research or qualified review; not treated as universal:
 - Health data: only if Apple Health caffeine export is adopted (candidate
   from discovery); would need its own review.
 - Creator recipe import: copyright and each platform's terms (B004).
+
+## Owner answers, 2026-10-25
+
+| Item | Answer | Effect |
+| --- | --- | --- |
+| Legal entity / trading name | Rare Creatures LLC | Used in the policy and the checklist; no other entity details assumed |
+| Public contact and privacy contact | hello@rarecreatures.app | Used in the policy |
+| Website / support host | rarecreatures.app (existing studio site) | Policy and support page not published; URL not final |
+| Business address, state of formation | Not given | Still UNKNOWN; needed if Apple or the EU asks for a trader address |
+| Minimum age | "any age" | Not directed at children; no personal data collected, so no age gate. App Store age rating to be set by the owner (expected 4+); no COPPA collection to disclose |
+| Privacy policy | Reuse and adapt the owner's existing policies for Next Cup | Written in `docs/legal/PRIVACY.md` in the style of the Keepsake policy; still unreviewed by a lawyer |
+| Hands-on VoiceOver, real AI call, real location prompt | "I don't think we need any of this" | Recorded as NOT TESTED, accepted by the owner; not claimed anywhere |
+| Photo zoom, shake-to-undo | Not needed; an undo button is enough | Closed as decided (Undo toasts exist) |
+| Localization, keyboard shortcuts | Later | Deferred, recorded |
+| Bean photo | Must match a real bean company and use that company's information | New task T031 |
