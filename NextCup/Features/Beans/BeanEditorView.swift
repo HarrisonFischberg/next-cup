@@ -374,13 +374,15 @@ struct BeanEditorView: View {
   private func startBarcode() {
     scanMessage = nil
     offerPhotoRoute = false
-    guard BarcodeScanner.isAvailable else {
-      scanMessage =
-        "Barcode scanning needs the camera on an iPhone that supports it, with camera access allowed. Try a photo of the bag instead."
-      offerPhotoRoute = true
-      return
+    Task {
+      guard await BarcodeScanner.requestIfNeeded() else {
+        scanMessage =
+          "Barcode scanning needs the camera on an iPhone that supports it, with camera access allowed. Try a photo of the bag instead."
+        offerPhotoRoute = true
+        return
+      }
+      scannerShown = true
     }
-    scannerShown = true
   }
 
   /// Looks a scanned code up once. A match fills name and roaster for review and offers
