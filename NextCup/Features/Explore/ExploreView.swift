@@ -49,6 +49,16 @@ struct ExploreView: View {
     .navigationTitle("Explore")
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {
+      if let catalog = RoasterCatalog.shared {
+        ToolbarItem(placement: .topBarLeading) {
+          NavigationLink {
+            RoasterCatalogView(catalog: catalog)
+          } label: {
+            Label("Roaster catalog", systemImage: "storefront")
+          }
+          .accessibilityIdentifier("explore.catalog")
+        }
+      }
       if let taxonomy = ExploreModel.taxonomy {
         ToolbarItem(placement: .topBarTrailing) {
           NavigationLink {
