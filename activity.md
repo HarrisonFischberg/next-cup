@@ -665,3 +665,9 @@ Untested / honest gaps:
 - No screenshots (light, dark, largest text, journal and timer in each style) and no VoiceOver pass; the Status stays `pending` for that reason.
 - Not checked: wrapping of the serif display faces (Didot, Hiragino Mincho, Cochin, Bodoni) in layouts sized for DIN Condensed; any `static let` elsewhere that caches a `DS` color would not update live (could not grep).
 - No test that the style persists across a relaunch beyond `UserDefaults` round-trip.
+
+## 2026-10-25 — T036 blocked
+
+- Picked T036 (first pending, dependencies done). `NextCup/Resources/catalog.json` is missing; the task says the supervisor provides it, and it must hold real roasters and coffees. I did not invent them.
+- Set T036 to `blocked`, added B014 to `docs/launch-blockers.md`. No code changed, no commands run beyond reading files.
+- T037 and T038 remain pending and were not started (one task per iteration). Note: T037 depends on T031 and T024 only, so the next iteration can take it.
