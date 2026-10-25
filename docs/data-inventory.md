@@ -84,3 +84,13 @@ Refreshed against the code on `build/phase-5`. Replaces the "nothing built yet" 
 | Saved roaster name, city, website, coordinates | On device (`Roaster`), only for roasters the user chose to save | Until deleted | Delete the roaster; delete all data |
 | Photos and AI attachments stored outside the database | SwiftData external-data folder next to the store | While the owning row exists | Delete all data empties the folder |
 | Export compliance | `ITSAppUsesNonExemptEncryption = NO`: only Apple's standard HTTPS to the two AI providers | n/a | n/a |
+
+## Corrections after the second Opus pass (2026-10-25)
+
+These supersede older rows above where they disagree:
+- No camera is used; photos come from the system photo picker only. Brew photos are never sent to AI; bag, coffee and journal-page photos are, on a tap.
+- AI requests: the photo and request text are removed when a request ends; the answer to a bag or journal-page photo is removed once the screen has used it; diagnosis and insights answers become suggestions stored with the brew.
+- Drafts use the default file protection (until first unlock) on purpose, so a draft saved as the phone locks is not lost; backups use complete file protection.
+- The privacy manifest declares Photos or Videos and Other User Content as collected (App Functionality, not linked), not "no data".
+- Roaster match sends Apple the roaster name plus "coffee roaster" and nothing else.
+- Network calls exist (AI providers, Apple Maps search); older text saying none were made is out of date.
