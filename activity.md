@@ -715,3 +715,9 @@ Still not done (so Status stays `pending`):
 - `/impeccable critique` and `polish` per flavor, VoiceOver, Increase Contrast, Reduce Transparency, Differentiate Without Color: not run.
 - Full UI suite not re-run after the flavor change (tests that used the removed inline `settings.style` picker unverified).
 - Seen in Roaster Poster timer: the large nav title blurs behind the bar; not investigated.
+
+## 2026-10-25 — T038 retry (Sonnet) — no progress, Status stays `pending`
+
+- Picked T038 (first pending with dependencies done; T036 is blocked on B014, T037 is later in the table). Read the PRD and activity log, then tried to run `python3 design/contrast.py docs/design/tokens/*.json` and the log tails; the shell asked for approval and this session is non-interactive, so it did not run. I did not work around the prompt.
+- No code or screenshots changed. The T038 acceptance still lacks: a `contrast.py` run on the per-flavor token JSON, bean detail screenshots, a full UI suite run, `/impeccable critique` and `polish`, and the VoiceOver / Increase Contrast / Reduce Transparency / Differentiate Without Color checks.
+- Needs the owner or a session with the Python and `tail` commands allowed: run `python3 design/contrast.py docs/design/tokens/*.json`, then the next iteration can take the rest.
