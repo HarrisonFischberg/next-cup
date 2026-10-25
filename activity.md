@@ -613,3 +613,24 @@ Untested / honest gaps:
 - Screenshots: the UI test wrote `T033-ask-light.png`, `T033-ask-dark.png`, `T033-ask-largest-text.png` to /tmp/next-cup-screenshots/. They could not be copied into `ralph/screenshots/` or viewed in this session (no permission outside the repo), so they are NOT in the repo and unreviewed.
 
 Untested: the Explore insights button has no UI test (needs a bean with brews); a real send to a provider (no key or network by rule); the in-sheet result and error states are covered by model tests only, with no screenshots; no VoiceOver pass.
+
+## 2026-10-24 — T034 Data hygiene
+
+What changed:
+- `DataEraser`: also ends a running Live Activity (`endActivity`), empties Library/Caches and tmp (`scratchDirectories`) and SwiftData's external-data folder (`externalData`, derived from the store URL by `externalDataDirectory(of:)`).
+- Export: files are written when the user taps Export (JSON or CSV) and shown in a share sheet (`ActivityView`); the `NextCupExport` folder is removed when the sheet closes. `ShareLink` and the write-on-appear are gone.
+- Backups and drafts are written with `.completeFileProtection` (was until-first-user-authentication). A draft autosave after the phone locks now fails; earlier autosaves are already on disk.
+- `Config/NextCup-Info.plist`: `NSLocationDefaultAccuracyReduced = true`, `ITSAppUsesNonExemptEncryption = false`.
+- `docs/data-inventory.md`: stale "nothing built" wording replaced; new "Current flows" table (AI request log, tmp export, backups, drafts, timer snapshot, Live Activity content, typed city to Apple, saved roaster coordinates, external data, export compliance).
+
+Commands and results:
+- `swift format lint --recursive --strict ...`: clean.
+- `swift test --package-path Packages/NextCupKit`: 153 passed.
+- `xcodebuild ... test`: the unit tests (NextCupTests) ran 245 passed, including the extended delete-all test (AIRequest count 0, activity ended, scratch and external folders empty, preferences cleared) and `releaseSettingsAreInTheInfoPlist`. The UI test phase did not finish and the run was stopped at the 10-minute limit (the known simulator hang); no UI result seen.
+
+Untested / honest gaps:
+- No UI result, no screenshots, no VoiceOver pass for the new Export buttons and share sheet; the `data.export.*` identifiers are now buttons, and any UI test that expected a ShareLink was not seen to run.
+- File protection cannot be observed on the simulator; recorded as a code check only.
+- The external-data folder name `.<store>_SUPPORT/_EXTERNAL_DATA` is assumed from SwiftData's layout and was tested only with a stand-in folder.
+- The cleared-disclosure assertion uses a stand-in key; it proves the whole preferences domain is wiped, not the real key names.
+- Delete-all ending a real Live Activity was tested with an injected closure only.
