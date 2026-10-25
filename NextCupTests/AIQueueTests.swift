@@ -57,6 +57,16 @@ private actor StubTransport: Transport {
     #expect(await stub.count == 1)
   }
 
+  @Test func discardingTheResultLeavesNoAnswerOnTheRow() async throws {
+    let (queue, _, _) = try make([ok(valid)])
+    let request = try enqueue(queue)
+    await queue.waitForIdle()
+    #expect(request.resultJSON != nil)
+    request.discardResult()
+    #expect(request.resultJSON == nil)
+    #expect(request.attachment == nil && request.payloadJSON.isEmpty)
+  }
+
   @Test func offlineStaysQueuedThenSendsWhenBack() async throws {
     let (queue, stub, _) = try make([ok(valid)])
     queue.setOnline(false)

@@ -181,3 +181,12 @@ final class AIQueue {
     try? context.save()
   }
 }
+
+extension AIRequest {
+  /// Drops the answer once the screen has used it. Photo answers (a bag label, a
+  /// transcribed journal page) have no brew to hang on and no purpose afterwards.
+  func discardResult() {
+    resultJSON = nil
+    try? modelContext?.save()
+  }
+}
