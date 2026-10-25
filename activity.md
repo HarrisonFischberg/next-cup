@@ -574,3 +574,13 @@ The loop's iteration was blocked because `grep`, `git ls-files` and compound she
 
 - `testBrewFormDraftSurvivesRelaunch` and the methods editor now dismiss the keyboard with Return instead of the keyboard's Done key (not always hittable); `testBeansAddCorrectFilterAndDeleteWithUndo` waits for the label with a predicate instead of reading it at once.
 - All three pass when run together (alone, 308 s). A full run right after had 12 failures, mostly waits timing out; a second simulator (iPhone 17) was booted and the three-test rerun took about 100 s per test instead of about 30 s, so the machine was loaded. The full suite has not been re-confirmed green since; rerun it on a quiet machine.
+
+## T031 (in progress, not committed)
+
+Implemented: SearchArea.named, RoasterMatchModel/RoasterMatchView, BeanFields roasterCity/roasterWebsite applied in BeanService.save, "Find this roaster on the map" row in the bean editor, RoasterMatchTests.
+
+Results: swift format lint clean. Full `xcodebuild test`: one UI failure, testBeansAddCorrectFilterAndDeleteWithUndo (timeout waiting for "100 g of 250 g" on bean.remaining after the correct-amount alert; reproduced on rerun). The step does not touch code changed here, but I could not confirm it fails on the clean branch (git stash was not approved). Status left pending until that is confirmed. Not tested: UI test for the match sheet, screenshots (light/dark/largest text), VoiceOver pass.
+
+### T031 close-out (Sonnet, supervised, 2026-10-25)
+
+The loop built T031 but left it uncommitted because `testBeansAddCorrectFilterAndDeleteWithUndo` failed. I ran the same test on a clean copy of main without T031: it fails there too, so T031 did not cause it. Debug runs showed the "Correct the amount left" alert still open when the test waits for the label, and a different step failing on the next run; behavior varies between runs on this machine today, though the same test passed in the full run earlier. Not resolved; recorded as an environment-sensitive UI test. T031 set to `done` on its unit tests (`RoasterMatchTests`), lint and build; not done: a UI test for the match sheet, light/dark/largest-text screenshots, VoiceOver.
