@@ -42,7 +42,8 @@ struct TimerView: View {
         .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.lg)
       }
       .onChange(of: state.currentIndex) { _, index in
-        guard let index else { return }
+        // Step 1 stays put so the recipe header is not pushed under the bar.
+        guard let index, index > 0 else { return }
         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
           proxy.scrollTo(index, anchor: .center)
         }
