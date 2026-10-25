@@ -1,4 +1,5 @@
 import Foundation
+import NextCupKit
 import Testing
 
 @testable import NextCup
@@ -39,20 +40,51 @@ struct AIConfigTests {
     defer { try? keychain.removeKey(for: .anthropic) }
     let prefs = AIPreferences(defaults: suite)
     try keychain.setKey("sk-secret-value", for: .anthropic)
-    prefs.acceptDisclosure()
+    prefs.acceptDisclosure(for: .anthropic)
     prefs.setChoice(.anthropic, model: "m", for: .diagnosis)
     let stored = suite.dictionaryRepresentation().values.map { "\($0)" }
     #expect(!stored.contains { $0.contains("sk-secret-value") })
   }
 
-  @Test func disclosureIsOnceAndVersioned() {
+  @Test func disclosureIsPerProviderAndVersioned() {
     let suite = defaults()
     let prefs = AIPreferences(defaults: suite)
-    #expect(!prefs.hasAcceptedDisclosure)
-    prefs.acceptDisclosure()
-    #expect(prefs.hasAcceptedDisclosure)
-    suite.set(AIPreferences.disclosureVersion - 1, forKey: AIPreferences.disclosureKey)
-    #expect(!prefs.hasAcceptedDisclosure)
+    #expect(!prefs.hasAcceptedDisclosure(for: .anthropic))
+    prefs.acceptDisclosure(for: .anthropic)
+    #expect(prefs.hasAcceptedDisclosure(for: .anthropic))
+    #expect(!prefs.hasAcceptedDisclosure(for: .openAI), "one provider never unlocks another")
+    suite.set(
+      AIPreferences.disclosureVersion - 1, forKey: AIPreferences.disclosureKey(.anthropic))
+    #expect(!prefs.hasAcceptedDisclosure(for: .anthropic))
+  }
+
+  @MainActor @Test func disclosureNamesWhatEachFeatureSendsAsThePayloadsDo() {
+    let photo = Data([1])
+    let withPhoto: [AIFeature: AIRequestPayload] = [
+      .bagRecognition: BagRecognition.payload(photo: photo, feature: .bagRecognition),
+      .photoInterpretation: BagRecognition.payload(photo: photo, feature: .photoInterpretation),
+      .paperImport: PaperImport.payload(photo: photo),
+    ]
+    for (feature, payload) in withPhoto {
+      #expect(payload.imageJPEG != nil)
+      #expect(feature.sends.contains("photo"), "\(feature) sends a photo")
+      #expect(feature.sends.contains("location and camera data removed"))
+    }
+
+    let brews = (0..<10).map { index in
+      let brew = Brew(date: Date(timeIntervalSince1970: Double(index) * 86_400))
+      brew.notes = "note-\(index)"
+      return brew
+    }
+    let single = AISuggestions.payload(diagnosing: brews[9])
+    let many = AISuggestions.payload(insightsFrom: brews)
+    #expect(single.imageJPEG == nil && many.imageJPEG == nil)
+    #expect(single.userText.contains("note-9"))
+    #expect(AIFeature.diagnosis.sends.contains("your notes"))
+    #expect(!AIFeature.diagnosis.sends.lowercased().contains("photo"))
+    #expect(many.userText.components(separatedBy: "\n- ").count - 1 == 8)
+    #expect(AIFeature.insights.sends.contains("8 most recent"))
+    #expect(AIFeature.insights.sends.contains("your notes"))
   }
 
   @Test func modelChoiceIsPerFeatureAndNeverGuessed() {

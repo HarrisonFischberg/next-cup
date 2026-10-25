@@ -455,6 +455,50 @@ final class NextCupUITests: XCTestCase {
       journalRow(app, containing: "Washed Ethiopia sweet").exists, "the first is intact")
   }
 
+  /// T033: "Ask AI about this brew" shows exactly what would be sent, and with no
+  /// provider, model or key chosen it offers no way to send. Writes screenshots to
+  /// `SCREENSHOT_DIR` (set with `TEST_RUNNER_SCREENSHOT_DIR`), else /tmp/next-cup-screenshots.
+  @MainActor
+  func testAskAIShowsThePayloadAndCannotSendWithoutSetup() {
+    let variants: [(name: String, args: [String])] = [
+      ("light", ["-AppleInterfaceStyle", "Light"]),
+      ("dark", ["-AppleInterfaceStyle", "Dark"]),
+      (
+        "largest-text",
+        ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+      ),
+    ]
+    for variant in variants {
+      let app = XCUIApplication()
+      app.launchArguments =
+        ["-inMemoryStore", "-resetNavigationState", "-resetDraft"] + variant.args
+      app.launch()
+      XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+      logBrew(app, note: "Washed Ethiopia sweet")
+      journalRow(app, containing: "Washed Ethiopia sweet").tap()
+      XCTAssertTrue(element(app, "brewform.edit").waitForExistence(timeout: 5))
+      let ask = element(app, "brewform.ai")
+      scrollUntilHittable(ask, in: app)
+      ask.tap()
+
+      let preview = element(app, "ai.ask.preview")
+      XCTAssertTrue(preview.waitForExistence(timeout: 5))
+      XCTAssertTrue(preview.label.contains("notes: Washed Ethiopia sweet"), preview.label)
+      XCTAssertTrue(preview.label.contains("dose 15 g"), preview.label)
+      XCTAssertTrue(element(app, "ai.ask.setup").exists, "setup is named, not hidden")
+      XCTAssertFalse(element(app, "ai.ask.send").exists, "no Send without a key and a model")
+      let folder = URL(
+        fileURLWithPath: ProcessInfo.processInfo.environment["SCREENSHOT_DIR"]
+          ?? "/tmp/next-cup-screenshots")
+      try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+      try? XCUIScreen.main.screenshot().pngRepresentation.write(
+        to: folder.appendingPathComponent("T033-ask-\(variant.name).png"))
+      element(app, "ai.ask.close").tap()
+      XCTAssertTrue(element(app, "brewform.edit").waitForExistence(timeout: 5))
+      app.terminate()
+    }
+  }
+
   /// T013: customizing a built-in saves a separate copy; the original is untouched.
   @MainActor
   func testCustomizingABuiltInRecipeSavesACopy() {

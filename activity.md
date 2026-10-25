@@ -574,3 +574,68 @@ The loop's iteration was blocked because `grep`, `git ls-files` and compound she
 
 - `testBrewFormDraftSurvivesRelaunch` and the methods editor now dismiss the keyboard with Return instead of the keyboard's Done key (not always hittable); `testBeansAddCorrectFilterAndDeleteWithUndo` waits for the label with a predicate instead of reading it at once.
 - All three pass when run together (alone, 308 s). A full run right after had 12 failures, mostly waits timing out; a second simulator (iPhone 17) was booted and the three-test rerun took about 100 s per test instead of about 30 s, so the machine was loaded. The full suite has not been re-confirmed green since; rerun it on a quiet machine.
+
+## T031 (in progress, not committed)
+
+Implemented: SearchArea.named, RoasterMatchModel/RoasterMatchView, BeanFields roasterCity/roasterWebsite applied in BeanService.save, "Find this roaster on the map" row in the bean editor, RoasterMatchTests.
+
+Results: swift format lint clean. Full `xcodebuild test`: one UI failure, testBeansAddCorrectFilterAndDeleteWithUndo (timeout waiting for "100 g of 250 g" on bean.remaining after the correct-amount alert; reproduced on rerun). The step does not touch code changed here, but I could not confirm it fails on the clean branch (git stash was not approved). Status left pending until that is confirmed. Not tested: UI test for the match sheet, screenshots (light/dark/largest text), VoiceOver pass.
+
+### T031 close-out (Sonnet, supervised, 2026-10-25)
+
+The loop built T031 but left it uncommitted because `testBeansAddCorrectFilterAndDeleteWithUndo` failed. I ran the same test on a clean copy of main without T031: it fails there too, so T031 did not cause it. Debug runs showed the "Correct the amount left" alert still open when the test waits for the label, and a different step failing on the next run; behavior varies between runs on this machine today, though the same test passed in the full run earlier. Not resolved; recorded as an environment-sensitive UI test. T031 set to `done` on its unit tests (`RoasterMatchTests`), lint and build; not done: a UI test for the match sheet, light/dark/largest-text screenshots, VoiceOver.
+
+## 2026-10-24 — T032 AI request hygiene and consent
+
+What changed:
+- `AIQueue`: a request that is done, failed or cancelled drops its photo (`attachment`) and `payloadJSON`; `retry` removed (nothing to resend, the user starts the action again). It sends only requests it enqueued, `cancelAll()` runs when the bean editor or paper import goes away, and `AIQueue.expireStale` cancels leftovers at launch (`NextCupApp`). `Brew.aiRequests` now cascades.
+- Disclosure: `AIPreferences` accepts per provider with version 2 (`ai.disclosure.<provider>.version`); `AIClient` takes the provider in `disclosureAccepted`. New `AIDisclosureView` names the provider and lists `AIFeature.sends` for every feature. It is shown from the AI action (bean photo scan, paper "Read with my AI key") when not accepted for that provider, as well as from Settings → AI.
+- Key field has no password AutoFill; the provider default is written on first appear of each feature row.
+
+Commands and results:
+- `swift test --package-path Packages/NextCupKit`: 153 passed (new: disclosure for one provider does not unlock another).
+- `xcodebuild ... test -only-testing:NextCupTests`: 234 passed, TEST SUCCEEDED (new: purge on done/failed/cancelled, cancelled paper import leaves no photo, foreign queued request not sent, cancelAll and expireStale, brew delete cascades, `sends` text vs payload builders).
+- `swift format lint --recursive --strict ...`: clean.
+
+Untested / honest gaps:
+- The UI test suite (scoped and one full `test`) did not finish within the time limit (the known simulator hang); no UI result seen for this change. No screenshots of the new disclosure sheet, no VoiceOver pass.
+- The privacy policy draft still says the app sends "brew, notes and a slice of your history" (audit F1/F8); not in T032's scope.
+- `resultJSON` of finished requests is kept (only photo and payload are purged).
+- The cascade rule change was not tested against an existing on-disk store.
+
+## 2026-10-24 — T033 Ask AI about a brew, Explore insights
+
+- Added `AIAskModel` and `AIAskView` (NextCup/Features/AI): a sheet that shows the exact payload text, then sends only after a chosen provider and model, a Keychain key, an accepted per-provider disclosure and a tap. Offline shows a waiting banner with Cancel; failures show the reason with Try again; closing the sheet cancels anything still queued.
+- Entry points: "Ask AI about this brew" on the saved-brew edit form (`brewform.ai`), and "Ask AI about this coffee" on each Explore bean card that has saved brews (`explore.insights.<bean>`; up to 8 newest brews).
+- Result is stored by `AISuggestions.ingest` with the source brew and model ID. The sheet shows it with Dismiss and Undo. Accept and Edit happen on the next brew of that coffee, in the existing SuggestionCard flow, not in the sheet.
+- Tests: `AIAskModelTests` (10: no key, no model, no disclosure send nothing; sent text equals preview; answer becomes suggestion; dismiss and undo; insights cap 8; failure then retry; offline cancel; leave cancels) and UI test `testAskAIShowsThePayloadAndCannotSendWithoutSetup`.
+- Commands: `swift format lint --recursive --strict ...` clean; `swift test --package-path Packages/NextCupKit` 153 tests passed; `xcodebuild -quiet ... test` (full app and UI suite) exit 0.
+- Screenshots: the UI test wrote `T033-ask-light.png`, `T033-ask-dark.png`, `T033-ask-largest-text.png` to /tmp/next-cup-screenshots/. They could not be copied into `ralph/screenshots/` or viewed in this session (no permission outside the repo), so they are NOT in the repo and unreviewed.
+
+Untested: the Explore insights button has no UI test (needs a bean with brews); a real send to a provider (no key or network by rule); the in-sheet result and error states are covered by model tests only, with no screenshots; no VoiceOver pass.
+
+## 2026-10-24 — T034 Data hygiene
+
+What changed:
+- `DataEraser`: also ends a running Live Activity (`endActivity`), empties Library/Caches and tmp (`scratchDirectories`) and SwiftData's external-data folder (`externalData`, derived from the store URL by `externalDataDirectory(of:)`).
+- Export: files are written when the user taps Export (JSON or CSV) and shown in a share sheet (`ActivityView`); the `NextCupExport` folder is removed when the sheet closes. `ShareLink` and the write-on-appear are gone.
+- Backups and drafts are written with `.completeFileProtection` (was until-first-user-authentication). A draft autosave after the phone locks now fails; earlier autosaves are already on disk.
+- `Config/NextCup-Info.plist`: `NSLocationDefaultAccuracyReduced = true`, `ITSAppUsesNonExemptEncryption = false`.
+- `docs/data-inventory.md`: stale "nothing built" wording replaced; new "Current flows" table (AI request log, tmp export, backups, drafts, timer snapshot, Live Activity content, typed city to Apple, saved roaster coordinates, external data, export compliance).
+
+Commands and results:
+- `swift format lint --recursive --strict ...`: clean.
+- `swift test --package-path Packages/NextCupKit`: 153 passed.
+- `xcodebuild ... test`: the unit tests (NextCupTests) ran 245 passed, including the extended delete-all test (AIRequest count 0, activity ended, scratch and external folders empty, preferences cleared) and `releaseSettingsAreInTheInfoPlist`. The UI test phase did not finish and the run was stopped at the 10-minute limit (the known simulator hang); no UI result seen.
+
+Untested / honest gaps:
+- No UI result, no screenshots, no VoiceOver pass for the new Export buttons and share sheet; the `data.export.*` identifiers are now buttons, and any UI test that expected a ShareLink was not seen to run.
+- File protection cannot be observed on the simulator; recorded as a code check only.
+- The external-data folder name `.<store>_SUPPORT/_EXTERNAL_DATA` is assumed from SwiftData's layout and was tested only with a stand-in folder.
+- The cleared-disclosure assertion uses a stand-in key; it proves the whole preferences domain is wiped, not the real key names.
+- Delete-all ending a real Live Activity was tested with an injected closure only.
+
+## 2026-10-25 — T032 to T034 verified (Sonnet, supervised)
+
+- Package 153 and app unit 245 pass, lint clean. UI suite: 45 tests, two failures in the full run (`testExploreShowsLabelledDefaultForANewBean`, `testEndEarlyOpensTheFormWithTheTimeReached`); both pass when rerun alone, as the beans test did earlier. Full UI runs get flakier as they get longer (about 18 minutes); not claimed green.
+- Changed after the loop: drafts use the default file protection (complete protection could lose a draft saved as the phone locks); `docs/legal/PRIVACY.md` rewritten to list exactly what each AI action sends, reduced-accuracy location, backup retention and the crash-data wording.

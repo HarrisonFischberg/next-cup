@@ -17,6 +17,8 @@ struct RoasterPlace: Identifiable, Hashable, Sendable {
 enum SearchArea: Equatable, Sendable {
   case near(latitude: Double, longitude: Double)
   case city(String)
+  /// A roaster name read off a bag, looked up to match a real business (T031).
+  case named(String)
 }
 
 enum LocationOutcome: Equatable, Sendable {
@@ -98,6 +100,40 @@ final class RoasterDiscoveryModel {
       phase = .results
     } catch is CancellationError {
       phase = .idle
+    } catch {
+      places = []
+      phase = .failed("The search did not finish. Check your connection and try again.")
+    }
+  }
+}
+
+/// T031: looks up the roaster name from a bag. Searching stores nothing; the
+/// caller applies a place only when the user picks one.
+@MainActor
+@Observable
+final class RoasterMatchModel {
+  enum Phase: Equatable {
+    case searching, results
+    case failed(String)
+  }
+
+  private(set) var phase = Phase.searching
+  private(set) var places: [RoasterPlace] = []
+  let name: String
+  private let searcher: RoasterSearching
+
+  init(name: String, searcher: RoasterSearching) {
+    self.name = name
+    self.searcher = searcher
+  }
+
+  func search() async {
+    phase = .searching
+    do {
+      places = try await searcher.search(.named(name))
+      phase = .results
+    } catch is CancellationError {
+      phase = .results
     } catch {
       places = []
       phase = .failed("The search did not finish. Check your connection and try again.")

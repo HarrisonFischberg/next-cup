@@ -108,7 +108,7 @@ struct BagRecognitionTests {
     let stub = StubBagTransport(
       #"{"content":[{"type":"tool_use","input":\#(bag)}]}"#)
     let client = AIClient(
-      transport: stub, key: { _ in "sk-test" }, disclosureAccepted: { true }, sleep: { _ in })
+      transport: stub, key: { _ in "sk-test" }, disclosureAccepted: { _ in true }, sleep: { _ in })
     let queue = AIQueue(context: context, client: client)
     let request = try queue.enqueue(
       BagRecognition.payload(photo: Data([1]), feature: .bagRecognition),
@@ -123,7 +123,7 @@ struct BagRecognitionTests {
     let context = try make()
     let stub = StubBagTransport("{}")
     let client = AIClient(
-      transport: stub, key: { _ in nil }, disclosureAccepted: { true }, sleep: { _ in })
+      transport: stub, key: { _ in nil }, disclosureAccepted: { _ in true }, sleep: { _ in })
     let queue = AIQueue(context: context, client: client)
     let request = try queue.enqueue(
       BagRecognition.payload(photo: Data([1]), feature: .bagRecognition),
