@@ -602,3 +602,14 @@ Untested / honest gaps:
 - The privacy policy draft still says the app sends "brew, notes and a slice of your history" (audit F1/F8); not in T032's scope.
 - `resultJSON` of finished requests is kept (only photo and payload are purged).
 - The cascade rule change was not tested against an existing on-disk store.
+
+## 2026-10-24 — T033 Ask AI about a brew, Explore insights
+
+- Added `AIAskModel` and `AIAskView` (NextCup/Features/AI): a sheet that shows the exact payload text, then sends only after a chosen provider and model, a Keychain key, an accepted per-provider disclosure and a tap. Offline shows a waiting banner with Cancel; failures show the reason with Try again; closing the sheet cancels anything still queued.
+- Entry points: "Ask AI about this brew" on the saved-brew edit form (`brewform.ai`), and "Ask AI about this coffee" on each Explore bean card that has saved brews (`explore.insights.<bean>`; up to 8 newest brews).
+- Result is stored by `AISuggestions.ingest` with the source brew and model ID. The sheet shows it with Dismiss and Undo. Accept and Edit happen on the next brew of that coffee, in the existing SuggestionCard flow, not in the sheet.
+- Tests: `AIAskModelTests` (10: no key, no model, no disclosure send nothing; sent text equals preview; answer becomes suggestion; dismiss and undo; insights cap 8; failure then retry; offline cancel; leave cancels) and UI test `testAskAIShowsThePayloadAndCannotSendWithoutSetup`.
+- Commands: `swift format lint --recursive --strict ...` clean; `swift test --package-path Packages/NextCupKit` 153 tests passed; `xcodebuild -quiet ... test` (full app and UI suite) exit 0.
+- Screenshots: the UI test wrote `T033-ask-light.png`, `T033-ask-dark.png`, `T033-ask-largest-text.png` to /tmp/next-cup-screenshots/. They could not be copied into `ralph/screenshots/` or viewed in this session (no permission outside the repo), so they are NOT in the repo and unreviewed.
+
+Untested: the Explore insights button has no UI test (needs a bean with brews); a real send to a provider (no key or network by rule); the in-sheet result and error states are covered by model tests only, with no screenshots; no VoiceOver pass.

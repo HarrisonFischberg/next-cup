@@ -11,6 +11,8 @@ struct ExploreView: View {
   @Query(filter: #Predicate<Brew> { !$0.isDraft }, sort: \Brew.date, order: .reverse)
   private var brews: [Brew]
   @Query private var storedAliases: [TaxonomyAlias]
+  @Environment(\.modelContext) private var context
+  @State private var insightsBean: Bean?
   @AppStorage(AppTab.storageKey) private var storedTab = AppTab.explore.rawValue
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
@@ -20,6 +22,11 @@ struct ExploreView: View {
     UnitPreferences(
       weight: WeightUnit(rawValue: weightUnit) ?? .grams,
       temperature: TemperatureUnit(rawValue: temperatureUnit) ?? .celsius)
+  }
+
+  /// Saved brews that used this bean, newest first (the query is already sorted).
+  private func brews(of bean: Bean) -> [Brew] {
+    brews.filter { brew in (brew.beans ?? []).contains { $0.bean?.id == bean.id } }
   }
 
   var body: some View {
@@ -83,10 +90,19 @@ struct ExploreView: View {
             let refs = ExploreModel.buckets(of: bean, taxonomy: taxonomy, aliases: aliases)
             BeanRecommendationCard(
               bean: bean, buckets: refs,
-              result: Recommender.recommend(for: refs, history: history), units: units)
+              result: Recommender.recommend(for: refs, history: history), units: units,
+              canAsk: !brews(of: bean).isEmpty, onAsk: { insightsBean = bean })
           }
         }
         .padding(DS.Space.lg)
+      }
+      .sheet(item: $insightsBean) { bean in
+        let history = brews(of: bean)
+        if !history.isEmpty {
+          AIAskView(
+            model: AIAskModel(feature: .insights, brews: history, context: context),
+            close: { insightsBean = nil })
+        }
       }
       .accessibilityIdentifier("explore.list")
     }
@@ -99,6 +115,8 @@ private struct BeanRecommendationCard: View {
   let buckets: [BucketRef]
   let result: RecommendationResult
   let units: UnitPreferences
+  let canAsk: Bool
+  let onAsk: () -> Void
 
   var body: some View {
     PaperBox {
@@ -116,6 +134,15 @@ private struct BeanRecommendationCard: View {
             .padding(.horizontal, DS.Space.md)
         }
         .accessibilityIdentifier("explore.brew.\(bean.name)")
+        if canAsk {
+          Hairline()
+          Button(action: onAsk) {
+            Text("ASK AI ABOUT THIS COFFEE").font(DS.Font.headline).foregroundStyle(DS.ink)
+              .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
+              .padding(.horizontal, DS.Space.md)
+          }
+          .accessibilityIdentifier("explore.insights.\(bean.name)")
+        }
       }
     }
     .accessibilityElement(children: .contain)
