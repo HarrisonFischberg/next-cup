@@ -62,16 +62,21 @@ struct KeychainStore: Sendable {
 /// the provider and model chosen for each feature. Never holds a key.
 struct AIPreferences {
   /// Bump when the disclosure text changes so it is shown again.
-  static let disclosureVersion = 1
-  static let disclosureKey = "ai.disclosure.version"
+  static let disclosureVersion = 2
+  /// Acceptance is per provider: the text names who receives the data.
+  static func disclosureKey(_ provider: AIProvider) -> String {
+    "ai.disclosure.\(provider.rawValue).version"
+  }
 
   var defaults: UserDefaults = .standard
 
-  var hasAcceptedDisclosure: Bool {
-    defaults.integer(forKey: Self.disclosureKey) >= Self.disclosureVersion
+  func hasAcceptedDisclosure(for provider: AIProvider) -> Bool {
+    defaults.integer(forKey: Self.disclosureKey(provider)) >= Self.disclosureVersion
   }
 
-  func acceptDisclosure() { defaults.set(Self.disclosureVersion, forKey: Self.disclosureKey) }
+  func acceptDisclosure(for provider: AIProvider) {
+    defaults.set(Self.disclosureVersion, forKey: Self.disclosureKey(provider))
+  }
 
   static func providerKey(_ feature: AIFeature) -> String { "ai.provider.\(feature.rawValue)" }
   static func modelKey(_ feature: AIFeature) -> String { "ai.model.\(feature.rawValue)" }
@@ -102,6 +107,23 @@ extension AIProvider {
 }
 
 extension AIFeature {
+  /// Exactly what one request of this feature sends, shown in the disclosure. A test
+  /// compares these words with the payload builders.
+  var sends: String {
+    switch self {
+    case .diagnosis:
+      "The one brew you ask about: its date, method, bean origin, process and roast, dose, water, grind, temperature, time, taste, rating and your notes."
+    case .insights:
+      "Up to the 8 most recent brews of one coffee, each with its date, method, bean origin, process and roast, dose, water, grind, temperature, time, taste, rating and your notes."
+    case .bagRecognition:
+      "One photo of a coffee bag, with location and camera data removed, and a fixed instruction."
+    case .photoInterpretation:
+      "One photo of a coffee, with location and camera data removed, and a fixed instruction."
+    case .paperImport:
+      "One photo of a handwritten journal page, in full, with location and camera data removed. Everything written on the page is sent."
+    }
+  }
+
   var title: String {
     switch self {
     case .diagnosis: "Brew diagnosis"

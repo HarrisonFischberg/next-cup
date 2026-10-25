@@ -584,3 +584,21 @@ Results: swift format lint clean. Full `xcodebuild test`: one UI failure, testBe
 ### T031 close-out (Sonnet, supervised, 2026-10-25)
 
 The loop built T031 but left it uncommitted because `testBeansAddCorrectFilterAndDeleteWithUndo` failed. I ran the same test on a clean copy of main without T031: it fails there too, so T031 did not cause it. Debug runs showed the "Correct the amount left" alert still open when the test waits for the label, and a different step failing on the next run; behavior varies between runs on this machine today, though the same test passed in the full run earlier. Not resolved; recorded as an environment-sensitive UI test. T031 set to `done` on its unit tests (`RoasterMatchTests`), lint and build; not done: a UI test for the match sheet, light/dark/largest-text screenshots, VoiceOver.
+
+## 2026-10-24 — T032 AI request hygiene and consent
+
+What changed:
+- `AIQueue`: a request that is done, failed or cancelled drops its photo (`attachment`) and `payloadJSON`; `retry` removed (nothing to resend, the user starts the action again). It sends only requests it enqueued, `cancelAll()` runs when the bean editor or paper import goes away, and `AIQueue.expireStale` cancels leftovers at launch (`NextCupApp`). `Brew.aiRequests` now cascades.
+- Disclosure: `AIPreferences` accepts per provider with version 2 (`ai.disclosure.<provider>.version`); `AIClient` takes the provider in `disclosureAccepted`. New `AIDisclosureView` names the provider and lists `AIFeature.sends` for every feature. It is shown from the AI action (bean photo scan, paper "Read with my AI key") when not accepted for that provider, as well as from Settings → AI.
+- Key field has no password AutoFill; the provider default is written on first appear of each feature row.
+
+Commands and results:
+- `swift test --package-path Packages/NextCupKit`: 153 passed (new: disclosure for one provider does not unlock another).
+- `xcodebuild ... test -only-testing:NextCupTests`: 234 passed, TEST SUCCEEDED (new: purge on done/failed/cancelled, cancelled paper import leaves no photo, foreign queued request not sent, cancelAll and expireStale, brew delete cascades, `sends` text vs payload builders).
+- `swift format lint --recursive --strict ...`: clean.
+
+Untested / honest gaps:
+- The UI test suite (scoped and one full `test`) did not finish within the time limit (the known simulator hang); no UI result seen for this change. No screenshots of the new disclosure sheet, no VoiceOver pass.
+- The privacy policy draft still says the app sends "brew, notes and a slice of your history" (audit F1/F8); not in T032's scope.
+- `resultJSON` of finished requests is kept (only photo and payload are purged).
+- The cascade rule change was not tested against an existing on-disk store.

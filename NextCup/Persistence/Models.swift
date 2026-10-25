@@ -39,7 +39,7 @@ final class Brew: Identified {
   @Relationship(deleteRule: .cascade, inverse: \Suggestion.sourceBrew)
   var suggestionsMade: [Suggestion]?
   var suggestionFollowed: Suggestion?
-  @Relationship(deleteRule: .nullify, inverse: \AIRequest.brew) var aiRequests: [AIRequest]?
+  @Relationship(deleteRule: .cascade, inverse: \AIRequest.brew) var aiRequests: [AIRequest]?
 
   init(id: UUID = UUID(), date: Date = Date()) {
     self.id = id

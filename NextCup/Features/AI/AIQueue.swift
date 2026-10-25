@@ -25,6 +25,9 @@ final class AIQueue {
   private let client: AIClient
   private let monitor = NWPathMonitor()
   private var tasks: [UUID: Task<Void, Never>] = [:]
+  /// Only requests this queue enqueued are ever sent by it, so a tap on one screen
+  /// cannot release a request left over from another.
+  private var owned: Set<UUID> = []
 
   init(context: ModelContext, client: AIClient) {
     self.context = context
@@ -39,7 +42,10 @@ final class AIQueue {
       key: { provider in
         AIProvider(rawValue: provider.rawValue).flatMap { (try? keychain.key(for: $0)) ?? nil }
       },
-      disclosureAccepted: { AIPreferences().hasAcceptedDisclosure })
+      disclosureAccepted: { kind in
+        AIProvider(rawValue: kind.rawValue)
+          .map { AIPreferences().hasAcceptedDisclosure(for: $0) } ?? false
+      })
     let queue = AIQueue(context: context, client: client)
     queue.onDone = { AISuggestions.ingest($0, in: context) }
     return queue
@@ -72,6 +78,7 @@ final class AIQueue {
     request.brew = brew
     context.insert(request)
     try context.save()
+    owned.insert(request.id)
     processQueued()
     return request
   }
@@ -79,7 +86,7 @@ final class AIQueue {
   func processQueued() {
     guard isOnline else { return }
     let queued = ((try? context.fetch(FetchDescriptor<AIRequest>())) ?? [])
-      .filter { $0.status == .queued }
+      .filter { $0.status == .queued && owned.contains($0.id) }
       .sorted { $0.createdAt < $1.createdAt }
     queued.forEach(run)
   }
@@ -90,16 +97,27 @@ final class AIQueue {
     guard request.status == .queued || request.status == .sending else { return }
     request.status = .cancelled
     request.errorMessage = nil
+    purge(request)
     save(request)
   }
 
-  /// Puts a failed or cancelled request back in the queue.
-  func retry(_ request: AIRequest) {
-    guard request.status == .failed || request.status == .cancelled else { return }
-    request.status = .queued
-    request.errorMessage = nil
-    save(request)
-    processQueued()
+  /// Cancels everything this queue still holds; called when its screen goes away.
+  func cancelAll() {
+    for request in ((try? context.fetch(FetchDescriptor<AIRequest>())) ?? [])
+    where owned.contains(request.id) { cancel(request) }
+  }
+
+  /// Cancels requests left `queued` or `sending` by an earlier launch, so they are
+  /// never sent later and their photo and payload are not kept.
+  static func expireStale(in context: ModelContext) {
+    for request in (try? context.fetch(FetchDescriptor<AIRequest>())) ?? []
+    where request.status == .queued || request.status == .sending {
+      request.status = .cancelled
+      request.attachment = nil
+      request.payloadJSON = Data()
+      request.updatedAt = Date()
+    }
+    try? context.save()
   }
 
   /// Lets tests wait for in-flight sends.
@@ -136,17 +154,26 @@ final class AIQueue {
     case .success(let result):
       request.status = .done
       request.resultJSON = result.json
+      purge(request)
     case .failure(.offline):
       request.status = .queued
       request.errorMessage = AIError.offline.errorDescription
     case .failure(.cancelled):
       request.status = .cancelled
+      purge(request)
     case .failure(let error):
       request.status = .failed
       request.errorMessage = error.errorDescription
+      purge(request)
     }
     save(request)
     if request.status == .done { onDone?(request) }
+  }
+
+  /// A request that has ended keeps neither the photo nor the text that was sent.
+  private func purge(_ request: AIRequest) {
+    request.attachment = nil
+    request.payloadJSON = Data()
   }
 
   private func save(_ request: AIRequest) {

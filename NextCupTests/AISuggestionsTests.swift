@@ -145,7 +145,7 @@ struct AISuggestionsTests {
               .utf8)))
     ])
     let client = AIClient(
-      transport: stub, key: { _ in "sk-test" }, disclosureAccepted: { true }, sleep: { _ in })
+      transport: stub, key: { _ in "sk-test" }, disclosureAccepted: { _ in true }, sleep: { _ in })
     let queue = AIQueue(context: context, client: client)
     queue.onDone = { AISuggestions.ingest($0, in: context) }
     try queue.enqueue(
