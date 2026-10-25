@@ -1042,6 +1042,25 @@ final class NextCupUITests: XCTestCase {
     }
   }
 
+  // MARK: Barcode (T037)
+
+  /// The Simulator has no camera: Scan the barcode explains why and offers the
+  /// AI photo route instead, and nothing is looked up or saved.
+  @MainActor
+  func testBarcodeWithoutACameraExplainsAndOffersThePhotoRoute() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Beans"].tap()
+    app.buttons["Add a bean"].firstMatch.tap()
+    let barcode = app.buttons["beans.editor.barcode"]
+    XCTAssertTrue(barcode.waitForExistence(timeout: 5))
+    barcode.tap()
+    XCTAssertTrue(element(app, "beans.editor.scan.error").waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["beans.editor.photoRoute"].exists)
+    app.buttons["beans.editor.cancel"].tap()
+    XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 5))
+  }
+
   // MARK: Blends, freezer, best so far (T015)
 
   /// Adds two beans, logs a graded 50/50 blend of them, then opens the first

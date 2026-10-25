@@ -31,7 +31,9 @@ Only in these cases:
   Nothing is sent until you tap, and never without a key. The provider handles the request under its own terms, may keep it, and may charge your own account. Rare Creatures LLC never sees these requests. Photos and request text are deleted from your phone when a request finishes, fails or is cancelled, and the answer to a photo request is deleted as soon as you have used it. You can remove the key at any time.
 - **Roaster search (optional).** When you search for roasters or match a bag to a roaster, the text you search for goes to Apple Maps (for a roaster match, the roaster's name followed by "coffee roaster"; for the roaster search, the map area or the city you typed). If you tap "Use my location", iOS asks first and Next Cup asks for your approximate location (you can still allow precise); it is used for that search only. Next Cup keeps only roasters you choose to save, with the roaster's details, not your position.
 
-Any other request is not made by the app. Photos are picked with the system photo picker, so Next Cup cannot see the rest of your library.
+- **Barcode lookup (optional).** When you scan the barcode on a coffee bag, only the barcode number is sent to Open Food Facts (world.openfoodfacts.org), a free public product database, to look up the coffee's name and brand. Nothing else goes with it: no account, no identifier and no location. The answer is filled into the form for you to check, and nothing is saved until you tap Save. The camera view used for scanning stays on your phone and is not recorded.
+
+Any other request is not made by the app. Photos are picked with the system photo picker, so Next Cup cannot see the rest of your library. When you choose Take a photo, iOS asks for camera access first; the camera is used only while it is open.
 
 ## What Rare Creatures LLC collects
 

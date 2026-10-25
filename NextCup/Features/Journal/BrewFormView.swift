@@ -36,6 +36,8 @@ struct BrewFormView: View {
   @State private var grinderError: String?
   @State private var model: BrewFormModel?
   @State private var pickedPhoto: PhotosPickerItem?
+  @State private var libraryShown = false
+  @State private var cameraShown = false
   @FocusState private var focused: Field?
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
@@ -656,7 +658,12 @@ struct BrewFormView: View {
           .accessibilityLabel("Photo of this brew")
         SteelButton(title: "Remove photo", kind: .secondary) { model.removePhoto() }
       } else {
-        PhotosPicker(selection: $pickedPhoto, matching: .images) {
+        Menu {
+          if Camera.isAvailable {
+            Button("Take a photo", systemImage: "camera") { cameraShown = true }
+          }
+          Button("Choose from library", systemImage: "photo.on.rectangle") { libraryShown = true }
+        } label: {
           Text("Add a photo".dsTitle).font(DS.Font.din(22, relativeTo: .title3))
             .frame(maxWidth: .infinity, minHeight: DS.Size.control)
             .foregroundStyle(DS.ink)
@@ -670,6 +677,14 @@ struct BrewFormView: View {
       if let error = model.photoError { StateBanner(kind: .error, message: error) }
       Text("Location and camera details are removed from photos before they are kept.")
         .font(.footnote).foregroundStyle(DS.ink2)
+    }
+    .photosPicker(isPresented: $libraryShown, selection: $pickedPhoto, matching: .images)
+    .fullScreenCover(isPresented: $cameraShown) {
+      CameraPicker { data in
+        cameraShown = false
+        if let data { Task { await model.attachPhoto(data) } }
+      }
+      .ignoresSafeArea()
     }
   }
 
