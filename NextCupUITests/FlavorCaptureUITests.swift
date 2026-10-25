@@ -17,7 +17,9 @@ final class FlavorCaptureUITests: XCTestCase {
   }
 
   @MainActor
-  private func capture(_ style: String, largestText: Bool = false) throws {
+  private func capture(_ style: String, largestText: Bool = false, extra: [String] = [])
+    throws
+  {
     try XCTSkipUnless(
       FileManager.default.fileExists(atPath: folder.appendingPathComponent(".capture").path),
       "screenshot capture is off")
@@ -28,6 +30,7 @@ final class FlavorCaptureUITests: XCTestCase {
       XCUIDevice.shared.appearance = appearance
       let app = XCUIApplication()
       app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      app.launchArguments += extra  // first, so its -timerSpeed wins
       app.launchArguments += ["-appStyle", style, "-timerSpeed", "1"]
       if largestText {
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", Self.largest]
@@ -62,6 +65,9 @@ final class FlavorCaptureUITests: XCTestCase {
     }
   }
 
+  @MainActor func testBloom() throws {
+    try capture("bloom", extra: ["-demoBrews", "-timerSpeed", "40"])
+  }
   @MainActor func testSteelKraft() throws { try capture("steelKraft") }
   @MainActor func testCharcoalCrema() throws { try capture("charcoalCrema") }
   @MainActor func testQuietCeramic() throws { try capture("quietCeramic") }

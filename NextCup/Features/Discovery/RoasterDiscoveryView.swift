@@ -69,11 +69,10 @@ struct RoasterDiscoveryView: View {
           .onSubmit(searchCity)
           .padding(.horizontal, DS.Space.md)
           .frame(minHeight: DS.Size.control)
-          .background(DS.paper, ignoresSafeAreaEdges: [])
-          .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+          .panel(DS.paper)
           .accessibilityIdentifier("roasters.city")
         Button(action: searchCity) {
-          Text("SEARCH").font(DS.Font.headline)
+          Text("Search".dsTitle).font(DS.Font.headline)
             .frame(minWidth: DS.Size.minTap, minHeight: DS.Size.control)
             .padding(.horizontal, DS.Space.md)
         }
@@ -169,7 +168,7 @@ struct RoasterDiscoveryView: View {
       ForEach(saved) { roaster in
         HStack(spacing: DS.Space.md) {
           VStack(alignment: .leading, spacing: DS.Space.xs) {
-            Text(roaster.name.uppercased()).font(DS.Font.headline).foregroundStyle(DS.ink)
+            Text(roaster.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
             if let city = roaster.city { Text(city).font(.footnote).foregroundStyle(DS.ink2) }
           }
           Spacer(minLength: DS.Space.sm)
@@ -234,7 +233,7 @@ private struct PlaceRow: View {
       : AnyLayout(HStackLayout(spacing: DS.Space.md))
     layout {
       VStack(alignment: .leading, spacing: DS.Space.xs) {
-        Text(place.name.uppercased()).font(DS.Font.headline).foregroundStyle(DS.ink)
+        Text(place.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
         if let city = place.city { Text(city).font(.footnote).foregroundStyle(DS.ink2) }
       }
       .accessibilityElement(children: .combine)

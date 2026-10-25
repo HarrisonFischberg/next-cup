@@ -6,13 +6,14 @@ import SwiftUI
 struct NextCupApp: App {
   @State private var startup = AppBootstrap.start()
   @AppStorage(AppearanceMode.storageKey) private var appearance = AppearanceMode.system.rawValue
-  @AppStorage(AppStyle.storageKey) private var style = AppStyle.steelKraft.rawValue
+  @AppStorage(AppStyle.storageKey) private var style = AppStyle.bloom.rawValue
   @AppStorage(MakeItYours.accentKey) private var accent = ""
   @AppStorage(MakeItYours.cornersKey) private var corners = ""
   @AppStorage(MakeItYours.densityKey) private var density = ""
   @AppStorage(MakeItYours.fontKey) private var font = ""
 
   init() {
+    AppStyle.adoptBloomOnce()
     // UI tests start from a known tab; relaunches in the same test omit this.
     if ProcessInfo.processInfo.arguments.contains("-resetNavigationState") {
       UserDefaults.standard.removeObject(forKey: AppTab.storageKey)
