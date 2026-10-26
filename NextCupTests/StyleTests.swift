@@ -50,17 +50,20 @@ struct StyleTests {
     }
   }
 
-  @Test func nineFlavorsWithoutTheRemovedOnes() {
-    #expect(AppStyle.allCases.count == 9)
-    #expect(Set(AppStyle.allCases.map(\.title)).count == 9)
-    for removed in ["terracotta", "lateNightCafe", "makeItYours"] {
+  @Test func fiveFlavorsWithoutTheRemovedOnes() {
+    #expect(AppStyle.allCases.count == 5)
+    #expect(Set(AppStyle.allCases.map(\.title)).count == 5)
+    for removed in [
+      "terracotta", "lateNightCafe", "makeItYours", "bloom", "charcoalCrema", "quietCeramic",
+      "roasterPoster",
+    ] {
       #expect(AppStyle(rawValue: removed) == nil)
     }
   }
 
   @Test func everyoneMovesToNightMintOnceThenKeepsTheirChoice() {
     let d = UserDefaults(suiteName: "mint.\(UUID().uuidString)")!
-    d.set(AppStyle.bloom.rawValue, forKey: AppStyle.storageKey)
+    d.set(AppStyle.cafePage.rawValue, forKey: AppStyle.storageKey)
     AppStyle.adoptNightMintOnce(d)
     #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.nightMint.rawValue)
     d.set(AppStyle.daily.rawValue, forKey: AppStyle.storageKey)
@@ -75,7 +78,7 @@ struct StyleTests {
   }
 
   @Test func flavorsDifferInShapeAndControl() {
-    #expect(AppStyle.roasterPoster.flavor.control == .sticker)
+    #expect(AppStyle.cafePage.flavor.control == .square)
     #expect(AppStyle.nightMint.flavor.control == .pill)
     #expect(AppStyle.nightMint.flavor.density == .airy)
     #expect(AppStyle.cafePage.flavor.displayDesign == .serif)

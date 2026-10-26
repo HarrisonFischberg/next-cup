@@ -15,7 +15,7 @@ struct StepProgress: View {
       GeometryReader { proxy in
         ZStack(alignment: .leading) {
           Capsule().fill(DS.ringTrack)
-          Capsule().fill(DS.crema)
+          Capsule().fill(DS.signal)
             .frame(width: proxy.size.width * Double(step) / Double(max(total, 1)))
         }
       }

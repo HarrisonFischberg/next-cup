@@ -3,9 +3,9 @@ import SwiftUI
 // Bloom's signature pieces: rings drawn from the brew's own numbers.
 // Decorative; the numbers beside each ring carry the value for VoiceOver.
 
-/// Bloom (and Daily, built on it) draw rings instead of steel panels.
+/// Daily (built on the old Bloom look) draws rings instead of steel panels.
 extension DS {
-  static var isBloom: Bool { [.bloom, .daily].contains(AppStyle.current) }
+  static var isBloom: Bool { AppStyle.current == .daily }
   static let crema = Color(P(0xB8652A, 0xE0A06A))
   static let espresso = Color(P(0x4A2C1D, 0xD9C2AE))
   static let sage = Color(P(0x7C8C6A, 0xA9BC97))
@@ -47,19 +47,6 @@ struct CupMark: View {
   }
 }
 
-/// A small ring leading a journal row, tinted by how the cup was graded.
-struct RingGlyph: View {
-  let color: Color
-  var body: some View {
-    ZStack {
-      Circle().stroke(color, lineWidth: 5).padding(2.5)
-      Circle().fill(color.opacity(0.18)).padding(12)
-    }
-    .frame(width: 38, height: 38)
-    .accessibilityHidden(true)
-  }
-}
-
 /// The timer's ring: progress, a dot at each step change, and a marker at now.
 struct TimerRing: View {
   let fraction: Double
@@ -77,13 +64,13 @@ struct TimerRing: View {
       ZStack {
         Circle().stroke(DS.ringTrack, lineWidth: 14).frame(width: r * 2, height: r * 2)
         Circle().trim(from: 0, to: min(1, max(0, fraction)))
-          .stroke(DS.crema, style: StrokeStyle(lineWidth: 14, lineCap: .round))
+          .stroke(DS.signal, style: StrokeStyle(lineWidth: 14, lineCap: .round))
           .rotationEffect(.degrees(-90)).frame(width: r * 2, height: r * 2)
         ForEach(stepFractions.indices, id: \.self) { i in
           Circle().fill(stepFractions[i] <= fraction ? DS.paper : DS.ink2)
             .frame(width: 7, height: 7).position(point(stepFractions[i]))
         }
-        Circle().fill(DS.paper).overlay(Circle().stroke(DS.crema, lineWidth: 4))
+        Circle().fill(DS.paper).overlay(Circle().stroke(DS.signal, lineWidth: 4))
           .frame(width: 20, height: 20).position(point(min(1, max(0, fraction))))
       }
       .frame(width: g.size.width, height: g.size.height)

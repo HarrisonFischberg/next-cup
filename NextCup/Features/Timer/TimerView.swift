@@ -91,73 +91,46 @@ struct TimerView: View {
     }
   }
 
-  @ViewBuilder private var readout: some View {
-    if DS.isBloom { bloomReadout } else { steelReadout }
-  }
-
-  /// Bloom: one large ring with a dot at each step change, the time in its centre,
-  /// and the live step's target set large beneath it.
-  private var bloomReadout: some View {
+  /// The brewer doing the current step inside the progress ring, the time beneath it,
+  /// and the live step's target. Same layout in every style; the style sets the colors,
+  /// the medallion shape and the numerals.
+  private var readout: some View {
     let total = Double(setup.plan.totalDurationS)
-    return VStack(spacing: DS.Space.lg) {
+    let frame = BrewScene.frame(
+      setup.sceneKind, steps: setup.sceneSteps, totalS: total, elapsedS: state.elapsedS)
+    return VStack(spacing: DS.Space.sm) {
       ZStack {
         TimerRing(
           fraction: total > 0 ? state.elapsedS / total : 0,
           stepFractions: total > 0
             ? setup.plan.steps.dropFirst().map { Double($0.startOffsetS) / total } : [])
-        VStack(spacing: 2) {
-          Text(RecipeFormat.clock(Int(state.elapsedS)))
-            .font(DS.Font.readout).foregroundStyle(DS.ink)
-            .minimumScaleFactor(0.5).lineLimit(1)
-            .dynamicTypeSize(...DS.readoutCap)
-            .accessibilityLabel("Elapsed time")
-            .accessibilityValue(RecipeFormat.spokenTime(Int(state.elapsedS)))
-            .accessibilityAddTraits(.updatesFrequently)
-            .accessibilityIdentifier("timer.elapsed")
-          Text("of \(RecipeFormat.clock(setup.plan.totalDurationS))")
-            .font(.subheadline).foregroundStyle(DS.ink2)
+        BrewMedallion {
+          BrewSceneView(
+            kind: setup.sceneKind, glyph: setup.glyph, frame: frame,
+            running: state.phase == .running)
         }
-        .padding(DS.Space.xxl)
+        .padding(26)
       }
-      .frame(width: 290, height: 290)
+      .frame(width: 250, height: 250)
       .frame(maxWidth: .infinity)
-      VStack(spacing: DS.Space.xs) {
-        Text(statusLine).font(.caption.weight(.semibold)).tracking(0.8).foregroundStyle(DS.signal)
-          .multilineTextAlignment(.center)
-          .accessibilityIdentifier("timer.status")
-        if let step = state.current {
-          Text(
-            step.targetCumulativeWaterG.map { "to \(RecipeFormat.weight($0, units))" } ?? step.label
-          )
-          .font(.system(size: 46, design: .serif)).foregroundStyle(DS.ink)
-          .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.6).lineLimit(1)
-          if !step.instruction.isEmpty {
-            Text(step.instruction).font(.body).foregroundStyle(DS.ink2)
-              .multilineTextAlignment(.center)
-          }
-        }
-      }
-      .frame(maxWidth: .infinity)
-    }
-  }
-
-  private var steelReadout: some View {
-    let total = Double(setup.plan.totalDurationS)
-    return InstrumentPanel {
-      VStack(alignment: .leading, spacing: DS.Space.md) {
+      HStack(alignment: .firstTextBaseline, spacing: DS.Space.sm) {
         Text(RecipeFormat.clock(Int(state.elapsedS)))
-          .font(DS.Font.readout).foregroundStyle(DS.onSteel)
+          .font(DS.flavor.timerReadout)
+          .foregroundStyle(DS.ink)
           .minimumScaleFactor(0.5).lineLimit(1)
           .dynamicTypeSize(...DS.readoutCap)
           .accessibilityLabel("Elapsed time")
           .accessibilityValue(RecipeFormat.spokenTime(Int(state.elapsedS)))
           .accessibilityAddTraits(.updatesFrequently)
           .accessibilityIdentifier("timer.elapsed")
-        ReadoutBar(fraction: total > 0 ? state.elapsedS / total : 0)
-        Text(statusLine).font(DS.Font.mono(.footnote, .bold)).foregroundStyle(DS.onSteel)
-          .fixedSize(horizontal: false, vertical: true)
-          .accessibilityIdentifier("timer.status")
+        Text("of \(RecipeFormat.clock(setup.plan.totalDurationS))")
+          .font(.subheadline).foregroundStyle(DS.ink2)
       }
+      .padding(.top, DS.Space.md)
+      Text(statusLine).font(.caption.weight(.semibold)).tracking(0.8).foregroundStyle(DS.signal)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .accessibilityIdentifier("timer.status")
     }
   }
 

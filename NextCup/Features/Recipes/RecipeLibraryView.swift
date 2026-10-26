@@ -11,6 +11,7 @@ struct RecipeLibraryView: View {
   private var shownMethods: [BrewMethod]
   @State private var search = ""
   @State private var editor: RecipeEditorTarget?
+  @Environment(\.dynamicTypeSize) private var dts
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -97,32 +98,34 @@ struct RecipeLibraryView: View {
         VStack(alignment: .leading, spacing: DS.Space.sm) {
           Text(RecipeFormat.title(style).uppercased()).font(DS.Font.label).tracking(0.5)
             .foregroundStyle(DS.ink2).accessibilityAddTraits(.isHeader)
-          ForEach(shownMethods.filter { $0.style == style }) { method in
-            NavigationLink(value: DeepLink.method(method.id)) { methodCard(method) }
-              .buttonStyle(.plain)
-              .accessibilityIdentifier("brew.method.\(method.name)")
+          LazyVGrid(columns: methodColumns, alignment: .leading, spacing: DS.Space.md) {
+            ForEach(shownMethods.filter { $0.style == style }) { method in
+              NavigationLink(value: DeepLink.method(method.id)) { methodCard(method) }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("brew.method.\(method.name)")
+            }
           }
         }
       }
     }
   }
 
+  private var methodColumns: [GridItem] {
+    Array(
+      repeating: GridItem(.flexible(), spacing: DS.Space.lg, alignment: .top),
+      count: dts.isAccessibilitySize ? 2 : 3)
+  }
+
+  /// A brewer drawing with its name and how many styles it has, like a guide index.
   private func methodCard(_ method: BrewMethod) -> some View {
     let count = method.recipes?.count ?? 0
-    return HStack(spacing: DS.Space.md) {
-      Image(systemName: method.symbol).font(.title2.weight(.light)).foregroundStyle(DS.signal)
-        .frame(width: 48, height: 48).accessibilityHidden(true)
-      VStack(alignment: .leading, spacing: 2) {
-        Text(method.name).font(DS.Font.headline).foregroundStyle(DS.ink)
-        Text(count == 1 ? "1 style" : "\(count) styles").font(.footnote).foregroundStyle(DS.ink2)
-      }
-      Spacer(minLength: DS.Space.sm)
-      Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
-        .foregroundStyle(DS.ink2).accessibilityHidden(true)
+    return VStack(spacing: DS.Space.xs) {
+      BrewMedallion(method.glyph)
+      Text(method.shortName).font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
+        .multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.85)
+      Text(count == 1 ? "1 style" : "\(count) styles").font(.caption).foregroundStyle(DS.ink2)
     }
-    .padding(DS.Space.md)
-    .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
-    .panel(DS.paper)
+    .frame(maxWidth: .infinity)
     .contentShape(Rectangle())
     .accessibilityElement(children: .combine)
   }

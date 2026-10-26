@@ -377,22 +377,12 @@ private struct BrewRow: View {
 
   var body: some View {
     HStack(alignment: .top, spacing: DS.Space.md) {
-      if DS.isBloom { RingGlyph(color: ringColor) }
+      BrewMedallion(brew.method?.glyph ?? .cup).frame(width: 44)
       details
     }
     .padding(DS.Space.md)
     .frame(maxWidth: .infinity, alignment: .leading)
     .accessibilityElement(children: .combine)
-  }
-
-  /// Bloom's row ring, by taste verdict (the verdict is also written in the row).
-  private var ringColor: Color {
-    switch brew.verdict {
-    case .balanced: DS.sage
-    case .sour, .weak: DS.crema
-    case .bitter, .strong: DS.espresso
-    case nil: DS.line
-    }
   }
 
   private var details: some View {

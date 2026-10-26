@@ -69,22 +69,19 @@ final class FlavorCaptureUITests: XCTestCase {
     }
   }
 
-  @MainActor func testBloom() throws {
-    try capture("bloom", extra: ["-demoBrews", "-timerSpeed", "40"])
+  @MainActor func testDaily() throws {
+    try capture("daily", extra: ["-demoBrews", "-timerSpeed", "40"])
   }
   @MainActor func testSteelKraft() throws { try capture("steelKraft") }
-  @MainActor func testCharcoalCrema() throws { try capture("charcoalCrema") }
-  @MainActor func testQuietCeramic() throws { try capture("quietCeramic") }
   @MainActor func testNightMint() throws { try capture("nightMint") }
   @MainActor func testEspressoBlack() throws { try capture("espressoBlack") }
   @MainActor func testCafePage() throws { try capture("cafePage") }
-  @MainActor func testRoasterPoster() throws { try capture("roasterPoster") }
 
   @MainActor func testLargestTextSteelKraft() throws {
     try capture("steelKraft", largestText: true)
   }
   @MainActor func testLargestTextCafePage() throws { try capture("cafePage", largestText: true) }
-  @MainActor func testLargestTextRoasterPoster() throws {
-    try capture("roasterPoster", largestText: true)
+  @MainActor func testLargestTextNightMint() throws {
+    try capture("nightMint", largestText: true)
   }
 }
