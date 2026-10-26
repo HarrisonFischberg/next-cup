@@ -2,6 +2,7 @@ import NextCupKit
 import PhotosUI
 import SwiftData
 import SwiftUI
+import UIKit
 
 /// What the bean editor sheet opens for.
 enum BeanEditorTarget: Identifiable, Hashable {
@@ -50,6 +51,10 @@ struct BeanEditorView: View {
   @State private var lookingUp = false
   /// Set when a barcode was not found, so the AI photo route is offered next.
   @State private var offerPhotoRoute = false
+  /// The last two stages of a scan, shown while the result goes into the fields.
+  @State private var fillStages: [String]?
+  @State private var fillStage = 0
+  @State private var filledMessage: String?
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -164,20 +169,19 @@ struct BeanEditorView: View {
   private var photoFill: some View {
     Section {
       if let scan, scanning {
-        HStack {
-          Text(scan.status == .queued ? "Waiting for a connection" : "Reading the photo")
-            .foregroundStyle(DS.ink2)
-          Spacer()
-          Button("Cancel") { scanQueue?.cancel(scan) }
-            .accessibilityIdentifier("beans.editor.scan.cancel")
-        }
-        .frame(minHeight: DS.Size.control)
+        StagedProgress(
+          stages: [
+            "Photo prepared",
+            scan.status == .queued ? "Waiting for a connection" : "Reading the label with AI",
+            "Filling the fields",
+          ], current: 1)
+        Button("Cancel") { scanQueue?.cancel(scan) }
+          .frame(minHeight: DS.Size.control)
+          .accessibilityIdentifier("beans.editor.scan.cancel")
+      } else if let stages = fillStages {
+        StagedProgress(stages: stages, current: fillStage)
       } else if lookingUp {
-        HStack(spacing: DS.Space.sm) {
-          ProgressView()
-          Text("Looking up the barcode").foregroundStyle(DS.ink2)
-        }
-        .frame(minHeight: DS.Size.control)
+        StagedProgress(stages: ["Looking up the barcode", "Filling the fields"], current: 0)
       } else {
         Button(action: startBarcode) {
           Label("Scan the barcode", systemImage: "barcode.viewfinder")
@@ -201,6 +205,11 @@ struct BeanEditorView: View {
           }
           .accessibilityIdentifier("beans.editor.photoRoute")
         }
+      }
+      if let filledMessage {
+        StateBanner(kind: .info, message: filledMessage)
+          .listRowInsets(EdgeInsets()).listRowBackground(DS.bg)
+          .accessibilityIdentifier("beans.editor.scan.filled")
       }
       if let scanMessage {
         StateBanner(kind: .error, message: scanMessage)
@@ -391,6 +400,7 @@ struct BeanEditorView: View {
     scannerShown = false
     lookingUp = true
     Task {
+      let started = Date()
       let result = await BarcodeLookup.lookUp(code) { request in
         let (data, response) = try await URLSession.shared.data(for: request)
         return (data, (response as? HTTPURLResponse)?.statusCode ?? 0)
@@ -398,11 +408,11 @@ struct BeanEditorView: View {
       lookingUp = false
       switch result {
       case .success(let product):
-        fields.name = product.name
-        if let brand = product.brand {
-          fields.roasterName = brand
-          matchShown = true
+        await showFilling(["Barcode found", "Filling the fields"], since: started) {
+          fields.name = product.name
+          if let brand = product.brand { fields.roasterName = brand }
         }
+        if product.brand != nil { matchShown = true }
       case .failure(let failure):
         offerPhotoRoute = true
         scanMessage =
@@ -460,10 +470,14 @@ struct BeanEditorView: View {
     case .done:
       switch BagRecognition.draft(from: scan) {
       case .success(let draft):
-        BagRecognition.fill(&fields, with: draft)
-        hasRoastDate = fields.roastDate != nil
-        if weightText.isEmpty, let grams = fields.bagWeightG {
-          weightText = RecipeFormat.weight(grams, units, withSymbol: false)
+        Task {
+          await showFilling(["Label read", "Filling the fields"], since: Date()) {
+            BagRecognition.fill(&fields, with: draft)
+            hasRoastDate = fields.roastDate != nil
+            if weightText.isEmpty, let grams = fields.bagWeightG {
+              weightText = RecipeFormat.weight(grams, units, withSymbol: false)
+            }
+          }
         }
       case .failure(let failure):
         scanMessage = failure.errorDescription
@@ -478,6 +492,25 @@ struct BeanEditorView: View {
     case .queued, .sending:
       break
     }
+  }
+
+  /// Shows the fill as its own stage, fills, then says how many fields changed.
+  /// The hold only keeps a stage readable (see `StagedProgress.hold`).
+  private func showFilling(_ stages: [String], since start: Date, fill: () -> Void) async {
+    filledMessage = nil
+    fillStages = stages
+    fillStage = 1
+    await StagedProgress.hold(since: start)
+    let before = fields
+    fill()
+    let count = before.changedCount(to: fields)
+    UINotificationFeedbackGenerator().notificationOccurred(.success)
+    await StagedProgress.hold(since: Date())
+    fillStages = nil
+    filledMessage =
+      count == 0
+      ? "Nothing new was found to fill. Check the fields before saving."
+      : "Filled \(count) \(count == 1 ? "field" : "fields"). Check them before saving."
   }
 
   private func save() {

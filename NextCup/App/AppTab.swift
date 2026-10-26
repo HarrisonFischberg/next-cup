@@ -1,13 +1,13 @@
 import Foundation
 
-/// The five tabs of the shell (blueprint §4). The raw value is what is persisted
+/// The four tabs of the shell. Settings opens from the Journal's gear, so a
+/// stored `settings` value from an older build falls back to Journal. The raw value is what is persisted
 /// under `storageKey`, so it must never change once shipped.
 enum AppTab: String, CaseIterable, Identifiable, Sendable {
   case journal
   case recipes
   case beans
   case explore
-  case settings
 
   static let storageKey = "selectedTab"
 
@@ -19,7 +19,6 @@ enum AppTab: String, CaseIterable, Identifiable, Sendable {
     case .recipes: "Recipes"
     case .beans: "Beans"
     case .explore: "Explore"
-    case .settings: "Settings"
     }
   }
 
@@ -29,7 +28,6 @@ enum AppTab: String, CaseIterable, Identifiable, Sendable {
     case .recipes: "list.bullet.rectangle"
     case .beans: "leaf"
     case .explore: "safari"
-    case .settings: "gearshape"
     }
   }
 }

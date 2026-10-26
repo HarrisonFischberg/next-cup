@@ -45,6 +45,17 @@ struct BeanTests {
 
   // MARK: Service
 
+  @Test func changedCountCountsOnlyTheFieldsAScanFilled() {
+    var before = BeanFields()
+    before.name = "Guji"
+    var after = before
+    #expect(before.changedCount(to: after) == 0)
+    after.roasterName = "Onyx"
+    after.originCountry = "Ethiopia"
+    after.roastDate = Date(timeIntervalSince1970: 0)
+    #expect(before.changedCount(to: after) == 3)
+  }
+
   @Test func savingAddsABeanWithItsFieldsTrimmed() throws {
     let harness = try Harness()
     let bean = try harness.add("  Washed Ethiopia  ") {

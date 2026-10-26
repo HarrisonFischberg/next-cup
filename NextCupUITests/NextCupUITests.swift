@@ -31,6 +31,17 @@ final class NextCupUITests: XCTestCase {
       .joined(separator: " ")
   }
 
+  /// Settings sits behind the Journal's gear. Tapping the selected Journal tab
+  /// again pops its stack, so the gear is always reachable.
+  private func openSettings(_ app: XCUIApplication) {
+    app.tabBars.buttons["Journal"].tap()
+    let gear = element(app, "journal.settings")
+    if !gear.waitForExistence(timeout: 2) { app.tabBars.buttons["Journal"].tap() }
+    XCTAssertTrue(gear.waitForExistence(timeout: 5))
+    gear.tap()
+    XCTAssertTrue(element(app, "tab.root.settings").waitForExistence(timeout: 5))
+  }
+
   private func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
     app.descendants(matching: .any)[identifier].firstMatch
   }
@@ -39,9 +50,11 @@ final class NextCupUITests: XCTestCase {
   func testAppLaunchesToJournalTab() {
     let app = launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-    for title in ["Journal", "Recipes", "Beans", "Explore", "Settings"] {
+    for title in ["Journal", "Recipes", "Beans", "Explore"] {
       XCTAssertTrue(app.tabBars.buttons[title].exists, "missing tab \(title)")
     }
+    XCTAssertFalse(app.tabBars.buttons["Settings"].exists, "Settings is behind the gear")
+    XCTAssertTrue(element(app, "journal.settings").exists)
   }
 
   @MainActor
@@ -163,12 +176,12 @@ final class NextCupUITests: XCTestCase {
   func testChangingUnitsInSettingsUpdatesRecipesAndTheBrewForm() {
     let app = launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-    app.tabBars.buttons["Settings"].tap()
+    openSettings(app)
     let weight = element(app, "settings.units.weight")
     XCTAssertTrue(weight.waitForExistence(timeout: 5))
     weight.buttons["Ounces (oz)"].tap()
     defer {  // the setting outlives the app run, so put it back
-      app.tabBars.buttons["Settings"].tap()
+      openSettings(app)
       element(app, "settings.units.weight").buttons["Grams (g)"].tap()
     }
 
@@ -183,6 +196,7 @@ final class NextCupUITests: XCTestCase {
     XCTAssertFalse(water.label.contains("250"), "grams value still shown: \(water.label)")
 
     app.tabBars.buttons["Journal"].tap()
+    app.tabBars.buttons["Journal"].tap()  // pops Settings off the Journal's stack
     app.buttons["Log a brew"].firstMatch.tap()
     // A blank form has no dose yet; stepping gives it the default, shown in ounces.
     let increase = app.buttons["Increase Dose"]
@@ -196,6 +210,13 @@ final class NextCupUITests: XCTestCase {
 
   /// Opens a recipe's detail with a sped-up timer clock and taps Start brew.
   @MainActor
+  /// A finished timer waits on its finish screen until Taste and log is tapped.
+  private func tasteAndLog(_ app: XCUIApplication, timeout: TimeInterval) {
+    let log = app.buttons["Taste and log"]
+    XCTAssertTrue(log.waitForExistence(timeout: timeout), "timer never finished")
+    log.tap()
+  }
+
   private func openTimer(speed: Int, extraArguments: [String] = []) -> XCUIApplication {
     let app = XCUIApplication()
     app.launchArguments =
@@ -230,9 +251,13 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "timer.status").label.contains("PAUSED"))
     app.buttons["Resume"].tap()
 
-    // Sixty times faster, the whole recipe takes a few seconds.
+    // Sixty times faster, the whole recipe takes a few seconds. The finish waits for a tap.
+    let log = app.buttons["Taste and log"]
+    XCTAssertTrue(log.waitForExistence(timeout: 30), "timer never finished")
+    XCTAssertTrue(element(app, "timer.finished").exists)
+    log.tap()
     let form = element(app, "brewform.prefilled")
-    XCTAssertTrue(form.waitForExistence(timeout: 30), "timer never reached the brew form")
+    XCTAssertTrue(form.waitForExistence(timeout: 5), "timer never reached the brew form")
     XCTAssertTrue(
       text(app, in: "brewform.dose").hasPrefix("15"), "dose prefilled: \(app.debugDescription)")
     XCTAssertTrue(text(app, in: "brewform.water").hasPrefix("250"))
@@ -242,14 +267,15 @@ final class NextCupUITests: XCTestCase {
 
     // Back returns to the finished timer, which can reopen the form.
     app.navigationBars.buttons.element(boundBy: 0).tap()
-    XCTAssertTrue(app.buttons["Log this brew"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["Taste and log"].waitForExistence(timeout: 5))
   }
 
   @MainActor
   func testLoggingAFinishedBrewSavesItOnceAndLocksTheTimerButton() {
     let app = openTimer(speed: 60)
     app.buttons["Start"].tap()
-    XCTAssertTrue(element(app, "brewform.prefilled").waitForExistence(timeout: 30))
+    tasteAndLog(app, timeout: 30)
+    XCTAssertTrue(element(app, "brewform.prefilled").waitForExistence(timeout: 5))
     app.buttons["Save brew"].tap()
     XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
     app.buttons["Done"].tap()
@@ -268,7 +294,7 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "timer.screen").waitForExistence(timeout: 10))
     // Six real seconds at 6x is 36 timer seconds, so the readout cannot still say zero.
     let spoken = element(app, "timer.elapsed").value.map { "\($0)" } ?? ""
-    let finished = element(app, "brewform.prefilled").exists
+    let finished = element(app, "timer.finished").exists
     XCTAssertTrue(
       finished || (!spoken.isEmpty && spoken != "0 seconds"),
       "time moved on in the background, got '\(spoken)'")
@@ -281,7 +307,8 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(app.buttons["End early"].waitForExistence(timeout: 5))
     sleep(2)
     app.buttons["End early"].tap()
-    XCTAssertTrue(element(app, "brewform.prefilled").waitForExistence(timeout: 10))
+    tasteAndLog(app, timeout: 10)
+    XCTAssertTrue(element(app, "brewform.prefilled").waitForExistence(timeout: 5))
     XCTAssertFalse(text(app, in: "brewform.time").hasPrefix("0:00"))
     XCTAssertTrue(app.staticTexts["You ended this brew early. The time is what it reached."].exists)
   }
@@ -307,7 +334,7 @@ final class NextCupUITests: XCTestCase {
   func testJournalOffersLogABrewAndOpensTheBlankForm() {
     let app = launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-    app.buttons["Log a brew"].tap()
+    app.buttons["Log a brew"].firstMatch.tap()
     XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 5))
     XCTAssertFalse(app.buttons["Save brew"].isEnabled, "nothing to save yet")
     XCTAssertTrue(element(app, "brewform.save.hint").exists)
@@ -408,11 +435,11 @@ final class NextCupUITests: XCTestCase {
   func testJournalLogsFindsEditsAndDeletesABrewWithUndo() {
     let app = launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-    XCTAssertTrue(app.staticTexts["NO BREWS YET"].exists, "empty journal offers the next action")
+    XCTAssertTrue(app.staticTexts["GETTING STARTED"].exists, "empty journal offers the next action")
 
     logBrew(app, note: "Washed Ethiopia sweet")
     XCTAssertTrue(journalRow(app, containing: "Washed Ethiopia sweet").waitForExistence(timeout: 5))
-    XCTAssertFalse(app.staticTexts["NO BREWS YET"].exists)
+    XCTAssertFalse(app.staticTexts["GETTING STARTED"].exists)
 
     // Search finds it; a miss shows the way out.
     let search = app.searchFields.firstMatch
@@ -451,11 +478,11 @@ final class NextCupUITests: XCTestCase {
     // Delete again and let the toast run out: the brew stays gone.
     journalRow(app, containing: "Washed Ethiopia sweet").swipeLeft()
     app.buttons["Delete"].tap()
-    XCTAssertTrue(app.staticTexts["NO BREWS YET"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["GETTING STARTED"].waitForExistence(timeout: 5))
     let gone = NSPredicate(format: "exists == false")
     expectation(for: gone, evaluatedWith: app.staticTexts["Brew deleted"])
     waitForExpectations(timeout: 12)
-    XCTAssertTrue(app.staticTexts["NO BREWS YET"].exists)
+    XCTAssertTrue(app.staticTexts["GETTING STARTED"].exists)
   }
 
   /// X2: "Brew again" opens a new brew with the old amounts and none of the old
@@ -571,7 +598,7 @@ final class NextCupUITests: XCTestCase {
   }
 
   private func openMethods(_ app: XCUIApplication) {
-    app.tabBars.buttons["Settings"].tap()
+    openSettings(app)
     XCTAssertTrue(element(app, "settings.methods").waitForExistence(timeout: 5))
     element(app, "settings.methods").tap()
     XCTAssertTrue(element(app, "methods.screen").waitForExistence(timeout: 5))
@@ -631,7 +658,7 @@ final class NextCupUITests: XCTestCase {
       "hidden rows stay in the list: \(element(app, "methods.row.Press pot").label)")
 
     app.tabBars.buttons["Journal"].tap()
-    app.buttons["Log a brew"].tap()
+    app.buttons["Log a brew"].firstMatch.tap()
     XCTAssertTrue(element(app, "brewform.blank").waitForExistence(timeout: 5))
     XCTAssertTrue(
       element(app, "brewform.temperature").exists, "the first method tracks temperature")
@@ -672,7 +699,7 @@ final class NextCupUITests: XCTestCase {
       }
       app.launch()
       XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-      app.tabBars.buttons["Settings"].tap()
+      openSettings(app)
       XCTAssertTrue(element(app, "settings.methods").waitForExistence(timeout: 5))
       try save(app.screenshot(), "\(folderURL.path)/settings-\(variant.name).png")
       element(app, "settings.methods").tap()
@@ -831,7 +858,8 @@ final class NextCupUITests: XCTestCase {
         speed: 60,
         extraArguments: variant.size.map { ["-UIPreferredContentSizeCategoryName", $0] } ?? [])
       app.buttons["Start"].tap()
-      XCTAssertTrue(element(app, "brewform.prefilled").waitForExistence(timeout: 30))
+      tasteAndLog(app, timeout: 30)
+      XCTAssertTrue(element(app, "brewform.prefilled").waitForExistence(timeout: 5))
       try save(app.screenshot(), "\(folderURL.path)/brewform-prefilled-\(variant.name).png")
       if variant.name == "light" {
         app.swipeUp()
@@ -947,6 +975,74 @@ final class NextCupUITests: XCTestCase {
     app.tabBars.buttons["Beans"].tap()
     XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 5))
     return app
+  }
+
+  @MainActor
+  func testBrewThisBeanOpensANewBrewWithTheBean() {
+    let app = openBeans()
+    addBean(app, name: "Washed Ethiopia", roaster: "Tiny Roastery", weight: "250")
+    element(app, "beans.row.Washed Ethiopia").tap()
+    let brew = element(app, "bean.brew")
+    XCTAssertTrue(brew.waitForExistence(timeout: 5), "bean detail has one primary action")
+    brew.tap()
+    XCTAssertTrue(element(app, "brewform.blank").waitForExistence(timeout: 5))
+    let beans = element(app, "brewform.beans")
+    XCTAssertTrue(beans.waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Washed Ethiopia'")).firstMatch
+        .exists, "the form starts with the bean: \(beans.debugDescription)")
+  }
+
+  @MainActor
+  func testOnboardingShowsItsStepsAndEndsOnANextStep() {
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      "-showOnboarding",
+    ]
+    app.launch()
+    let progress = element(app, "progress.step")
+    XCTAssertTrue(progress.waitForExistence(timeout: 10))
+    XCTAssertTrue(progress.label.contains("Step 1 of 3"), "got \(progress.label)")
+    element(app, "onboarding.next").tap()
+    XCTAssertTrue(progress.label.contains("Step 2 of 3"), "got \(progress.label)")
+    element(app, "onboarding.next").tap()
+    XCTAssertTrue(progress.label.contains("Step 3 of 3"), "got \(progress.label)")
+    element(app, "onboarding.later").tap()
+    let finish = app.buttons["Browse recipes"]
+    XCTAssertTrue(finish.waitForExistence(timeout: 5), "the finish names the next step")
+    finish.tap()
+    XCTAssertTrue(app.tabBars.buttons["Recipes"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.tabBars.buttons["Recipes"].isSelected)
+  }
+
+  @MainActor
+  func testOnboardingCanBeSkippedFromTheFirstStep() {
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      "-showOnboarding",
+    ]
+    app.launch()
+    XCTAssertTrue(element(app, "onboarding.skip").waitForExistence(timeout: 10))
+    element(app, "onboarding.skip").tap()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 5))
+  }
+
+  @MainActor
+  func testGettingStartedCountsWhatIsAlreadyDone() {
+    let app = launch()
+    let count = element(app, "gettingStarted.count")
+    XCTAssertTrue(count.waitForExistence(timeout: 10))
+    // Methods are seeded and units have defaults; a bag and a first brew are left.
+    XCTAssertEqual(count.label, "2 of 4 set up")
+  }
+
+  @MainActor
+  func testSettingsLinkOpensSettingsOnTheJournal() {
+    let app = launch(deepLink: "nextcup://settings")
+    XCTAssertTrue(element(app, "tab.root.settings").waitForExistence(timeout: 10))
+    XCTAssertTrue(app.tabBars.buttons["Journal"].isSelected)
   }
 
   /// T014: add a bean, see freshness and what is left, correct the amount, filter
@@ -1174,11 +1270,9 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "explore.empty").waitForExistence(timeout: 5))
     try shot("explore-empty")
 
-    app.buttons["Add a bean"].firstMatch.tap()
-    XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 5))
+    // Explore's Add a bean opens the editor right here, not on the Beans tab.
     addBean(app, name: "Washed Ethiopia", roaster: "Tiny Roastery", weight: "250")
-
-    app.tabBars.buttons["Explore"].tap()
+    XCTAssertTrue(app.tabBars.buttons["Explore"].isSelected)
     let card = element(app, "explore.card.Washed Ethiopia")
     XCTAssertTrue(card.waitForExistence(timeout: 5))
     let basis = element(app, "explore.basis.Washed Ethiopia")
@@ -1363,7 +1457,7 @@ final class NextCupUITests: XCTestCase {
   @MainActor
   private func runDataFlow(_ app: XCUIApplication, shot: (String) throws -> Void) throws {
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-    app.tabBars.buttons["Settings"].tap()
+    openSettings(app)
     let link = element(app, "settings.data")
     XCTAssertTrue(link.waitForExistence(timeout: 5))
     link.tap()
@@ -1540,8 +1634,8 @@ final class NextCupUITests: XCTestCase {
       ] + extraArguments
     app.launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-    app.tabBars.buttons["Beans"].tap()
-    let open = app.buttons["beans.roasters"]
+    app.tabBars.buttons["Explore"].tap()
+    let open = app.buttons["explore.roasters"]
     XCTAssertTrue(open.waitForExistence(timeout: 5))
     open.tap()
     XCTAssertTrue(element(app, "roasters.screen").waitForExistence(timeout: 5))
