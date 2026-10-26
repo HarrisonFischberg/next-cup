@@ -168,7 +168,7 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 /// Ten flavors. Each is a palette plus a `Flavor` (type, corners, density, control and
 /// number style). Palettes are mirrored in docs/design/tokens/<name>.json.
 enum AppStyle: String, CaseIterable, Identifiable {
-  case bloom
+  case daily, bloom
   case steelKraft, charcoalCrema, quietCeramic, terracotta, lateNightCafe
   case nightMint, espressoBlack, cafePage, roasterPoster, makeItYours
 
@@ -176,21 +176,22 @@ enum AppStyle: String, CaseIterable, Identifiable {
 
   /// Read live so `DS` colors and fonts follow the Settings choice.
   static var current: AppStyle {
-    UserDefaults.standard.string(forKey: storageKey).flatMap(AppStyle.init) ?? .bloom
+    UserDefaults.standard.string(forKey: storageKey).flatMap(AppStyle.init) ?? .daily
   }
 
-  /// Moves everyone onto Bloom once, the first launch after it ships. A launch
+  /// Moves everyone onto Daily once, the first launch after it ships. A launch
   /// argument (UI tests) still wins, because the argument domain is read first.
-  static func adoptBloomOnce(_ d: UserDefaults = .standard) {
-    guard !d.bool(forKey: "style.bloomAdopted") else { return }
-    d.set(AppStyle.bloom.rawValue, forKey: storageKey)
-    d.set(true, forKey: "style.bloomAdopted")
+  static func adoptDailyOnce(_ d: UserDefaults = .standard) {
+    guard !d.bool(forKey: "style.dailyAdopted") else { return }
+    d.set(AppStyle.daily.rawValue, forKey: storageKey)
+    d.set(true, forKey: "style.dailyAdopted")
   }
 
   var id: String { rawValue }
 
   var title: String {
     switch self {
+    case .daily: "Daily"
     case .bloom: "Bloom"
     case .steelKraft: "Steel & Kraft"
     case .charcoalCrema: "Charcoal & Crema"
@@ -208,6 +209,7 @@ enum AppStyle: String, CaseIterable, Identifiable {
   /// One line for the picker tile's accessibility hint.
   var mood: String {
     switch self {
+    case .daily: "Clean white cards, serif, one amber"
     case .bloom: "Cream, serif, brew rings"
     case .steelKraft: "Spec sheet, square, one orange"
     case .charcoalCrema: "Ledger, Didot numerals"
@@ -225,7 +227,7 @@ enum AppStyle: String, CaseIterable, Identifiable {
   /// Everything but color that sets a flavor apart.
   var flavor: Flavor {
     switch self {
-    case .bloom:
+    case .daily, .bloom:
       Flavor(
         displayDesign: .serif, displayWeight: .regular, radius: 24, density: .airy,
         control: .pill, numbers: .serif, caps: false)
@@ -275,6 +277,16 @@ enum AppStyle: String, CaseIterable, Identifiable {
 
   private var basePalette: Palette {
     switch self {
+    // The Daily Loop look: warm white ground, white cards, one amber that passes
+    // AA with white text in light (5.1:1) and with near-black text in dark.
+    case .daily:
+      Palette(
+        bg: P(0xF7F5F1, 0x0F0F10), paper: P(0xFFFFFF, 0x1C1C1E), steel: P(0x1C1A17, 0x2A2A2D),
+        onSteel: P(0xFFFFFF, 0xF2EFEA), ink: P(0x1C1A17, 0xF2EFEA), ink2: P(0x6B645C, 0xA8A39C),
+        line: P(0x8C847A, 0x6E6A64), signal: P(0x93591A, 0xE3A75C),
+        onSignal: P(0xFFFFFF, 0x1A1208), signalOnSteel: P(0xE3A75C, 0xE3A75C),
+        kraft: P(0xF3E9DC, 0x2A2117), onKraft: P(0x1C1A17, 0xF2EFEA),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x55684A, 0xA9BC97))
     case .bloom:
       Palette(
         bg: P(0xF5EFE6, 0x17110D), paper: P(0xFBF8F3, 0x221A14), steel: P(0x2B1D14, 0x2E241C),

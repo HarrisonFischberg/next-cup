@@ -50,19 +50,19 @@ struct StyleTests {
     }
   }
 
-  @Test func bloomFirstThenTheTenEarlierFlavors() {
-    #expect(AppStyle.allCases.count == 11)
-    #expect(AppStyle.allCases.first == .bloom)
-    #expect(Set(AppStyle.allCases.map(\.title)).count == 11)
+  @Test func dailyFirstThenBloomAndTheTenEarlierFlavors() {
+    #expect(AppStyle.allCases.count == 12)
+    #expect(AppStyle.allCases.first == .daily)
+    #expect(Set(AppStyle.allCases.map(\.title)).count == 12)
   }
 
-  @Test func everyoneMovesToBloomOnceThenKeepsTheirChoice() {
-    let d = UserDefaults(suiteName: "bloom.\(UUID().uuidString)")!
-    d.set(AppStyle.terracotta.rawValue, forKey: AppStyle.storageKey)
-    AppStyle.adoptBloomOnce(d)
-    #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.bloom.rawValue)
+  @Test func everyoneMovesToDailyOnceThenKeepsTheirChoice() {
+    let d = UserDefaults(suiteName: "daily.\(UUID().uuidString)")!
+    d.set(AppStyle.bloom.rawValue, forKey: AppStyle.storageKey)
+    AppStyle.adoptDailyOnce(d)
+    #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.daily.rawValue)
     d.set(AppStyle.nightMint.rawValue, forKey: AppStyle.storageKey)
-    AppStyle.adoptBloomOnce(d)
+    AppStyle.adoptDailyOnce(d)
     #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.nightMint.rawValue)
   }
 
@@ -135,14 +135,14 @@ struct StyleTests {
     defer { defaults.set(saved, forKey: AppStyle.storageKey) }
 
     defaults.removeObject(forKey: AppStyle.storageKey)
-    #expect(AppStyle.current == .bloom)
+    #expect(AppStyle.current == .daily)
 
     defaults.set(AppStyle.terracotta.rawValue, forKey: AppStyle.storageKey)
     #expect(AppStyle.current == .terracotta)
     #expect(DS.palette.bg.light == AppStyle.terracotta.palette.bg.light)
 
     defaults.set("not-a-style", forKey: AppStyle.storageKey)
-    #expect(AppStyle.current == .bloom)
+    #expect(AppStyle.current == .daily)
   }
 
   @Test func appearanceModesMapToColorSchemes() {

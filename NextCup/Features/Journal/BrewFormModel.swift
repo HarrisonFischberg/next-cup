@@ -228,6 +228,19 @@ final class BrewFormModel {
     beans.append(DraftBean(beanID: bean.id, name: bean.name, grams: 0))
     for index in beans.indices { beans[index].grams = shares[index] }
     draft.beans = beans
+    if beans.count == 1 { recallGrind(for: bean) }
+  }
+
+  /// Each bean keeps its own grind: the first bean chosen on a brew with no grind
+  /// yet brings back the grinder and setting from its last saved brew.
+  private func recallGrind(for bean: Bean) {
+    guard draft.grindSetting.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+    let last = (bean.brewUses ?? []).compactMap(\.brew)
+      .filter { !$0.isDraft && $0.id != draft.id && !($0.grindSetting ?? "").isEmpty }
+      .max { $0.date < $1.date }
+    guard let last, let grind = last.grindSetting else { return }
+    draft.grindSetting = grind
+    if let grinder = last.grinder { draft.grinderID = grinder.id }
   }
 
   func removeBean(at index: Int) {
@@ -432,6 +445,11 @@ final class BrewFormModel {
 
   // MARK: Save
 
+  /// UI tests run in memory and must not meet the notification permission alert.
+  static var remindsToTaste: Bool {
+    !AppBootstrap.usesInMemoryStore || ProcessInfo.processInfo.arguments.contains("-tasteReminders")
+  }
+
   /// Writes the brew. Returns `true` only once the store confirms the write;
   /// on failure the draft is kept and the error is shown (X5).
   @discardableResult
@@ -460,6 +478,10 @@ final class BrewFormModel {
       defaults.set(grinderID.uuidString, forKey: Self.lastGrinderKey)
     }
     savedBrewID = draft.id
+    if !isEditing, draft.verdict == nil, Self.remindsToTaste {
+      TasteReminder.schedule(
+        brewID: draft.id, beanName: draft.beans?.first?.name, brewedAt: draft.date)
+    }
     makeSuggestion()
     noteNewBest()
     if case .failure = draftStore.clear() {

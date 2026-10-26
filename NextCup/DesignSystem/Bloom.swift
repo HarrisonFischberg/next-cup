@@ -3,9 +3,9 @@ import SwiftUI
 // Bloom's signature pieces: rings drawn from the brew's own numbers.
 // Decorative; the numbers beside each ring carry the value for VoiceOver.
 
-/// Bloom is the flavor that draws rings instead of steel panels.
+/// Bloom (and Daily, built on it) draw rings instead of steel panels.
 extension DS {
-  static var isBloom: Bool { AppStyle.current == .bloom }
+  static var isBloom: Bool { [.bloom, .daily].contains(AppStyle.current) }
   static let crema = Color(P(0xB8652A, 0xE0A06A))
   static let espresso = Color(P(0x4A2C1D, 0xD9C2AE))
   static let sage = Color(P(0x7C8C6A, 0xA9BC97))

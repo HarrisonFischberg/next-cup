@@ -425,6 +425,74 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 5))
   }
 
+  /// The daily loop: a brew saved untasted waits on the journal; tasting it
+  /// offers one change for the next cup (or says to keep it the same).
+  @MainActor
+  func testDailyLoopTastesASavedCupAndOffersTheNextChange() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    logBrew(app, note: "Kenya, tasting later")
+    XCTAssertTrue(element(app, "journal.today").waitForExistence(timeout: 5))
+    element(app, "today.taste").tap()
+    XCTAssertTrue(element(app, "taste.screen").waitForExistence(timeout: 5))
+    let seeChange = app.buttons["See tomorrow's change"]
+    XCTAssertTrue(seeChange.waitForExistence(timeout: 5))
+    XCTAssertFalse(seeChange.isEnabled, "nothing to save before a taste is chosen")
+    element(app, "taste.sour").tap()
+    seeChange.tap()
+    let change = element(app, "taste.change")
+    let keep = element(app, "taste.keep")
+    XCTAssertTrue(
+      change.waitForExistence(timeout: 5) || keep.exists,
+      "shows the next step: \(app.debugDescription)")
+    let finish = change.exists ? app.buttons["Use tomorrow"] : app.buttons["Done"]
+    finish.tap()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 5))
+  }
+
+  /// Writes daily loop screenshots (Daily style) in light, dark and the largest text.
+  /// Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureDailyLoopScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let variants: [(name: String, appearance: XCUIDevice.Appearance, size: String?)] = [
+      ("light", .light, nil),
+      ("dark", .dark, nil),
+      ("largest-text", .light, "UICTContentSizeCategoryAccessibilityXXXL"),
+    ]
+    defer { XCUIDevice.shared.appearance = .light }
+    for variant in variants {
+      XCUIDevice.shared.appearance = variant.appearance
+      let app = XCUIApplication()
+      app.launchArguments = [
+        "-inMemoryStore", "-appStyle", "daily", "-resetNavigationState", "-resetDraft",
+      ]
+      if let size = variant.size {
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", size]
+      }
+      app.launch()
+      XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+      logBrew(app, note: "Blackcurrant, tasting later")
+      XCTAssertTrue(element(app, "journal.today").waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/daily-journal-\(variant.name).png")
+      element(app, "today.taste").tap()
+      XCTAssertTrue(element(app, "taste.screen").waitForExistence(timeout: 5))
+      element(app, "taste.sour").tap()
+      try save(app.screenshot(), "\(folderURL.path)/daily-taste-\(variant.name).png")
+      app.buttons["See tomorrow's change"].tap()
+      XCTAssertTrue(
+        element(app, "taste.change").waitForExistence(timeout: 5)
+          || element(app, "taste.keep").exists)
+      try save(app.screenshot(), "\(folderURL.path)/daily-next-\(variant.name).png")
+      app.terminate()
+    }
+  }
+
   @MainActor
   private func journalRow(_ app: XCUIApplication, containing text: String) -> XCUIElement {
     app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", text)).firstMatch
@@ -538,7 +606,10 @@ final class NextCupUITests: XCTestCase {
       app.launch()
       XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
       logBrew(app, note: "Washed Ethiopia sweet")
-      journalRow(app, containing: "Washed Ethiopia sweet").tap()
+      // The Today card for the untasted brew sits above the row.
+      let row = journalRow(app, containing: "Washed Ethiopia sweet")
+      scrollUntilHittable(row, in: app)
+      row.tap()
       XCTAssertTrue(element(app, "brewform.edit").waitForExistence(timeout: 5))
       let ask = element(app, "brewform.ai")
       scrollUntilHittable(ask, in: app)
