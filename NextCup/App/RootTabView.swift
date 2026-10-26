@@ -116,6 +116,7 @@ private struct TabRoot: View {
   private func destination(for link: DeepLink) -> some View {
     switch link {
     case .recipe(let id): RecipeDetailView(link: link, recipeID: id)
+    case .method(let id): MethodStylesView(link: link, methodID: id)
     case .newBrew:
       // The marker sits behind the form: an identifier on the form itself would
       // replace the identifiers of the elements inside it.

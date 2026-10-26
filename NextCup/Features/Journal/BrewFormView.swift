@@ -755,7 +755,9 @@ struct BrewFormView: View {
           Text("Add a photo".dsTitle).font(DS.Font.din(22, relativeTo: .title3))
             .frame(maxWidth: .infinity, minHeight: DS.Size.control)
             .foregroundStyle(DS.ink)
-            .background(DS.paper, in: RoundedRectangle(cornerRadius: DS.radius))
+            .glassEffect(
+              .regular.tint(DS.paper.opacity(0.6)), in: RoundedRectangle(cornerRadius: DS.radius)
+            )
             .overlay(
               RoundedRectangle(cornerRadius: DS.radius).strokeBorder(DS.line, lineWidth: DS.rule))
         }

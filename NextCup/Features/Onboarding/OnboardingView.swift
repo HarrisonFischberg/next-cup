@@ -109,14 +109,19 @@ struct OnboardingView: View {
           Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink2)
         }
         .padding(.horizontal, DS.Space.md).frame(minHeight: DS.Size.control)
-        .background(DS.paper, in: RoundedRectangle(cornerRadius: DS.controlRadius))
+        .glassEffect(
+          .regular.tint(DS.paper.opacity(0.6)), in: RoundedRectangle(cornerRadius: DS.controlRadius)
+        )
       }
       .accessibilityIdentifier("onboarding.grinder")
       if typesGrinder {
         TextField("Grinder name", text: $grinder)
           .textInputAutocapitalization(.words).submitLabel(.done)
           .padding(.horizontal, DS.Space.md).frame(minHeight: DS.Size.control)
-          .background(DS.paper, in: RoundedRectangle(cornerRadius: DS.controlRadius))
+          .glassEffect(
+            .regular.tint(DS.paper.opacity(0.6)),
+            in: RoundedRectangle(cornerRadius: DS.controlRadius)
+          )
           .accessibilityIdentifier("onboarding.grinder.name")
       }
       Text("Your grinder's starting setting then shows on each recipe.")
@@ -243,10 +248,16 @@ struct MethodChips: View {
               .font(.subheadline.weight(.semibold))
               .lineLimit(2).minimumScaleFactor(0.85).multilineTextAlignment(.leading)
               .foregroundStyle(on ? DS.ink : DS.ink2)
-              .padding(.horizontal, DS.Space.sm)
-              .frame(maxWidth: .infinity, minHeight: DS.Size.minTap)
-              .background(on ? DS.crema.opacity(0.15) : DS.paper, in: Capsule())
-              .overlay(Capsule().strokeBorder(on ? DS.crema : DS.line, lineWidth: 1))
+              // Room around two-line names: a capsule pinches them, a rounded box does not.
+              .padding(.horizontal, DS.Space.md).padding(.vertical, DS.Space.sm)
+              .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+              .glassEffect(
+                .regular.tint(on ? DS.crema.opacity(0.25) : nil).interactive(),
+                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+              )
+              .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                  .strokeBorder(on ? DS.crema : DS.line.opacity(0.4), lineWidth: 1))
           }
           .buttonStyle(.plain)
           .accessibilityLabel(method.name)

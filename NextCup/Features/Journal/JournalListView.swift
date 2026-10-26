@@ -358,7 +358,9 @@ struct FilterMenu<Content: View>: View {
       }
       .padding(.horizontal, DS.Space.md).padding(.vertical, DS.Space.xs)
       .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
-      .background(DS.paper, in: RoundedRectangle(cornerRadius: DS.controlRadius))
+      .glassEffect(
+        .regular.tint(DS.paper.opacity(0.6)), in: RoundedRectangle(cornerRadius: DS.controlRadius)
+      )
       .overlay(
         RoundedRectangle(cornerRadius: DS.controlRadius)
           .strokeBorder(DS.line, lineWidth: DS.isBloom ? 1 : DS.rule))

@@ -186,7 +186,7 @@ struct TodayCard: View {
     }
     .padding(DS.Space.xl)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(DS.paper, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    .panel(DS.paper)
     // A marker, not an identifier on the card: that would replace its button's.
     .background { Color.clear.accessibilityElement().accessibilityIdentifier("journal.today") }
   }
@@ -274,15 +274,14 @@ struct TasteView: View {
           }
         }
       }
-      .background(DS.paper, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-      .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+      .panel(DS.paper)
       VStack(alignment: .leading, spacing: DS.Space.sm) {
         Text("Overall").font(DS.Font.headline).foregroundStyle(DS.ink)
         GradeScale(halfSteps: $halfSteps)
       }
       TextField("Anything else you notice? (optional)", text: $notes, axis: .vertical)
         .lineLimit(1...4).padding(DS.Space.lg)
-        .background(DS.paper, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .panel(DS.paper)
     }
   }
 
@@ -315,7 +314,7 @@ struct TasteView: View {
     }
     .padding(DS.Space.xl)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(DS.paper, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    .panel(DS.paper)
   }
 
   private var actions: some View {

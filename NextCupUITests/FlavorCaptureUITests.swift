@@ -51,6 +51,10 @@ final class FlavorCaptureUITests: XCTestCase {
       app.navigationBars.buttons.element(boundBy: 0).tap()
 
       app.tabBars.buttons["Brew"].tap()
+
+      // Brew types open their styles; Balanced cone is a Cone dripper style.
+
+      app.descendants(matching: .any)["brew.method.Cone dripper"].firstMatch.tap()
       let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'"))
         .firstMatch
       XCTAssertTrue(row.waitForExistence(timeout: 5))
