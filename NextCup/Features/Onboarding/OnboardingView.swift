@@ -22,10 +22,12 @@ struct OnboardingView: View {
   @State private var capture: BeanCaptureStart?
   @State private var picked = Set<PopularBeans.Entry.ID>()
   @State private var beanSearch = ""
+  @AppStorage(BeanDetailsAI.enabledKey) private var fillsBeans = true
   @State private var error: String?
 
   private static let steps = 4
-  private static let bagStep = 3
+  private static let aiStepNumber = 3
+  private static let bagStep = 4
 
   /// Fahrenheit where the region uses it; grams everywhere, as coffee scales do.
   static var regionTemperature: TemperatureUnit {
@@ -45,8 +47,8 @@ struct OnboardingView: View {
               switch step {
               case 1: brewer
               case 2: units
-              case Self.bagStep: firstBag
-              default: aiStep
+              case Self.aiStepNumber: aiStep
+              default: firstBag
               }
             }
           }
@@ -66,8 +68,8 @@ struct OnboardingView: View {
             title: "You're set",
             message: "Your next cup starts here.",
             rings: [(1, DS.crema), (0.75, DS.espresso), (0.6, DS.sage)],
-            primaryTitle: beans.isEmpty ? "Browse recipes" : "Log my first brew",
-            primary: { done(beans.isEmpty ? .recipes : .journal) },
+            primaryTitle: "Start brewing",
+            primary: { done(.recipes) },
             playsHaptic: true)
           Spacer()
         }
@@ -229,13 +231,26 @@ struct OnboardingView: View {
     VStack(alignment: .leading, spacing: DS.Space.md) {
       if AppleIntelligence.isAvailable {
         title(
-          "Apple AI is on",
-          "Apple AI is enabled for this device. If you'd like to bring your own API key from Anthropic or OpenAI, please use the settings on the Journal page."
+          "Apple Intelligence",
+          "Next Cup uses Apple's on-device AI: nothing leaves your iPhone and no key is needed."
         )
+        Toggle(isOn: $fillsBeans) {
+          VStack(alignment: .leading, spacing: 2) {
+            Text("Fill in my beans").font(.body.weight(.semibold)).foregroundStyle(DS.ink)
+            Text(
+              "When you add a coffee, Apple AI fills in the roast, origin and process it knows of. It works from what it already knows and what's on the bag, not a web search, so check them."
+            )
+            .font(.footnote).foregroundStyle(DS.ink2)
+          }
+        }
+        .tint(DS.signal).padding(DS.Space.md).panel(DS.paper)
+        .accessibilityIdentifier("onboarding.ai.fill")
+        Text("To use Claude or ChatGPT instead, add a key later in Settings on the Journal page.")
+          .font(.footnote).foregroundStyle(DS.ink2)
       } else {
         title(
-          "AI is optional",
-          "Apple AI isn't available on this device. To use AI, bring your own API key from Anthropic or OpenAI in the settings on the Journal page."
+          "Turn on Apple Intelligence",
+          "Next Cup uses Apple's on-device AI to read bags and fill in your beans. Turn it on in the Settings app under Apple Intelligence & Siri, then it works here with no key. Or add a Claude or ChatGPT key later in Settings on the Journal page."
         )
       }
       Image(systemName: "apple.intelligence").font(.system(size: 64)).foregroundStyle(DS.crema)
@@ -273,6 +288,7 @@ struct OnboardingView: View {
   private func addPicked() -> Bool {
     let entries = PopularBeans.all.filter { picked.contains($0.id) }
     let store = Store(context: context)
+    var added: [Bean] = []
     for entry in entries {
       if beans.contains(where: {
         $0.name.caseInsensitiveCompare(entry.coffee) == .orderedSame
@@ -283,11 +299,14 @@ struct OnboardingView: View {
       var fields = BeanFields()
       fields.name = entry.coffee
       fields.roasterName = entry.roaster
-      if case .failure(let failure) = BeanService(store: store).save(fields) {
+      switch BeanService(store: store).save(fields) {
+      case .success(let bean): added.append(bean)
+      case .failure(let failure):
         error = "\(entry.coffee) was not saved. \(failure.localizedDescription)"
         return false
       }
     }
+    BeanDetailsAI.fill(added, in: context)
     error = nil
     return true
   }

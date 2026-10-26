@@ -131,7 +131,9 @@ final class BrewFormModel {
       return BrewDraft(
         sourceKey: seed.sessionKey, methodID: method?.id, recipeID: seed.recipeID,
         doseG: seed.doseG, waterG: seed.waterG, tempC: seed.tempC, totalTimeS: seed.totalTimeS,
-        targets: seed.targets, endedEarly: seed.endedEarly)
+        grindSetting: seed.grindSetting, targets: seed.targets, endedEarly: seed.endedEarly,
+        beans: seed.beanName.map { [DraftBean(beanID: seed.beanID, name: $0, grams: seed.doseG)] },
+        grinderID: seed.grinderID)
     }
     let remembered = defaults.string(forKey: lastMethodKey).flatMap(UUID.init(uuidString:))
     let visible = (try? store.context.fetch(FetchDescriptor<BrewMethod>())) ?? []
