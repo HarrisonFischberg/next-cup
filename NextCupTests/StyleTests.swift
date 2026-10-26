@@ -51,9 +51,9 @@ struct StyleTests {
   }
 
   @Test func bloomFirstThenTheTenEarlierFlavors() {
-    #expect(AppStyle.allCases.count == 11)
+    #expect(AppStyle.allCases.count == 21)
     #expect(AppStyle.allCases.first == .bloom)
-    #expect(Set(AppStyle.allCases.map(\.title)).count == 11)
+    #expect(Set(AppStyle.allCases.map(\.title)).count == 21)
   }
 
   @Test func everyoneMovesToBloomOnceThenKeepsTheirChoice() {

@@ -1,0 +1,35 @@
+{
+  "_about": "Clay Glass (Liquid Glass look). Mirrors NextCup/DesignSystem/Tokens.swift (design/check_tokens.py).",
+  "light": {
+    "bg": "#F6EADC",
+    "paper": "#FDF6EE",
+    "steel": "#4A2515",
+    "on-steel": "#FFF3E4",
+    "ink": "#3A1F14",
+    "ink-2": "#6B4332",
+    "line": "#8E6A58",
+    "signal": "#A33A1B",
+    "on-signal": "#FFFFFF",
+    "signal-on-steel": "#F0A07A",
+    "kraft": "#EFD9C2",
+    "on-kraft": "#3A1F14",
+    "error": "#9A2A16",
+    "ok": "#3E5E2E"
+  },
+  "dark": {
+    "bg": "#1F130E",
+    "paper": "#2B1B14",
+    "steel": "#43271B",
+    "on-steel": "#F7E6D2",
+    "ink": "#F7E6D2",
+    "ink-2": "#CFB29A",
+    "line": "#9C7D69",
+    "signal": "#EE9572",
+    "on-signal": "#1F130E",
+    "signal-on-steel": "#F0A07A",
+    "kraft": "#3A251B",
+    "on-kraft": "#F7E6D2",
+    "error": "#FFA58A",
+    "ok": "#9CCB8A"
+  }
+}

@@ -17,6 +17,8 @@ def ratio(a, b):
 
 styles = {"steelKraft": (json.load(open(tokens + "tokens.light.json"))["color"], json.load(open(tokens + "tokens.dark.json"))["color"])}
 for s in ("bloom", "charcoalCrema", "quietCeramic", "terracotta", "lateNightCafe", "nightMint",
+          "cremaGlass", "pourOver", "matchaGlass", "midnightRoast", "nordicMorning", "clayGlass",
+          "auroraRoast", "bentoBar", "coldBrew", "editorialCafe",
           "espressoBlack", "cafePage", "roasterPoster", "makeItYours"):
     d = json.load(open(tokens + s + ".json")); styles[s] = (d["light"], d["dark"])
 # Every Make It Yours accent replaces signal and signal-on-steel, then runs the same pairs.

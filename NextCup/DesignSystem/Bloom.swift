@@ -3,13 +3,15 @@ import SwiftUI
 // Bloom's signature pieces: rings drawn from the brew's own numbers.
 // Decorative; the numbers beside each ring carry the value for VoiceOver.
 
-/// Bloom is the flavor that draws rings instead of steel panels.
+/// Bloom and the ring Glass looks draw rings instead of steel panels. Bloom keeps its own
+/// ring colors; the others take theirs from their palette.
 extension DS {
-  static var isBloom: Bool { AppStyle.current == .bloom }
-  static let crema = Color(P(0xB8652A, 0xE0A06A))
-  static let espresso = Color(P(0x4A2C1D, 0xD9C2AE))
-  static let sage = Color(P(0x7C8C6A, 0xA9BC97))
-  static let ringTrack = Color(P(0xEDE3D6, 0x2E241C))
+  static var isBloom: Bool { flavor.rings }
+  private static var bloomColors: Bool { AppStyle.current == .bloom }
+  static var crema: Color { bloomColors ? Color(P(0xB8652A, 0xE0A06A)) : signal }
+  static var espresso: Color { bloomColors ? Color(P(0x4A2C1D, 0xD9C2AE)) : ink }
+  static var sage: Color { bloomColors ? Color(P(0x7C8C6A, 0xA9BC97)) : ok }
+  static var ringTrack: Color { bloomColors ? Color(P(0xEDE3D6, 0x2E241C)) : kraft }
 }
 
 /// Concentric rings, outermost first. Each fraction is clamped to 0...1.

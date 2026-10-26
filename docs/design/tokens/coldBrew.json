@@ -1,0 +1,35 @@
+{
+  "_about": "Cold Brew (Liquid Glass look). Mirrors NextCup/DesignSystem/Tokens.swift (design/check_tokens.py).",
+  "light": {
+    "bg": "#E9F0F3",
+    "paper": "#F7FBFC",
+    "steel": "#17303A",
+    "on-steel": "#EAF3F6",
+    "ink": "#102027",
+    "ink-2": "#4C626C",
+    "line": "#66808B",
+    "signal": "#19647E",
+    "on-signal": "#FFFFFF",
+    "signal-on-steel": "#7FCBE6",
+    "kraft": "#D9E8EE",
+    "on-kraft": "#102027",
+    "error": "#9A1B0A",
+    "ok": "#2A6A2A"
+  },
+  "dark": {
+    "bg": "#0C1418",
+    "paper": "#152027",
+    "steel": "#1C2E36",
+    "on-steel": "#E3EEF2",
+    "ink": "#E3EEF2",
+    "ink-2": "#9BB2BC",
+    "line": "#76909B",
+    "signal": "#7FCBE6",
+    "on-signal": "#0C1418",
+    "signal-on-steel": "#7FCBE6",
+    "kraft": "#1F3640",
+    "on-kraft": "#E3EEF2",
+    "error": "#FF9C85",
+    "ok": "#7FD18A"
+  }
+}

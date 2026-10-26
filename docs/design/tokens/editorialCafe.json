@@ -1,0 +1,35 @@
+{
+  "_about": "Editorial Caf\u00e9 (Liquid Glass look). Mirrors NextCup/DesignSystem/Tokens.swift (design/check_tokens.py).",
+  "light": {
+    "bg": "#F7F4EE",
+    "paper": "#FFFFFF",
+    "steel": "#1A1816",
+    "on-steel": "#F7F4EE",
+    "ink": "#141210",
+    "ink-2": "#5A554E",
+    "line": "#7B756D",
+    "signal": "#B0261C",
+    "on-signal": "#FFFFFF",
+    "signal-on-steel": "#FF8A7A",
+    "kraft": "#EFE9DE",
+    "on-kraft": "#141210",
+    "error": "#8F1B0A",
+    "ok": "#2A6A2A"
+  },
+  "dark": {
+    "bg": "#121110",
+    "paper": "#1C1A18",
+    "steel": "#262320",
+    "on-steel": "#F2EEE7",
+    "ink": "#F2EEE7",
+    "ink-2": "#A9A39A",
+    "line": "#7F786F",
+    "signal": "#FF8A7A",
+    "on-signal": "#121110",
+    "signal-on-steel": "#FF8A7A",
+    "kraft": "#2A2622",
+    "on-kraft": "#F2EEE7",
+    "error": "#FF9C85",
+    "ok": "#7FD18A"
+  }
+}

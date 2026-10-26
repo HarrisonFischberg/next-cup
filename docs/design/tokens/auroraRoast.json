@@ -1,0 +1,35 @@
+{
+  "_about": "Aurora Roast (Liquid Glass look). Mirrors NextCup/DesignSystem/Tokens.swift (design/check_tokens.py).",
+  "light": {
+    "bg": "#F5EEF1",
+    "paper": "#FDF9FB",
+    "steel": "#2E1F2E",
+    "on-steel": "#F8F0F4",
+    "ink": "#251A25",
+    "ink-2": "#63536A",
+    "line": "#85738A",
+    "signal": "#8A3F6E",
+    "on-signal": "#FFFFFF",
+    "signal-on-steel": "#F4B08F",
+    "kraft": "#F1E2EA",
+    "on-kraft": "#251A25",
+    "error": "#9A1B0A",
+    "ok": "#2F6B3F"
+  },
+  "dark": {
+    "bg": "#150F15",
+    "paper": "#201820",
+    "steel": "#2D222D",
+    "on-steel": "#F1E6EE",
+    "ink": "#F1E6EE",
+    "ink-2": "#B6A6B8",
+    "line": "#837187",
+    "signal": "#F4B08F",
+    "on-signal": "#150F15",
+    "signal-on-steel": "#F4B08F",
+    "kraft": "#32253A",
+    "on-kraft": "#F1E6EE",
+    "error": "#FF9C85",
+    "ok": "#7FD18A"
+  }
+}

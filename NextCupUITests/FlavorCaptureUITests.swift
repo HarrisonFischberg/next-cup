@@ -79,6 +79,21 @@ final class FlavorCaptureUITests: XCTestCase {
   @MainActor func testRoasterPoster() throws { try capture("roasterPoster") }
   @MainActor func testMakeItYours() throws { try capture("makeItYours") }
 
+  // The ten Liquid Glass looks, with demo brews so the ring journal has a last cup.
+  @MainActor func testGlassCremaGlass() throws { try glass("cremaGlass") }
+  @MainActor func testGlassPourOver() throws { try glass("pourOver") }
+  @MainActor func testGlassMatchaGlass() throws { try glass("matchaGlass") }
+  @MainActor func testGlassMidnightRoast() throws { try glass("midnightRoast") }
+  @MainActor func testGlassNordicMorning() throws { try glass("nordicMorning") }
+  @MainActor func testGlassClayGlass() throws { try glass("clayGlass") }
+  @MainActor func testGlassAuroraRoast() throws { try glass("auroraRoast") }
+  @MainActor func testGlassBentoBar() throws { try glass("bentoBar") }
+  @MainActor func testGlassColdBrew() throws { try glass("coldBrew") }
+  @MainActor func testGlassEditorialCafe() throws { try glass("editorialCafe") }
+  @MainActor private func glass(_ style: String) throws {
+    try capture(style, extra: ["-demoBrews", "-timerSpeed", "40"])
+  }
+
   @MainActor func testLargestTextSteelKraft() throws {
     try capture("steelKraft", largestText: true)
   }

@@ -1,0 +1,35 @@
+{
+  "_about": "Crema Glass (Liquid Glass look). Mirrors NextCup/DesignSystem/Tokens.swift (design/check_tokens.py).",
+  "light": {
+    "bg": "#F4EDE3",
+    "paper": "#FBF7F1",
+    "steel": "#3A281C",
+    "on-steel": "#FBF7F1",
+    "ink": "#2A1C13",
+    "ink-2": "#6A5A4E",
+    "line": "#8C7868",
+    "signal": "#A0561F",
+    "on-signal": "#FFFFFF",
+    "signal-on-steel": "#E5A46B",
+    "kraft": "#EFE4D6",
+    "on-kraft": "#2A1C13",
+    "error": "#9A1B0A",
+    "ok": "#4F6645"
+  },
+  "dark": {
+    "bg": "#16100C",
+    "paper": "#211913",
+    "steel": "#2E241C",
+    "on-steel": "#F3EADF",
+    "ink": "#F3EADF",
+    "ink-2": "#B8A898",
+    "line": "#7A6B5E",
+    "signal": "#E5A46B",
+    "on-signal": "#16100C",
+    "signal-on-steel": "#E5A46B",
+    "kraft": "#2E241C",
+    "on-kraft": "#F3EADF",
+    "error": "#FF9C85",
+    "ok": "#A9BC97"
+  }
+}

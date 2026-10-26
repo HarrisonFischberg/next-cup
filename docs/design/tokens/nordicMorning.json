@@ -1,0 +1,35 @@
+{
+  "_about": "Nordic Morning (Liquid Glass look). Mirrors NextCup/DesignSystem/Tokens.swift (design/check_tokens.py).",
+  "light": {
+    "bg": "#EEF1F4",
+    "paper": "#FFFFFF",
+    "steel": "#1F2933",
+    "on-steel": "#EEF1F4",
+    "ink": "#141A21",
+    "ink-2": "#525E6B",
+    "line": "#6B7785",
+    "signal": "#1F5FA8",
+    "on-signal": "#FFFFFF",
+    "signal-on-steel": "#8CB8F0",
+    "kraft": "#E1E7EE",
+    "on-kraft": "#141A21",
+    "error": "#9A1B0A",
+    "ok": "#2A6A2A"
+  },
+  "dark": {
+    "bg": "#12161B",
+    "paper": "#1B2026",
+    "steel": "#26303A",
+    "on-steel": "#E8ECF0",
+    "ink": "#E8ECF0",
+    "ink-2": "#A0ACB8",
+    "line": "#7D8996",
+    "signal": "#8CB8F0",
+    "on-signal": "#12161B",
+    "signal-on-steel": "#8CB8F0",
+    "kraft": "#27303A",
+    "on-kraft": "#E8ECF0",
+    "error": "#FF9C85",
+    "ok": "#7FD18A"
+  }
+}

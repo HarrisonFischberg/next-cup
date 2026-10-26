@@ -238,11 +238,14 @@ struct TimerView: View {
           dts.isAccessibilitySize
           ? AnyLayout(VStackLayout(spacing: DS.Space.sm))
           : AnyLayout(HStackLayout(spacing: DS.Space.sm))
-        layout {
-          SteelButton(title: "Skip step", kind: .secondary) { session.skipToNextStep() }
-            .accessibilityIdentifier("timer.skip")
-          SteelButton(title: "End early", kind: .secondary) { session.endEarly() }
-            .accessibilityIdentifier("timer.end")
+        // One container so the two glass buttons sample the same backdrop.
+        GlassEffectContainer(spacing: DS.Space.sm) {
+          layout {
+            SteelButton(title: "Skip step", kind: .secondary) { session.skipToNextStep() }
+              .accessibilityIdentifier("timer.skip")
+            SteelButton(title: "End early", kind: .secondary) { session.endEarly() }
+              .accessibilityIdentifier("timer.end")
+          }
         }
       }
     }

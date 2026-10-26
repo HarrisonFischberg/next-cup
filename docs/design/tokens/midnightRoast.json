@@ -1,0 +1,35 @@
+{
+  "_about": "Midnight Roast (Liquid Glass look). Mirrors NextCup/DesignSystem/Tokens.swift (design/check_tokens.py).",
+  "light": {
+    "bg": "#F3EEE7",
+    "paper": "#FFFFFF",
+    "steel": "#1C1714",
+    "on-steel": "#F3EEE7",
+    "ink": "#1A1410",
+    "ink-2": "#5F554C",
+    "line": "#85796E",
+    "signal": "#8F4E0A",
+    "on-signal": "#FFFFFF",
+    "signal-on-steel": "#F6B04D",
+    "kraft": "#EDE4D8",
+    "on-kraft": "#1A1410",
+    "error": "#9A1B0A",
+    "ok": "#2F6B3F"
+  },
+  "dark": {
+    "bg": "#000000",
+    "paper": "#0F0D0B",
+    "steel": "#1C1916",
+    "on-steel": "#F3EEE7",
+    "ink": "#F4EEE6",
+    "ink-2": "#A89E94",
+    "line": "#6E655C",
+    "signal": "#F6B04D",
+    "on-signal": "#000000",
+    "signal-on-steel": "#F6B04D",
+    "kraft": "#221D18",
+    "on-kraft": "#F4EEE6",
+    "error": "#FF9C85",
+    "ok": "#7FD18A"
+  }
+}

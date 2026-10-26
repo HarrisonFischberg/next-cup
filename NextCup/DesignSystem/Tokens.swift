@@ -84,13 +84,21 @@ enum DS {
     {
       .custom("AmericanTypewriter", size: size, relativeTo: style)
     }
+    /// Display text for flavors that set it as written: the named face, else the system face.
+    private static func asWritten(_ size: CGFloat, _ style: SwiftUI.Font.TextStyle)
+      -> SwiftUI.Font
+    {
+      let f = DS.flavor
+      if let name = f.displayFont { return .custom(name, size: size, relativeTo: style) }
+      return .system(style, design: f.displayDesign, weight: f.displayWeight)
+    }
     /// Page title: recipe name, screen heading.
     static var display: SwiftUI.Font {
-      DS.flavor.caps ? din(34, relativeTo: .title) : .system(.largeTitle, design: .serif)
+      DS.flavor.caps ? din(34, relativeTo: .title) : asWritten(34, .largeTitle)
     }
     /// Row and button names.
     static var headline: SwiftUI.Font {
-      DS.flavor.caps ? din(21, relativeTo: .headline) : .system(.title3, design: .serif)
+      DS.flavor.caps ? din(21, relativeTo: .headline) : asWritten(20, .title3)
     }
     /// Column headers, tile labels. Always set uppercase.
     static var label: SwiftUI.Font {
@@ -165,12 +173,15 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
   }
 }
 
-/// Ten flavors. Each is a palette plus a `Flavor` (type, corners, density, control and
+/// Twenty flavors; the ten Glass looks put their controls on Liquid Glass. Each is a palette plus a `Flavor` (type, corners, density, control and
 /// number style). Palettes are mirrored in docs/design/tokens/<name>.json.
 enum AppStyle: String, CaseIterable, Identifiable {
   case bloom
   case steelKraft, charcoalCrema, quietCeramic, terracotta, lateNightCafe
-  case nightMint, espressoBlack, cafePage, roasterPoster, makeItYours
+  case nightMint, espressoBlack, cafePage, roasterPoster
+  case cremaGlass, pourOver, matchaGlass, midnightRoast, nordicMorning
+  case clayGlass, auroraRoast, bentoBar, coldBrew, editorialCafe
+  case makeItYours
 
   static let storageKey = "appStyle"
 
@@ -201,6 +212,16 @@ enum AppStyle: String, CaseIterable, Identifiable {
     case .espressoBlack: "Espresso Black"
     case .cafePage: "Café Page"
     case .roasterPoster: "Roaster Poster"
+    case .cremaGlass: "Crema Glass"
+    case .pourOver: "Pour Over"
+    case .matchaGlass: "Matcha Glass"
+    case .midnightRoast: "Midnight Roast"
+    case .nordicMorning: "Nordic Morning"
+    case .clayGlass: "Clay Glass"
+    case .auroraRoast: "Aurora Roast"
+    case .bentoBar: "Bento Bar"
+    case .coldBrew: "Cold Brew"
+    case .editorialCafe: "Editorial Café"
     case .makeItYours: "Make It Yours"
     }
   }
@@ -218,6 +239,16 @@ enum AppStyle: String, CaseIterable, Identifiable {
     case .espressoBlack: "True black, high contrast"
     case .cafePage: "Serif headings on paper"
     case .roasterPoster: "Loud stickers with offset shadow"
+    case .cremaGlass: "Cream rings, caramel glass"
+    case .pourOver: "Bare white, clear glass"
+    case .matchaGlass: "Sage, rounded, green glass"
+    case .midnightRoast: "True black, amber glass"
+    case .nordicMorning: "Cool grid, blue glass"
+    case .clayGlass: "Warm clay, Cochin, clay glass"
+    case .auroraRoast: "Plum and peach, serif"
+    case .bentoBar: "Tiles, heavy type, mustard"
+    case .coldBrew: "Ice blue, mono numbers"
+    case .editorialCafe: "Didot, red, clear glass"
     case .makeItYours: "Your accent, corners and type"
     }
   }
@@ -228,7 +259,7 @@ enum AppStyle: String, CaseIterable, Identifiable {
     case .bloom:
       Flavor(
         displayDesign: .serif, displayWeight: .regular, radius: 24, density: .airy,
-        control: .pill, numbers: .serif, caps: false)
+        control: .pill, numbers: .serif, caps: false, rings: true)
     case .steelKraft:
       Flavor(
         displayFont: "DINCondensed-Bold", radius: 3, density: .regular, control: .square,
@@ -265,6 +296,47 @@ enum AppStyle: String, CaseIterable, Identifiable {
       Flavor(
         displayDesign: .rounded, displayWeight: .heavy, radius: 12, density: .regular,
         control: .sticker, numbers: .condensed)
+    case .cremaGlass:
+      Flavor(
+        displayDesign: .serif, displayWeight: .regular, radius: 26, density: .airy,
+        control: .pill, numbers: .serif, caps: false, glass: .regular, rings: true)
+    case .pourOver:
+      Flavor(
+        displayWeight: .light, radius: 22, density: .airy, control: .pill, numbers: .rounded,
+        caps: false, glass: .clear, rings: true)
+    case .matchaGlass:
+      Flavor(
+        bodyDesign: .rounded, displayDesign: .rounded, displayWeight: .semibold, radius: 24,
+        density: .airy, control: .pill, numbers: .rounded, caps: false, glass: .regular,
+        rings: true)
+    case .midnightRoast:
+      Flavor(
+        displayWeight: .bold, radius: 28, density: .regular, control: .pill, numbers: .rounded,
+        caps: false, glass: .regular, rings: true)
+    case .nordicMorning:
+      Flavor(
+        displayWeight: .semibold, radius: 12, density: .regular, control: .square,
+        numbers: .monospaced, glass: .regular)
+    case .clayGlass:
+      Flavor(
+        bodyDesign: .rounded, displayFont: "Cochin-Bold", radius: 22, density: .regular,
+        control: .pill, numbers: .rounded, caps: false, glass: .regular, rings: true)
+    case .auroraRoast:
+      Flavor(
+        displayDesign: .serif, displayWeight: .semibold, radius: 24, density: .airy,
+        control: .pill, numbers: .serif, caps: false, glass: .regular, rings: true)
+    case .bentoBar:
+      Flavor(
+        displayDesign: .rounded, displayWeight: .heavy, radius: 20, density: .compact,
+        control: .pill, numbers: .rounded, caps: false, glass: .regular, rings: true)
+    case .coldBrew:
+      Flavor(
+        displayWeight: .semibold, radius: 18, density: .regular, control: .pill,
+        numbers: .monospaced, glass: .clear)
+    case .editorialCafe:
+      Flavor(
+        displayFont: "Didot-Bold", radius: 6, density: .regular, control: .square,
+        numbers: .serif, caps: false, glass: .clear)
     case .makeItYours: MakeItYours.current.flavor
     }
   }
@@ -355,6 +427,87 @@ enum AppStyle: String, CaseIterable, Identifiable {
         onSignal: P(0xFFFFFF, 0x0B0B0B), signalOnSteel: P(0x8FF0A4, 0x8FF0A4),
         kraft: P(0xD9F2DF, 0x233326), onKraft: P(0x0B0B0B, 0xF2F5F2),
         error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
+    case .cremaGlass:
+      Palette(
+        bg: P(0xF4EDE3, 0x16100C), paper: P(0xFBF7F1, 0x211913), steel: P(0x3A281C, 0x2E241C),
+        onSteel: P(0xFBF7F1, 0xF3EADF), ink: P(0x2A1C13, 0xF3EADF), ink2: P(0x6A5A4E, 0xB8A898),
+        line: P(0x8C7868, 0x7A6B5E), signal: P(0xA0561F, 0xE5A46B), onSignal: P(0xFFFFFF, 0x16100C),
+        signalOnSteel: P(0xE5A46B, 0xE5A46B), kraft: P(0xEFE4D6, 0x2E241C),
+        onKraft: P(0x2A1C13, 0xF3EADF),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x4F6645, 0xA9BC97))
+    case .pourOver:
+      Palette(
+        bg: P(0xFAFAF8, 0x0B0B0B), paper: P(0xFFFFFF, 0x161616), steel: P(0x141414, 0x202020),
+        onSteel: P(0xF5F5F5, 0xF5F5F5), ink: P(0x111111, 0xF5F5F3), ink2: P(0x5A5A5A, 0xA3A3A3),
+        line: P(0x7A7A7A, 0x7A7A7A), signal: P(0xA2481B, 0xF08A5D), onSignal: P(0xFFFFFF, 0x0B0B0B),
+        signalOnSteel: P(0xF08A5D, 0xF08A5D), kraft: P(0xF0EEEA, 0x242424),
+        onKraft: P(0x111111, 0xF5F5F3),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2F6B3F, 0x7FD18A))
+    case .matchaGlass:
+      Palette(
+        bg: P(0xEEF2E8, 0x111611), paper: P(0xF8FAF4, 0x1A211A), steel: P(0x26352A, 0x24302A),
+        onSteel: P(0xF1F5EC, 0xE6EEE2), ink: P(0x1F2A20, 0xE6EEE2), ink2: P(0x526253, 0xA6B5A5),
+        line: P(0x6F806F, 0x7E907E), signal: P(0x46693E, 0xA6CE95), onSignal: P(0xFFFFFF, 0x111611),
+        signalOnSteel: P(0xA6CE95, 0xA6CE95), kraft: P(0xDFE8D4, 0x2A3A2C),
+        onKraft: P(0x1F2A20, 0xE6EEE2),
+        error: P(0x9A2A16, 0xFF9F85), ok: P(0x2F6B3F, 0x8FD39A))
+    case .midnightRoast:
+      Palette(
+        bg: P(0xF3EEE7, 0x000000), paper: P(0xFFFFFF, 0x0F0D0B), steel: P(0x1C1714, 0x1C1916),
+        onSteel: P(0xF3EEE7, 0xF3EEE7), ink: P(0x1A1410, 0xF4EEE6), ink2: P(0x5F554C, 0xA89E94),
+        line: P(0x85796E, 0x6E655C), signal: P(0x8F4E0A, 0xF6B04D), onSignal: P(0xFFFFFF, 0x000000),
+        signalOnSteel: P(0xF6B04D, 0xF6B04D), kraft: P(0xEDE4D8, 0x221D18),
+        onKraft: P(0x1A1410, 0xF4EEE6),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2F6B3F, 0x7FD18A))
+    case .nordicMorning:
+      Palette(
+        bg: P(0xEEF1F4, 0x12161B), paper: P(0xFFFFFF, 0x1B2026), steel: P(0x1F2933, 0x26303A),
+        onSteel: P(0xEEF1F4, 0xE8ECF0), ink: P(0x141A21, 0xE8ECF0), ink2: P(0x525E6B, 0xA0ACB8),
+        line: P(0x6B7785, 0x7D8996), signal: P(0x1F5FA8, 0x8CB8F0), onSignal: P(0xFFFFFF, 0x12161B),
+        signalOnSteel: P(0x8CB8F0, 0x8CB8F0), kraft: P(0xE1E7EE, 0x27303A),
+        onKraft: P(0x141A21, 0xE8ECF0),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
+    case .clayGlass:
+      Palette(
+        bg: P(0xF6EADC, 0x1F130E), paper: P(0xFDF6EE, 0x2B1B14), steel: P(0x4A2515, 0x43271B),
+        onSteel: P(0xFFF3E4, 0xF7E6D2), ink: P(0x3A1F14, 0xF7E6D2), ink2: P(0x6B4332, 0xCFB29A),
+        line: P(0x8E6A58, 0x9C7D69), signal: P(0xA33A1B, 0xEE9572), onSignal: P(0xFFFFFF, 0x1F130E),
+        signalOnSteel: P(0xF0A07A, 0xF0A07A), kraft: P(0xEFD9C2, 0x3A251B),
+        onKraft: P(0x3A1F14, 0xF7E6D2),
+        error: P(0x9A2A16, 0xFFA58A), ok: P(0x3E5E2E, 0x9CCB8A))
+    case .auroraRoast:
+      Palette(
+        bg: P(0xF5EEF1, 0x150F15), paper: P(0xFDF9FB, 0x201820), steel: P(0x2E1F2E, 0x2D222D),
+        onSteel: P(0xF8F0F4, 0xF1E6EE), ink: P(0x251A25, 0xF1E6EE), ink2: P(0x63536A, 0xB6A6B8),
+        line: P(0x85738A, 0x837187), signal: P(0x8A3F6E, 0xF4B08F), onSignal: P(0xFFFFFF, 0x150F15),
+        signalOnSteel: P(0xF4B08F, 0xF4B08F), kraft: P(0xF1E2EA, 0x32253A),
+        onKraft: P(0x251A25, 0xF1E6EE),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2F6B3F, 0x7FD18A))
+    case .bentoBar:
+      Palette(
+        bg: P(0xEFEEEA, 0x0E0E0D), paper: P(0xFFFFFF, 0x1A1A18), steel: P(0x1C1C1A, 0x24241F),
+        onSteel: P(0xF4F3EE, 0xF4F3EE), ink: P(0x151513, 0xF4F3EE), ink2: P(0x57564F, 0xA5A49B),
+        line: P(0x76756C, 0x7C7B72), signal: P(0x7A5C00, 0xE8C547), onSignal: P(0xFFFFFF, 0x0E0E0D),
+        signalOnSteel: P(0xE8C547, 0xE8C547), kraft: P(0xF3EBC9, 0x2B2818),
+        onKraft: P(0x151513, 0xF4F3EE),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2F6B3F, 0x7FD18A))
+    case .coldBrew:
+      Palette(
+        bg: P(0xE9F0F3, 0x0C1418), paper: P(0xF7FBFC, 0x152027), steel: P(0x17303A, 0x1C2E36),
+        onSteel: P(0xEAF3F6, 0xE3EEF2), ink: P(0x102027, 0xE3EEF2), ink2: P(0x4C626C, 0x9BB2BC),
+        line: P(0x66808B, 0x76909B), signal: P(0x19647E, 0x7FCBE6), onSignal: P(0xFFFFFF, 0x0C1418),
+        signalOnSteel: P(0x7FCBE6, 0x7FCBE6), kraft: P(0xD9E8EE, 0x1F3640),
+        onKraft: P(0x102027, 0xE3EEF2),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
+    case .editorialCafe:
+      Palette(
+        bg: P(0xF7F4EE, 0x121110), paper: P(0xFFFFFF, 0x1C1A18), steel: P(0x1A1816, 0x262320),
+        onSteel: P(0xF7F4EE, 0xF2EEE7), ink: P(0x141210, 0xF2EEE7), ink2: P(0x5A554E, 0xA9A39A),
+        line: P(0x7B756D, 0x7F786F), signal: P(0xB0261C, 0xFF8A7A), onSignal: P(0xFFFFFF, 0x121110),
+        signalOnSteel: P(0xFF8A7A, 0xFF8A7A), kraft: P(0xEFE9DE, 0x2A2622),
+        onKraft: P(0x141210, 0xF2EEE7),
+        error: P(0x8F1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
+
     case .makeItYours:
       Palette(
         bg: P(0xF7F6F4, 0x111111), paper: P(0xFFFFFF, 0x1C1C1E), steel: P(0x1A1A1A, 0x2C2C2E),
@@ -386,6 +539,9 @@ enum Density: String, CaseIterable, Identifiable {
 /// sticker with a hard offset shadow in the accent.
 enum ControlStyle { case square, pill, sticker }
 
+/// Which Liquid Glass the buttons sit on: tinted regular glass, or nearly invisible clear glass.
+enum GlassKind { case regular, clear }
+
 /// How measured values are set.
 enum NumberStyle { case monospaced, rounded, condensed, serif }
 
@@ -401,6 +557,10 @@ struct Flavor {
   var numbers: NumberStyle
   /// Display text in capitals (spec-sheet flavors) or as written (Bloom).
   var caps = true
+  /// Buttons on Liquid Glass; content stays on solid paper. Nil draws them solid.
+  var glass: GlassKind?
+  /// Bloom's layout: rings and quiet headers instead of steel panels.
+  var rings = false
 
   /// Display text. A named face scales from `size`; the system face uses the text style.
   func display(_ size: CGFloat, relativeTo style: SwiftUI.Font.TextStyle) -> SwiftUI.Font {

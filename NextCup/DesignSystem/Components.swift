@@ -46,9 +46,33 @@ struct SteelButtonStyle: ButtonStyle {
   var kind: SteelKind = .primary
   @Environment(\.isEnabled) private var enabled
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
   func makeBody(configuration: Configuration) -> some View {
     let shape = RoundedRectangle(cornerRadius: DS.controlRadius, style: .continuous)
+    if let kind = DS.flavor.glass, !reduceTransparency {
+      glass(configuration, kind, shape)
+    } else {
+      solid(configuration, shape)
+    }
+  }
+
+  /// Glass looks: the primary is tinted with the accent, the secondary is plain glass.
+  /// Interactive glass gives the press feedback. Reduce Transparency falls back to `solid`.
+  private func glass(_ configuration: Configuration, _ kind: GlassKind, _ shape: RoundedRectangle)
+    -> some View
+  {
+    // Clear glass shifts a tint toward full saturation, so the primary always uses regular.
+    let base: Glass = kind == .clear && self.kind == .secondary ? .clear : .regular
+    return configuration.label
+      .foregroundStyle(self.kind == .primary ? DS.onSignal : DS.ink)
+      .glassEffect(
+        base.tint(self.kind == .primary ? DS.signal : nil).interactive(), in: shape
+      )
+      .opacity(enabled ? 1 : 0.4)
+  }
+
+  private func solid(_ configuration: Configuration, _ shape: RoundedRectangle) -> some View {
     configuration.label
       .foregroundStyle(kind == .primary ? DS.onSignal : (DS.isBloom ? DS.ink : DS.onSteel))
       .background(kind == .primary ? DS.signal : (DS.isBloom ? .clear : DS.steel), in: shape)

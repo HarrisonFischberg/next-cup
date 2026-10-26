@@ -1,0 +1,35 @@
+{
+  "_about": "Matcha Glass (Liquid Glass look). Mirrors NextCup/DesignSystem/Tokens.swift (design/check_tokens.py).",
+  "light": {
+    "bg": "#EEF2E8",
+    "paper": "#F8FAF4",
+    "steel": "#26352A",
+    "on-steel": "#F1F5EC",
+    "ink": "#1F2A20",
+    "ink-2": "#526253",
+    "line": "#6F806F",
+    "signal": "#46693E",
+    "on-signal": "#FFFFFF",
+    "signal-on-steel": "#A6CE95",
+    "kraft": "#DFE8D4",
+    "on-kraft": "#1F2A20",
+    "error": "#9A2A16",
+    "ok": "#2F6B3F"
+  },
+  "dark": {
+    "bg": "#111611",
+    "paper": "#1A211A",
+    "steel": "#24302A",
+    "on-steel": "#E6EEE2",
+    "ink": "#E6EEE2",
+    "ink-2": "#A6B5A5",
+    "line": "#7E907E",
+    "signal": "#A6CE95",
+    "on-signal": "#111611",
+    "signal-on-steel": "#A6CE95",
+    "kraft": "#2A3A2C",
+    "on-kraft": "#E6EEE2",
+    "error": "#FF9F85",
+    "ok": "#8FD39A"
+  }
+}

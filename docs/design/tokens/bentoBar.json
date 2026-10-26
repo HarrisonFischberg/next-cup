@@ -1,0 +1,35 @@
+{
+  "_about": "Bento Bar (Liquid Glass look). Mirrors NextCup/DesignSystem/Tokens.swift (design/check_tokens.py).",
+  "light": {
+    "bg": "#EFEEEA",
+    "paper": "#FFFFFF",
+    "steel": "#1C1C1A",
+    "on-steel": "#F4F3EE",
+    "ink": "#151513",
+    "ink-2": "#57564F",
+    "line": "#76756C",
+    "signal": "#7A5C00",
+    "on-signal": "#FFFFFF",
+    "signal-on-steel": "#E8C547",
+    "kraft": "#F3EBC9",
+    "on-kraft": "#151513",
+    "error": "#9A1B0A",
+    "ok": "#2F6B3F"
+  },
+  "dark": {
+    "bg": "#0E0E0D",
+    "paper": "#1A1A18",
+    "steel": "#24241F",
+    "on-steel": "#F4F3EE",
+    "ink": "#F4F3EE",
+    "ink-2": "#A5A49B",
+    "line": "#7C7B72",
+    "signal": "#E8C547",
+    "on-signal": "#0E0E0D",
+    "signal-on-steel": "#E8C547",
+    "kraft": "#2B2818",
+    "on-kraft": "#F4F3EE",
+    "error": "#FF9C85",
+    "ok": "#7FD18A"
+  }
+}
