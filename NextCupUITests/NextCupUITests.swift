@@ -511,6 +511,28 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "beans.row.Monarch").exists)
   }
 
+  /// Set-up's grinder: Other shows a name field; picking a listed grinder again hides it.
+  @MainActor
+  func testOtherGrinderFieldGoesAwayWhenAListedGrinderIsPicked() {
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      "-showOnboarding",
+    ]
+    app.launch()
+    let picker = element(app, "onboarding.grinder")
+    XCTAssertTrue(picker.waitForExistence(timeout: 10))
+    picker.tap()
+    let other = app.buttons["Other…"]
+    XCTAssertTrue(other.waitForExistence(timeout: 5))
+    other.tap()
+    XCTAssertTrue(element(app, "onboarding.grinder.name").waitForExistence(timeout: 5))
+    picker.tap()
+    app.buttons["Baratza Encore"].tap()
+    XCTAssertTrue(element(app, "onboarding.grinder.name").waitForNonExistence(timeout: 5))
+    XCTAssertTrue(picker.label.contains("Baratza Encore"), "got \(picker.label)")
+  }
+
   /// One brew type picked in set-up: Start brewing goes straight to its styles.
   @MainActor
   func testOneBrewTypeInSetUpOpensItsStyles() {
