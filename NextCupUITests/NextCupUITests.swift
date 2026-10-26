@@ -483,6 +483,7 @@ final class NextCupUITests: XCTestCase {
     app.launch()
     element(app, "onboarding.next").tap()
     element(app, "onboarding.next").tap()
+    element(app, "onboarding.next").tap()
     let search = element(app, "onboarding.beans.search")
     XCTAssertTrue(search.waitForExistence(timeout: 5))
     XCTAssertTrue(element(app, "onboarding.beans.photo").exists)
@@ -502,12 +503,37 @@ final class NextCupUITests: XCTestCase {
       try save(app.screenshot(), "\(folderURL.path)/onboarding-beans.png")
     }
     app.buttons["Add 2 beans"].tap()
-    XCTAssertTrue(element(app, "onboarding.ai").waitForExistence(timeout: 5))
-    element(app, "onboarding.next").tap()
-    app.buttons["Log my first brew"].tap()
+    let start = app.buttons["Start brewing"]
+    XCTAssertTrue(start.waitForExistence(timeout: 5))
+    start.tap()
     app.tabBars.buttons["Beans"].tap()
     XCTAssertTrue(element(app, "beans.row.Hair Bender").waitForExistence(timeout: 5))
     XCTAssertTrue(element(app, "beans.row.Monarch").exists)
+  }
+
+  /// One brew type picked in set-up: Start brewing goes straight to its styles.
+  @MainActor
+  func testOneBrewTypeInSetUpOpensItsStyles() {
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      "-showOnboarding",
+    ]
+    app.launch()
+    XCTAssertTrue(element(app, "onboarding.next").waitForExistence(timeout: 10))
+    for name in [
+      "Flat-bed dripper", "Switchable immersion dripper", "Press pot", "Inverted press",
+      "Espresso", "Iced pour over", "Cold brew",
+    ] {
+      app.buttons[name].tap()
+    }
+    element(app, "onboarding.next").tap()
+    element(app, "onboarding.next").tap()
+    element(app, "onboarding.next").tap()
+    element(app, "onboarding.later").tap()
+    app.buttons["Start brewing"].tap()
+    XCTAssertTrue(app.staticTexts["Pick a style"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.navigationBars["Cone dripper"].exists)
   }
 
   /// The daily loop: a brew saved untasted waits on the journal; tasting it
@@ -1167,11 +1193,11 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(progress.label.contains("Step 2 of 4"), "got \(progress.label)")
     element(app, "onboarding.next").tap()
     XCTAssertTrue(progress.label.contains("Step 3 of 4"), "got \(progress.label)")
-    element(app, "onboarding.later").tap()
-    XCTAssertTrue(progress.label.contains("Step 4 of 4"), "got \(progress.label)")
-    XCTAssertTrue(element(app, "onboarding.ai").exists, "the last step says which AI is on")
+    XCTAssertTrue(element(app, "onboarding.ai").exists, "step 3 is Apple Intelligence")
     element(app, "onboarding.next").tap()
-    let finish = app.buttons["Browse recipes"]
+    XCTAssertTrue(progress.label.contains("Step 4 of 4"), "got \(progress.label)")
+    element(app, "onboarding.later").tap()
+    let finish = app.buttons["Start brewing"]
     XCTAssertTrue(finish.waitForExistence(timeout: 5), "the finish names the next step")
     finish.tap()
     XCTAssertTrue(app.tabBars.buttons["Brew"].waitForExistence(timeout: 5))

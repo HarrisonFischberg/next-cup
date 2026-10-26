@@ -43,6 +43,9 @@ private struct RecipeDetailContent: View {
     .rawValue
   @Environment(\.dynamicTypeSize) private var dts
   @Query private var grinders: [Grinder]
+  @Query(sort: \Bean.name) private var allBeans: [Bean]
+  @State private var beanID: UUID?
+  @State private var grindSetting = ""
   @AppStorage(BrewFormModel.lastGrinderKey) private var lastGrinderID = ""
 
   private var units: UnitPreferences {
@@ -65,6 +68,7 @@ private struct RecipeDetailContent: View {
     ScrollView {
       VStack(alignment: .leading, spacing: DS.Space.lg) {
         header
+        beansPicker
         if startFailed {
           StateBanner(kind: .error, message: "This recipe cannot be timed. Check its steps.")
         }
@@ -243,9 +247,80 @@ private struct RecipeDetailContent: View {
   // MARK: Actions
 
   /// Starts the guided timer at the dose on screen.
+  private var beans: [Bean] { allBeans.filter { $0.status == .inUse } }
+  private var grinder: Grinder? { grinders.first { $0.id.uuidString == lastGrinderID } }
+
+  /// The brew starts with which beans, then the guided numbers: grams of beans and water
+  /// below, and the grind on the user's grinder (the bean's last grind when it has one).
+  private var beansPicker: some View {
+    let chosen = beans.first { $0.id == beanID }
+    return VStack(alignment: .leading, spacing: DS.Space.sm) {
+      Menu {
+        ForEach(beans) { bean in
+          Button(bean.roaster.map { "\(bean.name) · \($0.name)" } ?? bean.name) { choose(bean) }
+        }
+        Button("No beans") {
+          beanID = nil
+          grindSetting = ""
+        }
+      } label: {
+        HStack {
+          VStack(alignment: .leading, spacing: 2) {
+            Text("BEANS").font(DS.Font.label).foregroundStyle(DS.ink2)
+            Text(
+              chosen?.name ?? (beans.isEmpty ? "Add beans in the Beans tab" : "Choose your beans")
+            )
+            .font(DS.Font.headline).foregroundStyle(chosen == nil ? DS.ink2 : DS.ink)
+          }
+          Spacer(minLength: DS.Space.sm)
+          Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink2)
+            .accessibilityHidden(true)
+        }
+        .padding(DS.Space.md).frame(minHeight: DS.Size.control)
+        .panel(DS.paper)
+      }
+      .disabled(beans.isEmpty)
+      .accessibilityLabel("Beans")
+      .accessibilityValue(chosen?.name ?? "None chosen")
+      .accessibilityIdentifier("recipe.beans")
+      if let grinder {
+        HStack {
+          Text("GRIND ON YOUR \(grinder.name.uppercased())").font(DS.Font.label)
+            .foregroundStyle(DS.ink2)
+          Spacer(minLength: DS.Space.sm)
+          TextField("Setting", text: $grindSetting).multilineTextAlignment(.trailing)
+            .font(DS.Font.mono(.body, .bold)).frame(maxWidth: 120)
+            .accessibilityLabel("Grind setting")
+            .accessibilityIdentifier("recipe.grindSetting")
+        }
+        .padding(DS.Space.md).frame(minHeight: DS.Size.control)
+        .panel(DS.paper)
+      }
+    }
+    .onAppear {
+      if beanID == nil, let first = beans.first { choose(first) }
+    }
+  }
+
+  /// Picks a bean and brings back its last grind, so the setup starts where it left off.
+  private func choose(_ bean: Bean) {
+    beanID = bean.id
+    let last = (bean.brewUses ?? []).compactMap(\.brew)
+      .filter { !$0.isDraft && !($0.grindSetting ?? "").isEmpty }
+      .max { $0.date < $1.date }
+    grindSetting = last?.grindSetting ?? grindSetting
+  }
+
   private func startBrew() {
     do {
-      timerSetup = try TimerPlanBuilder.setup(for: recipe, doseG: doseG)
+      var setup = try TimerPlanBuilder.setup(for: recipe, doseG: doseG)
+      if let bean = beans.first(where: { $0.id == beanID }) {
+        setup.beanID = bean.id
+        setup.beanName = bean.name
+      }
+      setup.grinderID = grinder?.id
+      setup.grindSetting = grindSetting.trimmingCharacters(in: .whitespaces)
+      timerSetup = setup
       startFailed = false
     } catch {
       startFailed = true

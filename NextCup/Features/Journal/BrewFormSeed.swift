@@ -16,6 +16,11 @@ struct BrewFormSeed: Hashable {
   let totalTimeS: Int
   let targetTimeS: Int?
   let endedEarly: Bool
+  /// The bean, grinder and grind picked on the Start brew page, if any.
+  var beanID: UUID?
+  var beanName: String?
+  var grinderID: UUID?
+  var grindSetting = ""
 
   var targets: BrewTargets {
     BrewTargets(doseG: doseG, waterG: waterG, tempC: tempC, totalTimeS: targetTimeS)
