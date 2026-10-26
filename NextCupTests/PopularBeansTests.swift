@@ -17,4 +17,10 @@ struct PopularBeansTests {
     #expect(PopularBeans.search("zzzz").isEmpty)
     #expect(PopularBeans.search("  ").count == PopularBeans.all.count)
   }
+
+  @Test func starbucksComesLast() {
+    let all = PopularBeans.all
+    let first = try? #require(all.firstIndex { $0.roaster == "Starbucks" })
+    #expect(first.map { all[$0...].allSatisfy { $0.roaster == "Starbucks" } } == true)
+  }
 }

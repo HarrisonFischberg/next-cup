@@ -533,6 +533,23 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(picker.label.contains("Baratza Encore"), "got \(picker.label)")
   }
 
+  /// Each brew type's styles end with Your Style, which opens a blank recipe on that method.
+  @MainActor
+  func testYourStyleOpensABlankRecipeOnTheMethod() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Brew"].tap()
+    element(app, "brew.method.Press pot").tap()
+    let yours = element(app, "style.yours")
+    XCTAssertTrue(yours.waitForExistence(timeout: 5))
+    scrollUntilHittable(yours, in: app)
+    yours.tap()
+    XCTAssertTrue(element(app, "recipe.editor").waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      app.buttons["Press pot"].exists || app.staticTexts["Press pot"].exists,
+      "the method is set: \(app.debugDescription)")
+  }
+
   /// One brew type picked in set-up: Start brewing goes straight to its styles.
   @MainActor
   func testOneBrewTypeInSetUpOpensItsStyles() {

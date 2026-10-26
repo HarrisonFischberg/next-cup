@@ -23,6 +23,8 @@ enum RecipeEditorTarget: Identifiable, Hashable {
 /// are typed in the user's units. Removing a step offers Undo.
 struct RecipeEditorView: View {
   let target: RecipeEditorTarget
+  /// A new recipe starts on this method (Your Style on a method's styles page).
+  var methodID: UUID?
   let close: (Recipe?) -> Void
 
   @Environment(\.modelContext) private var context
@@ -266,7 +268,7 @@ struct RecipeEditorView: View {
     var loadedFields = RecipeEditorFields()
     switch target {
     case .new:
-      loadedFields.methodID = methods.first { !$0.isHidden }?.id
+      loadedFields.methodID = methodID ?? methods.first { !$0.isHidden }?.id
       loadedFields.steps = [RecipeEditorFields.StepFields()]
     case .edit(let id), .copy(let id):
       guard let recipe = try? Store(context: context).find(Recipe.self, id: id) else {
