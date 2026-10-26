@@ -150,14 +150,19 @@ struct TodayCard: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: DS.Space.lg) {
-      VStack(alignment: .leading, spacing: DS.Space.xs) {
-        Text(name).font(.system(.title, design: .serif, weight: .medium)).foregroundStyle(DS.ink)
-          .accessibilityAddTraits(.isHeader)
-        Text(
-          "Brewed at \(brew.date.formatted(date: .omitted, time: .shortened))"
-            + (brew.method.map { " on the \($0.name.lowercased())" } ?? "")
-        )
-        .font(.subheadline).foregroundStyle(DS.ink2)
+      HStack(spacing: DS.Space.md) {
+        if let method = brew.method {
+          BrewMedallion(method.glyph).frame(width: 64)
+        }
+        VStack(alignment: .leading, spacing: DS.Space.xs) {
+          Text(name).font(.system(.title, design: .serif, weight: .medium)).foregroundStyle(DS.ink)
+            .accessibilityAddTraits(.isHeader)
+          Text(
+            "Brewed at \(brew.date.formatted(date: .omitted, time: .shortened))"
+              + (brew.method.map { " on the \($0.name.lowercased())" } ?? "")
+          )
+          .font(.subheadline).foregroundStyle(DS.ink2)
+        }
       }
       if brew.verdict == nil {
         TimelineView(.everyMinute) { context in

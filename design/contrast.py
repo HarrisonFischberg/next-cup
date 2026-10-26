@@ -16,8 +16,7 @@ def ratio(a, b):
     return (hi + 0.05) / (lo + 0.05)
 
 styles = {"steelKraft": (json.load(open(tokens + "tokens.light.json"))["color"], json.load(open(tokens + "tokens.dark.json"))["color"])}
-for s in ("daily", "bloom", "charcoalCrema", "quietCeramic", "nightMint",
-          "espressoBlack", "cafePage", "roasterPoster"):
+for s in ("daily", "nightMint", "espressoBlack", "cafePage"):
     d = json.load(open(tokens + s + ".json")); styles[s] = (d["light"], d["dark"])
 
 bad = 0

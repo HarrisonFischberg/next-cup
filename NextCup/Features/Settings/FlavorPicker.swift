@@ -7,14 +7,6 @@ struct FlavorPicker: View {
 
   @AppStorage(AppStyle.storageKey) private var style = AppStyle.nightMint.rawValue
   @Environment(\.dynamicTypeSize) private var dts
-  @State private var showsAll = false
-
-  /// Night Mint, plus the chosen look when it is another; the rest wait behind More looks.
-  private var shown: [AppStyle] {
-    showsAll
-      ? AppStyle.allCases
-      : AppStyle.allCases.filter { $0 == .nightMint || $0 == AppStyle.current }
-  }
 
   private var columns: [GridItem] {
     Array(
@@ -25,18 +17,12 @@ struct FlavorPicker: View {
   var body: some View {
     VStack(alignment: .leading, spacing: DS.Space.lg) {
       LazyVGrid(columns: columns, spacing: DS.Space.md) {
-        ForEach(shown) { option in
+        ForEach(AppStyle.allCases) { option in
           FlavorTile(style: option, isSelected: option == AppStyle.current) {
             Self.keepPlace()
             style = option.rawValue
           }
         }
-      }
-      if !showsAll {
-        Button("More looks (\(AppStyle.allCases.count - shown.count))") { showsAll = true }
-          .font(.body.weight(.semibold)).foregroundStyle(DS.ink)
-          .frame(maxWidth: .infinity, minHeight: DS.Size.minTap)
-          .accessibilityIdentifier("settings.flavors.more")
       }
     }
     .padding(.vertical, DS.Space.sm)

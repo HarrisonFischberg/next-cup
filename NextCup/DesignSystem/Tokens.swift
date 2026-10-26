@@ -168,9 +168,7 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 /// The flavors. Each is a palette plus a `Flavor` (type, corners, density, control and
 /// number style). Palettes are mirrored in docs/design/tokens/<name>.json.
 enum AppStyle: String, CaseIterable, Identifiable {
-  case daily, bloom
-  case steelKraft, charcoalCrema, quietCeramic
-  case nightMint, espressoBlack, cafePage, roasterPoster
+  case nightMint, daily, steelKraft, espressoBlack, cafePage
 
   static let storageKey = "appStyle"
 
@@ -193,14 +191,10 @@ enum AppStyle: String, CaseIterable, Identifiable {
   var title: String {
     switch self {
     case .daily: "Daily"
-    case .bloom: "Bloom"
     case .steelKraft: "Steel & Kraft"
-    case .charcoalCrema: "Charcoal & Crema"
-    case .quietCeramic: "Quiet Ceramic"
     case .nightMint: "Night Mint"
     case .espressoBlack: "Espresso Black"
     case .cafePage: "Café Page"
-    case .roasterPoster: "Roaster Poster"
     }
   }
 
@@ -208,21 +202,17 @@ enum AppStyle: String, CaseIterable, Identifiable {
   var mood: String {
     switch self {
     case .daily: "Clean white cards, serif, one amber"
-    case .bloom: "Cream, serif, brew rings"
     case .steelKraft: "Spec sheet, square, one orange"
-    case .charcoalCrema: "Ledger, Didot numerals"
-    case .quietCeramic: "Calm, airy, celadon"
     case .nightMint: "Calm mint, rounded"
     case .espressoBlack: "True black, high contrast"
     case .cafePage: "Serif headings on paper"
-    case .roasterPoster: "Loud stickers with offset shadow"
     }
   }
 
   /// Everything but color that sets a flavor apart.
   var flavor: Flavor {
     switch self {
-    case .daily, .bloom:
+    case .daily:
       Flavor(
         displayDesign: .serif, displayWeight: .regular, radius: 24, density: .airy,
         control: .pill, numbers: .serif, caps: false)
@@ -230,14 +220,6 @@ enum AppStyle: String, CaseIterable, Identifiable {
       Flavor(
         displayFont: "DINCondensed-Bold", radius: 3, density: .regular, control: .square,
         numbers: .monospaced)
-    case .charcoalCrema:
-      Flavor(
-        displayFont: "Didot-Bold", radius: 2, density: .regular, control: .square,
-        numbers: .monospaced)
-    case .quietCeramic:
-      Flavor(
-        displayFont: "HiraMinProN-W6", radius: 20, density: .airy, control: .pill,
-        numbers: .rounded)
     case .nightMint:
       Flavor(
         bodyDesign: .rounded, displayDesign: .rounded, displayWeight: .semibold, radius: 20,
@@ -250,10 +232,6 @@ enum AppStyle: String, CaseIterable, Identifiable {
       Flavor(
         displayDesign: .serif, displayWeight: .semibold, radius: 18, density: .airy,
         control: .square, numbers: .monospaced)
-    case .roasterPoster:
-      Flavor(
-        displayDesign: .rounded, displayWeight: .heavy, radius: 12, density: .regular,
-        control: .sticker, numbers: .condensed)
     }
   }
 
@@ -269,14 +247,6 @@ enum AppStyle: String, CaseIterable, Identifiable {
         onSignal: P(0xFFFFFF, 0x1A1208), signalOnSteel: P(0xE3A75C, 0xE3A75C),
         kraft: P(0xF3E9DC, 0x2A2117), onKraft: P(0x1C1A17, 0xF2EFEA),
         error: P(0x9A1B0A, 0xFF9C85), ok: P(0x55684A, 0xA9BC97))
-    case .bloom:
-      Palette(
-        bg: P(0xF5EFE6, 0x17110D), paper: P(0xFBF8F3, 0x221A14), steel: P(0x2B1D14, 0x2E241C),
-        onSteel: P(0xFBF8F3, 0xF3EADF), ink: P(0x2B1D14, 0xF3EADF), ink2: P(0x6E5E52, 0xB8A898),
-        line: P(0x8F7C6C, 0x7A6B5E), signal: P(0x9A5222, 0xE0A06A),
-        onSignal: P(0xFFFFFF, 0x17110D), signalOnSteel: P(0xE0A06A, 0xE0A06A),
-        kraft: P(0xEDE3D6, 0x2E241C), onKraft: P(0x2B1D14, 0xF3EADF),
-        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x55684A, 0xA9BC97))
     case .steelKraft:
       Palette(
         bg: P(0xD9C4A0, 0x1B1D1F), paper: P(0xEFE6D3, 0x26292C), steel: P(0x2B2F33, 0x30353A),
@@ -285,22 +255,6 @@ enum AppStyle: String, CaseIterable, Identifiable {
         onSignal: P(0xFFFFFF, 0x1B1D1F), signalOnSteel: P(0xFF7A3D, 0xFF7A3D),
         kraft: P(0xC9AE82, 0xC9AE82), onKraft: P(0x1E1E1C, 0x1E1E1C),
         error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
-    case .charcoalCrema:
-      Palette(
-        bg: P(0xF4ECDF, 0x1B1917), paper: P(0xEADFCC, 0x262320), steel: P(0x2A2622, 0x332E29),
-        onSteel: P(0xF2E8D8, 0xF2E8D8), ink: P(0x1F1B18, 0xF2E8D8), ink2: P(0x5C5248, 0xBFB2A0),
-        line: P(0x5C5248, 0x8F8372), signal: P(0x8A5A2B, 0xD9B88F),
-        onSignal: P(0xF4ECDF, 0x1B1917), signalOnSteel: P(0xD9B88F, 0xD9B88F),
-        kraft: P(0xD8C3A0, 0xC9AE82), onKraft: P(0x1F1B18, 0x1F1B18),
-        error: P(0xA2331F, 0xF0907D), ok: P(0x2A6A2A, 0x7FD18A))
-    case .quietCeramic:
-      Palette(
-        bg: P(0xF6F1E7, 0x1F1A16), paper: P(0xECE4D3, 0x2A241E), steel: P(0x33403A, 0x2F3A34),
-        onSteel: P(0xF6F1E7, 0xEFE7D8), ink: P(0x3B2E25, 0xEFE7D8), ink2: P(0x6B5B4E, 0xB8AC9C),
-        line: P(0x6B5B4E, 0x8F8374), signal: P(0x44695A, 0x9DBFAE),
-        onSignal: P(0xF6F1E7, 0x1F1A16), signalOnSteel: P(0x9DBFAE, 0x9DBFAE),
-        kraft: P(0xD3C8B3, 0xD3C8B3), onKraft: P(0x3B2E25, 0x3B2E25),
-        error: P(0x9B3B2A, 0xEE9A86), ok: P(0x2A6A2A, 0x7FD18A))
     case .nightMint:
       Palette(
         bg: P(0xF4F8F7, 0x0E1513), paper: P(0xFFFFFF, 0x18211F), steel: P(0x13201D, 0x1F2B28),
@@ -324,14 +278,6 @@ enum AppStyle: String, CaseIterable, Identifiable {
         line: P(0x625C52, 0xABA396), signal: P(0x7A4A8C, 0xD6B3E3),
         onSignal: P(0xFFFFFF, 0x1A1816), signalOnSteel: P(0xD6B3E3, 0xD6B3E3),
         kraft: P(0xE6DAEC, 0x3A3140), onKraft: P(0x22201C, 0xEDE7DD),
-        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
-    case .roasterPoster:
-      Palette(
-        bg: P(0xFFFFFF, 0x121413), paper: P(0xF1F7F2, 0x1C201D), steel: P(0x0B0B0B, 0x1C201D),
-        onSteel: P(0xF2F5F2, 0xF2F5F2), ink: P(0x0B0B0B, 0xF2F5F2), ink2: P(0x4A4F4B, 0xA7AFA9),
-        line: P(0x0B0B0B, 0xF2F5F2), signal: P(0x1E7A3E, 0x8FF0A4),
-        onSignal: P(0xFFFFFF, 0x0B0B0B), signalOnSteel: P(0x8FF0A4, 0x8FF0A4),
-        kraft: P(0xD9F2DF, 0x233326), onKraft: P(0x0B0B0B, 0xF2F5F2),
         error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
     }
   }
@@ -389,6 +335,16 @@ struct Flavor {
       .custom(
         "DINCondensed-Bold", size: UIFont.preferredFont(forTextStyle: style.uiKit).pointSize * 1.15,
         relativeTo: style)
+    }
+  }
+
+  /// The timer's time under the brew picture: big, but smaller than `readout`.
+  var timerReadout: SwiftUI.Font {
+    switch numbers {
+    case .monospaced: .system(size: 60, weight: .bold, design: .monospaced)
+    case .serif: .system(size: 60, weight: .regular, design: .serif).monospacedDigit()
+    case .rounded: .system(size: 64, weight: .bold, design: .rounded).monospacedDigit()
+    case .condensed: .custom("DINCondensed-Bold", size: 72)
     }
   }
 
