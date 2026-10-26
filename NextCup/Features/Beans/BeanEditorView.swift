@@ -19,8 +19,15 @@ enum BeanEditorTarget: Identifiable, Hashable {
 
 /// Add a bean, or change one. Weight is typed in the user's unit and stored in
 /// grams. An unsaved change blocks swipe-to-dismiss; Cancel discards it.
+/// How the editor starts: straight into a bag photo or a barcode scan (set-up offers both).
+enum BeanCaptureStart: String, Identifiable {
+  case photo, barcode, manual
+  var id: String { rawValue }
+}
+
 struct BeanEditorView: View {
   let target: BeanEditorTarget
+  var start: BeanCaptureStart?
   let close: () -> Void
 
   @Environment(\.modelContext) private var context
@@ -114,7 +121,16 @@ struct BeanEditorView: View {
           Button("Done") { focused = false }
         }
       }
-      .task { load() }
+      .task {
+        load()
+        switch start {
+        case .photo:
+          chooseScan(
+            .bagRecognition, camera: UIImagePickerController.isSourceTypeAvailable(.camera))
+        case .barcode: startBarcode()
+        case .manual, nil: break
+        }
+      }
       .photosPicker(isPresented: $pickerShown, selection: $pickedPhoto, matching: .images)
       .onChange(of: pickedPhoto) { _, item in
         guard let item else { return }
