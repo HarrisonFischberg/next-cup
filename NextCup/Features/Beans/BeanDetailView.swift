@@ -319,9 +319,9 @@ struct BeanDetailView: View {
   private var flavor: some View {
     KraftNote {
       VStack(alignment: .leading, spacing: DS.Space.xs) {
-        Text("FLAVOR NOTES ON THE BAG").font(DS.Font.label).foregroundStyle(DS.onKraft)
+        Text("FLAVOR NOTES ON THE BAG").font(DS.Font.label).foregroundStyle(DS.ink)
         Text(bean.bagFlavorNotes.joined(separator: ", ")).font(DS.Font.note)
-          .foregroundStyle(DS.onKraft)
+          .foregroundStyle(DS.ink)
       }
     }
     .accessibilityElement(children: .combine)

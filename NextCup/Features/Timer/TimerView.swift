@@ -31,24 +31,28 @@ struct TimerView: View {
   private var setup: TimerSetup { session.setup }
 
   var body: some View {
-    ScrollViewReader { proxy in
-      ScrollView {
-        VStack(alignment: .leading, spacing: DS.Space.lg) {
-          header
-          readout
-          if session.outcome != nil { finishedBanner }
-          steps
+    // The readout stays put; only the step list scrolls, so starting or moving to the
+    // next step never pushes the time under the navigation bar.
+    VStack(alignment: .leading, spacing: DS.Space.lg) {
+      header
+      readout
+      if session.outcome != nil { finishedBanner }
+      ScrollViewReader { proxy in
+        ScrollView {
+          steps.padding(.bottom, DS.Space.lg)
         }
-        .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.lg)
-      }
-      .onChange(of: state.currentIndex) { _, index in
-        // Step 1 stays put so the recipe header is not pushed under the bar.
-        guard let index, index > 0 else { return }
-        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
-          proxy.scrollTo(index, anchor: .center)
+        .scrollBounceBehavior(.basedOnSize)
+        .onChange(of: state.currentIndex) { _, index in
+          guard let index, index > 0 else { return }
+          withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
+            proxy.scrollTo(index, anchor: .center)
+          }
         }
       }
     }
+    .padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.lg)
+    // A container, so the screen's identifier does not replace its children's.
+    .accessibilityElement(children: .contain)
     .background(DS.bg)
     .safeAreaInset(edge: .bottom, spacing: 0) { controls }
     .navigationTitle("Brew")
@@ -179,19 +183,22 @@ struct TimerView: View {
   /// next step. Nothing moves on until the user taps it.
   private var finishedBanner: some View {
     let early = session.outcome?.endedEarly == true
-    return VStack(alignment: .leading, spacing: DS.Space.xs) {
-      Text((early ? "Brew ended" : "Brew complete").dsTitle).font(DS.Font.display)
-        .foregroundStyle(DS.ink).dynamicTypeSize(...DS.displayCap)
-        .accessibilityAddTraits(.isHeader)
-      Text(
-        "\(RecipeFormat.clock(Int(state.elapsedS))) · target \(RecipeFormat.clock(setup.plan.totalDurationS)). "
-          + (early ? "Log it with the time reached." : "Taste it, then log how it was.")
-      )
-      .font(.body).foregroundStyle(DS.ink2)
+    return HStack(alignment: .top, spacing: DS.Space.md) {
+      Image(systemName: early ? "stop.circle" : "checkmark.circle").font(.title2)
+        .foregroundStyle(DS.signal).accessibilityHidden(true)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(early ? "Brew ended" : "Brew complete").font(.headline).foregroundStyle(DS.ink)
+          .accessibilityAddTraits(.isHeader)
+        Text(
+          "\(RecipeFormat.clock(Int(state.elapsedS))) of \(RecipeFormat.clock(setup.plan.totalDurationS)). "
+            + (early ? "Log it with the time you reached." : "Taste it, then log how it was.")
+        )
+        .font(.subheadline).foregroundStyle(DS.ink2)
+      }
     }
-    .padding(DS.Space.lg)
+    .padding(DS.Space.md)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(DS.crema.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.controlRadius))
+    .panel(DS.paper)
     .accessibilityElement(children: .combine)
     .accessibilityIdentifier("timer.finished")
   }

@@ -21,16 +21,16 @@ struct SuggestionCard: View {
   var body: some View {
     KraftNote {
       VStack(alignment: .leading, spacing: DS.Space.sm) {
-        Text(label).font(DS.Font.label).foregroundStyle(DS.onKraft)
+        Text(label).font(DS.Font.label).foregroundStyle(DS.ink)
           .accessibilityAddTraits(.isHeader)
         Text(SuggestionFormat.headline(suggestion, units))
-          .font(DS.Font.mono(.title3, .bold)).foregroundStyle(DS.onKraft)
+          .font(DS.Font.mono(.title3, .bold)).foregroundStyle(DS.ink)
           .accessibilityLabel(SuggestionFormat.spoken(suggestion, units))
           .accessibilityIdentifier("suggestion.headline")
-        Text(suggestion.rationale).font(.footnote).foregroundStyle(DS.onKraft)
+        Text(suggestion.rationale).font(.footnote).foregroundStyle(DS.ink)
         if let source = suggestion.sourceBrew {
           Text("From your brew on \(source.date.formatted(date: .abbreviated, time: .omitted)).")
-            .font(.footnote).foregroundStyle(DS.onKraft)
+            .font(.footnote).foregroundStyle(DS.ink)
         }
         if let error {
           Text(error).font(.footnote.weight(.semibold)).foregroundStyle(DS.error)

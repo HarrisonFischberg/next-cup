@@ -146,14 +146,14 @@ struct AIAskView: View {
       KraftNote {
         VStack(alignment: .leading, spacing: DS.Space.sm) {
           Text(dismissed ? "DISMISSED" : "TRY THIS NEXT").font(DS.Font.label)
-            .foregroundStyle(DS.onKraft).accessibilityAddTraits(.isHeader)
+            .foregroundStyle(DS.ink).accessibilityAddTraits(.isHeader)
           Text(SuggestionFormat.headline(suggestion, units))
-            .font(DS.Font.mono(.title3, .bold)).foregroundStyle(DS.onKraft)
+            .font(DS.Font.mono(.title3, .bold)).foregroundStyle(DS.ink)
             .accessibilityLabel(SuggestionFormat.spoken(suggestion, units))
             .accessibilityIdentifier("ai.ask.headline")
-          Text(suggestion.rationale).font(.footnote).foregroundStyle(DS.onKraft)
+          Text(suggestion.rationale).font(.footnote).foregroundStyle(DS.ink)
           if let modelID = suggestion.modelID {
-            Text("Suggested by \(modelID).").font(.footnote).foregroundStyle(DS.onKraft)
+            Text("Suggested by \(modelID).").font(.footnote).foregroundStyle(DS.ink)
           }
         }
       }

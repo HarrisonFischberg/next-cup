@@ -35,4 +35,11 @@ struct GrinderGuideTests {
     #expect(GrinderGuide.method(forMethodNamed: "Cold brew") == .coldBrew)
     #expect(GrinderGuide.method(forMethodNamed: "Siphon") == nil)
   }
+
+  @Test func recommendsOneSetting() {
+    #expect(GrinderGuide.find("Comandante C40 MK4")?.recommended(for: .pourOver) == "20")
+    #expect(GrinderGuide.find("Niche Zero")?.recommended(for: .pourOver) == "0.45")
+    #expect(GrinderGuide.find("1Zpresso K-Ultra")?.recommended(for: .pourOver) == "0.5.3")
+    #expect(GrinderGuide.find("Baratza Encore")?.recommended(for: .espresso) == nil)
+  }
 }
