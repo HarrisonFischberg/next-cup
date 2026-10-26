@@ -27,7 +27,9 @@ struct RoasterMatchView: View {
               SkeletonRow().listRowInsets(EdgeInsets()).listRowSeparator(.hidden)
             }
           case .failed(let message):
-            StateBanner(kind: .offline, message: message, actionTitle: "Retry") {
+            StateBanner(
+              kind: model.isOffline ? .offline : .error, message: message, actionTitle: "Retry"
+            ) {
               Task { await model.search() }
             }
             .accessibilityIdentifier("roastermatch.failed")
