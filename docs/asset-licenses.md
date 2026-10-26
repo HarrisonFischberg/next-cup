@@ -21,4 +21,4 @@
 
 ## App icon (2026-10-25)
 
-`NextCup/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`: drawn in code for Next Cup (steel background, kraft cup with a signal-orange level and scale marks). Original; placeholder until the brand phase.
+`NextCup/Assets.xcassets/AppIcon.appiconset/AppIcon-Light-1024.png` (yellow, light appearance) and `AppIcon-Dark-1024.png` (blue, dark appearance): cropped from the owner's image `AppIcon-options-yellow-blue.png` (512×512, supplied 2026-10-26) and upscaled to 1024. Origin and license as the owner supplied them; confirm the source and get a full-resolution original before an App Store release.
