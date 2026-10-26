@@ -1,22 +1,19 @@
 import SwiftUI
 
-/// Settings > Appearance: every flavor as a live preview tile, plus the Make It Yours controls.
-/// A change rebuilds the whole tree (see NextCupApp), so each one first asks Settings to scroll
-/// back to this section.
+/// Settings > Appearance: every flavor as a live preview tile. A change rebuilds the whole
+/// tree (see NextCupApp), so each one first asks Settings to scroll back to this section.
 struct FlavorPicker: View {
   static let returnKey = "settings.returnToAppearance"
 
-  @AppStorage(AppStyle.storageKey) private var style = AppStyle.daily.rawValue
-  @AppStorage(MakeItYours.accentKey) private var accent = Swatch.all[2].id
-  @AppStorage(MakeItYours.cornersKey) private var corners = Corners.soft.rawValue
-  @AppStorage(MakeItYours.densityKey) private var density = Density.regular.rawValue
-  @AppStorage(MakeItYours.fontKey) private var font = FontChoice.standard.rawValue
+  @AppStorage(AppStyle.storageKey) private var style = AppStyle.nightMint.rawValue
   @Environment(\.dynamicTypeSize) private var dts
   @State private var showsAll = false
 
-  /// Daily, plus the chosen look when it is another; the rest wait behind More looks.
+  /// Night Mint, plus the chosen look when it is another; the rest wait behind More looks.
   private var shown: [AppStyle] {
-    showsAll ? AppStyle.allCases : AppStyle.allCases.filter { $0 == .daily || $0.rawValue == style }
+    showsAll
+      ? AppStyle.allCases
+      : AppStyle.allCases.filter { $0 == .nightMint || $0 == AppStyle.current }
   }
 
   private var columns: [GridItem] {
@@ -29,7 +26,7 @@ struct FlavorPicker: View {
     VStack(alignment: .leading, spacing: DS.Space.lg) {
       LazyVGrid(columns: columns, spacing: DS.Space.md) {
         ForEach(shown) { option in
-          FlavorTile(style: option, isSelected: style == option.rawValue) {
+          FlavorTile(style: option, isSelected: option == AppStyle.current) {
             Self.keepPlace()
             style = option.rawValue
           }
@@ -41,73 +38,9 @@ struct FlavorPicker: View {
           .frame(maxWidth: .infinity, minHeight: DS.Size.minTap)
           .accessibilityIdentifier("settings.flavors.more")
       }
-      if style == AppStyle.makeItYours.rawValue { makeItYours }
     }
     .padding(.vertical, DS.Space.sm)
     .accessibilityIdentifier("settings.flavors")
-  }
-
-  private var makeItYours: some View {
-    VStack(alignment: .leading, spacing: DS.Space.md) {
-      Text("Make it yours").font(DS.Font.headline).foregroundStyle(DS.ink)
-      Text("Accent").font(.footnote.weight(.semibold)).foregroundStyle(DS.ink2)
-      LazyVGrid(
-        columns: [GridItem(.adaptive(minimum: DS.Size.minTap + 4), spacing: DS.Space.sm)],
-        spacing: DS.Space.sm
-      ) {
-        ForEach(Swatch.all) { swatch in
-          Button {
-            Self.keepPlace()
-            accent = swatch.id
-          } label: {
-            Circle().fill(Color(P(swatch.light, swatch.dark)))
-              .frame(width: 36, height: 36)
-              .overlay {
-                if accent == swatch.id {
-                  Image(systemName: "checkmark").font(.footnote.weight(.heavy))
-                    .foregroundStyle(DS.palette.onSignal.color)
-                }
-              }
-              .overlay(Circle().strokeBorder(DS.line, lineWidth: DS.hairline))
-              .frame(minWidth: DS.Size.minTap, minHeight: DS.Size.minTap)
-          }
-          .accessibilityLabel(swatch.title)
-          .accessibilityAddTraits(accent == swatch.id ? .isSelected : [])
-        }
-      }
-      segmented(
-        "Corners", selection: $corners,
-        options: Corners.allCases.map { ($0.rawValue, $0.title) }, id: "corners")
-      segmented(
-        "Density", selection: $density,
-        options: [Density.compact, .regular].map { ($0.rawValue, $0.title) }, id: "density")
-      segmented(
-        "Type", selection: $font,
-        options: FontChoice.allCases.map { ($0.rawValue, $0.title) }, id: "font")
-    }
-    .padding(DS.Space.md)
-    .panel(DS.paper)
-    .accessibilityElement(children: .contain)
-  }
-
-  private func segmented(
-    _ title: String, selection: Binding<String>, options: [(value: String, title: String)],
-    id: String
-  ) -> some View {
-    Picker(
-      title,
-      selection: Binding(
-        get: { selection.wrappedValue },
-        set: {
-          Self.keepPlace()
-          selection.wrappedValue = $0
-        })
-    ) {
-      ForEach(options, id: \.value) { Text($0.title).tag($0.value) }
-    }
-    .pickerStyle(.segmented)
-    .frame(minHeight: DS.Size.control)
-    .accessibilityIdentifier("settings.mine.\(id)")
   }
 
   /// Settings reads this when it reappears after the rebuild.

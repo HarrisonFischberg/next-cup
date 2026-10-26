@@ -141,7 +141,7 @@ struct AISuggestionsTests {
         HTTPResult(
           status: 200,
           body: Data(
-            #"{"content":[{"type":"tool_use","input":{"field":"grind","toValue":"19","rationale":"r"}}]}"#
+            #"{"content":[{"type":"text","text":"{\"field\":\"grind\",\"toValue\":\"19\",\"rationale\":\"r\"}"}]}"#
               .utf8)))
     ])
     let client = AIClient(

@@ -58,6 +58,8 @@ struct BuiltInSeeder {
         recipe.tuningNote = entry.tuningNote
         recipe.includesIce = entry.includesIce
         recipe.iceG = entry.iceG
+        recipe.credit = entry.credit
+        recipe.creditURL = entry.creditURL
         recipe.builtInKey = entry.key
         recipe.method = methodsByKey[entry.methodKey]
         store.context.insert(recipe)

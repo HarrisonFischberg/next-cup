@@ -108,3 +108,11 @@ New vendor: **Open Food Facts** (Open Food Facts association, open database, no 
 | Live barcode video | Processed on device by VisionKit; not recorded or sent | Not stored | n/a |
 
 Supersedes "No camera is used" above. Network endpoints are now the two AI providers, Apple Maps search and Open Food Facts.
+
+## Apple on-device AI and model lists (2026-10-26)
+
+| Data | Flow | Retention | Control |
+| --- | --- | --- | --- |
+| AI prompts and photos with no key set | Apple's on-device model (FoundationModels). Photos are first read to text with Apple Vision. Nothing leaves the iPhone, so no disclosure is shown | Same as the AI request log | Pick another provider in Settings → AI |
+| API key when it is saved | Sent once to `api.anthropic.com/v1/models` or `api.openai.com/v1/models` to check it and list its models; no user data is sent | Not stored by the app beyond the Keychain item | Remove key |
+| Effort choice | `UserDefaults` (`ai.effort`), no secrets; sent with each cloud request | Until changed | Settings → AI |

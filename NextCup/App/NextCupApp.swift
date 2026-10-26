@@ -7,14 +7,10 @@ import UserNotifications
 struct NextCupApp: App {
   @State private var startup = AppBootstrap.start()
   @AppStorage(AppearanceMode.storageKey) private var appearance = AppearanceMode.system.rawValue
-  @AppStorage(AppStyle.storageKey) private var style = AppStyle.daily.rawValue
-  @AppStorage(MakeItYours.accentKey) private var accent = ""
-  @AppStorage(MakeItYours.cornersKey) private var corners = ""
-  @AppStorage(MakeItYours.densityKey) private var density = ""
-  @AppStorage(MakeItYours.fontKey) private var font = ""
+  @AppStorage(AppStyle.storageKey) private var style = AppStyle.nightMint.rawValue
 
   init() {
-    AppStyle.adoptDailyOnce()
+    AppStyle.adoptNightMintOnce()
     UNUserNotificationCenter.current().delegate = TasteReminder.delegate
     // UI tests start from a known tab; relaunches in the same test omit this.
     if ProcessInfo.processInfo.arguments.contains("-resetNavigationState") {
@@ -47,8 +43,8 @@ struct NextCupApp: App {
       .preferredColorScheme((AppearanceMode(rawValue: appearance) ?? .system).colorScheme)
       .environment(\.flavor, AppStyle.current.flavor)
       .fontDesign(AppStyle.current.flavor.bodyDesign)
-      // DS tokens are read, not observed, so a new flavor or Make It Yours choice rebuilds the tree.
-      .id([style, accent, corners, density, font].joined(separator: "|"))
+      // DS tokens are read, not observed, so a new flavor rebuilds the tree.
+      .id(style)
     }
   }
 }

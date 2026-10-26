@@ -2,9 +2,11 @@ import NextCupKit
 import SwiftData
 import SwiftUI
 
-/// S06: recipes grouped by brew style, searchable by recipe, method and credit.
+/// S06, the Brew tab: recipes for the methods the user brews with, grouped by brew style and
+/// searchable by recipe, method and credit. Other versions of a built-in recipe live on its page.
 struct RecipeLibraryView: View {
-  @Query(sort: \Recipe.name) private var recipes: [Recipe]
+  @Query(sort: \Recipe.name) private var allRecipes: [Recipe]
+  @Query(filter: #Predicate<BrewMethod> { $0.isHidden }) private var hiddenMethods: [BrewMethod]
   @State private var search = ""
   @State private var editor: RecipeEditorTarget?
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
@@ -17,9 +19,15 @@ struct RecipeLibraryView: View {
       temperature: TemperatureUnit(rawValue: temperatureUnit) ?? .celsius)
   }
 
+  /// Only the methods picked in onboarding (or under More methods); a recipe with no method stays.
+  private var recipes: [Recipe] {
+    let hidden = Set(hiddenMethods.map(\.id))
+    return allRecipes.filter { !hidden.contains($0.method?.id ?? UUID()) }
+  }
+
   private var matches: [Recipe] {
     let term = search.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !term.isEmpty else { return recipes }
+    guard !term.isEmpty else { return recipes.filter { !$0.isVersion } }
     return recipes.filter { recipe in
       [recipe.name, recipe.method?.name, recipe.credit, RecipeFormat.groupTitle(for: recipe)]
         .contains { $0?.localizedStandardContains(term) == true }
@@ -47,6 +55,7 @@ struct RecipeLibraryView: View {
           actionTitle: "Clear search", action: { search = "" })
       } else {
         LazyVStack(alignment: .leading, spacing: DS.Space.xl) {
+          moreMethods
           ForEach(groups, id: \.title) { group in
             section(group.title, group.recipes)
           }
@@ -56,7 +65,7 @@ struct RecipeLibraryView: View {
     }
     .background(DS.bg)
     .searchable(text: $search, prompt: "Search recipes")
-    .navigationTitle("Recipes")
+    .navigationTitle("Brew")
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {
       ToolbarItem(placement: .topBarTrailing) {
@@ -72,6 +81,19 @@ struct RecipeLibraryView: View {
       RecipeEditorView(target: target) { _ in editor = nil }
     }
     .accessibilityIdentifier("tab.root.recipes")
+  }
+
+  /// The pull-down for methods left out in onboarding.
+  private var moreMethods: some View {
+    DisclosureGroup {
+      MethodChips().padding(.top, DS.Space.sm)
+    } label: {
+      Text(hiddenMethods.isEmpty ? "Methods" : "More methods (\(hiddenMethods.count))")
+        .font(DS.Font.headline).foregroundStyle(DS.ink)
+        .frame(minHeight: DS.Size.minTap, alignment: .leading)
+    }
+    .tint(DS.ink)
+    .accessibilityIdentifier("recipes.moreMethods")
   }
 
   private func section(_ title: String, _ members: [Recipe]) -> some View {

@@ -2,7 +2,7 @@ import NextCupKit
 import SwiftData
 import SwiftUI
 
-/// First run: three short steps, each skippable, then a finish that points at the
+/// First run: four short steps, each skippable, then a finish that points at the
 /// first brew. Nothing behind it is locked, and it asks nothing the app already knows.
 struct OnboardingView: View {
   static let doneKey = "onboarding.done"
@@ -11,7 +11,6 @@ struct OnboardingView: View {
   let finish: (AppTab) -> Void
 
   @Environment(\.modelContext) private var context
-  @Query(sort: \BrewMethod.sortOrder) private var methods: [BrewMethod]
   @Query private var beans: [Bean]
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = OnboardingView
@@ -19,10 +18,12 @@ struct OnboardingView: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var step = 1
   @State private var grinder = ""
+  @State private var typesGrinder = false
   @State private var addingBean = false
   @State private var error: String?
 
-  private static let steps = 3
+  private static let steps = 4
+  private static let bagStep = 3
 
   /// Fahrenheit where the region uses it; grams everywhere, as coffee scales do.
   static var regionTemperature: TemperatureUnit {
@@ -42,14 +43,15 @@ struct OnboardingView: View {
               switch step {
               case 1: brewer
               case 2: units
-              default: firstBag
+              case Self.bagStep: firstBag
+              default: aiStep
               }
             }
           }
           .scrollDismissesKeyboard(.interactively)
-          SteelButton(title: step == Self.steps ? "Scan the bag" : "Next", action: next)
+          SteelButton(title: step == Self.bagStep ? "Scan the bag" : "Next", action: next)
             .accessibilityIdentifier("onboarding.next")
-          if step == Self.steps {
+          if step == Self.bagStep {
             Button("Add a bag later") { advance() }
               .font(.body.weight(.semibold)).foregroundStyle(DS.ink)
               .frame(maxWidth: .infinity, minHeight: DS.Size.minTap)
@@ -89,21 +91,36 @@ struct OnboardingView: View {
   private var brewer: some View {
     VStack(alignment: .leading, spacing: DS.Space.md) {
       title("What do you brew with?", "Pick the methods you use. The rest stay out of the way.")
-      FlowChips(items: methods.map { ($0.id, $0.name, !$0.isHidden) }) { id in
-        guard let method = methods.first(where: { $0.id == id }) else { return }
-        // Keep at least one method, so the brew form always has one to start from.
-        if !method.isHidden && methods.filter({ !$0.isHidden }).count == 1 { return }
-        if case .failure(let failure) = MethodsService(store: Store(context: context))
-          .setHidden(method, !method.isHidden)
-        {
-          error = failure.localizedDescription
+      MethodChips()
+      Menu {
+        Button("None") { grinder = "" }
+        Section("Popular grinders") {
+          ForEach(GrinderGuide.all) { guide in Button(guide.name) { grinder = guide.name } }
         }
-      }
-      TextField("Grinder (optional)", text: $grinder)
-        .textInputAutocapitalization(.words).submitLabel(.done)
+        Button("Other…") {
+          grinder = ""
+          typesGrinder = true
+        }
+      } label: {
+        HStack {
+          Text(grinder.isEmpty ? "Grinder (optional)" : grinder)
+            .foregroundStyle(grinder.isEmpty ? DS.ink2 : DS.ink)
+          Spacer()
+          Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink2)
+        }
         .padding(.horizontal, DS.Space.md).frame(minHeight: DS.Size.control)
         .background(DS.paper, in: RoundedRectangle(cornerRadius: DS.controlRadius))
-        .accessibilityIdentifier("onboarding.grinder")
+      }
+      .accessibilityIdentifier("onboarding.grinder")
+      if typesGrinder {
+        TextField("Grinder name", text: $grinder)
+          .textInputAutocapitalization(.words).submitLabel(.done)
+          .padding(.horizontal, DS.Space.md).frame(minHeight: DS.Size.control)
+          .background(DS.paper, in: RoundedRectangle(cornerRadius: DS.controlRadius))
+          .accessibilityIdentifier("onboarding.grinder.name")
+      }
+      Text("Your grinder's starting setting then shows on each recipe.")
+        .font(.footnote).foregroundStyle(DS.ink2)
     }
   }
 
@@ -135,6 +152,26 @@ struct OnboardingView: View {
     }
   }
 
+  private var aiStep: some View {
+    VStack(alignment: .leading, spacing: DS.Space.md) {
+      if AppleIntelligence.isAvailable {
+        title(
+          "Apple AI is on",
+          "Apple AI is enabled for this device. If you'd like to bring your own API key from Anthropic or OpenAI, please use the settings on the Journal page."
+        )
+      } else {
+        title(
+          "AI is optional",
+          "Apple AI isn't available on this device. To use AI, bring your own API key from Anthropic or OpenAI in the settings on the Journal page."
+        )
+      }
+      Image(systemName: "apple.intelligence").font(.system(size: 64)).foregroundStyle(DS.crema)
+        .frame(maxWidth: .infinity).padding(.vertical, DS.Space.lg)
+        .accessibilityHidden(true)
+    }
+    .accessibilityIdentifier("onboarding.ai")
+  }
+
   private func title(_ text: String, _ detail: String) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
       Text(text.dsTitle).font(DS.Font.display).foregroundStyle(DS.ink)
@@ -150,7 +187,7 @@ struct OnboardingView: View {
     switch step {
     case 1:
       if saveGrinder() { advance() }
-    case Self.steps:
+    case Self.bagStep:
       addingBean = true
     default:
       advance()
@@ -184,30 +221,49 @@ struct OnboardingView: View {
   }
 }
 
-/// Wrapping toggle chips, for picking a few from a short list.
-private struct FlowChips: View {
-  let items: [(id: UUID, title: String, on: Bool)]
-  let toggle: (UUID) -> Void
+/// Wrapping toggle chips that show or hide brew methods. At least one stays shown, so the
+/// brew form always has one to start from.
+struct MethodChips: View {
+  @Environment(\.modelContext) private var context
+  @Query(sort: \BrewMethod.sortOrder) private var methods: [BrewMethod]
+  @State private var error: String?
 
   var body: some View {
-    LazyVGrid(
-      columns: [GridItem(.adaptive(minimum: 130), spacing: DS.Space.sm)], spacing: DS.Space.sm
-    ) {
-      ForEach(items, id: \.id) { item in
-        Button {
-          toggle(item.id)
-        } label: {
-          Label(item.title, systemImage: item.on ? "checkmark.circle.fill" : "circle")
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(item.on ? DS.ink : DS.ink2)
-            .frame(maxWidth: .infinity, minHeight: DS.Size.minTap)
-            .background(item.on ? DS.crema.opacity(0.15) : DS.paper, in: Capsule())
-            .overlay(Capsule().strokeBorder(item.on ? DS.crema : DS.line, lineWidth: 1))
+    VStack(alignment: .leading, spacing: DS.Space.sm) {
+      if let error { StateBanner(kind: .error, message: error) }
+      LazyVGrid(
+        columns: [GridItem(.adaptive(minimum: 130), spacing: DS.Space.sm)], spacing: DS.Space.sm
+      ) {
+        ForEach(methods) { method in
+          let on = !method.isHidden
+          Button {
+            toggle(method)
+          } label: {
+            Label(method.name, systemImage: on ? "checkmark.circle.fill" : "circle")
+              .font(.subheadline.weight(.semibold))
+              .lineLimit(2).minimumScaleFactor(0.85).multilineTextAlignment(.leading)
+              .foregroundStyle(on ? DS.ink : DS.ink2)
+              .padding(.horizontal, DS.Space.sm)
+              .frame(maxWidth: .infinity, minHeight: DS.Size.minTap)
+              .background(on ? DS.crema.opacity(0.15) : DS.paper, in: Capsule())
+              .overlay(Capsule().strokeBorder(on ? DS.crema : DS.line, lineWidth: 1))
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel(method.name)
+          .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(item.title)
-        .accessibilityAddTraits(item.on ? [.isButton, .isSelected] : .isButton)
       }
+    }
+  }
+
+  private func toggle(_ method: BrewMethod) {
+    if !method.isHidden && methods.filter({ !$0.isHidden }).count == 1 { return }
+    if case .failure(let failure) = MethodsService(store: Store(context: context))
+      .setHidden(method, !method.isHidden)
+    {
+      error = failure.message
+    } else {
+      error = nil
     }
   }
 }

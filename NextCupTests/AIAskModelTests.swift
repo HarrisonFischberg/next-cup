@@ -22,7 +22,7 @@ private actor StubTransport: Transport {
   private let answer = HTTPResult(
     status: 200,
     body: Data(
-      #"{"content":[{"type":"tool_use","input":{"field":"grind","toValue":"19","rationale":"Sour cups need more extraction."}}]}"#
+      #"{"content":[{"type":"text","text":"{\"field\":\"grind\",\"toValue\":\"19\",\"rationale\":\"Sour cups need more extraction.\"}"}]}"#
         .utf8))
 
   private struct Rig {
@@ -43,7 +43,7 @@ private actor StubTransport: Transport {
     Self.containers.append(container)
     let context = container.mainContext
     let defaults = UserDefaults(suiteName: "ai-ask-\(UUID().uuidString)")!
-    let preferences = AIPreferences(defaults: defaults)
+    let preferences = AIPreferences(defaults: defaults, appleAvailable: false)
     if chosen { preferences.setChoice(.anthropic, model: "model-x", for: feature) }
     if disclosed { preferences.acceptDisclosure(for: .anthropic) }
 

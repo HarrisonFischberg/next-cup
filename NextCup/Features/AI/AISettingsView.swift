@@ -1,26 +1,31 @@
+import NextCupKit
 import SwiftUI
 
-/// Settings → AI: bring-your-own keys, the one-time disclosure and a provider
-/// and model for each feature. Nothing here makes a network call.
+/// Settings → AI: one provider, model and effort for every feature, then the keys. A key is
+/// checked by listing its models before it is saved, and that list is what the model picker
+/// offers. Apple's on-device model needs no key.
 struct AISettingsView: View {
   private let keychain = KeychainStore()
+  private let preferences = AIPreferences()
   @State private var drafts: [AIProvider: String] = [:]
   @State private var saved: Set<AIProvider> = []
+  @State private var models: [AIProvider: [String]] = [:]
+  @State private var checking: AIProvider?
   @State private var pending: AIProvider?
   @State private var errorMessage: String?
-  @State private var defaultProvider = AIProvider.anthropic
-  @State private var defaultModel = ""
-  /// Rebuilds the per-feature rows after "Use for every feature" rewrites them.
-  @State private var perFeatureID = UUID()
+  @State private var provider: AIProvider
+  @State private var model: String
+  @State private var effort: String
 
-  /// AI setup is two steps; say how far along it is.
-  private var setupLine: String {
-    let key = !saved.isEmpty
-    let model = AIFeature.allCases.contains { AIPreferences().modelID(for: $0) != nil }
-    let done = (key ? 1 : 0) + (model ? 1 : 0)
-    return done == 2
-      ? "Set up: key and model are ready."
-      : "\(done) of 2 set up: key \(key ? "✓" : "○"), model \(model ? "✓" : "○")"
+  init() {
+    let preferences = AIPreferences()
+    _provider = State(initialValue: preferences.provider(for: .diagnosis) ?? .anthropic)
+    _model = State(initialValue: preferences.modelID(for: .diagnosis) ?? "")
+    _effort = State(initialValue: preferences.effort ?? "")
+  }
+
+  private var choices: [AIProvider] {
+    (preferences.appleAvailable ? [.apple] : []) + AIProvider.keyed.filter(saved.contains)
   }
 
   var body: some View {
@@ -34,55 +39,54 @@ struct AISettingsView: View {
         .listRowBackground(DS.bg)
       }
       Section {
-        Text(setupLine).font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
-          .listRowBackground(DS.paper)
-          .accessibilityIdentifier("ai.setup")
-      }
-      ForEach(AIProvider.allCases, id: \.self) { provider in keySection(provider) }
-      Section {
-        Picker("Provider", selection: $defaultProvider) {
-          ForEach(AIProvider.allCases, id: \.self) { Text($0.title).tag($0) }
-        }
-        .pickerStyle(.segmented)
-        .listRowBackground(DS.paper)
-        TextField("Model ID", text: $defaultModel)
-          .textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.done)
-          .frame(minHeight: DS.Size.control).listRowBackground(DS.paper)
-          .accessibilityIdentifier("ai.model.default")
-        Button("Use for every feature") {
-          let preferences = AIPreferences()
-          for feature in AIFeature.allCases {
-            preferences.setChoice(defaultProvider, model: defaultModel, for: feature)
+        if choices.isEmpty {
+          Text("Add a key below to choose a model.").font(.footnote).foregroundStyle(DS.ink2)
+            .listRowBackground(DS.paper)
+        } else {
+          Picker("Provider", selection: $provider) {
+            ForEach(choices) { Text($0.title).tag($0) }
           }
-          perFeatureID = UUID()
+          .listRowBackground(DS.paper)
+          .accessibilityIdentifier("ai.provider")
+          modelRow.listRowBackground(DS.paper)
+          if provider != .apple {
+            Picker("Effort", selection: $effort) {
+              Text("Default").tag("")
+              Text("Low").tag("low")
+              Text("Medium").tag("medium")
+              Text("High").tag("high")
+            }
+            .listRowBackground(DS.paper)
+            .accessibilityIdentifier("ai.effort")
+          }
         }
-        .frame(minHeight: DS.Size.control).listRowBackground(DS.paper)
-        .disabled(defaultModel.trimmingCharacters(in: .whitespaces).isEmpty)
-        .accessibilityIdentifier("ai.model.applyAll")
       } header: {
         Text("Model")
       } footer: {
-        Text("Type the model ID your provider documents. Nothing is chosen for you.")
+        Text("Used for every AI feature.")
       }
-      Section {
-        DisclosureGroup("A different model for each feature") {
-          ForEach(AIFeature.allCases, id: \.self) { feature in FeatureModelRow(feature: feature) }
-        }
-        .id(perFeatureID)
-        .listRowBackground(DS.paper)
-      } header: {
-        Text("Advanced")
-      }
+      ForEach(AIProvider.keyed) { keySection($0) }
     }
     .listStyle(.insetGrouped)
     .scrollContentBackground(.hidden)
     .background(DS.bg)
     .navigationTitle("AI")
     .navigationBarTitleDisplayMode(.inline)
-    .onAppear { saved = Set(AIProvider.allCases.filter(keychain.hasKey)) }
+    .task {
+      saved = Set(AIProvider.keyed.filter(keychain.hasKey))
+      for provider in saved { await loadModels(provider) }
+    }
+    .onChange(of: provider) {
+      model =
+        provider == .apple
+        ? AppleIntelligence.modelID : (models[provider]?.contains(model) == true ? model : "")
+      apply()
+    }
+    .onChange(of: model) { apply() }
+    .onChange(of: effort) { preferences.effort = effort }
     .sheet(item: $pending) { provider in
       AIDisclosureView(provider: provider) {
-        AIPreferences().acceptDisclosure(for: provider)
+        preferences.acceptDisclosure(for: provider)
         pending = nil
         store(provider)
       } cancel: {
@@ -92,50 +96,109 @@ struct AISettingsView: View {
     .accessibilityIdentifier("settings.ai.root")
   }
 
+  @ViewBuilder private var modelRow: some View {
+    if provider == .apple {
+      LabeledContent("Model", value: "On this iPhone")
+    } else if let list = models[provider] {
+      Picker("Model", selection: $model) {
+        if !list.contains(model) { Text("Choose…").tag(model) }
+        ForEach(list, id: \.self) { Text($0).tag($0) }
+      }
+      .accessibilityIdentifier("ai.model")
+    } else {
+      LabeledContent("Model") { ProgressView() }
+    }
+  }
+
   private func keySection(_ provider: AIProvider) -> some View {
     Section {
       if saved.contains(provider) {
-        LabeledContent("Key", value: "Saved on this iPhone")
-          .listRowBackground(DS.paper)
-        Button("Remove key", role: .destructive) { remove(provider) }
-          .frame(minHeight: DS.Size.control).listRowBackground(DS.paper)
-          .accessibilityIdentifier("ai.remove.\(provider.rawValue)")
+        HStack {
+          Text(models[provider].map { "Key works · \($0.count) models" } ?? "Key saved")
+            .foregroundStyle(DS.ink)
+          Spacer()
+          Button("Remove", role: .destructive) { remove(provider) }
+            .accessibilityIdentifier("ai.remove.\(provider.rawValue)")
+        }
+        .frame(minHeight: DS.Size.control)
+        .listRowBackground(DS.paper)
       } else {
-        SecureField(
-          "API key",
-          text: Binding(get: { drafts[provider] ?? "" }, set: { drafts[provider] = $0 })
-        )
-        .textContentType(nil).textInputAutocapitalization(.never).autocorrectionDisabled()
-        .submitLabel(.done).frame(minHeight: DS.Size.control).listRowBackground(DS.paper)
-        .accessibilityIdentifier("ai.key.\(provider.rawValue)")
-        Button("Save key") { requestSave(provider) }
-          .frame(minHeight: DS.Size.control).listRowBackground(DS.paper)
-          .disabled((drafts[provider] ?? "").trimmingCharacters(in: .whitespaces).isEmpty)
-          .accessibilityIdentifier("ai.save.\(provider.rawValue)")
+        HStack {
+          SecureField(
+            "\(provider.title) API key",
+            text: Binding(get: { drafts[provider] ?? "" }, set: { drafts[provider] = $0 })
+          )
+          .textContentType(nil).textInputAutocapitalization(.never).autocorrectionDisabled()
+          .submitLabel(.done)
+          .accessibilityIdentifier("ai.key.\(provider.rawValue)")
+          if checking == provider {
+            ProgressView()
+          } else {
+            Button("Save") { requestSave(provider) }
+              .disabled((drafts[provider] ?? "").trimmingCharacters(in: .whitespaces).isEmpty)
+              .accessibilityIdentifier("ai.save.\(provider.rawValue)")
+          }
+        }
+        .frame(minHeight: DS.Size.control)
+        .listRowBackground(DS.paper)
       }
     } header: {
       Text(provider.title)
     } footer: {
-      Text("Kept in the Keychain on this device only. Not backed up, not exported.")
+      if provider == AIProvider.keyed.last {
+        Text("Keys stay in this iPhone's Keychain. Not backed up, not exported.")
+      }
     }
   }
 
+  private func apply() {
+    guard !model.isEmpty else { return }
+    for feature in AIFeature.allCases {
+      preferences.setChoice(provider, model: model, for: feature)
+    }
+  }
+
+  /// An AI client for listing models only: it sends nothing but the key.
+  private func client(_ key: String?) -> AIClient {
+    AIClient(transport: URLSessionTransport(), key: { _ in key }, disclosureAccepted: { _ in true })
+  }
+
+  private func loadModels(_ provider: AIProvider) async {
+    guard let kind = provider.kind else { return }
+    let key = (try? keychain.key(for: provider)) ?? nil
+    models[provider] = try? await client(key).models(kind)
+  }
+
   private func requestSave(_ provider: AIProvider) {
-    if AIPreferences().hasAcceptedDisclosure(for: provider) {
+    if preferences.hasAcceptedDisclosure(for: provider) {
       store(provider)
     } else {
       pending = provider
     }
   }
 
+  /// Checks the key by listing its models; only a key the provider accepts is saved.
   private func store(_ provider: AIProvider) {
-    do {
-      try keychain.setKey(drafts[provider] ?? "", for: provider)
-      drafts[provider] = nil
-      saved.insert(provider)
-      errorMessage = nil
-    } catch {
-      errorMessage = "The key was not saved. \(error.localizedDescription)"
+    guard let kind = provider.kind else { return }
+    let key = (drafts[provider] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    checking = provider
+    Task {
+      defer { checking = nil }
+      do {
+        let list = try await client(key).models(kind)
+        try keychain.setKey(key, for: provider)
+        drafts[provider] = nil
+        saved.insert(provider)
+        models[provider] = list
+        errorMessage = nil
+        if self.provider == .apple || !choices.contains(self.provider) { self.provider = provider }
+      } catch AIError.keyRejected {
+        errorMessage = "\(provider.title) did not accept this key. Check it and try again."
+      } catch let error as AIError {
+        errorMessage = "The key was not checked. \(error.errorDescription ?? "")"
+      } catch {
+        errorMessage = "The key was not saved. \(error.localizedDescription)"
+      }
     }
   }
 
@@ -143,6 +206,8 @@ struct AISettingsView: View {
     do {
       try keychain.removeKey(for: provider)
       saved.remove(provider)
+      models[provider] = nil
+      if self.provider == provider { self.provider = choices.first ?? .anthropic }
     } catch {
       errorMessage = "The key was not removed. \(error.localizedDescription)"
     }
@@ -151,36 +216,4 @@ struct AISettingsView: View {
 
 extension AIProvider: Identifiable {
   var id: String { rawValue }
-}
-
-private struct FeatureModelRow: View {
-  let feature: AIFeature
-  @AppStorage private var provider: String
-  @AppStorage private var model: String
-
-  init(feature: AIFeature) {
-    self.feature = feature
-    _provider = AppStorage(
-      wrappedValue: AIProvider.anthropic.rawValue, AIPreferences.providerKey(feature))
-    _model = AppStorage(wrappedValue: "", AIPreferences.modelKey(feature))
-  }
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: DS.Space.sm) {
-      Text(feature.title).font(DS.Font.headline).foregroundStyle(DS.ink)
-      Picker("Provider", selection: $provider) {
-        ForEach(AIProvider.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
-      }
-      .pickerStyle(.segmented)
-      TextField("Model ID", text: $model)
-        .textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.done)
-        .frame(minHeight: DS.Size.control)
-        .accessibilityIdentifier("ai.model.\(feature.rawValue)")
-    }
-    .padding(.vertical, DS.Space.xs)
-    .listRowBackground(DS.paper)
-    .accessibilityElement(children: .contain)
-    // The picker shows Anthropic by default; write it so the choice is real.
-    .onAppear { if AIPreferences().provider(for: feature) == nil { provider = provider } }
-  }
 }

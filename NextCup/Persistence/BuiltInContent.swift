@@ -31,6 +31,8 @@ struct BuiltInContent: Sendable, Equatable {
     var tuningNote: String?
     var includesIce: Bool
     var iceG: Double?
+    var credit: String?
+    var creditURL: URL?
     var steps: [StepEntry]
   }
 

@@ -189,7 +189,8 @@ struct PaperImportAppTests {
     defer { cleanup() }
     let context = try make()
     let (model, stub) = aiModel(
-      context, body: #"{"content":[{"type":"tool_use","input":\#(answer)}]}"#, key: "sk-test")
+      context, body: #"{"content":[{"type":"text","text":"\#(answer.escapedForJSON)"}]}"#,
+      key: "sk-test")
     await model.choose(photoData: PaperSample.page())
     model.readWithAI()
     #expect(model.phase == .reading)
@@ -226,7 +227,8 @@ struct PaperImportAppTests {
     defer { cleanup() }
     let context = try make()
     let (model, _) = aiModel(
-      context, body: #"{"content":[{"type":"tool_use","input":{"method":"V60"}}]}"#, key: "sk-test")
+      context, body: #"{"content":[{"type":"text","text":"{\"method\":\"V60\"}"}]}"#,
+      key: "sk-test")
     await model.choose(photoData: PaperSample.page())
     model.readWithAI()
     for _ in 0..<100 where model.phase == .reading {

@@ -66,6 +66,7 @@ struct ExploreView: View {
   /// Roasters and flavors as labeled sections under the recommendations, not
   /// icon-only toolbar buttons.
   @ViewBuilder private var moreSections: some View {
+    SavedRoasters()
     VStack(alignment: .leading, spacing: DS.Space.sm) {
       Text("ROASTERS").font(DS.Font.label).foregroundStyle(DS.ink2)
         .accessibilityAddTraits(.isHeader)
