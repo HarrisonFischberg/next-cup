@@ -1,6 +1,7 @@
 import NextCupKit
 import SwiftData
 import SwiftUI
+import UIKit
 
 /// S07: one recipe with its step timeline and a dose stepper that rescales every
 /// water target. Scaling is a view of the recipe; nothing is saved by it.
@@ -46,6 +47,7 @@ private struct RecipeDetailContent: View {
   @Query(sort: \Bean.name) private var allBeans: [Bean]
   @State private var beanID: UUID?
   @State private var grindSetting = ""
+  @State private var doseText = ""
   @AppStorage(BrewFormModel.lastGrinderKey) private var lastGrinderID = ""
 
   private var units: UnitPreferences {
@@ -74,10 +76,6 @@ private struct RecipeDetailContent: View {
         }
         doseControls
         specGrid
-        grindHint
-        if let note = recipe.tuningNote, !note.isEmpty {
-          KraftNote { Text(note).font(DS.Font.note).foregroundStyle(DS.onKraft) }
-        }
         if let notes = scaled?.notes, scaledDoseG != nil, !notes.isEmpty {
           VStack(alignment: .leading, spacing: DS.Space.xs) {
             ForEach(notes, id: \.self) { Text($0).font(.footnote).foregroundStyle(DS.ink2) }
@@ -99,7 +97,16 @@ private struct RecipeDetailContent: View {
       }
     }
     .navigationDestination(item: $timerSetup) { TimerView(setup: $0) }
+    .scrollDismissesKeyboard(.interactively)
     .toolbar {
+      // The number pad has no return key; Done puts it away.
+      ToolbarItemGroup(placement: .keyboard) {
+        Spacer()
+        Button("Done") {
+          UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+      }
       ToolbarItem(placement: .topBarTrailing) {
         Menu {
           if recipe.builtInKey == nil {
@@ -133,31 +140,23 @@ private struct RecipeDetailContent: View {
     }
   }
 
-  /// The last-used grinder's starting range for this method, from the bundled guide.
-  @ViewBuilder private var grindHint: some View {
-    let grinder = grinders.first { $0.id.uuidString == lastGrinderID }
-    if let guide = GrinderGuide.find(grinder?.name),
-      let method = GrinderGuide.method(forMethodNamed: recipe.method?.name),
-      let range = guide.range(for: method)
-    {
-      PaperBox {
-        SpecCell(
-          label: "Grind on your \(guide.name)",
-          value: "\(range) \(guide.unitLabel)")
-      }
-      .accessibilityIdentifier("recipe.grind")
-    }
-  }
-
   private var doseControls: some View {
     VStack(alignment: .leading, spacing: DS.Space.sm) {
       StepperTile(
         title: "Dose", value: RecipeFormat.weight(doseG, units, withSymbol: false),
         unit: units.weightSymbol, target: RecipeFormat.weight(recipe.doseG, units),
         down: { adjustDose(by: -stepG) }, up: { adjustDose(by: stepG) },
-        minusLabel: "Decrease dose", plusLabel: "Increase dose"
+        minusLabel: "Decrease dose", plusLabel: "Increase dose",
+        text: $doseText
       )
       .accessibilityIdentifier("recipe.dose")
+      .onAppear { doseText = RecipeFormat.weight(doseG, units, withSymbol: false) }
+      .onChange(of: doseText) { _, typed in setTypedDose(typed) }
+      .onChange(of: doseG) { _, _ in
+        // The steppers moved the dose: show it, unless it is what was just typed.
+        let shown = RecipeFormat.weight(doseG, units, withSymbol: false)
+        if parsedDose(doseText) != parsedDose(shown) { doseText = shown }
+      }
       if scaledDoseG != nil {
         Button {
           scaledDoseG = nil
@@ -197,7 +196,12 @@ private struct RecipeDetailContent: View {
         PaperBox { SpecCell(label: "Temperature", value: RecipeFormat.temperature(tempC, units)) }
       }
       if let seconds = recipe.totalTimeS {
-        PaperBox { SpecCell(label: "Time", value: RecipeFormat.clock(seconds)) }
+        PaperBox {
+          SpecCell(
+            label: "Time",
+            value: RecipeFormat.clock(
+              RecipeTiming.scaled(seconds, by: recipe.timingFactor(doseG: doseG))))
+        }
       }
     }
   }
@@ -215,7 +219,9 @@ private struct RecipeDetailContent: View {
           ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
             let target = index < scaledSteps.count ? scaledSteps[index].targetCumulativeWaterG : nil
             OperationRow(
-              time: RecipeFormat.clock(step.startOffsetS), name: RecipeFormat.title(step.kind),
+              time: RecipeFormat.clock(
+                RecipeTiming.scaled(step.startOffsetS, by: recipe.timingFactor(doseG: doseG))),
+              name: RecipeFormat.title(step.kind),
               instruction: step.instruction.isEmpty ? nil : step.instruction,
               scale: target.map { RecipeFormat.weight($0, units) },
               showsDivider: index < steps.count - 1
@@ -284,22 +290,47 @@ private struct RecipeDetailContent: View {
       .accessibilityValue(chosen?.name ?? "None chosen")
       .accessibilityIdentifier("recipe.beans")
       if let grinder {
-        HStack {
-          Text("GRIND ON YOUR \(grinder.name.uppercased())").font(DS.Font.label)
-            .foregroundStyle(DS.ink2)
-          Spacer(minLength: DS.Space.sm)
-          TextField("Setting", text: $grindSetting).multilineTextAlignment(.trailing)
-            .font(DS.Font.mono(.body, .bold)).frame(maxWidth: 120)
-            .accessibilityLabel("Grind setting")
-            .accessibilityIdentifier("recipe.grindSetting")
+        let guide = GrinderGuide.find(grinder.name)
+        let method = GrinderGuide.method(forMethodNamed: recipe.method?.name)
+        let recommended = method.flatMap { guide?.recommended(for: $0) }
+        VStack(alignment: .leading, spacing: DS.Space.xs) {
+          HStack {
+            Text("GRIND ON YOUR \(grinder.name.uppercased())").font(DS.Font.label)
+              .foregroundStyle(DS.ink2)
+            Spacer(minLength: DS.Space.sm)
+            TextField(recommended ?? "Setting", text: $grindSetting)
+              .multilineTextAlignment(.trailing)
+              .font(DS.Font.mono(.title3, .bold)).frame(maxWidth: 120)
+              .accessibilityLabel("Grind setting")
+              .accessibilityIdentifier("recipe.grindSetting")
+          }
+          if let recommended, let guide {
+            Text(
+              "Start at \(recommended) \(guide.unitLabel). Go finer if it tastes sour, coarser if bitter."
+            )
+            .font(.footnote).foregroundStyle(DS.ink2)
+            .accessibilityIdentifier("recipe.grindRecommended")
+          }
         }
-        .padding(DS.Space.md).frame(minHeight: DS.Size.control)
+        .padding(DS.Space.md)
         .panel(DS.paper)
+        .onAppear { if grindSetting.isEmpty, let recommended { grindSetting = recommended } }
       }
     }
     .onAppear {
       if beanID == nil, let first = beans.first { choose(first) }
     }
+  }
+
+  /// A typed dose in the user's unit; anything not a positive number is ignored.
+  private func parsedDose(_ text: String) -> Double? {
+    Double(text.replacingOccurrences(of: ",", with: ".")).flatMap { $0 > 0 ? $0 : nil }
+  }
+
+  private func setTypedDose(_ text: String) {
+    guard let shown = parsedDose(text) else { return }
+    let grams = units.grams(fromDisplayWeight: shown)
+    scaledDoseG = abs(grams - recipe.doseG) < 0.0001 ? nil : grams
   }
 
   /// Picks a bean and brings back its last grind, so the setup starts where it left off.

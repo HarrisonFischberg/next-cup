@@ -146,11 +146,11 @@ struct BrewFormView: View {
         if let made = model.madeSuggestion {
           KraftNote {
             VStack(alignment: .leading, spacing: DS.Space.xs) {
-              Text("TRY THIS NEXT TIME").font(DS.Font.label).foregroundStyle(DS.onKraft)
+              Text("TRY THIS NEXT TIME").font(DS.Font.label).foregroundStyle(DS.ink)
               Text(SuggestionFormat.headline(made, units))
-                .font(DS.Font.mono(.title2, .bold)).foregroundStyle(DS.onKraft)
+                .font(DS.Font.mono(.title2, .bold)).foregroundStyle(DS.ink)
                 .accessibilityIdentifier("brewform.saved.suggestion")
-              Text(made.rationale).font(.footnote).foregroundStyle(DS.onKraft)
+              Text(made.rationale).font(.footnote).foregroundStyle(DS.ink)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
@@ -783,7 +783,7 @@ struct BrewFormView: View {
       Text("NOTES").font(DS.Font.label).foregroundStyle(DS.ink2)
       KraftNote {
         TextEditor(text: text)
-          .font(DS.Font.note).foregroundStyle(DS.onKraft)
+          .font(DS.Font.note).foregroundStyle(DS.ink)
           .scrollContentBackground(.hidden)
           .frame(minHeight: 120)
           .focused($focused, equals: .notes)

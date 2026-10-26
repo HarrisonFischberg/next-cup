@@ -32,6 +32,21 @@ public struct GrinderGuide: Identifiable, Hashable, Sendable {
     }
   }
 
+  /// One setting to start at: the middle of the range when both ends are plain numbers
+  /// (whole numbers stay whole), otherwise the finer end, which is the safer first try.
+  public func recommended(for method: Method) -> String? {
+    guard let range = range(for: method) else { return nil }
+    let ends = range.components(separatedBy: "–").map { $0.trimmingCharacters(in: .whitespaces) }
+    guard ends.count == 2 else { return range }
+    guard let low = Double(ends[0]), let high = Double(ends[1]),
+      ends[0].filter({ $0 == "." }).count < 2
+    else { return ends[0] }
+    let middle = (low + high) / 2
+    if !ends[0].contains("."), !ends[1].contains(".") { return String(Int(middle.rounded())) }
+    let decimals = max(ends[0].split(separator: ".").last?.count ?? 1, 1)
+    return String(format: "%.\(min(decimals, 2))f", middle)
+  }
+
   /// Words for the notation, said after a range: "15 – 25 clicks".
   public var unitLabel: String {
     switch notation {
