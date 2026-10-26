@@ -8,6 +8,7 @@ struct MethodStylesView: View {
   let link: DeepLink
   let methodID: UUID
   @Query private var methods: [BrewMethod]
+  @State private var buildingOwn = false
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -52,6 +53,7 @@ struct MethodStylesView: View {
               .buttonStyle(.plain)
               .accessibilityIdentifier("style.\(recipe.id.uuidString)")
           }
+          yourStyle
         }
         .padding(DS.Space.lg)
       } else {
@@ -62,6 +64,32 @@ struct MethodStylesView: View {
     .navigationTitle(methods.first?.name ?? link.screenName)
     .navigationBarTitleDisplayMode(.inline)
     .accessibilityIdentifier(link.identifier)
+    .sheet(isPresented: $buildingOwn) {
+      RecipeEditorView(target: .new, methodID: methodID) { _ in buildingOwn = false }
+    }
+  }
+
+  /// The last card: build a style from nothing on this method.
+  private var yourStyle: some View {
+    Button {
+      buildingOwn = true
+    } label: {
+      HStack(spacing: DS.Space.md) {
+        Image(systemName: "plus").font(.title2.weight(.semibold)).foregroundStyle(DS.signal)
+          .frame(width: 44, height: 44).accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 2) {
+          Text("Your Style").font(DS.Font.headline).foregroundStyle(DS.ink)
+          Text("Build your own, with nothing pre-set.").font(.subheadline).foregroundStyle(DS.ink2)
+        }
+        Spacer(minLength: 0)
+      }
+      .padding(DS.Space.lg)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .panel(DS.paper, dash: [6, 4])
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .accessibilityIdentifier("style.yours")
   }
 
   private func card(_ recipe: Recipe) -> some View {
