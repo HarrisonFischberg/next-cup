@@ -73,7 +73,7 @@ struct DeepLinkTests {
   }
 
   @Test func everyTabHasATitleAndSymbol() {
-    #expect(AppTab.allCases.map(\.title) == ["Journal", "Recipes", "Beans", "Explore"])
+    #expect(AppTab.allCases.map(\.title) == ["Brew", "Journal", "Beans", "Explore"])
     #expect(AppTab.allCases.allSatisfy { !$0.symbol.isEmpty })
   }
 }

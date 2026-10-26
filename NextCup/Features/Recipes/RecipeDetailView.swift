@@ -42,6 +42,15 @@ private struct RecipeDetailContent: View {
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
   @Environment(\.dynamicTypeSize) private var dts
+  @Query(sort: \Recipe.name) private var allRecipes: [Recipe]
+  @Query private var grinders: [Grinder]
+  @AppStorage(BrewFormModel.lastGrinderKey) private var lastGrinderID = ""
+
+  /// This recipe and the other built-in versions of it, the original first.
+  private var versions: [Recipe] {
+    guard let family = recipe.family else { return [] }
+    return allRecipes.filter { $0.family == family }.sorted { !$0.isVersion && $1.isVersion }
+  }
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -63,11 +72,13 @@ private struct RecipeDetailContent: View {
     ScrollView {
       VStack(alignment: .leading, spacing: DS.Space.lg) {
         header
+        if versions.count > 1 { versionList }
         if startFailed {
           StateBanner(kind: .error, message: "This recipe cannot be timed. Check its steps.")
         }
         doseControls
         specGrid
+        grindHint
         if let note = recipe.tuningNote, !note.isEmpty {
           KraftNote { Text(note).font(DS.Font.note).foregroundStyle(DS.onKraft) }
         }
@@ -123,6 +134,63 @@ private struct RecipeDetailContent: View {
       if let method = recipe.method?.name {
         Text(method).font(.subheadline).foregroundStyle(DS.ink2)
       }
+    }
+  }
+
+  /// Other takes on this recipe from around the web, each with its credit on its own page.
+  private var versionList: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      Text("PICK A VERSION").font(DS.Font.label).foregroundStyle(DS.ink2)
+        .frame(minHeight: 32, alignment: .leading)
+        .accessibilityAddTraits(.isHeader)
+      PaperBox {
+        VStack(spacing: 0) {
+          ForEach(versions) { version in
+            let row = HStack(spacing: DS.Space.sm) {
+              VStack(alignment: .leading, spacing: 2) {
+                Text(version.name).font(DS.Font.headline).foregroundStyle(DS.ink)
+                Text(
+                  RecipeFormat.weight(version.doseG, units) + " : "
+                    + RecipeFormat.weight(version.waterG, units)
+                    + (version.credit.map { "  ·  \($0)" } ?? "")
+                )
+                .font(.footnote).foregroundStyle(DS.ink2)
+              }
+              Spacer(minLength: DS.Space.sm)
+              Image(systemName: version.id == recipe.id ? "checkmark" : "chevron.right")
+                .font(.footnote.weight(.semibold)).foregroundStyle(DS.ink2)
+                .accessibilityHidden(true)
+            }
+            .padding(DS.Space.md)
+            .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
+            .contentShape(Rectangle())
+            if version.id == recipe.id {
+              row.accessibilityElement(children: .combine).accessibilityAddTraits(.isSelected)
+            } else {
+              NavigationLink(value: DeepLink.recipe(version.id)) { row }.buttonStyle(.plain)
+                .accessibilityIdentifier("recipe.version.\(version.id.uuidString)")
+            }
+            if version.id != versions.last?.id { Hairline() }
+          }
+        }
+      }
+    }
+    .accessibilityIdentifier("recipe.versions")
+  }
+
+  /// The last-used grinder's starting range for this method, from the bundled guide.
+  @ViewBuilder private var grindHint: some View {
+    let grinder = grinders.first { $0.id.uuidString == lastGrinderID }
+    if let guide = GrinderGuide.find(grinder?.name),
+      let method = GrinderGuide.method(forMethodNamed: recipe.method?.name),
+      let range = guide.range(for: method)
+    {
+      PaperBox {
+        SpecCell(
+          label: "Grind on your \(guide.name)",
+          value: "\(range) \(guide.unitLabel)")
+      }
+      .accessibilityIdentifier("recipe.grind")
     }
   }
 
@@ -237,4 +305,10 @@ private struct RecipeDetailContent: View {
     guard next >= stepG else { return }
     scaledDoseG = abs(next - recipe.doseG) < 0.0001 ? nil : next
   }
+}
+
+extension Recipe {
+  /// Built-in versions share a key prefix: "cone-balanced" and "cone-balanced/strong".
+  var family: String? { builtInKey?.split(separator: "/").first.map(String.init) }
+  var isVersion: Bool { builtInKey?.contains("/") == true }
 }

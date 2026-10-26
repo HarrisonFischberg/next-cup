@@ -50,7 +50,7 @@ final class FlavorCaptureUITests: XCTestCase {
       try shot("brewform")
       app.navigationBars.buttons.element(boundBy: 0).tap()
 
-      app.tabBars.buttons["Recipes"].tap()
+      app.tabBars.buttons["Brew"].tap()
       let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'"))
         .firstMatch
       XCTAssertTrue(row.waitForExistence(timeout: 5))
@@ -71,13 +71,10 @@ final class FlavorCaptureUITests: XCTestCase {
   @MainActor func testSteelKraft() throws { try capture("steelKraft") }
   @MainActor func testCharcoalCrema() throws { try capture("charcoalCrema") }
   @MainActor func testQuietCeramic() throws { try capture("quietCeramic") }
-  @MainActor func testTerracotta() throws { try capture("terracotta") }
-  @MainActor func testLateNightCafe() throws { try capture("lateNightCafe") }
   @MainActor func testNightMint() throws { try capture("nightMint") }
   @MainActor func testEspressoBlack() throws { try capture("espressoBlack") }
   @MainActor func testCafePage() throws { try capture("cafePage") }
   @MainActor func testRoasterPoster() throws { try capture("roasterPoster") }
-  @MainActor func testMakeItYours() throws { try capture("makeItYours") }
 
   @MainActor func testLargestTextSteelKraft() throws {
     try capture("steelKraft", largestText: true)

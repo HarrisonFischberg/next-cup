@@ -5,12 +5,8 @@ import Observation
 import SwiftData
 
 extension AIProvider {
-  var kind: AIProviderKind {
-    switch self {
-    case .anthropic: .anthropic
-    case .openAI: .openAI
-    }
-  }
+  /// The cloud provider behind this choice; nil for Apple's on-device model.
+  var kind: AIProviderKind? { AIProviderKind(rawValue: rawValue) }
 }
 
 /// Sends the `AIRequest`s the user queued with a tap (blueprint §3a). Offline
@@ -138,9 +134,16 @@ final class AIQueue {
     save(request)
     let provider = request.provider.kind
     let model = request.modelID
+    let effort = AIPreferences().effort
     tasks[request.id] = Task { [client] in
       do {
-        finish(request, .success(try await client.send(payload, provider: provider, model: model)))
+        let result =
+          if let provider {
+            try await client.send(payload, provider: provider, model: model, effort: effort)
+          } else {
+            try await AppleIntelligence.send(payload)
+          }
+        finish(request, .success(result))
       } catch {
         finish(request, .failure(error as? AIError ?? .cancelled))
       }

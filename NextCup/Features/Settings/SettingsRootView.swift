@@ -1,7 +1,7 @@
 import NextCupKit
 import SwiftUI
 
-/// The Settings tab's root: units, brewing, data, privacy and about.
+/// The Settings root: appearance, units, brewing, AI, data, privacy and about.
 struct SettingsRootView: View {
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
@@ -31,6 +31,23 @@ struct SettingsRootView: View {
 
   private var list: some View {
     List {
+      Section {
+        Picker("Appearance", selection: $appearance) {
+          ForEach(AppearanceMode.allCases) { Text($0.title).tag($0.rawValue) }
+        }
+        .pickerStyle(.segmented)
+        .frame(minHeight: DS.Size.control)
+        .listRowBackground(DS.paper)
+        .accessibilityIdentifier("settings.appearance")
+        FlavorPicker()
+          .id("appearance")
+          .listRowBackground(Color.clear)
+          .listRowInsets(EdgeInsets())
+      } header: {
+        Text("Appearance")
+      } footer: {
+        Text("A flavor sets colors, type, corners and spacing. Pick one to try it.")
+      }
       Section {
         Picker("Weight", selection: $weightUnit) {
           Text("Grams (g)").tag(WeightUnit.grams.rawValue)
@@ -77,7 +94,7 @@ struct SettingsRootView: View {
         } label: {
           VStack(alignment: .leading, spacing: 2) {
             Text("AI").font(DS.Font.headline).foregroundStyle(DS.ink)
-            Text("Your own keys and a model for each feature").font(.footnote)
+            Text("Apple AI, or your own Anthropic or OpenAI key").font(.footnote)
               .foregroundStyle(DS.ink2)
           }
           .frame(minHeight: DS.Size.control, alignment: .leading)
@@ -102,24 +119,6 @@ struct SettingsRootView: View {
         .accessibilityIdentifier("settings.data")
       } header: {
         Text("Data")
-      }
-      // Below the rows that existing flows reach, so they stay on the first screen.
-      Section {
-        Picker("Appearance", selection: $appearance) {
-          ForEach(AppearanceMode.allCases) { Text($0.title).tag($0.rawValue) }
-        }
-        .pickerStyle(.segmented)
-        .frame(minHeight: DS.Size.control)
-        .listRowBackground(DS.paper)
-        .accessibilityIdentifier("settings.appearance")
-        FlavorPicker()
-          .id("appearance")
-          .listRowBackground(Color.clear)
-          .listRowInsets(EdgeInsets())
-      } header: {
-        Text("Appearance")
-      } footer: {
-        Text("A flavor sets colors, type, corners and spacing. Pick one to try it.")
       }
       Section {
         NavigationLink {

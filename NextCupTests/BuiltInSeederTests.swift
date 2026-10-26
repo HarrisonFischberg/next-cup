@@ -45,6 +45,13 @@ import Testing
     }
   }
 
+  @Test func everyStarterRecipeHasThreeVersions() throws {
+    let keys = try bundled().recipes.map(\.key)
+    for base in keys where !base.contains("/") {
+      #expect(keys.filter { $0.hasPrefix(base + "/") }.count >= 3, "\(base) has too few versions")
+    }
+  }
+
   @Test func bundleHasSwitchableDripperAndInvertedPress() throws {
     let content = try bundled()
     let methods = Dictionary(uniqueKeysWithValues: content.methods.map { ($0.key, $0) })
