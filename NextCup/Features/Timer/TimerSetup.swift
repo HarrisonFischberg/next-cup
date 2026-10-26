@@ -14,6 +14,11 @@ struct TimerSetup: Identifiable, Hashable {
   let scaled: ScalableRecipe
   /// Display names for each step, in plan order.
   let stepTitles: [String]
+  /// Chosen on the Start brew page and carried into the brew form.
+  var beanID: UUID?
+  var beanName: String?
+  var grinderID: UUID?
+  var grindSetting = ""
 
   static func == (lhs: TimerSetup, rhs: TimerSetup) -> Bool { lhs.id == rhs.id }
   func hash(into hasher: inout Hasher) { hasher.combine(id) }
@@ -25,7 +30,8 @@ struct TimerSetup: Identifiable, Hashable {
       sessionKey: id.uuidString, recipeID: recipeID, recipeName: recipeName,
       methodName: methodName, doseG: scaled.doseG, waterG: scaled.waterG, tempC: tempC,
       totalTimeS: Int(elapsedS.rounded()), targetTimeS: plan.totalDurationS,
-      endedEarly: endedEarly)
+      endedEarly: endedEarly, beanID: beanID, beanName: beanName, grinderID: grinderID,
+      grindSetting: grindSetting)
   }
 }
 

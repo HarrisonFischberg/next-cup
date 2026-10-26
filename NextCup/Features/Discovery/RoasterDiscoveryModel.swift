@@ -1,4 +1,5 @@
 import Foundation
+import MapKit
 import SwiftData
 
 /// One roaster found on the map. Nothing is stored until the user saves it.
@@ -102,7 +103,7 @@ final class RoasterDiscoveryModel {
       phase = .idle
     } catch {
       places = []
-      phase = .failed("The search did not finish. Check your connection and try again.")
+      phase = .failed(RoasterSearchFailure.message(for: error))
     }
   }
 }
@@ -119,6 +120,7 @@ final class RoasterMatchModel {
 
   private(set) var phase = Phase.searching
   private(set) var places: [RoasterPlace] = []
+  private(set) var isOffline = false
   let name: String
   private let searcher: RoasterSearching
 
@@ -129,6 +131,7 @@ final class RoasterMatchModel {
 
   func search() async {
     phase = .searching
+    isOffline = false
     do {
       places = try await searcher.search(.named(name))
       phase = .results
@@ -136,7 +139,8 @@ final class RoasterMatchModel {
       phase = .results
     } catch {
       places = []
-      phase = .failed("The search did not finish. Check your connection and try again.")
+      isOffline = RoasterSearchFailure.isOffline(error)
+      phase = .failed(RoasterSearchFailure.message(for: error))
     }
   }
 }
@@ -200,5 +204,31 @@ struct RoasterService {
       store.context.rollback()
       return .failure(failure)
     }
+  }
+}
+
+/// Words for a failed Apple Maps search that say what actually went wrong. Only a real
+/// network failure is called a connection problem.
+enum RoasterSearchFailure {
+  static func isOffline(_ error: Error) -> Bool {
+    guard let url = error as? URLError else { return false }
+    return [.notConnectedToInternet, .networkConnectionLost, .timedOut, .cannotFindHost]
+      .contains(url.code)
+  }
+
+  static func message(for error: Error) -> String {
+    if isOffline(error) {
+      return "You're offline, so Apple Maps can't search. Check your connection and try again."
+    }
+    if let map = error as? MKError {
+      switch map.code {
+      case .loadingThrottled:
+        return "Apple Maps is busy right now. Wait a minute and try again."
+      case .serverFailure:
+        return "Apple Maps didn't answer. Try again, or skip and keep the name as it is."
+      default: break
+      }
+    }
+    return "Apple Maps couldn't finish this search. Try again, or skip and keep the name as it is."
   }
 }

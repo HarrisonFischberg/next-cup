@@ -8,6 +8,19 @@ struct MapKitRoasterSearch: RoasterSearching {
   private static let radiusMeters: CLLocationDistance = 25_000
 
   func search(_ area: SearchArea) async throws -> [RoasterPlace] {
+    let places = try await search(area, request: Self.request(for: area))
+    // A bag's brand ("… Coffee Roasters") plus "coffee roaster" often finds nothing;
+    // the brand alone usually finds the business.
+    if places.isEmpty, case .named(let name) = area {
+      let plain = MKLocalSearch.Request()
+      plain.naturalLanguageQuery = name
+      plain.resultTypes = .pointOfInterest
+      return try await search(area, request: plain)
+    }
+    return places
+  }
+
+  private static func request(for area: SearchArea) -> MKLocalSearch.Request {
     let request = MKLocalSearch.Request()
     switch area {
     case .near(let latitude, let longitude):
@@ -21,7 +34,18 @@ struct MapKitRoasterSearch: RoasterSearching {
       request.naturalLanguageQuery = "\(name) coffee roaster"
     }
     request.resultTypes = .pointOfInterest
-    let response = try await MKLocalSearch(request: request).start()
+    return request
+  }
+
+  private func search(_ area: SearchArea, request: MKLocalSearch.Request) async throws
+    -> [RoasterPlace]
+  {
+    let response: MKLocalSearch.Response
+    do {
+      response = try await MKLocalSearch(request: request).start()
+    } catch let error as MKError where error.code == .placemarkNotFound {
+      return []  // Apple Maps reports "nothing found" as an error, not an empty list.
+    }
     var seen = Set<String>()
     return response.mapItems.compactMap { item in
       guard let name = item.name, !name.isEmpty else { return nil }

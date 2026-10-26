@@ -31,6 +31,11 @@ struct RootTabView: View {
       OnboardingView { tab in
         storedTab = tab.rawValue
         showsOnboarding = false
+        // One brew type goes straight to its styles; several land on the Brew page to pick.
+        if tab == .recipes {
+          let shown = (try? context.fetch(FetchDescriptor<BrewMethod>()))?.filter { !$0.isHidden }
+          if let shown, shown.count == 1, let only = shown.first { router.open(.method(only.id)) }
+        }
       }
     }
     .onAppear {
