@@ -4,7 +4,7 @@ import SwiftUI
 struct ConceptApp: App {
     var body: some Scene {
         WindowGroup {
-            if ProcessInfo.processInfo.arguments.contains("-gallery") { Gallery() } else { ConceptRoot() }
+            if ProcessInfo.processInfo.arguments.contains("-gallery") { Gallery() } else { LookRoot() }
         }
     }
 }
