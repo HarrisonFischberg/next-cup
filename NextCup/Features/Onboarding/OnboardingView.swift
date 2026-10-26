@@ -163,12 +163,20 @@ struct OnboardingView: View {
     return picked.count == 1 ? "Add 1 bean" : "Add \(picked.count) beans"
   }
 
-  /// Pick coffees from a list of popular ones; if none fit, photograph the bag, scan its
-  /// barcode or type it in. Every route ends in a normal bean the user can edit.
+  /// Three equal ways in: scan the barcode, photograph the bag, or pick from a list of
+  /// popular coffees (typing is a quiet fallback). Every route ends in a bean the user can edit.
   private var firstBag: some View {
     let shown = PopularBeans.search(beanSearch)
     return VStack(alignment: .leading, spacing: DS.Space.md) {
-      title("Your beans", "Pick the coffees you have.")
+      title("Your beans", "Scan the barcode, take a photo of the bag, or pick from the list.")
+      GlassEffectContainer(spacing: DS.Space.sm) {
+        HStack(spacing: DS.Space.sm) {
+          captureButton("Scan the barcode", "barcode.viewfinder", .barcode)
+          captureButton("Take a photo", "camera", .photo)
+        }
+      }
+      Text("Or pick from the list").font(DS.Font.headline).foregroundStyle(DS.ink)
+        .padding(.top, DS.Space.sm)
       TextField("Search roasters and coffees", text: $beanSearch)
         .textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.search)
         .padding(.horizontal, DS.Space.md).frame(minHeight: DS.Size.control)
@@ -204,15 +212,10 @@ struct OnboardingView: View {
         }
       }
       .panel(DS.paper)
-      Text(shown.isEmpty ? "No match. Add it another way:" : "Not in the list?")
-        .font(DS.Font.headline).foregroundStyle(DS.ink).padding(.top, DS.Space.sm)
-      GlassEffectContainer(spacing: DS.Space.sm) {
-        HStack(spacing: DS.Space.sm) {
-          captureButton("Photo of the bag", "camera", .photo)
-          captureButton("Scan the barcode", "barcode.viewfinder", .barcode)
-          captureButton("Type it in", "square.and.pencil", .manual)
-        }
-      }
+      Button("Not listed? Type it in") { capture = .manual }
+        .font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
+        .frame(maxWidth: .infinity, minHeight: DS.Size.minTap)
+        .accessibilityIdentifier("onboarding.beans.manual")
     }
   }
 

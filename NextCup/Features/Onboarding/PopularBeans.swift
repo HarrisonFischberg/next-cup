@@ -15,7 +15,9 @@ enum PopularBeans {
       roaster.coffees.map { Entry(roaster: roaster.name, coffee: $0.name) }
     }
     var seen = Set<String>()
-    return (retail + catalog).filter { seen.insert($0.id).inserted }
+    let unique = (retail + catalog).filter { seen.insert($0.id).inserted }
+    // Starbucks goes last (Harold's call): the smaller roasters lead.
+    return unique.filter { $0.roaster != "Starbucks" } + unique.filter { $0.roaster == "Starbucks" }
   }
 
   /// Matches the roaster or coffee name, ignoring case and accents.
