@@ -471,6 +471,45 @@ final class NextCupUITests: XCTestCase {
     }
   }
 
+  /// Set-up's bean step: pick two popular coffees and they land in Beans; the other
+  /// routes (photo, barcode, typing) are offered beside the list.
+  @MainActor
+  func testOnboardingAddsBeansPickedFromThePopularList() throws {
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      "-showOnboarding",
+    ]
+    app.launch()
+    element(app, "onboarding.next").tap()
+    element(app, "onboarding.next").tap()
+    let search = element(app, "onboarding.beans.search")
+    XCTAssertTrue(search.waitForExistence(timeout: 5))
+    XCTAssertTrue(element(app, "onboarding.beans.photo").exists)
+    XCTAssertTrue(element(app, "onboarding.beans.barcode").exists)
+    XCTAssertTrue(element(app, "onboarding.beans.manual").exists)
+    XCTAssertFalse(element(app, "onboarding.next").isEnabled, "nothing to add before a pick")
+    search.tap()
+    search.typeText("hair bender")
+    element(app, "onboarding.bean.Hair Bender").tap()
+    search.tap()
+    search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 11) + "monarch")
+    element(app, "onboarding.bean.Monarch").tap()
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    if FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path) {
+      try save(app.screenshot(), "\(folderURL.path)/onboarding-beans.png")
+    }
+    app.buttons["Add 2 beans"].tap()
+    XCTAssertTrue(element(app, "onboarding.ai").waitForExistence(timeout: 5))
+    element(app, "onboarding.next").tap()
+    app.buttons["Log my first brew"].tap()
+    app.tabBars.buttons["Beans"].tap()
+    XCTAssertTrue(element(app, "beans.row.Hair Bender").waitForExistence(timeout: 5))
+    XCTAssertTrue(element(app, "beans.row.Monarch").exists)
+  }
+
   /// The daily loop: a brew saved untasted waits on the journal; tasting it
   /// offers one change for the next cup (or says to keep it the same).
   @MainActor

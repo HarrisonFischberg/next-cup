@@ -19,7 +19,9 @@ struct OnboardingView: View {
   @State private var step = 1
   @State private var grinder = ""
   @State private var typesGrinder = false
-  @State private var addingBean = false
+  @State private var capture: BeanCaptureStart?
+  @State private var picked = Set<PopularBeans.Entry.ID>()
+  @State private var beanSearch = ""
   @State private var error: String?
 
   private static let steps = 4
@@ -49,10 +51,11 @@ struct OnboardingView: View {
             }
           }
           .scrollDismissesKeyboard(.interactively)
-          SteelButton(title: step == Self.bagStep ? "Scan the bag" : "Next", action: next)
+          SteelButton(title: nextTitle, action: next)
+            .disabled(step == Self.bagStep && picked.isEmpty)
             .accessibilityIdentifier("onboarding.next")
           if step == Self.bagStep {
-            Button("Add a bag later") { advance() }
+            Button("Skip for now") { advance() }
               .font(.body.weight(.semibold)).foregroundStyle(DS.ink)
               .frame(maxWidth: .infinity, minHeight: DS.Size.minTap)
               .accessibilityIdentifier("onboarding.later")
@@ -79,8 +82,8 @@ struct OnboardingView: View {
           }
         }
       }
-      .sheet(isPresented: $addingBean, onDismiss: advance) {
-        BeanEditorView(target: .new) { addingBean = false }
+      .sheet(item: $capture, onDismiss: advance) { start in
+        BeanEditorView(target: .new, start: start) { capture = nil }
       }
     }
     .accessibilityIdentifier("onboarding")
@@ -145,16 +148,81 @@ struct OnboardingView: View {
     }
   }
 
+  private var nextTitle: String {
+    guard step == Self.bagStep else { return "Next" }
+    return picked.count == 1 ? "Add 1 bean" : "Add \(picked.count) beans"
+  }
+
+  /// Pick coffees from a list of popular ones; if none fit, photograph the bag, scan its
+  /// barcode or type it in. Every route ends in a normal bean the user can edit.
   private var firstBag: some View {
-    VStack(alignment: .leading, spacing: DS.Space.md) {
-      title(
-        "Your first bag",
-        "Scan its barcode or label and Next Cup fills in the details. You check every field before it is saved."
-      )
-      Image(systemName: "barcode.viewfinder").font(.system(size: 64)).foregroundStyle(DS.crema)
-        .frame(maxWidth: .infinity).padding(.vertical, DS.Space.lg)
-        .accessibilityHidden(true)
+    let shown = PopularBeans.search(beanSearch)
+    return VStack(alignment: .leading, spacing: DS.Space.md) {
+      title("Your beans", "Pick the coffees you have.")
+      TextField("Search roasters and coffees", text: $beanSearch)
+        .textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.search)
+        .padding(.horizontal, DS.Space.md).frame(minHeight: DS.Size.control)
+        .glassEffect(
+          .regular.tint(DS.paper.opacity(0.6)), in: RoundedRectangle(cornerRadius: DS.controlRadius)
+        )
+        .accessibilityIdentifier("onboarding.beans.search")
+      LazyVStack(spacing: 0) {
+        ForEach(shown) { entry in
+          let on = picked.contains(entry.id)
+          Button {
+            if on { picked.remove(entry.id) } else { picked.insert(entry.id) }
+          } label: {
+            HStack(spacing: DS.Space.md) {
+              VStack(alignment: .leading, spacing: 2) {
+                Text(entry.coffee).font(.body.weight(on ? .semibold : .regular))
+                  .foregroundStyle(DS.ink)
+                Text(entry.roaster).font(.footnote).foregroundStyle(DS.ink2)
+              }
+              Spacer(minLength: DS.Space.sm)
+              Image(systemName: on ? "checkmark.circle.fill" : "circle").font(.title3)
+                .foregroundStyle(on ? DS.signal : DS.line)
+            }
+            .padding(.horizontal, DS.Space.md).frame(minHeight: 56).contentShape(Rectangle())
+          }
+          .buttonStyle(.plain)
+          .accessibilityAddTraits(on ? .isSelected : [])
+          .accessibilityIdentifier("onboarding.bean.\(entry.coffee)")
+          .sensoryFeedback(.selection, trigger: on)
+          if entry.id != shown.last?.id {
+            Rectangle().fill(DS.line.opacity(0.3)).frame(height: 1).padding(.leading, DS.Space.md)
+          }
+        }
+      }
+      .panel(DS.paper)
+      Text(shown.isEmpty ? "No match. Add it another way:" : "Not in the list?")
+        .font(DS.Font.headline).foregroundStyle(DS.ink).padding(.top, DS.Space.sm)
+      GlassEffectContainer(spacing: DS.Space.sm) {
+        HStack(spacing: DS.Space.sm) {
+          captureButton("Photo of the bag", "camera", .photo)
+          captureButton("Scan the barcode", "barcode.viewfinder", .barcode)
+          captureButton("Type it in", "square.and.pencil", .manual)
+        }
+      }
     }
+  }
+
+  private func captureButton(_ label: String, _ symbol: String, _ start: BeanCaptureStart)
+    -> some View
+  {
+    Button {
+      capture = start
+    } label: {
+      VStack(spacing: DS.Space.xs) {
+        Image(systemName: symbol).font(.title2)
+        Text(label).font(.caption.weight(.semibold)).multilineTextAlignment(.center)
+      }
+      .foregroundStyle(DS.ink)
+      .frame(maxWidth: .infinity, minHeight: 76).padding(.horizontal, DS.Space.xs)
+      .glassEffect(
+        .regular.interactive(), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+    .buttonStyle(.plain)
+    .accessibilityIdentifier("onboarding.beans.\(start.rawValue)")
   }
 
   private var aiStep: some View {
@@ -193,13 +261,36 @@ struct OnboardingView: View {
     case 1:
       if saveGrinder() { advance() }
     case Self.bagStep:
-      addingBean = true
+      if addPicked() { advance() }
     default:
       advance()
     }
   }
 
   private func advance() { step += 1 }
+
+  /// Saves each picked coffee as a bean with its roaster; one already saved is reused.
+  private func addPicked() -> Bool {
+    let entries = PopularBeans.all.filter { picked.contains($0.id) }
+    let store = Store(context: context)
+    for entry in entries {
+      if beans.contains(where: {
+        $0.name.caseInsensitiveCompare(entry.coffee) == .orderedSame
+          && $0.roaster?.name.caseInsensitiveCompare(entry.roaster) == .orderedSame
+      }) {
+        continue
+      }
+      var fields = BeanFields()
+      fields.name = entry.coffee
+      fields.roasterName = entry.roaster
+      if case .failure(let failure) = BeanService(store: store).save(fields) {
+        error = "\(entry.coffee) was not saved. \(failure.localizedDescription)"
+        return false
+      }
+    }
+    error = nil
+    return true
+  }
 
   /// A typed grinder is saved and remembered, so the first brew form picks it.
   private func saveGrinder() -> Bool {
