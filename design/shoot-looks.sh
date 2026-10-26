@@ -9,7 +9,7 @@ xcodebuild -project design/Concepts.xcodeproj -scheme Concept -destination "plat
   -derivedDataPath "$DD" PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE" -quiet build 2>&1 | grep -E "error" || true
 xcrun simctl install "$DEV" "$DD/Build/Products/Debug-iphonesimulator/Concept.app"
 xcrun simctl status_bar "$DEV" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 >/dev/null 2>&1 || true
-xcrun simctl ui "$DEV" content_size large
+xcrun simctl ui "$DEV" content_size ${SIZE:-large}
 xcrun simctl launch "$DEV" "$BUNDLE" >/dev/null; sleep 4  # first launch after install is slow
 for mode in light dark; do
   xcrun simctl ui "$DEV" appearance $mode
@@ -19,9 +19,9 @@ for mode in light dark; do
       EXTRA=(); [ "$stage" = timer ] && EXTRA=(-elapsed 78); [ "$stage" = next ] && EXTRA=(-next)
       xcrun simctl launch "$DEV" "$BUNDLE" -look "$n" -stage ${stage/next/log} ${EXTRA[@]+"${EXTRA[@]}"} >/dev/null
       sleep 2.8
-      xcrun simctl io "$DEV" screenshot --type=png "$OUT/raw/$n-$stage-$mode.png" >/dev/null 2>&1
+      xcrun simctl io "$DEV" screenshot --type=png "$OUT/raw/$n-$stage-$mode${SIZE:+-$SIZE}.png" >/dev/null 2>&1
     done
   done
 done
-xcrun simctl ui "$DEV" appearance light
+xcrun simctl ui "$DEV" appearance light; xcrun simctl ui "$DEV" content_size large
 echo "captured -> $OUT/raw"

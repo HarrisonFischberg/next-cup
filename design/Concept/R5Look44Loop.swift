@@ -7,27 +7,38 @@ import SwiftUI
 // 3. "Done" schedules a reminder 20 minutes later to taste.
 // 4. Taste: pick what you notice, rate it.
 // 5. Next cup: one change for tomorrow, with the reason, and what to keep.
+//
+// Signature: the loop strip (Brew, Rest, Taste, Next) that tells you where today's cup is.
+// Display moments are set in New York; everything you operate stays SF and system controls.
+// Liquid Glass only on the floating action bars, grouped in a GlassEffectContainer.
 
 private enum C {
-    static let bg = Color(0xF6F5F2, 0x111111)
+    static let bg = Color(0xF7F5F1, 0x0F0F10)
     static let card = Color(0xFFFFFF, 0x1C1C1E)
-    static let line = Color(0xE7E3DD, 0x2C2C2E)
-    static let accent = Color(0xB87A2B, 0xE0A458)
+    static let line = Color(0xE6E1D9, 0x2E2E31)
+    /// Accent dark enough for white label text in light (5.1:1); light enough for dark text in dark.
+    static let accent = Color(0x93591A, 0xE3A75C)
+    static let onAccent = Color(0xFFFFFF, 0x1A1208)
+    static let wash = Color(0xF3E9DC, 0x2A2117)
     static let night = Color(0x0F0F10, 0x0F0F10)
-    static let nightRing = Color(0x27272B, 0x27272B)
-    static let gauge = Color(0xE0A458, 0xE0A458)
+    static let nightRing = Color(0x29292D, 0x29292D)
+    static let gauge = Color(0xE3A75C, 0xE3A75C)
 }
 
 private let tasteDelayMin = 20
 
+private extension Font {
+    static func display(_ style: Font.TextStyle, _ weight: Font.Weight = .regular) -> Font { .system(style, design: .serif, weight: weight) }
+}
+
 /// One change for the next cup from how it tasted (the same direction as DialInRules in the app).
-private func nextCupTip(_ v: Verdict?, grind: Int, dose: Double, water: Double) -> (title: String, from: String, to: String, why: String) {
+private func nextCupTip(_ v: Verdict?, grind: Int, dose: Double, water: Double) -> (title: String, unit: String, from: String, to: String, why: String) {
     switch v {
-    case .sour: ("Grind one step finer", "\(grind)", "\(grind - 1)", "Sour and thin means the water ran through too fast. Finer grounds slow it down and pull more sweetness.")
-    case .bitter: ("Grind one step coarser", "\(grind)", "\(grind + 1)", "Bitter and dry means too much was pulled out. Coarser grounds let the water through sooner.")
-    case .weak: ("Use a little more coffee", "\(Fmt.num(dose)) g", "\(Fmt.num(dose + 1)) g", "Weak means too much water for the coffee. One more gram makes the cup fuller without changing the grind.")
-    case .strong: ("Add a little more water", "\(Fmt.num(water)) g", "\(Fmt.num(water + 20)) g", "Strong and heavy means the cup is too concentrated. More water opens it up.")
-    default: ("Keep everything the same", "", "", "It tasted balanced. Brew it the same way tomorrow to be sure it repeats.")
+    case .sour: ("Grind one step finer", "Grind", "\(grind)", "\(grind - 1)", "Sour and thin means the water ran through too fast. Finer grounds slow it down and pull out more sweetness.")
+    case .bitter: ("Grind one step coarser", "Grind", "\(grind)", "\(grind + 1)", "Bitter and dry means too much was pulled out. Coarser grounds let the water through sooner.")
+    case .weak: ("Use a little more coffee", "Beans", Fmt.num(dose), Fmt.num(dose + 1), "Weak means too much water for the coffee. One more gram fills the cup out without touching the grind.")
+    case .strong: ("Add a little more water", "Water", Fmt.num(water), Fmt.num(water + 20), "Strong and heavy means the cup is too concentrated. A little more water opens it up.")
+    default: ("Brew it the same way", "", "", "", "It tasted balanced. Make it the same way tomorrow to see that it repeats.")
     }
 }
 
@@ -45,6 +56,62 @@ private func scheduleTasteReminder(bean: String) {
     }
 }
 
+// MARK: Signature: the loop strip
+
+private enum Station: Int, CaseIterable {
+    case brew, rest, taste, next
+    var label: String { ["Brew", "Rest", "Taste", "Next"][rawValue] }
+}
+
+/// Four stations on a hairline; done ones filled, the current one ringed and labelled in the accent.
+private struct LoopStrip: View {
+    let at: Station
+    var detail: String?
+    var dark = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 0) {
+                ForEach(Station.allCases, id: \.self) { s in
+                    let done = s.rawValue < at.rawValue, now = s == at
+                    HStack(spacing: 0) {
+                        ZStack {
+                            Circle().fill(done ? tint : .clear).frame(width: 9, height: 9)
+                            Circle().stroke(done || now ? tint : rule, lineWidth: 1.5).frame(width: now ? 15 : 9, height: now ? 15 : 9)
+                        }
+                        .frame(width: 16)
+                        if s != .next { Rectangle().fill(done ? tint : rule).frame(height: 1.5) }
+                    }
+                }
+            }
+            HStack(spacing: 0) {
+                ForEach(Station.allCases, id: \.self) { s in
+                    Text(s.label).font(.caption.weight(s == at ? .semibold : .regular))
+                        .foregroundStyle(s == at ? tint : .secondary)
+                        .frame(maxWidth: s == .next ? nil : .infinity, alignment: .leading)
+                }
+            }
+            if let detail { Text(detail).font(.footnote).foregroundStyle(.secondary).padding(.top, 2) }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Today's cup: \(at.label) step\(detail.map { ". \($0)" } ?? "")")
+    }
+
+    private var tint: Color { dark ? C.gauge : C.accent }
+    private var rule: Color { dark ? C.nightRing : C.line }
+}
+
+/// A glass bar of actions floating above content; Reduce Transparency gets solid buttons from the system styles.
+private struct ActionBar<Content: View>: View {
+    @ViewBuilder let content: Content
+    var body: some View {
+        GlassEffectContainer(spacing: 12) {
+            ViewThatFits(in: .horizontal) { HStack(spacing: 12) { content }; VStack(spacing: 10) { content } }
+        }
+            .padding(.horizontal, 20).padding(.bottom, 8)
+    }
+}
+
 struct Look44: View {
     var body: some View {
         ConceptShell(tint: C.accent) { Today44(model: $0) } timer: { Timer44(model: $0) }
@@ -52,61 +119,83 @@ struct Look44: View {
     }
 }
 
-// MARK: Home: what's waiting (taste) and what's next (tip), then recent cups
+// MARK: Home: where today's cup is, tomorrow's change, then the journal
 
 private struct Home44: View {
     let model: FlowModel
     var body: some View {
-        let last = model.journal.first
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Label("Taste in 14 min", systemImage: "bell").font(.footnote.weight(.semibold)).foregroundStyle(C.accent)
-                    Text("Today's Kenya Kiambu AA").font(.title3.weight(.semibold))
-                    Text("Brewed at 9:41. We'll remind you to note how it tastes once it has cooled a little.").font(.subheadline).foregroundStyle(.secondary)
-                    Button("Taste now") { model.prefillFromRecipe(measuredS: 184); model.showLog = true }
-                        .font(.subheadline.weight(.semibold)).foregroundStyle(C.accent).frame(minHeight: 44)
-                }
-                .padding(16).frame(maxWidth: .infinity, alignment: .leading).background(C.card, in: .rect(cornerRadius: 16))
-                if let last {
-                    let tip = nextCupTip(last.verdict == .balanced ? .sour : last.verdict, grind: last.grind, dose: last.doseG, water: last.waterG)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("FOR YOUR NEXT CUP").font(.caption2.weight(.semibold)).tracking(1).foregroundStyle(.secondary)
-                        Text(tip.title).font(.headline)
-                        if !tip.from.isEmpty {
-                            HStack(spacing: 8) {
-                                Text(tip.from).foregroundStyle(.secondary).strikethrough()
-                                Image(systemName: "arrow.right").font(.caption).foregroundStyle(.secondary)
-                                Text(tip.to).foregroundStyle(C.accent).fontWeight(.semibold)
-                            }
-                            .font(.title3).monospacedDigit()
-                        }
-                    }
-                    .padding(16).frame(maxWidth: .infinity, alignment: .leading).background(C.card, in: .rect(cornerRadius: 16))
-                }
-                Button { model.tab = .recipes } label: {
-                    Label("Start today's brew", systemImage: "plus").font(.headline).frame(maxWidth: .infinity, minHeight: 54)
-                        .foregroundStyle(.white).background(C.accent, in: .capsule)
-                }
-                .buttonStyle(PressScale())
-                Text("Recent").font(.headline).padding(.top, 6)
-                ForEach(Array(model.journal.enumerated()), id: \.element.id) { i, e in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(e.bean).font(.body)
-                            Text("\(e.method) · \(Fmt.num(e.doseG)) g : \(Fmt.num(e.waterG)) g · \(e.verdict?.label ?? "")").font(.footnote).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Text(Fmt.day(e.date)).font(.footnote).foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 8).overlay(alignment: .bottom) { Rectangle().fill(C.line).frame(height: 1) }
-                    .accessibilityElement(children: .combine).assemble(i)
-                }
+            VStack(alignment: .leading, spacing: 28) {
+                today
+                if let last = model.journal.first { tomorrow(last) }
+                journal
             }
-            .padding(.horizontal, 20).padding(.bottom, 20)
+            .padding(.horizontal, 20).padding(.bottom, 24)
         }
         .background(C.bg)
         .navigationTitle("Next Cup")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Start today's brew", systemImage: "plus") { model.tab = .recipes }
+            }
+        }
+    }
+
+    private var today: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Kenya Kiambu AA").font(.display(.title, .medium))
+                Text("Brewed at 9:41 on the cone dripper").font(.subheadline).foregroundStyle(.secondary)
+            }
+            LoopStrip(at: .rest, detail: "Resting so the flavours open up. We'll ask how it tastes at 10:01.")
+            Button("Taste it now") { model.prefillFromRecipe(measuredS: 184); model.showLog = true }
+                .buttonStyle(.glassProminent).tint(C.accent).foregroundStyle(C.onAccent).controlSize(.large)
+        }
+        .padding(20).frame(maxWidth: .infinity, alignment: .leading)
+        .background(C.card, in: .rect(cornerRadius: 24, style: .continuous))
+    }
+
+    private func tomorrow(_ last: JournalEntry) -> some View {
+        let tip = nextCupTip(.sour, grind: last.grind, dose: last.doseG, water: last.waterG)
+        return ViewThatFits(in: .horizontal) { tomorrowRow(tip, stacked: false); tomorrowRow(tip, stacked: true) }
+            .padding(.horizontal, 4)
+            .accessibilityElement(children: .combine)
+    }
+
+    private func tomorrowRow(_ tip: (title: String, unit: String, from: String, to: String, why: String), stacked: Bool) -> some View {
+        let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline))
+        return layout {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Tomorrow, \(tip.title.prefix(1).lowercased() + tip.title.dropFirst())").font(.display(.title3))
+                Text("From yesterday's sour cup").font(.footnote).foregroundStyle(.secondary)
+            }
+            if !stacked { Spacer(minLength: 12) }
+            if !tip.from.isEmpty {
+                (Text(tip.from).foregroundStyle(.secondary) + Text(" → ").foregroundStyle(.tertiary) + Text(tip.to).foregroundStyle(C.accent))
+                    .font(.title2.weight(.medium)).monospacedDigit()
+            }
+        }
+    }
+
+    private var journal: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Journal").font(.display(.title3)).padding(.bottom, 6)
+            ForEach(Array(model.journal.enumerated()), id: \.element.id) { i, e in
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text(e.date.formatted(.dateTime.day())).font(.display(.title3)).foregroundStyle(C.accent).monospacedDigit()
+                        .frame(width: 30, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(e.bean).font(.body)
+                        Text("\(e.method) · \(Fmt.num(e.doseG)) g in \(Fmt.num(e.waterG)) g").font(.footnote).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Text(e.verdict?.label ?? "").font(.footnote).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 12)
+                .overlay(alignment: .bottom) { if i < model.journal.count - 1 { Rectangle().fill(C.line).frame(height: 1).padding(.leading, 42) } }
+                .accessibilityElement(children: .combine).assemble(i)
+            }
+        }
     }
 }
 
@@ -117,88 +206,111 @@ private struct Today44: View {
     @State private var roaster = "Kiambu Estate"
     @State private var bean = "Kenya Kiambu AA"
     @State private var roast = "Light"
-    @State private var method = 0
+    @State private var method = "Cone"
     @State private var dose = 20.0
     @State private var water = 320.0
+    @Environment(\.dynamicTypeSize) private var dts
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                Text("Same as yesterday, with tomorrow's tip applied.").font(.subheadline).foregroundStyle(.secondary)
-                section("Bean") {
-                    Button { } label: {
-                        Label("Scan the bag", systemImage: "camera.viewfinder").font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 48)
-                            .foregroundStyle(C.accent).overlay(RoundedRectangle(cornerRadius: 12).stroke(C.accent, style: .init(lineWidth: 1.2, dash: [5, 4])))
-                    }
-                    Text("Reads the roaster, name, origin and roast date on the device with Apple Intelligence, or with your own AI key.")
-                        .font(.caption).foregroundStyle(.secondary)
-                    field("Roaster", $roaster)
-                    field("Coffee", $bean)
-                    HStack {
-                        Text("Roast").font(.subheadline).foregroundStyle(.secondary)
-                        Spacer()
-                        Picker("Roast", selection: $roast) { ForEach(["Light", "Medium", "Dark"], id: \.self) { Text($0) } }.pickerStyle(.segmented).frame(width: 210)
-                    }
-                    .frame(minHeight: 44)
-                }
-                section("Method") {
-                    ScrollView(.horizontal) {
-                        HStack(spacing: 14) {
-                            ForEach(Array(MethodIcons.all.enumerated()), id: \.offset) { i, m in
-                                Button { method = i } label: {
-                                    VStack(spacing: 6) {
-                                        Image(systemName: m.1).font(.system(size: 22, weight: .light)).frame(width: 56, height: 56)
-                                            .foregroundStyle(method == i ? C.accent : .primary)
-                                            .overlay(Circle().stroke(method == i ? C.accent : C.line, lineWidth: method == i ? 1.5 : 1))
-                                        Text(m.0).font(.caption2).foregroundStyle(.secondary)
-                                    }
-                                }
-                                .accessibilityLabel(m.0).accessibilityAddTraits(method == i ? .isSelected : [])
-                            }
-                        }
-                    }
-                    .scrollIndicators(.hidden)
-                }
-                section("Grams") {
-                    grams("Beans", $dose, 0.5)
-                    Rectangle().fill(C.line).frame(height: 1)
-                    grams("Water", $water, 5)
-                    Text("Ratio 1:\(Fmt.num((water / dose * 10).rounded() / 10)) · grind 22 (one step finer than yesterday)").font(.caption).foregroundStyle(.secondary)
-                }
+            VStack(alignment: .leading, spacing: 26) {
+                LoopStrip(at: .brew, detail: "Yesterday's brew, with tomorrow's change already in.")
+                beanCard
+                grams
+                methods
             }
-            .padding(20)
+            .padding(.horizontal, 20).padding(.bottom, 100)
         }
         .background(C.bg)
         .navigationTitle("Today's brew")
         .safeAreaInset(edge: .bottom) {
-            Button("Start brewing") { model.showTimer = true }.font(.headline).foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 54)
-                .background(C.accent, in: .capsule).buttonStyle(PressScale()).padding(.horizontal, 20).padding(.bottom, 8)
+            ActionBar {
+                Button { model.showTimer = true } label: {
+                    Label("Start brewing", systemImage: "play.fill").font(.headline).frame(maxWidth: .infinity, minHeight: 36)
+                }
+                .buttonStyle(.glassProminent).tint(C.accent).foregroundStyle(C.onAccent).controlSize(.large)
+            }
         }
     }
 
-    private func section<V: View>(_ t: String, @ViewBuilder _ v: () -> V) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(t.uppercased()).font(.caption2.weight(.semibold)).tracking(1).foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 10) { v() }.padding(16).background(C.card, in: .rect(cornerRadius: 16))
+    private var beanCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            (dts.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(alignment: .top))) {
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("Roaster", text: $roaster).font(.subheadline).foregroundStyle(.secondary)
+                    TextField("Coffee", text: $bean, axis: .vertical).font(.display(.title2, .medium))
+                }
+                Button("Scan the bag", systemImage: "camera.viewfinder") { }
+                    .labelStyle(.iconOnly).font(.title3).buttonStyle(.glass).controlSize(.large)
+            }
+            Picker("Roast", selection: $roast) { ForEach(["Light", "Medium", "Dark"], id: \.self) { Text($0) } }
+                .pickerStyle(.segmented)
+            Text("Scan the bag to fill these in. Apple Intelligence reads it on your iPhone; your own AI key works too.")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+        .padding(20).background(C.card, in: .rect(cornerRadius: 24, style: .continuous))
+    }
+
+    private var methods: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Method").font(.display(.title3))
+            ScrollView(.horizontal) {
+                HStack(spacing: 18) {
+                    ForEach(MethodIcons.all, id: \.0) { name, symbol in
+                        let on = method == name
+                        Button { method = name } label: {
+                            VStack(spacing: 8) {
+                                Image(systemName: symbol).font(.title2.weight(.light)).frame(width: 60, height: 60)
+                                    .foregroundStyle(on ? C.onAccent : .primary)
+                                    .background(on ? C.accent : C.card, in: .circle)
+                                    .overlay(Circle().stroke(on ? .clear : C.line, lineWidth: 1))
+                                Text(name).font(.caption).foregroundStyle(on ? .primary : .secondary)
+                            }
+                        }
+                        .buttonStyle(PressScale()).accessibilityLabel(name).accessibilityAddTraits(on ? .isSelected : [])
+                        .sensoryFeedback(.selection, trigger: on)
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+            .scrollIndicators(.hidden).padding(.horizontal, -20)
         }
     }
-    private func field(_ k: String, _ b: Binding<String>) -> some View {
-        HStack {
-            Text(k).font(.subheadline).foregroundStyle(.secondary)
-            TextField(k, text: b).multilineTextAlignment(.trailing).textContentType(.none)
+
+    private var grams: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Grams").font(.display(.title3))
+                Spacer()
+                Text("1 : \(Fmt.num((water / dose * 10).rounded() / 10))").font(.subheadline).foregroundStyle(.secondary).monospacedDigit()
+            }
+            HStack(spacing: 12) {
+                amount("Beans", $dose, 0.5)
+                amount("Water", $water, 5)
+            }
+            Text("Grind 22, one step finer than yesterday.").font(.footnote).foregroundStyle(.secondary)
         }
-        .frame(minHeight: 44)
     }
-    private func grams(_ k: String, _ b: Binding<Double>, _ step: Double) -> some View {
+
+    private func amount(_ k: String, _ b: Binding<Double>, _ step: Double) -> some View {
         let st = b.stepped(by: step, in: 1...1000)
-        return HStack {
-            Text(k).font(.subheadline)
-            Spacer()
-            Button("Less \(k)", systemImage: "minus", action: st.down).frame(width: 44, height: 44)
-            Text("\(Fmt.num(b.wrappedValue)) g").font(.title3).monospacedDigit().frame(minWidth: 76)
-            Button("More \(k)", systemImage: "plus", action: st.up).frame(width: 44, height: 44)
+        return VStack(alignment: .leading, spacing: 10) {
+            Text(k).font(.subheadline).foregroundStyle(.secondary)
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(Fmt.num(b.wrappedValue)).font(.display(.largeTitle)).monospacedDigit().contentTransition(.numericText())
+                Text("g").font(.headline).foregroundStyle(.secondary)
+            }
+            HStack(spacing: 8) {
+                Button("Less \(k.lowercased())", systemImage: "minus", action: st.down).frame(maxWidth: .infinity, minHeight: 44)
+                    .background(C.bg, in: .capsule)
+                Button("More \(k.lowercased())", systemImage: "plus", action: st.up).frame(maxWidth: .infinity, minHeight: 44)
+                    .background(C.bg, in: .capsule)
+            }
+            .labelStyle(.iconOnly).font(.headline).foregroundStyle(.primary).buttonStyle(PressScale(scale: 0.92))
         }
-        .labelStyle(.iconOnly).foregroundStyle(.primary)
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+        .background(C.card, in: .rect(cornerRadius: 22, style: .continuous))
+        .animation(.spring(duration: 0.25), value: b.wrappedValue)
     }
 }
 
@@ -214,11 +326,15 @@ private struct Timer44: View {
             let g = pouredGrams(r, at: elapsed)
             let prev = Double(r.steps[..<index].compactMap(\.cumulativeG).last ?? 0)
             let frac = s.cumulativeG.map { (g - prev) / max(1, Double($0) - prev) } ?? 1
-            VStack(spacing: 22) {
+            VStack(spacing: 24) {
                 HStack {
-                    Button("Close", systemImage: "xmark") { model.showTimer = false }.labelStyle(.iconOnly).font(.headline).frame(width: 44, height: 44)
+                    Button("Close", systemImage: "xmark") { model.showTimer = false }.labelStyle(.iconOnly).font(.headline)
+                        .frame(width: 44, height: 44).glassEffect(.regular.interactive(), in: .circle)
                     Spacer()
-                    Text(Fmt.clock(Int(elapsed))).font(.headline).monospacedDigit().contentTransition(.numericText())
+                    VStack(spacing: 2) {
+                        Text(Fmt.clock(Int(elapsed))).font(.headline).monospacedDigit().contentTransition(.numericText())
+                        Text("of \(Fmt.clock(r.totalS))").font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                    }
                     Spacer()
                     Color.clear.frame(width: 44, height: 44)
                 }
@@ -226,27 +342,38 @@ private struct Timer44: View {
                     .accessibilityHidden(true)
                 Spacer(minLength: 0)
                 ScaleGauge(grams: g, target: s.cumulativeG, fraction: frac, tint: C.gauge, track: C.nightRing).frame(width: 290, height: 290)
-                Text(s.instruction).font(.title3).multilineTextAlignment(.center).padding(.horizontal, 24)
-                Spacer(minLength: 0)
-                HStack(spacing: 12) {
-                    Button(model.primaryTitle, systemImage: model.showsRunning ? "pause.fill" : "play.fill") { model.toggleTimer() }
-                        .labelStyle(.iconOnly).font(.title2).foregroundStyle(.black).frame(width: 64, height: 64).background(C.gauge, in: .circle)
-                    Button {
-                        scheduleTasteReminder(bean: model.draft.bean)
-                        model.pauseTimer(); model.showTimer = false
-                    } label: {
-                        VStack(spacing: 2) {
-                            Text("Done, enjoy").font(.headline)
-                            Text("We'll ask how it tastes in \(tasteDelayMin) min").font(.caption).foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 64).background(C.nightRing, in: .capsule)
+                VStack(spacing: 8) {
+                    Text(s.instruction).font(.display(.title2)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                    if let n = model.nextStep(after: index) {
+                        Text("Then \(n.kind.label.lowercased()) at \(Fmt.clock(n.startS))").font(.footnote).foregroundStyle(.secondary)
                     }
                 }
-                .buttonStyle(PressScale())
+                .padding(.horizontal, 16)
+                Spacer(minLength: 0)
+                GlassEffectContainer(spacing: 12) {
+                    HStack(spacing: 12) {
+                        Button(model.primaryTitle, systemImage: model.showsRunning ? "pause.fill" : "play.fill") { model.toggleTimer() }
+                            .labelStyle(.iconOnly).font(.title2).foregroundStyle(.black)
+                            .frame(width: 64, height: 64).glassEffect(.regular.tint(C.gauge).interactive(), in: .circle)
+                            .contentTransition(.symbolEffect(.replace))
+                        Button {
+                            scheduleTasteReminder(bean: model.draft.bean)
+                            model.pauseTimer(); model.showTimer = false
+                        } label: {
+                            VStack(spacing: 2) {
+                                Text("Done, enjoy").font(.headline)
+                                Text("We'll ask how it tastes in \(tasteDelayMin) min").font(.caption).foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 64)
+                        }
+                        .glassEffect(.regular.interactive(), in: .capsule)
+                    }
+                }
             }
             .foregroundStyle(.white).padding(20)
             .background(C.night.ignoresSafeArea())
             .environment(\.colorScheme, .dark)
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         }
     }
 }
@@ -256,6 +383,8 @@ private struct Timer44: View {
 private struct Taste44: View {
     @Bindable var model: FlowModel
     @State private var showNext = ProcessInfo.processInfo.arguments.contains("-next")
+    @State private var revealed = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let notes: [(Verdict, String)] = [(.sour, "Sharp, thin, lemony"), (.bitter, "Dry, harsh, ashy"), (.weak, "Watery, light"),
                                              (.strong, "Heavy, intense"), (.balanced, "Sweet, round, clean")]
 
@@ -263,43 +392,56 @@ private struct Taste44: View {
         NavigationStack {
             Group { if showNext { next } else { taste } }
                 .background(C.bg)
-                .navigationTitle(showNext ? "Your next cup" : "How does it taste?").navigationBarTitleDisplayMode(.inline)
+                .navigationTitle(model.draft.bean).navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close", systemImage: "xmark") { model.showLog = false } } }
-                .animation(.spring(duration: 0.35), value: showNext)
         }
         .onAppear { if showNext && model.draft.verdict == nil { model.draft.verdict = .sour; model.draft.ratingHalfSteps = 7 } }
     }
 
     private var taste: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                Label("\(model.draft.bean) · brewed \(tasteDelayMin) min ago", systemImage: "bell").font(.footnote).foregroundStyle(.secondary)
-                ForEach(notes, id: \.0) { v, desc in
-                    let on = model.draft.verdict == v
-                    Button { model.draft.verdict = on ? nil : v } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(v.label).font(.body.weight(.medium)).foregroundStyle(.primary)
-                                Text(desc).font(.footnote).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 22) {
+                LoopStrip(at: .taste, detail: "Brewed \(tasteDelayMin) minutes ago on the cone dripper.")
+                Text("How does it taste?").font(.display(.largeTitle))
+                VStack(spacing: 0) {
+                    ForEach(notes, id: \.0) { v, desc in
+                        let on = model.draft.verdict == v
+                        Button { withAnimation(.snappy(duration: 0.2)) { model.draft.verdict = on ? nil : v } } label: {
+                            HStack(spacing: 14) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(v.label).font(.body.weight(on ? .semibold : .regular)).foregroundStyle(.primary)
+                                    Text(desc).font(.footnote).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: on ? "checkmark.circle.fill" : "circle").font(.title2)
+                                    .foregroundStyle(on ? C.accent : Color(.tertiaryLabel)).contentTransition(.symbolEffect(.replace))
                             }
-                            Spacer()
-                            Image(systemName: on ? "checkmark.circle.fill" : "circle").font(.title3).foregroundStyle(on ? C.accent : C.line)
+                            .padding(.horizontal, 18).frame(minHeight: 64).contentShape(.rect)
+                            .background(on ? C.wash : .clear)
                         }
-                        .padding(.horizontal, 16).frame(minHeight: 62).background(C.card, in: .rect(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(on ? C.accent : .clear, lineWidth: 1.5))
+                        .buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : []).sensoryFeedback(.selection, trigger: on)
+                        if v != .balanced { Rectangle().fill(C.line).frame(height: 1).padding(.leading, 18) }
                     }
-                    .accessibilityAddTraits(on ? .isSelected : []).sensoryFeedback(.selection, trigger: on)
                 }
-                LookRating(halfSteps: $model.draft.ratingHalfSteps, color: C.accent, size: 28).frame(maxWidth: .infinity)
-                TextField("Anything else? (optional)", text: $model.draft.notes, axis: .vertical).lineLimit(1...4)
-                    .padding(14).background(C.card, in: .rect(cornerRadius: 14))
+                .background(C.card).clipShape(.rect(cornerRadius: 24, style: .continuous))
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Overall").font(.display(.title3))
+                    LookRating(halfSteps: $model.draft.ratingHalfSteps, color: C.accent, size: 28)
+                }
+                TextField("Anything else you notice? (optional)", text: $model.draft.notes, axis: .vertical).lineLimit(1...4)
+                    .padding(16).background(C.card, in: .rect(cornerRadius: 18, style: .continuous))
             }
-            .padding(20)
+            .padding(.horizontal, 20).padding(.bottom, 100)
         }
+        .scrollDismissesKeyboard(.interactively)
         .safeAreaInset(edge: .bottom) {
-            Button("See tomorrow's tip") { showNext = true }.font(.headline).foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 54)
-                .background(C.accent, in: .capsule).buttonStyle(PressScale()).padding(.horizontal, 20).padding(.bottom, 8)
-                .disabled(model.draft.verdict == nil).opacity(model.draft.verdict == nil ? 0.5 : 1)
+            ActionBar {
+                Button { withAnimation(.smooth(duration: 0.35)) { showNext = true } } label: {
+                    Text("See tomorrow's change").font(.headline).frame(maxWidth: .infinity, minHeight: 36)
+                }
+                .buttonStyle(.glassProminent).tint(C.accent).foregroundStyle(C.onAccent).controlSize(.large)
+                .disabled(model.draft.verdict == nil)
+            }
         }
     }
 
@@ -307,44 +449,55 @@ private struct Taste44: View {
         let d = model.draft
         let tip = nextCupTip(d.verdict, grind: d.grind, dose: d.doseG, water: d.waterG)
         return ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                Text("You said: \(d.verdict?.label.lowercased() ?? "–"), \(Fmt.stars(d.ratingHalfSteps).lowercased()).").font(.subheadline).foregroundStyle(.secondary)
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Change one thing").font(.caption2.weight(.semibold)).tracking(1).foregroundStyle(.secondary)
-                    Text(tip.title).font(.title2.weight(.semibold))
+            VStack(alignment: .leading, spacing: 26) {
+                LoopStrip(at: .next, detail: "You said \(d.verdict?.label.lowercased() ?? "–"), \(Fmt.stars(d.ratingHalfSteps).lowercased()).")
+                VStack(alignment: .leading, spacing: 18) {
+                    Text(tip.title).font(.display(.largeTitle))
                     if !tip.from.isEmpty {
-                        HStack(spacing: 12) {
-                            Text(tip.from).foregroundStyle(.secondary).strikethrough()
-                            Image(systemName: "arrow.right").foregroundStyle(.secondary)
-                            Text(tip.to).foregroundStyle(C.accent).fontWeight(.semibold)
+                        HStack(alignment: .firstTextBaseline, spacing: 14) {
+                            Text(tip.unit).font(.subheadline).foregroundStyle(.secondary).fixedSize()
+                            Text(tip.from).foregroundStyle(.secondary).strikethrough(revealed, color: .secondary)
+                            Image(systemName: "arrow.right").font(.title3).foregroundStyle(.tertiary)
+                            Text(revealed ? tip.to : tip.from).foregroundStyle(C.accent).contentTransition(.numericText())
                         }
-                        .font(.system(size: 34, design: .rounded)).monospacedDigit()
+                        .font(.display(.largeTitle, .medium)).monospacedDigit()
+                        .accessibilityElement().accessibilityLabel("\(tip.unit) from \(tip.from) to \(tip.to)")
                     }
-                    Text(tip.why).font(.subheadline).foregroundStyle(.secondary)
+                    Text(tip.why).font(.body).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(18).frame(maxWidth: .infinity, alignment: .leading).background(C.card, in: .rect(cornerRadius: 16))
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Keep the same").font(.caption2.weight(.semibold)).tracking(1).foregroundStyle(.secondary)
-                    HStack {
-                        keep("Beans", "\(Fmt.num(d.doseG)) g"); keep("Water", "\(Fmt.num(d.waterG)) g"); keep("Temp", "\(Fmt.num(d.tempC))°"); keep("Method", "Cone")
+                .padding(22).frame(maxWidth: .infinity, alignment: .leading)
+                .background(C.card, in: .rect(cornerRadius: 24, style: .continuous))
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Keep the same").font(.display(.title3))
+                    Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
+                        GridRow { keep("Beans", "\(Fmt.num(d.doseG)) g"); keep("Water", "\(Fmt.num(d.waterG)) g") }
+                        GridRow { keep("Temperature", "\(Fmt.num(d.tempC)) °C"); keep("Method", "Cone dripper") }
                     }
                 }
-                .padding(18).background(C.card, in: .rect(cornerRadius: 16))
-                Text("Tomorrow's brew will open with this already set.").font(.footnote).foregroundStyle(.secondary)
+                Text("Tomorrow's brew opens with this change already set. You can still adjust it.").font(.footnote).foregroundStyle(.secondary)
             }
-            .padding(20)
+            .padding(.horizontal, 20).padding(.bottom, 100)
+        }
+        .task {
+            if reduceMotion { revealed = true; return }
+            try? await Task.sleep(for: .milliseconds(450))
+            withAnimation(.spring(duration: 0.5, bounce: 0.15)) { revealed = true }
         }
         .safeAreaInset(edge: .bottom) {
-            HStack(spacing: 12) {
-                Button("Not this time") { model.save() }.frame(maxWidth: .infinity, minHeight: 54).background(C.card, in: .capsule).foregroundStyle(.primary)
-                Button("Use tomorrow") { model.save() }.frame(maxWidth: .infinity, minHeight: 54).background(C.accent, in: .capsule).foregroundStyle(.white)
+            ActionBar {
+                Button("Not this time") { model.save() }.buttonStyle(.glass).controlSize(.large).font(.headline)
+                Button { model.save() } label: { Text("Use tomorrow").font(.headline).frame(maxWidth: .infinity, minHeight: 36) }
+                    .buttonStyle(.glassProminent).tint(C.accent).foregroundStyle(C.onAccent).controlSize(.large)
             }
-            .font(.headline).buttonStyle(PressScale()).padding(.horizontal, 20).padding(.bottom, 8)
         }
     }
 
     private func keep(_ k: String, _ v: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) { Text(k).font(.caption2).foregroundStyle(.secondary); Text(v).font(.subheadline).monospacedDigit() }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 2) {
+            Text(k).font(.footnote).foregroundStyle(.secondary)
+            Text(v).font(.body).monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
