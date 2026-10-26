@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en" data-page="landing" data-archetype="A" data-style="minimal" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Next Cup — the brew journal that writes your next recipe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Page spec — Next Cup landing · Minimal · Light · Archetype A (one specific problem: dialing in coffee)
+   Sections: nav · hero (Specimen Field) · features (2 × M16) · how-it-works (M15) · faq (list) · cta (left-aligned) · footer
+   Skipped: logo wall, social proof, stats — PRODUCT.md says there is no evidence yet. */
+:root {
+    --bg: #FFFFFF; --surface-1: #F5F5F5; --surface-2: #E9E9E9;
+    --text: #141414; --text-inverse: #FFFFFF; --accent: #141414; --accent-text: #FFFFFF;
+    --font-display: 'DM Sans', -apple-system, sans-serif;
+    --font-mono:    'DM Mono', 'SF Mono', Consolas, monospace;
+    --font-body:    -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    --nav-h: 68px;
+    --fs-hero: clamp(48px, 7vw, 80px); --fs-section: clamp(32px, 4vw, 47px); --fs-feature: 27px; --ff-feature: var(--font-display);
+    --fs-card: 20px; --ff-card: var(--font-display); --fw-display: 500; --op-sub: 0.5; --gap-card: 20px;
+    --r-card: 8px; --r-frame: 16px; --fw-feature: 500; --gap-head: 58px; --gap-rows: 128px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; }
+body { margin: 0; padding-top: var(--nav-h); background: var(--bg); color: var(--text); font-family: var(--font-display); font-weight: 500; -webkit-font-smoothing: antialiased; }
+[id] { scroll-margin-top: var(--nav-h); }
+a { color: inherit; }
+.container { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+.label { font-family: var(--font-mono); font-size: 12px; font-weight: 400; letter-spacing: 0.72px; text-transform: uppercase; color: var(--text); opacity: 0.4; margin: 0; }
+h2 { font-size: var(--fs-section); font-weight: 500; letter-spacing: -0.02em; line-height: 1.1; margin: 0; }
+section { padding-top: 180px; padding-bottom: 180px; }
+:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+
+/* Buttons §8 */
+.btn-dark, .btn-outline { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; font-size: 14px; font-weight: 500; font-family: var(--font-display); line-height: 20px; border-radius: 2px; cursor: pointer; text-decoration: none; }
+.btn-dark { background: var(--accent); color: var(--accent-text); border: none; transition: transform 0.2s ease-in-out; }
+.btn-dark:hover { transform: translateY(-1px); }
+.btn-outline { background: transparent; color: var(--text); border: 1px solid var(--surface-2); transition: border-color 0.3s linear; }
+.btn-outline:hover { border-color: var(--text); }
+.btn-lg { padding: 12px 24px; font-size: 16px; }
+.section-dark { background: var(--text); color: var(--text-inverse); }
+.section-dark .btn-dark { background: var(--text-inverse); color: var(--text); }
+.section-dark .btn-outline { color: var(--text-inverse); border-color: rgba(255,255,255,0.25); }
+.section-dark :focus-visible { outline-color: var(--text-inverse); }
+
+/* Nav §8 */
+nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 16px 0; }
+nav::before { content: ""; position: absolute; inset: 0; z-index: -1; background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+nav > .container { display: flex; align-items: center; justify-content: space-between; }
+.brand { font-size: 16px; font-weight: 500; text-decoration: none; letter-spacing: -0.32px; display: inline-flex; align-items: center; gap: 8px; }
+.brand-dot { width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--text); }
+.nav-links { display: flex; gap: 32px; align-items: center; }
+nav .nav-links a:not(.btn-dark) { font-size: 14px; font-weight: 500; text-decoration: none; opacity: 0.5; transition: opacity 0.3s linear; }
+nav .nav-links a:not(.btn-dark):hover { opacity: 1; }
+.nav-toggle { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 8px; }
+.nav-toggle-bar { width: 22px; height: 2px; background: var(--text); display: block; }
+.nav-toggle[aria-expanded="true"] .bar-1 { transform: translateY(7px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] .bar-2 { opacity: 0; }
+.nav-toggle[aria-expanded="true"] .bar-3 { transform: translateY(-7px) rotate(-45deg); }
+.nav-panel { display: none; }
+
+/* product-visuals §3 base */
+.pv { --pv-mat: var(--surface-1); --pv-r-outer: 16px; --pv-r-inner: 8px; --pv-r-control: 4px; --pv-text: 13px; --pv-row: 32px;
+      position: relative; font-family: var(--font-body); font-size: var(--pv-text); font-weight: 400; color: var(--text); }
+[data-mock] { --mock-positive: #1F8A65; --mock-negative: #CF2D56; --mock-attention: #FECC33; }
+.pv-mat { background: var(--pv-mat); border-radius: var(--pv-r-outer); padding: 6% 6% 0; overflow: hidden; }
+.pv-panel { background: var(--bg); border: 1px solid var(--surface-2); border-radius: var(--pv-r-inner); }
+.pv-row { display: grid; align-items: center; gap: 12px; min-height: var(--pv-row); padding: 0 12px; border-top: 1px solid var(--surface-2); }
+.pv-row.is-focused { background: var(--surface-1); }
+.pv-mono { font-family: var(--font-mono); } .pv-muted { opacity: 0.5; }
+.pv-label { font-family: var(--font-mono); text-transform: uppercase; opacity: 0.4; letter-spacing: 0.72px; font-size: 11px; }
+.pv-kpi { font-family: var(--font-display); font-size: 20px; font-weight: 500; }
+.pv-pill { display: inline-flex; align-items: center; padding: 0 8px; line-height: 1.6; border: 1px solid var(--surface-2); border-radius: var(--pv-r-control); white-space: nowrap; }
+.pv-pill.is-strong { background: var(--text); color: var(--text-inverse); border-color: transparent; }
+.pv-pill.is-quiet { opacity: 0.5; }
+.pv-pill.is-pos { color: var(--mock-positive); border-color: color-mix(in srgb, var(--mock-positive) 30%, transparent); }
+.pv-pill.is-neg { color: var(--mock-negative); border-color: color-mix(in srgb, var(--mock-negative) 30%, transparent); }
+.pv-pill.is-att::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mock-attention); margin-right: 6px; }
+.pv-avatar { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-family: var(--font-mono); font-size: 10px; background: var(--surface-2); }
+.pv-cut { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); }
+
+/* Hero — Specimen Field §12.2 */
+.hero-specimen { padding-top: 128px; padding-bottom: 0; }
+.hero-specimen-top { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 58px; align-items: start; padding-bottom: 58px; }
+.hero-specimen-title { font-size: var(--fs-hero); font-weight: 500; letter-spacing: -0.02em; line-height: 1.05; margin: 0; }
+.hero-specimen-sub { font-family: var(--font-body); font-weight: 400; font-size: 18px; line-height: 1.6; opacity: 0.5; max-width: 540px; margin: 16px 0 0; }
+.hero-specimen-ctas { display: flex; gap: 12px; margin-top: 48px; flex-wrap: wrap; }
+.specimen-field { position: relative; padding: 58px 32px 128px; background-color: var(--surface-1);
+    background-image: linear-gradient(var(--surface-2) 1px, transparent 1px), linear-gradient(90deg, var(--surface-2) 1px, transparent 1px);
+    background-size: 32px 32px; overflow: hidden; }
+.specimen-sat { position: absolute; z-index: 1; min-width: 200px; --pv-text: 14px; }
+.specimen-sat-card { padding: 16px; display: grid; gap: 8px; justify-items: start; }
+.specimen-focal { position: relative; z-index: 2; width: 60%; margin: 0 auto; }
+.specimen-focal > .pv-panel { border-radius: 16px; }
+.focal-head { display: flex; justify-content: space-between; align-items: baseline; padding: 20px 20px 4px; }
+.focal-title { padding: 0 20px 16px; }
+.focal-title .pv-kpi { display: block; }
+.specimen-focal .pv-row { grid-template-columns: 48px minmax(0, 1fr) auto auto; padding: 0 20px; }
+.timer-strip { display: flex; gap: 3px; padding: 0 20px 18px; }
+.timer-strip span { flex: 1; height: 4px; background: var(--surface-2); border-radius: 2px; }
+.timer-strip span.done { background: var(--text); }
+.sat-big { font-family: var(--font-display); font-size: 27px; font-weight: 500; letter-spacing: -0.54px; }
+
+/* M16 feature rows */
+.frow { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--gap-head); align-items: center; }
+.frow.is-flipped { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.frow.is-flipped .frow-text { order: 2; }
+.frow + .frow { margin-top: var(--gap-rows); }
+.frow-text h3 { font-family: var(--ff-feature); font-size: var(--fs-feature); font-weight: var(--fw-feature); letter-spacing: -0.02em; line-height: 1.2; margin: 16px 0 0; }
+.frow-text p { font-family: var(--font-body); font-weight: 400; font-size: 18px; line-height: 1.6; opacity: var(--op-sub); margin: 16px 0 0; max-width: 440px; }
+.frow-points { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 12px; font-size: 16px; }
+.frow-points li { padding-top: 12px; border-top: 1px solid var(--surface-2); }
+.frow-visual { --pv-text: 14px; --pv-row: 36px; }
+.frow-visual .pv-mat { padding: 40px 40px 0; }
+.frow-visual .pv-panel { width: 100%; border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 0;
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); }
+.frow-head { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: space-between; align-items: baseline; padding: 16px 16px 12px; }
+.matrix .pv-row { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 76px; }
+.diag .pv-row { grid-template-columns: 28px minmax(0, 1fr) auto; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 14px; }
+.section-head { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 58px; align-items: end; margin-bottom: var(--gap-head); }
+.section-head p { font-family: var(--font-body); font-weight: 400; font-size: 18px; line-height: 1.6; opacity: 0.5; margin: 0; }
+
+/* M15 steps */
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-card); }
+.step { display: grid; grid-template-rows: auto 1fr; }
+.step-visual { --pv-text: 14px; --pv-row: 34px; height: 240px; overflow: hidden; border-radius: var(--r-frame); }
+.step-visual .pv-mat { height: 100%; padding: 20px 20px 0; }
+.step-visual .pv-panel { border-bottom-left-radius: 0; border-bottom-right-radius: 0; min-height: 100%;
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); }
+.step-visual .pv-row { grid-template-columns: minmax(0, 1fr) auto; }
+.step-pad { padding: 14px 12px 10px; }
+.step-text { padding: 24px 4px 0; }
+.step-text .step-num { font-family: var(--font-mono); font-size: 12px; letter-spacing: .72px; opacity: .4; font-weight: 400; }
+.step-text h3 { font-family: var(--ff-card); font-size: var(--fs-card); font-weight: 500; margin: 8px 0 0; letter-spacing: -0.4px; line-height: 1.3; }
+.step-text p { font-family: var(--font-body); font-weight: 400; font-size: 16px; line-height: 1.6; opacity: var(--op-sub); margin: 8px 0 0; }
+
+/* FAQ list with mono index rule (signature detail 2) */
+.faq-wrap { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 58px; }
+.index-row { border-top: 1px solid var(--surface-2); padding: 24px 0; display: grid; grid-template-columns: 58px 1fr; gap: 24px; }
+.index-num { font-family: var(--font-mono); font-size: 12px; font-weight: 400; letter-spacing: 0.72px; opacity: 0.4; padding-top: 6px; }
+.index-row h3 { font-size: 20px; font-weight: 500; letter-spacing: -0.4px; margin: 0; line-height: 1.3; }
+.index-row p { font-family: var(--font-body); font-weight: 400; font-size: 16px; line-height: 1.6; opacity: 0.5; margin: 8px 0 0; max-width: 560px; }
+
+/* CTA — left aligned, dark band */
+.cta-left h2 { font-size: var(--fs-hero); line-height: 1.05; max-width: 12ch; }
+.cta-left p { font-family: var(--font-body); font-weight: 400; font-size: 18px; line-height: 1.6; opacity: 0.6; max-width: 540px; margin: 24px 0 0; }
+.cta-left .row { display: flex; gap: 12px; margin-top: 48px; flex-wrap: wrap; }
+
+/* Footer */
+footer { padding: 128px 0 48px; }
+.foot { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 24px; }
+.foot h4 { margin: 0 0 16px; }
+.foot a { display: block; font-size: 14px; text-decoration: none; opacity: 0.5; margin-bottom: 10px; transition: opacity 0.3s linear; }
+.foot a:hover { opacity: 1; }
+.copy { margin-top: 128px; font-family: var(--font-mono); font-size: 12px; font-weight: 400; letter-spacing: 0.72px; opacity: 0.2; text-transform: uppercase; }
+
+@media (prefers-reduced-motion: no-preference) {
+    .nav-toggle-bar { transition: transform 0.3s ease, opacity 0.3s ease; }
+    .specimen-sat { animation: specimen-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .specimen-sat:nth-of-type(2) { animation-delay: 100ms; }
+    @keyframes specimen-in { from { opacity: 0; transform: translateY(24px); } }
+    [data-mock] [data-stream] { transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    [data-mock] [data-stream].is-before { opacity: 0; transform: translateY(-16px); }
+    .reveal { opacity: 0; transform: translateY(32px); transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    .reveal.visible { opacity: 1; transform: none; }
+}
+@media (max-width: 767px) {
+    section { padding-top: 96px; padding-bottom: 96px; }
+    .container { padding: 0 20px; }
+    .nav-links { display: none; }
+    .nav-toggle { display: flex; }
+    .nav-panel.nav-open { display: flex; position: fixed; top: var(--nav-h); left: 0; right: 0; background: var(--bg); border-bottom: 1px solid var(--surface-2); padding: 24px 20px; flex-direction: column; gap: 24px; z-index: 999; }
+    .nav-panel a { text-decoration: none; font-size: 16px; }
+    .hero-specimen { padding-top: 80px; }
+    .hero-specimen-top, .section-head, .faq-wrap { grid-template-columns: 1fr; gap: 24px; padding-bottom: 40px; }
+    .specimen-field { padding: 40px 20px 80px; }
+    .specimen-sat { display: none; }
+    .specimen-focal { width: 100%; }
+    .frow, .frow.is-flipped { grid-template-columns: 1fr; gap: 32px; } .frow.is-flipped .frow-text { order: 0; }
+    .frow + .frow { margin-top: 80px; }
+    .frow-visual .pv-mat { padding: 24px 20px 0; }
+    .steps { grid-template-columns: 1fr; gap: 40px; }
+    .foot { grid-template-columns: 1fr; }
+    .pv { --pv-text: 12px; }
+    .pv-row { min-height: 0; padding-top: 8px; padding-bottom: 8px; }
+    .pv-hide-s { display: none; }
+    .specimen-focal .pv-row { grid-template-columns: 44px minmax(0, 1fr) auto; }
+}
+</style>
+</head>
+<body>
+
+<nav data-section="nav">
+  <div class="container">
+    <a href="#" class="brand"><span class="brand-dot" aria-hidden="true"></span>Next Cup</a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#faq">FAQ</a>
+      <a href="#get" class="btn-dark">Get the beta</a>
+    </div>
+    <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false">
+      <span class="nav-toggle-bar bar-1"></span><span class="nav-toggle-bar bar-2"></span><span class="nav-toggle-bar bar-3"></span>
+    </button>
+  </div>
+</nav>
+<div class="nav-panel" id="nav-panel">
+  <a href="#features">Features</a><a href="#how">How it works</a><a href="#faq">FAQ</a><a href="#get" class="btn-dark">Get the beta</a>
+</div>
+
+<main>
+<section data-section="hero" data-layout="split-left" data-bg="base" data-bold="true" class="hero-specimen">
+  <div class="container hero-specimen-top">
+    <h1 class="hero-specimen-title">Turn today’s brew into tomorrow’s recipe.</h1>
+    <div class="hero-specimen-aside">
+      <p class="label">Brew journal for iPhone</p>
+      <p class="hero-specimen-sub">Next Cup logs every cup at the brew station, sorts your beans into simple buckets, and suggests the next recipe from what you have already brewed.</p>
+      <div class="hero-specimen-ctas">
+        <a href="#get" class="btn-dark btn-lg">Get the TestFlight beta</a>
+        <a href="#how" class="btn-outline btn-lg">See how it works</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="specimen-field">
+    <div class="pv specimen-sat" data-mock role="img" aria-label="Last cup card: 4.5 of 5, balanced" style="left:3%; top:22%; width:17%">
+      <div class="pv-panel specimen-sat-card">
+        <div class="pv-label">Last cup · 07:12</div>
+        <div class="sat-big">4.5<span class="pv-muted" style="font-size:14px"> / 5</span></div>
+        <span class="pv-pill is-pos">Balanced</span>
+      </div>
+    </div>
+    <div class="pv specimen-sat" data-mock role="img" aria-label="Bean bucket: Kenyan, light roast, blackcurrant" style="right:3%; top:48%; width:17%">
+      <div class="pv-panel specimen-sat-card">
+        <div class="pv-label">Bucket</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px"><span class="pv-pill is-strong">Kenyan</span><span class="pv-pill">Light roast</span><span class="pv-pill">Blackcurrant</span></div>
+        <span class="pv-muted">9 brews · avg 4.1</span>
+      </div>
+    </div>
+
+    <div class="pv specimen-focal" data-mock role="img" aria-label="Next Cup guided timer: cone dripper recipe at step 4 of 6, pouring to 240 grams">
+      <div class="pv-panel">
+        <div class="focal-head"><span class="pv-label">Brew · Kiambu AA · Larkspur Roasters</span><span class="pv-mono pv-muted">1:18 / 3:00</span></div>
+        <div class="focal-title"><span class="pv-kpi">Bright cone, 15 g → 250 g</span></div>
+        <div class="timer-strip" aria-hidden="true"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span></span><span></span></div>
+        <div class="pv-row"><span class="pv-mono pv-muted">0:00</span><span>Bloom — wet every ground</span><span class="pv-mono">45 g</span><span class="pv-pill is-quiet pv-hide-s">Done</span></div>
+        <div class="pv-row"><span class="pv-mono pv-muted">0:30</span><span>Swirl the dripper once</span><span class="pv-mono">—</span><span class="pv-pill is-quiet pv-hide-s">Done</span></div>
+        <div class="pv-row" data-stream><span class="pv-mono pv-muted">0:45</span><span>Pour in slow circles</span><span class="pv-mono">150 g</span><span class="pv-pill is-quiet pv-hide-s">Done</span></div>
+        <div class="pv-row is-focused" data-stream><span class="pv-mono pv-muted">1:15</span><span>Pour to the final weight</span><span class="pv-mono">240 g</span><span class="pv-pill is-strong pv-hide-s">Now · 0:27</span></div>
+        <div class="pv-row" data-stream><span class="pv-mono pv-muted">1:45</span><span>Top up, keep the bed level</span><span class="pv-mono">250 g</span><span class="pv-pill is-att pv-hide-s">Next</span></div>
+        <div class="pv-row"><span class="pv-mono pv-muted">2:15</span><span>Drawdown, done near 3:00</span><span class="pv-mono">—</span><span class="pv-pill is-quiet pv-hide-s">Later</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features" data-section="features" data-layout="split-right" data-bg="base">
+  <div class="container">
+    <div class="section-head">
+      <h2>One set of buckets behind every brew</h2>
+      <p>The same simple taxonomy — origin, roast, process, flavour — drives logging, search and the recipes it suggests.</p>
+    </div>
+
+    <div class="frow is-flipped">
+      <div class="frow-text">
+        <p class="label">01 · Recipe matrix</p>
+        <h3>Similar beans get the recipes that already worked</h3>
+        <p>Log a new bag and Next Cup files it with beans you know. The methods and ratios that scored well on those come up first.</p>
+        <ul class="frow-points"><li>Kenyan, light roast, stone fruit — one tap each</li><li>Creator recipes restated in plain words, with credit</li></ul>
+      </div>
+      <div class="pv frow-visual matrix" data-mock role="img" aria-label="Recipe matrix for Kenyan light roasts: cone dripper ranked first">
+        <div class="pv-mat"><div class="pv-panel">
+          <div class="frow-head"><span class="pv-kpi">Kenyan · light roast</span><span class="pv-label">9 brews</span></div>
+          <div class="pv-row is-focused"><span>Cone dripper · 1:16.7</span><span class="pv-mono pv-muted">94 °C · 3:04</span><span class="pv-pill is-pos">4.4 avg</span></div>
+          <div class="pv-row"><span>Inverted press · 1:15</span><span class="pv-mono pv-muted">90 °C · 2:00</span><span class="pv-pill is-pos">4.3 avg</span></div>
+          <div class="pv-row"><span>Flat-bed dripper · 1:16</span><span class="pv-mono pv-muted">93 °C · 3:20</span><span class="pv-pill">3.9 avg</span></div>
+          <div class="pv-row"><span>Immersion · 1:15</span><span class="pv-mono pv-muted">96 °C · 4:00</span><span class="pv-pill is-neg">2.8 avg</span></div>
+          <div class="pv-row"><span>Cold brew · 1:8</span><span class="pv-mono pv-muted">Room · 14 h</span><span class="pv-pill is-quiet">Untried</span></div>
+          <div class="pv-row"><span>Espresso · 1:2</span><span class="pv-mono pv-muted">93 °C · 0:28</span><span class="pv-pill is-quiet">Untried</span></div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="frow">
+      <div class="frow-text">
+        <p class="label">02 · Dial-in</p>
+        <h3>A diagnosis you accept with one tap</h3>
+        <p>Tell it the cup was sour and it proposes one change for tomorrow. Nothing is sent anywhere until you add your own AI key and tap.</p>
+        <ul class="frow-points"><li>Works offline for logging; AI queues until you’re online</li><li>Uses your OpenAI or Anthropic key from the Keychain</li></ul>
+      </div>
+      <div class="pv frow-visual diag" data-mock role="img" aria-label="Dial-in suggestion for a sour Ethiopian cup: grind one step finer">
+        <div class="pv-mat"><div class="pv-panel">
+          <div class="frow-head"><span class="pv-kpi">Guji natural · sour</span><span class="pv-label">Yesterday 07:40</span></div>
+          <div class="chips"><span class="pv-pill is-neg">Sour</span><span class="pv-pill">18 g → 288 g</span><span class="pv-pill">2:50</span><span class="pv-pill">92 °C</span></div>
+          <div class="pv-row"><span class="pv-mono pv-muted">1</span><span>Short brew time for this bucket</span><span class="pv-mono pv-muted">−0:24</span></div>
+          <div class="pv-row is-focused"><span class="pv-mono pv-muted">2</span><span><strong style="font-weight:500">Grind one step finer</strong> — try 23</span><span class="pv-pill is-strong">Accept</span></div>
+          <div class="pv-row"><span class="pv-mono pv-muted">3</span><span>Or raise water to 94 °C</span><span class="pv-pill">Later</span></div>
+          <div class="pv-row"><span class="pv-mono pv-muted">4</span><span>Similar cups scored 4+ at 3:10</span><span class="pv-mono pv-muted">6 brews</span></div>
+          <div class="pv-row"><span class="pv-mono pv-muted">5</span><span>Keep dose and ratio the same</span><span class="pv-mono pv-muted">1:16</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how" data-section="how-it-works" data-layout="card-grid" data-bg="alt" style="background: var(--surface-1);">
+  <div class="container">
+    <div class="section-head">
+      <h2>From kettle to journal before the cup cools</h2>
+      <p>Built for one hand and a wet counter: big targets, a timer you can read from arm’s length, and a form that fills itself.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="pv step-visual" data-mock role="img" aria-label="Recipe picked: bright cone, Kiambu AA">
+          <div class="pv-mat" style="background: var(--bg)"><div class="pv-panel" style="background: var(--surface-1)">
+            <div class="step-pad"><span class="pv-label">Recipes · Kenyan</span></div>
+            <div class="pv-row" style="background: var(--surface-2)"><span>Bright cone</span><span class="pv-mono pv-muted">3:00</span></div>
+            <div class="pv-row"><span>Syrupy inverted press</span><span class="pv-mono pv-muted">2:00</span></div>
+            <div class="pv-row"><span>Weekend flat-bed</span><span class="pv-mono pv-muted">3:20</span></div>
+          </div></div>
+        </div>
+        <div class="step-text"><span class="step-num">01</span><h3>Pick a recipe</h3><p>Start from one of yours, a matrix suggestion, or a creator recipe with a link back.</p></div>
+      </div>
+      <div class="step">
+        <div class="pv step-visual" data-mock role="img" aria-label="Timer at 1:18, pour to 240 grams">
+          <div class="pv-mat" style="background: var(--bg)"><div class="pv-panel" style="background: var(--surface-1)">
+            <div class="step-pad"><span class="pv-label">Step 4 of 6</span><div class="sat-big" style="margin-top:6px">1:18</div></div>
+            <div class="pv-row" style="background: var(--surface-2)"><span>Pour to 240 g</span><span class="pv-mono">Now</span></div>
+            <div class="pv-row"><span>Top up to 250 g</span><span class="pv-mono pv-muted">1:45</span></div>
+          </div></div>
+        </div>
+        <div class="step-text"><span class="step-num">02</span><h3>Brew with the timer</h3><p>Each step arrives with a haptic and the weight to aim for, then waits for you.</p></div>
+      </div>
+      <div class="step">
+        <div class="pv step-visual" data-mock role="img" aria-label="Log form prefilled: 15 grams, 250 grams, 3:04, rated 4.5">
+          <div class="pv-mat" style="background: var(--bg)"><div class="pv-panel" style="background: var(--surface-1)">
+            <div class="step-pad"><span class="pv-label">Taste and log</span></div>
+            <div class="pv-row"><span>15 g → 250 g</span><span class="pv-mono pv-muted">3:04</span></div>
+            <div class="pv-row" style="background: var(--surface-2)"><span>Rating</span><span class="pv-mono">4.5</span></div>
+            <div class="pv-row"><span>Taste</span><span class="pv-pill is-pos">Balanced</span></div>
+          </div></div>
+        </div>
+        <div class="step-text"><span class="step-num">03</span><h3>Taste and log</h3><p>The numbers are already there. Add a rating and one word, and it’s in the journal.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq" data-section="faq" data-layout="list" data-bg="base" class="reveal">
+  <div class="container faq-wrap">
+    <h2>Questions</h2>
+    <div>
+      <div class="index-row"><span class="index-num">01</span><div><h3>Does it need an account?</h3><p>No. There are no accounts, ads or analytics. Your journal lives on your iPhone and works without a connection.</p></div></div>
+      <div class="index-row"><span class="index-num">02</span><div><h3>What does the AI do, and who pays for it?</h3><p>It reads bag photos, diagnoses a cup and suggests tomorrow’s change. It runs only after you add your own OpenAI or Anthropic key, and every suggestion waits for your tap.</p></div></div>
+      <div class="index-row"><span class="index-num">03</span><div><h3>Can I bring my paper journal?</h3><p>Photograph a page and Next Cup reads it into a draft. You review every field before it saves.</p></div></div>
+      <div class="index-row"><span class="index-num">04</span><div><h3>Is it free?</h3><p>Yes. Next Cup is free with no ads, available as a TestFlight beta for iPhone.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="get" data-section="cta" data-layout="big-type" data-bg="dark" class="section-dark">
+  <div class="container cta-left">
+    <h2>Brew tomorrow’s cup better.</h2>
+    <p>Join the TestFlight beta on iPhone. Free, private, and no account to make.</p>
+    <div class="row"><a href="#" class="btn-dark btn-lg">Get the TestFlight beta</a><a href="#" class="btn-outline btn-lg">View on GitHub</a></div>
+  </div>
+</section>
+</main>
+
+<footer data-section="footer">
+  <div class="container">
+    <div class="foot">
+      <div><a href="#" class="brand" style="opacity:1"><span class="brand-dot" aria-hidden="true"></span>Next Cup</a></div>
+      <div><h4 class="label">Product</h4><a href="#features">Features</a><a href="#how">How it works</a><a href="#faq">FAQ</a></div>
+      <div><h4 class="label">Project</h4><a href="#">GitHub</a><a href="#">Privacy</a><a href="#">Credits</a></div>
+    </div>
+    <p class="copy">© 2026 Next Cup</p>
+  </div>
+</footer>
+
+<script>
+function onMockVisible(mock, run) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (mock.closest('[data-section="hero"]')) { setTimeout(run, 300); return; }
+    var io = new IntersectionObserver(function(entries) {
+        if (!entries[0].isIntersecting) return;
+        io.disconnect();
+        setTimeout(run, 400);
+    }, { threshold: 0 });
+    io.observe(mock);
+}
+(function() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    document.querySelectorAll('[data-mock]').forEach(function(mock) {
+        var rows = mock.querySelectorAll('[data-stream]');
+        if (!rows.length) return;
+        rows.forEach(function(row, i) { row.classList.add('is-before'); row.style.transitionDelay = (i * 80) + 'ms'; });
+        onMockVisible(mock, function() { rows.forEach(function(row) { row.classList.remove('is-before'); }); });
+    });
+})();
+(function() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) { if (!entry.isIntersecting) return; entry.target.classList.add('visible'); observer.unobserve(entry.target); });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('section.reveal').forEach(function(s) { observer.observe(s); });
+})();
+(function initMobileNav() {
+    var toggle = document.querySelector('.nav-toggle'), panel = document.getElementById('nav-panel');
+    toggle.addEventListener('click', function() {
+        var open = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', String(!open)); panel.classList.toggle('nav-open', !open);
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && panel.classList.contains('nav-open')) { toggle.setAttribute('aria-expanded', 'false'); panel.classList.remove('nav-open'); toggle.focus(); }
+    });
+    panel.addEventListener('click', function(e) { if (e.target.closest('a')) { toggle.setAttribute('aria-expanded', 'false'); panel.classList.remove('nav-open'); } });
+})();
+</script>
+</body>
+</html>

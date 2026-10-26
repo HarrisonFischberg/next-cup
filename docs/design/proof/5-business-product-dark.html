@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en" data-page="product" data-archetype="C" data-style="business" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Next Cup — how it works, in depth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+/* Page spec — Next Cup product page · Business · Dark (Linear DNA) · Archetype C Product Deep-Dive
+   Sections: nav · hero (biz-stage, dark variant, bold) · feature-showcase 1 (walkthrough: accordion drives the visual, bold) · feature-showcase 2 (split-right) · security (3 equal cards: privacy) · cta (centered) · footer
+   Skipped: logo wall, social proof (no evidence), integrations (none), use cases (one audience). */
+:root {
+    --bg: #09090B; --surface-1: #131418; --surface-2: #1D2028;
+    --text: #F2F4F7; --text-inverse: #09090B; --accent: #F2F4F7; --accent-text: #09090B;
+    --font-display: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    --font-mono:    'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    --font-body:    'Inter', -apple-system, sans-serif;
+    --nav-h: 72px;
+    --fs-hero: clamp(48px, 6vw, 72px); --fs-section: clamp(32px, 4vw, 48px); --fs-feature: 28px; --ff-feature: var(--font-display);
+    --fs-card: 20px; --ff-card: var(--font-display); --op-sub: 0.5; --gap-card: 24px;
+    --r-card: 16px; --r-frame: 24px; --gap-head: 48px; --gap-rows: 120px;
+    --ring: inset 0 0 0 1px var(--surface-2);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; padding-top: var(--nav-h); background: var(--bg); color: var(--text); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+[id] { scroll-margin-top: var(--nav-h); }
+a { color: inherit; }
+.container { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+section { padding-top: 120px; padding-bottom: 120px; }
+h2 { font-family: var(--font-display); font-size: var(--fs-section); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; margin: 0; }
+.label { font-family: var(--font-mono); font-size: 12px; font-weight: 400; letter-spacing: 0.72px; text-transform: uppercase; color: var(--text); opacity: 0.4; margin: 0; }
+:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.section-head { text-align: center; max-width: 640px; margin: 0 auto var(--gap-head); }
+.section-head p { font-size: 18px; line-height: 1.6; opacity: 0.5; margin: 24px auto 0; max-width: 540px; }
+
+.btn-dark, .btn-outline { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; font-size: 16px; font-weight: 500; font-family: var(--font-display); line-height: 24px; border-radius: 8px; cursor: pointer; text-decoration: none; }
+.btn-dark { background: var(--accent); color: var(--accent-text); border: none; transition: transform 0.2s ease-in-out; }
+.btn-dark:hover { transform: translateY(-1px); }
+.btn-outline { background: transparent; color: var(--text); border: 1px solid rgba(242, 244, 247, 0.2); transition: border-color 0.3s linear; }
+.btn-outline:hover { border-color: var(--text); }
+.btn-sm { padding: 8px 16px; font-size: 14px; }
+
+nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 16px 0; }
+nav::before { content: ""; position: absolute; inset: 0; z-index: -1; background: rgba(9, 9, 11, 0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+nav > .container { display: flex; align-items: center; justify-content: space-between; }
+.brand { font-family: var(--font-display); font-weight: 600; font-size: 18px; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
+.brand-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--text); display: grid; place-items: center; }
+.brand-mark i { width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--bg); }
+.nav-links { display: flex; gap: 32px; align-items: center; }
+nav .nav-links a:not(.btn-dark) { font-family: var(--font-display); font-size: 14px; font-weight: 500; opacity: 0.5; text-decoration: none; transition: opacity 0.3s linear; }
+nav .nav-links a:not(.btn-dark):hover { opacity: 1; }
+.nav-toggle { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 8px; }
+.nav-toggle-bar { width: 22px; height: 2px; background: var(--text); display: block; }
+.nav-toggle[aria-expanded="true"] .bar-1 { transform: translateY(7px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] .bar-2 { opacity: 0; }
+.nav-toggle[aria-expanded="true"] .bar-3 { transform: translateY(-7px) rotate(-45deg); }
+.nav-panel { display: none; }
+
+/* product-visuals, Business dark binding */
+.pv { --pv-mat: var(--surface-1); --pv-r-outer: 24px; --pv-r-inner: 16px; --pv-r-control: 8px; --pv-text: 13px; --pv-row: 32px;
+      position: relative; font-family: var(--font-body); font-size: var(--pv-text); font-weight: 400; color: var(--text); }
+[data-mock] { --mock-positive: #1F8A65; --mock-negative: #CF2D56; --mock-attention: #FECC33; --mock-brand: #1E5EA7; }
+.pv-mat { background: var(--pv-mat); border-radius: var(--pv-r-outer); padding: 6% 6% 0; overflow: hidden; }
+.pv-panel { background: var(--bg); box-shadow: var(--ring); border-radius: var(--pv-r-inner); }
+.pv-row { display: grid; align-items: center; gap: 12px; min-height: var(--pv-row); padding: 0 12px; border-top: 1px solid var(--surface-2); }
+.pv-row.is-focused { background: var(--surface-1); }
+.pv-mono { font-family: var(--font-mono); } .pv-muted { opacity: 0.5; }
+.pv-label { font-family: var(--font-mono); text-transform: uppercase; opacity: 0.4; font-size: 11px; letter-spacing: 0.72px; }
+.pv-kpi { font-family: var(--font-display); font-size: 20px; font-weight: 500; }
+.pv-pill { display: inline-flex; align-items: center; padding: 0 8px; line-height: 1.6; border: 1px solid var(--surface-2); border-radius: var(--pv-r-control); white-space: nowrap; }
+.pv-pill.is-strong { background: var(--text); color: var(--text-inverse); border-color: transparent; }
+.pv-pill.is-quiet { opacity: 0.5; }
+.pv-pill.is-pos { color: var(--mock-positive); border-color: color-mix(in srgb, var(--mock-positive) 40%, transparent); }
+.pv-pill.is-neg { color: var(--mock-negative); border-color: color-mix(in srgb, var(--mock-negative) 40%, transparent); }
+.pv-pill.is-att::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mock-attention); margin-right: 6px; }
+.pv-avatar { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-family: var(--font-mono); font-size: 10px; background: var(--surface-2); }
+
+.mat-sky { background: linear-gradient(180deg, #6AB4FF 0%, #B3EAE8 58%, #1C558F 100%); }
+.mat-lagoon { background: linear-gradient(170deg, #C7E3FB 0%, #72DAD3 46%, #F4EFB8 68%, #295564 100%); }
+.mat-sky, .mat-lagoon { position: relative; isolation: isolate; }
+
+/* Hero stage, dark variant */
+.biz-hero { padding-top: 120px; padding-bottom: 120px; }
+.biz-hero-copy { text-align: center; }
+.biz-hero h1 { font-family: var(--font-display); font-size: var(--fs-hero); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; margin: 16px auto 0; max-width: 20ch; text-wrap: balance; }
+.biz-hero-sub { font-size: 18px; line-height: 1.6; opacity: 0.5; max-width: 540px; margin: 24px auto 0; }
+.biz-hero-ctas { display: flex; gap: 12px; justify-content: center; margin-top: 48px; flex-wrap: wrap; }
+.biz-stage { position: relative; margin-top: 48px; padding: 32px 48px 0; height: 560px; border-radius: 48px; overflow: hidden; isolation: isolate;
+    background:
+        radial-gradient(48% 70% at 4% 6%,   color-mix(in srgb, #6BB1FF 45%, transparent) 0%, transparent 72%),
+        radial-gradient(46% 70% at 0% 100%, color-mix(in srgb, #B89FFA 45%, transparent) 0%, transparent 72%),
+        radial-gradient(40% 60% at 32% 104%,color-mix(in srgb, #EBB0FF 45%, transparent) 0%, transparent 70%),
+        radial-gradient(46% 72% at 100% 78%,color-mix(in srgb, #5DDFD7 45%, transparent) 0%, transparent 72%),
+        radial-gradient(40% 55% at 96% 4%,  color-mix(in srgb, #4890E3 45%, transparent) 0%, transparent 70%),
+        var(--surface-1);
+    box-shadow: var(--ring); }
+.biz-tabs { display: flex; gap: 4px; width: max-content; margin: 0 auto 24px; padding: 4px; border-radius: 9999px; background: rgba(255,255,255,.06);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-family: var(--font-display); font-size: 14px; font-weight: 500; }
+.biz-tabs span { padding: 8px 16px; border-radius: 9999px; opacity: .6; }
+.biz-tabs .is-on { background: var(--surface-1); opacity: 1; box-shadow: var(--ring); }
+.biz-ring { max-width: 960px; margin: 0 auto; padding: 8px 8px 0; border-radius: 48px 48px 0 0; background: rgba(255,255,255,.06); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.biz-card { --pv-r-outer: 48px; display: grid; grid-template-columns: minmax(0, 1fr) 300px; background: var(--bg); box-shadow: var(--ring); border-radius: 40px 40px 0 0;
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); }
+.biz-list { padding: 32px 0 24px; }
+.biz-list-head { display: flex; justify-content: space-between; align-items: baseline; padding: 0 32px 16px; }
+.biz-card .pv-row { grid-template-columns: 40px minmax(0,1fr) auto 72px; padding: 0 32px; }
+.biz-card .pv-pill { justify-self: start; }
+.biz-detail { position: relative; margin: 16px 16px 0 0; padding: 24px; background: var(--surface-1); border-radius: 24px 24px 0 0; display: grid; align-content: start; gap: 8px; }
+.biz-detail p { margin: 0; }
+.biz-readout { font-family: var(--font-display); font-size: 56px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+.biz-slots { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+.biz-slots span { padding: 8px 12px; border-radius: 8px; background: var(--surface-2); font-family: var(--font-mono); font-size: 12px; }
+.biz-slots .is-on { box-shadow: 0 0 0 2px var(--mock-brand); }
+.biz-confirm { justify-self: start; margin-top: 8px; padding: 8px 16px; font-family: var(--font-display); font-size: 14px; font-weight: 500; border: 1px solid var(--surface-2); border-radius: 8px; }
+.biz-confirm.is-focused { background: var(--mock-brand); color: #FFFFFF; border-color: transparent; }
+.pv-cursor { position: absolute; width: 16px; pointer-events: none; }
+.pv-cursor svg { display: block; fill: var(--text); stroke: var(--bg); }
+
+/* Walkthrough — accordion drives the visual */
+.accordion-showcase { display: grid; grid-template-columns: 5fr 7fr; gap: 48px; align-items: start; }
+.acc-item { border-bottom: 1px solid var(--surface-2); }
+.acc-item button { all: unset; box-sizing: border-box; width: 100%; padding: 20px 0; cursor: pointer; display: flex; justify-content: space-between; gap: 16px; align-items: center;
+    font-family: var(--font-display); font-size: 20px; font-weight: 500; opacity: 0.5; transition: opacity 0.3s linear; }
+.acc-item button:hover, .acc-item.is-open button { opacity: 1; }
+.acc-item button span:last-child { font-family: var(--font-mono); font-size: 12px; opacity: 0.6; }
+.acc-body { display: none; padding: 0 0 24px; }
+.acc-item.is-open .acc-body { display: block; }
+.acc-body p { margin: 0; font-size: 16px; line-height: 1.6; opacity: 0.5; }
+.acc-body .label { display: block; margin-top: 16px; }
+.wt-visual { --pv-text: 14px; --pv-row: 36px; position: sticky; top: calc(var(--nav-h) + 24px); }
+.wt-visual .pv-mat { padding: 40px 40px 0; height: 480px; }
+.wt-visual .pv-panel { height: 100%; border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); }
+.wt-pane[hidden] { display: none; }
+.frow-head { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: space-between; align-items: baseline; padding: 16px 16px 12px; }
+.wt-visual .pv-row, .frow-visual .pv-row { padding: 0 16px; }
+.cols-3 { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 72px; }
+.cols-n { grid-template-columns: 28px minmax(0, 1fr) auto; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 14px; }
+
+/* M16 row */
+.frow { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--gap-head); align-items: center; }
+.frow-text { order: 2; }
+.frow-text h3 { font-family: var(--ff-feature); font-size: var(--fs-feature); font-weight: 500; letter-spacing: -0.02em; line-height: 1.2; margin: 16px 0 0; }
+.frow-text p { font-size: 18px; line-height: 1.6; opacity: var(--op-sub); margin: 16px 0 0; max-width: 440px; }
+.frow-points { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 12px; font-size: 16px; }
+.frow-points li { padding-top: 12px; border-top: 1px solid var(--surface-2); }
+.frow-visual { --pv-text: 14px; --pv-row: 36px; }
+.frow-visual .pv-mat { padding: 40px 40px 0; }
+.frow-visual .pv-panel { border-bottom-left-radius: 0; border-bottom-right-radius: 0; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); }
+
+/* Privacy cards */
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-card); }
+.card { padding: 32px; background: var(--surface-1); border-radius: 16px; box-shadow: var(--ring); }
+.card .glyph { font-family: var(--font-mono); font-size: 12px; opacity: 0.4; letter-spacing: .72px; }
+.card h3 { font-family: var(--font-display); font-size: var(--fs-card); font-weight: 500; margin: 12px 0 0; line-height: 1.3; }
+.card p { font-size: 16px; line-height: 1.6; opacity: 0.5; margin: 8px 0 0; }
+
+.cta-card { text-align: center; padding: 96px 32px; border-radius: 24px; background: var(--surface-1); box-shadow: var(--ring); }
+.cta-card p { font-size: 18px; line-height: 1.6; opacity: 0.5; margin: 24px auto 0; max-width: 540px; }
+.cta-card .row { display: flex; gap: 12px; justify-content: center; margin-top: 48px; flex-wrap: wrap; }
+
+footer { padding: 120px 0 48px; border-top: 1px solid var(--surface-2); }
+.foot { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 24px; }
+.foot h4 { margin: 0 0 16px; }
+.foot a { display: block; font-family: var(--font-display); font-size: 14px; font-weight: 500; text-decoration: none; opacity: 0.5; margin-bottom: 10px; transition: opacity 0.3s linear; }
+.foot a:hover { opacity: 1; }
+.copy { margin-top: 64px; font-size: 14px; opacity: 0.2; }
+
+@media (prefers-reduced-motion: no-preference) {
+    .nav-toggle-bar { transition: transform 0.3s ease, opacity 0.3s ease; }
+    .biz-hero-copy { transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    .biz-hero-copy.is-before { opacity: 0; transform: translateY(32px); }
+    .pv-cursor { transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    .pv-target { transition: background-color 0.3s linear, color 0.3s linear; }
+    .reveal { opacity: 0; transform: translateY(32px); transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    .reveal.visible { opacity: 1; transform: none; }
+    .card { transition: transform 0.2s ease-in-out; } .card:hover { transform: translateY(-4px); }
+}
+@media (max-width: 767px) {
+    section, .biz-hero { padding-top: 64px; padding-bottom: 64px; }
+    .container { padding: 0 20px; }
+    .nav-links { display: none; } .nav-toggle { display: flex; }
+    .nav-panel.nav-open { display: flex; position: fixed; top: var(--nav-h); left: 0; right: 0; background: var(--bg); border-bottom: 1px solid var(--surface-2); padding: 24px 20px; flex-direction: column; gap: 24px; z-index: 999; }
+    .nav-panel a { text-decoration: none; font-family: var(--font-display); }
+    .biz-stage { padding: 24px 12px 0; border-radius: 24px; margin-top: 32px; height: 480px; }
+    .biz-tabs { max-width: 100%; overflow-x: auto; }
+    .biz-ring { border-radius: 24px 24px 0 0; padding: 6px 6px 0; }
+    .biz-card { grid-template-columns: 1fr; border-radius: 20px 20px 0 0; }
+    .biz-card .pv-row { padding: 8px 16px; grid-template-columns: 40px minmax(0,1fr) auto; }
+    .biz-card .pv-row > :nth-child(3) { display: none; }
+    .biz-list-head { padding: 0 16px 12px; }
+    .biz-detail { display: none; }
+    .accordion-showcase, .frow { grid-template-columns: 1fr; gap: 40px; } .frow-text { order: 0; }
+    .wt-visual { position: static; } .wt-visual .pv-mat, .frow-visual .pv-mat { padding: 24px 20px 0; height: 420px; }
+    .cards { grid-template-columns: 1fr; }
+    .foot { grid-template-columns: 1fr; }
+    .cta-card { padding: 64px 24px; }
+}
+</style>
+</head>
+<body>
+
+<nav data-section="nav">
+  <div class="container">
+    <a href="#" class="brand"><span class="brand-mark" aria-hidden="true"><i></i></span>Next Cup</a>
+    <div class="nav-links">
+      <a href="#brew">Brew</a><a href="#taxonomy">Buckets</a><a href="#privacy">Privacy</a>
+      <a href="#get" class="btn-dark btn-sm">Get the beta</a>
+    </div>
+    <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false">
+      <span class="nav-toggle-bar bar-1"></span><span class="nav-toggle-bar bar-2"></span><span class="nav-toggle-bar bar-3"></span>
+    </button>
+  </div>
+</nav>
+<div class="nav-panel" id="nav-panel"><a href="#brew">Brew</a><a href="#taxonomy">Buckets</a><a href="#privacy">Privacy</a><a href="#get" class="btn-dark btn-sm">Get the beta</a></div>
+
+<main>
+<section data-section="hero" data-layout="centered-stack" data-bg="base" data-bold="true" class="biz-hero">
+  <div class="container">
+    <div class="biz-hero-copy">
+      <p class="label">Inside Next Cup</p>
+      <h1>Brew station, journal and recipe book</h1>
+      <p class="biz-hero-sub">A guided timer for the counter, a journal that fills itself in, and buckets that turn past cups into the next recipe.</p>
+      <div class="biz-hero-ctas">
+        <a class="btn-dark" href="#get">Get the TestFlight beta</a>
+        <a class="btn-outline" href="#brew">Walk through a brew</a>
+      </div>
+    </div>
+
+    <div class="biz-stage">
+      <div class="biz-tabs" aria-hidden="true"><span class="is-on">Brew</span><span>Log</span><span>Buckets</span><span>Dial-in</span></div>
+      <div class="biz-ring">
+        <div class="pv biz-card" data-mock role="img" aria-label="Guided timer for the bright cone recipe at step 4, with Next step selected">
+          <div class="biz-list">
+            <div class="biz-list-head"><span class="pv-kpi">Bright cone · Kiambu AA</span><span class="pv-label">15 g → 250 g · 94 °C</span></div>
+            <div class="pv-row"><span class="pv-mono pv-muted">0:00</span><span>Bloom — wet every ground</span><span class="pv-mono">45 g</span><span class="pv-pill is-quiet">Done</span></div>
+            <div class="pv-row"><span class="pv-mono pv-muted">0:30</span><span>Swirl the dripper once</span><span class="pv-mono">—</span><span class="pv-pill is-quiet">Done</span></div>
+            <div class="pv-row"><span class="pv-mono pv-muted">0:45</span><span>Pour in slow circles</span><span class="pv-mono">150 g</span><span class="pv-pill is-quiet">Done</span></div>
+            <div class="pv-row is-focused"><span class="pv-mono">1:15</span><span>Pour to the final weight</span><span class="pv-mono">240 g</span><span class="pv-pill is-pos">Now</span></div>
+            <div class="pv-row"><span class="pv-mono pv-muted">1:45</span><span>Top up, keep the bed level</span><span class="pv-mono">250 g</span><span class="pv-pill is-att">Next</span></div>
+            <div class="pv-row"><span class="pv-mono pv-muted">2:15</span><span>Drawdown</span><span class="pv-mono">—</span><span class="pv-pill is-quiet">Later</span></div>
+            <div class="pv-row"><span class="pv-mono pv-muted">3:00</span><span>Taste and log</span><span class="pv-mono">—</span><span class="pv-pill is-quiet">Later</span></div>
+          </div>
+          <div class="biz-detail">
+            <p class="pv-label">Step 4 of 6</p>
+            <p class="biz-readout">1:18</p>
+            <p class="pv-muted">Pour to 240 g · next step in 0:27</p>
+            <div class="biz-slots"><span>Pause</span><span class="is-on">Haptic on</span><span>Lock Screen</span></div>
+            <span id="pv-next" class="pv-target is-focused biz-confirm">Next step</span>
+            <span class="pv-cursor" data-cursor-for="pv-next" style="left: 36%; top: 88%" aria-hidden="true"><svg viewBox="0 0 14 20"><path d="M1 1v16l4.5-4 3 6.5 2.5-1-3-6.5H14z"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="brew" data-section="feature-showcase" data-layout="walkthrough" data-bg="alt" data-bold="true" style="background: var(--surface-1); box-shadow: inset 0 1px 0 var(--surface-2), inset 0 -1px 0 var(--surface-2);">
+  <div class="container">
+    <div class="section-head"><h2>One brew, start to journal</h2><p>Pick a stage to see the screen you use for it.</p></div>
+    <div class="accordion-showcase">
+      <div class="acc" role="list">
+        <div class="acc-item is-open" role="listitem"><button type="button" aria-expanded="true" aria-controls="wt-1" data-pane="wt-1"><span>Pick a recipe</span><span>01</span></button>
+          <div class="acc-body"><p>Your own recipes, the matrix’s best match for the bean, or a creator recipe restated in plain words with credit and a link back.</p><span class="label">Recipes tab</span></div></div>
+        <div class="acc-item" role="listitem"><button type="button" aria-expanded="false" aria-controls="wt-2" data-pane="wt-2"><span>Brew with the timer</span><span>02</span></button>
+          <div class="acc-body"><p>Each step arrives with a haptic and a target weight, readable from arm’s length, and keeps running on the Lock Screen.</p><span class="label">Guided timer</span></div></div>
+        <div class="acc-item" role="listitem"><button type="button" aria-expanded="false" aria-controls="wt-3" data-pane="wt-3"><span>Taste and log</span><span>03</span></button>
+          <div class="acc-body"><p>The timer waits for you to taste. Dose, water, temperature and time are already filled in; add a rating and one word.</p><span class="label">Log form</span></div></div>
+        <div class="acc-item" role="listitem"><button type="button" aria-expanded="false" aria-controls="wt-4" data-pane="wt-4"><span>Dial in tomorrow</span><span>04</span></button>
+          <div class="acc-body"><p>With your own AI key, Next Cup proposes one change for the next cup. You accept it with a tap, or ignore it.</p><span class="label">Dial-in</span></div></div>
+      </div>
+      <div class="pv wt-visual" data-mock role="img" aria-label="Next Cup screens for each brew stage">
+        <div class="pv-mat mat-sky"><div class="pv-panel">
+          <div class="wt-pane" id="wt-1">
+            <div class="frow-head"><span class="pv-kpi">Recipes · Kenyan</span><span class="pv-label">7 saved</span></div>
+            <div class="pv-row is-focused cols-3"><span>Bright cone</span><span class="pv-mono pv-muted">15 g · 3:00</span><span class="pv-pill is-pos">4.4</span></div>
+            <div class="pv-row cols-3"><span>Syrupy inverted press</span><span class="pv-mono pv-muted">15 g · 2:00</span><span class="pv-pill is-pos">4.3</span></div>
+            <div class="pv-row cols-3"><span>Weekend flat-bed</span><span class="pv-mono pv-muted">20 g · 3:20</span><span class="pv-pill">3.9</span></div>
+            <div class="pv-row cols-3"><span>Four-pour cone</span><span class="pv-mono pv-muted">20 g · 3:30</span><span class="pv-pill is-quiet">Creator</span></div>
+            <div class="pv-row cols-3"><span>Long immersion</span><span class="pv-mono pv-muted">22 g · 4:00</span><span class="pv-pill is-neg">2.8</span></div>
+            <div class="pv-row cols-3"><span>Overnight cold brew</span><span class="pv-mono pv-muted">60 g · 14 h</span><span class="pv-pill is-quiet">New</span></div>
+          </div>
+          <div class="wt-pane" id="wt-2" hidden>
+            <div class="frow-head"><span class="pv-kpi">1:18 <span class="pv-muted" style="font-size:14px">of 3:00</span></span><span class="pv-label">Step 4 of 6</span></div>
+            <div class="pv-row cols-3"><span>Bloom</span><span class="pv-mono pv-muted">0:00</span><span class="pv-mono">45 g</span></div>
+            <div class="pv-row cols-3"><span>Slow circles</span><span class="pv-mono pv-muted">0:45</span><span class="pv-mono">150 g</span></div>
+            <div class="pv-row is-focused cols-3"><span>Pour to the final weight</span><span class="pv-mono">1:15</span><span class="pv-mono">240 g</span></div>
+            <div class="pv-row cols-3"><span>Top up, level bed</span><span class="pv-mono pv-muted">1:45</span><span class="pv-mono">250 g</span></div>
+            <div class="pv-row cols-3"><span>Drawdown</span><span class="pv-mono pv-muted">2:15</span><span class="pv-mono">—</span></div>
+          </div>
+          <div class="wt-pane" id="wt-3" hidden>
+            <div class="frow-head"><span class="pv-kpi">Log · Kiambu AA</span><span class="pv-label">Today 07:12</span></div>
+            <div class="pv-row cols-3"><span>Dose → water</span><span class="pv-mono">15 g → 250 g</span><span class="pv-pill is-quiet">Filled</span></div>
+            <div class="pv-row cols-3"><span>Temperature</span><span class="pv-mono">94 °C</span><span class="pv-pill is-quiet">Filled</span></div>
+            <div class="pv-row cols-3"><span>Brew time</span><span class="pv-mono">3:04</span><span class="pv-pill is-quiet">Timer</span></div>
+            <div class="pv-row is-focused cols-3"><span>Rating</span><span class="pv-mono">4.5 of 5</span><span class="pv-pill is-strong">You</span></div>
+            <div class="pv-row cols-3"><span>Taste</span><span>Balanced</span><span class="pv-pill is-pos">You</span></div>
+          </div>
+          <div class="wt-pane" id="wt-4" hidden>
+            <div class="frow-head"><span class="pv-kpi">Guji natural · sour</span><span class="pv-label">Sun 08:40</span></div>
+            <div class="chips"><span class="pv-pill is-neg">Sour</span><span class="pv-pill">18 g → 288 g</span><span class="pv-pill">2:50</span></div>
+            <div class="pv-row cols-n"><span class="pv-mono pv-muted">1</span><span>Brew ran short for this bucket</span><span class="pv-mono pv-muted">−0:24</span></div>
+            <div class="pv-row is-focused cols-n"><span class="pv-mono pv-muted">2</span><span>Grind one step finer, try 23</span><span class="pv-pill is-strong">Accept</span></div>
+            <div class="pv-row cols-n"><span class="pv-mono pv-muted">3</span><span>Or raise water to 94 °C</span><span class="pv-pill">Later</span></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="taxonomy" data-section="features" data-layout="split-right" data-bg="base">
+  <div class="container">
+    <div class="frow">
+      <div class="frow-text">
+        <p class="label">The spine</p>
+        <h3>One set of buckets, read by every screen</h3>
+        <p>Origin, roast, process, flavour and method share a single taxonomy. Logging writes to it; search, the recipe matrix and dial-in read from it.</p>
+        <ul class="frow-points"><li>New bags land beside beans you know</li><li>Photo of a bag or a paper page, reviewed before saving</li><li>Find roasters nearby with Apple Maps, only when you ask</li></ul>
+      </div>
+      <div class="pv frow-visual" data-mock role="img" aria-label="Recipe matrix for Kenyan light roasts with cone dripper ranked first">
+        <div class="pv-mat mat-lagoon"><div class="pv-panel">
+          <div class="frow-head"><span class="pv-kpi">Kenyan · light roast · washed</span><span class="pv-label">9 cups</span></div>
+          <div class="pv-row is-focused cols-3"><span>Cone dripper · 1:16.7</span><span class="pv-mono pv-muted">94 °C · 3:04</span><span class="pv-pill is-pos">4.4</span></div>
+          <div class="pv-row cols-3"><span>Inverted press · 1:15</span><span class="pv-mono pv-muted">90 °C · 2:00</span><span class="pv-pill is-pos">4.3</span></div>
+          <div class="pv-row cols-3"><span>Flat-bed · 1:16</span><span class="pv-mono pv-muted">93 °C · 3:20</span><span class="pv-pill">3.9</span></div>
+          <div class="pv-row cols-3"><span>Immersion · 1:15</span><span class="pv-mono pv-muted">96 °C · 4:00</span><span class="pv-pill is-neg">2.8</span></div>
+          <div class="pv-row cols-3"><span>Cold brew · 1:8</span><span class="pv-mono pv-muted">14 h</span><span class="pv-pill is-quiet">New</span></div>
+          <div class="pv-row cols-3"><span>Espresso · 1:2</span><span class="pv-mono pv-muted">0:28</span><span class="pv-pill is-quiet">New</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="privacy" data-section="security" data-layout="card-grid" data-bg="alt" style="background: var(--surface-1);" class="reveal">
+  <div class="container">
+    <div class="section-head"><h2>Private by default</h2><p>What Next Cup keeps, and what it never does.</p></div>
+    <div class="cards">
+      <div class="card"><span class="glyph">01 · Storage</span><h3>On your iPhone</h3><p>Brews, notes, photos and recipes stay on the device and work with no connection.</p></div>
+      <div class="card"><span class="glyph">02 · AI</span><h3>Your key, your tap</h3><p>AI runs only with your own OpenAI or Anthropic key from the Keychain, after a plain notice.</p></div>
+      <div class="card"><span class="glyph">03 · Tracking</span><h3>None</h3><p>No accounts, ads, analytics or social feeds. Nothing to sign up for.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="get" data-section="cta" data-layout="centered-stack" data-bg="base" class="reveal">
+  <div class="container">
+    <div class="cta-card">
+      <h2>Brew your first logged cup</h2>
+      <p>Next Cup is free on iPhone as a TestFlight beta.</p>
+      <div class="row"><a class="btn-dark" href="#">Get the TestFlight beta</a><a class="btn-outline" href="#">View on GitHub</a></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer data-section="footer">
+  <div class="container">
+    <div class="foot">
+      <div><a href="#" class="brand" style="opacity:1"><span class="brand-mark" aria-hidden="true"><i></i></span>Next Cup</a></div>
+      <div><h4 class="label">Product</h4><a href="#brew">Brew</a><a href="#taxonomy">Buckets</a><a href="#privacy">Privacy</a></div>
+      <div><h4 class="label">Project</h4><a href="#">GitHub</a><a href="#">Privacy policy</a><a href="#">Credits</a></div>
+    </div>
+    <p class="copy">© 2026 Next Cup</p>
+  </div>
+</footer>
+
+<script>
+function onMockVisible(mock, run) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (mock.closest('[data-section="hero"]')) { setTimeout(run, 300); return; }
+    var io = new IntersectionObserver(function(entries) {
+        if (!entries[0].isIntersecting) return;
+        io.disconnect();
+        setTimeout(run, 400);
+    }, { threshold: 0 });
+    io.observe(mock);
+}
+// Walkthrough: one stage open at a time, its screen shown beside it.
+document.querySelectorAll('.acc-item button').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.acc-item').forEach(function(item) {
+            var b = item.querySelector('button'), on = b === btn;
+            item.classList.toggle('is-open', on);
+            b.setAttribute('aria-expanded', String(on));
+            document.getElementById(b.dataset.pane).hidden = !on;
+        });
+    });
+});
+(function() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var copy = document.querySelector('.biz-hero-copy');
+    copy.classList.add('is-before');
+    requestAnimationFrame(function() { requestAnimationFrame(function() { copy.classList.remove('is-before'); }); });
+    document.querySelectorAll('[data-mock] .pv-cursor[data-cursor-for]').forEach(function(cur) {
+        var mock = cur.closest('[data-mock]');
+        var target = document.getElementById(cur.getAttribute('data-cursor-for'));
+        var m = mock.getBoundingClientRect(), c = cur.getBoundingClientRect();
+        cur.style.transition = 'none';
+        cur.style.transform = 'translate(' + (m.right - c.right) + 'px,' + (m.bottom - c.bottom) + 'px)';
+        target.classList.remove('is-focused');
+        onMockVisible(mock, function() {
+            cur.style.transition = '';
+            cur.style.transform = 'none';
+            cur.addEventListener('transitionend', function() { target.classList.add('is-focused'); }, { once: true });
+        });
+    });
+    var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) { if (!entry.isIntersecting) return; entry.target.classList.add('visible'); observer.unobserve(entry.target); });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('section.reveal').forEach(function(s) { observer.observe(s); });
+})();
+(function initMobileNav() {
+    var toggle = document.querySelector('.nav-toggle'), panel = document.getElementById('nav-panel');
+    toggle.addEventListener('click', function() { var open = toggle.getAttribute('aria-expanded') === 'true'; toggle.setAttribute('aria-expanded', String(!open)); panel.classList.toggle('nav-open', !open); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && panel.classList.contains('nav-open')) { toggle.setAttribute('aria-expanded', 'false'); panel.classList.remove('nav-open'); toggle.focus(); } });
+    panel.addEventListener('click', function(e) { if (e.target.closest('a')) { toggle.setAttribute('aria-expanded', 'false'); panel.classList.remove('nav-open'); } });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en" data-page="landing" data-archetype="D" data-style="colorful" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Next Cup — a coffee journal that learns your taste</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+/* Page spec — Next Cup landing · Colorful · Light · Archetype D (consumer, personal craft)
+   Sections: nav (floating pill) · hero (sky scene, M4, bold) · features (M16 on canvas) · feature-showcase (M16 inside green scene, bold) · how-it-works (M15 on a peach mat) · faq (list) · cta (centered) · footer
+   Scenes: blue (hero sky), green, peach — 3 colors, one warm. Skipped: social proof, stats (no evidence). */
+:root {
+    --bg: #FCF9F7; --surface-1: #F5F5F7; --surface-2: #E4E4E8;
+    --text: #030302; --text-inverse: #FFFFFF; --accent: #030302; --accent-text: #FFFFFF;
+    --scene-blue: #B8CAF5; --scene-green: #9BD8A9; --scene-lavender: #D5ACD8; --scene-peach: #F6CB98; --scene-yellow: #FFE48D;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-mono:    'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    --font-body:    'DM Sans', -apple-system, sans-serif;
+    --nav-h: 94px;
+    --fs-hero: clamp(52px, 6vw, 66px); --fs-section: clamp(36px, 4vw, 54px); --fs-feature: 32px; --ff-feature: var(--font-display);
+    --fs-card: 20px; --ff-card: var(--font-body); --fw-display: 400; --op-sub: 0.75; --gap-card: 24px;
+    --r-card: 16px; --r-frame: 24px; --fw-feature: 400; --gap-head: 48px; --gap-rows: 120px;
+    --paper: 0 50px 40px rgba(0,0,0,.01), 0 50px 40px rgba(0,0,0,.02), 0 20px 40px rgba(0,0,0,.05), 0 3px 10px rgba(0,0,0,.08);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; padding-top: var(--nav-h); background: var(--bg); color: var(--text); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+[id] { scroll-margin-top: var(--nav-h); }
+a { color: inherit; }
+.container { max-width: 920px; margin: 0 auto; padding: 0 32px; }
+.wide { max-width: 1172px; margin: 0 auto; padding: 0 32px; }
+section { padding-top: 120px; padding-bottom: 120px; }
+h2 { font-family: var(--font-display); font-size: var(--fs-section); font-weight: 400; letter-spacing: -0.02em; line-height: 1.05; margin: 0; }
+h2 em, h1 em { font-style: italic; }
+.label { font-family: var(--font-mono); font-size: 12px; font-weight: 400; letter-spacing: 0.72px; text-transform: uppercase; color: var(--text); opacity: 0.5; margin: 0; }
+:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+.section-head { text-align: center; margin: 0 auto var(--gap-head); max-width: 720px; }
+.section-head p { font-size: 18px; line-height: 1.6; opacity: 0.75; margin: 24px auto 0; max-width: 540px; }
+
+.btn-dark, .btn-outline { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; font-size: 16px; font-weight: 500; font-family: var(--font-body); line-height: 24px; border-radius: 9999px; cursor: pointer; text-decoration: none; letter-spacing: -0.02em; }
+.btn-dark { background: var(--accent); color: var(--accent-text); border: none; transition: transform 0.2s ease-in-out; }
+.btn-dark:hover { transform: translateY(-1px); }
+.btn-outline { background: transparent; color: var(--text); border: 1px solid rgba(3, 3, 2, 0.2); transition: border-color 0.3s linear; }
+.btn-outline:hover { border-color: var(--text); }
+
+/* Floating pill nav */
+nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 12px 0; }
+nav > .container { display: flex; align-items: center; justify-content: space-between; background: rgba(252, 249, 247, 0.92); border-radius: 9999px; border: 1px solid var(--surface-2);
+    padding: 8px 8px 8px 24px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04); max-width: 920px; }
+.brand { font-family: var(--font-display); font-size: 22px; text-decoration: none; letter-spacing: -0.02em; }
+.nav-links { display: flex; gap: 28px; align-items: center; }
+nav a:not(.btn-dark):not(.brand) { font-size: 16px; font-weight: 400; opacity: 0.75; text-decoration: none; letter-spacing: -0.02em; transition: opacity 0.3s linear; }
+nav a:not(.btn-dark):not(.brand):hover { opacity: 1; }
+nav a.btn-dark { opacity: 1; color: var(--accent-text); }
+.nav-toggle { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 14px; }
+.nav-toggle-bar { width: 22px; height: 2px; background: var(--text); display: block; }
+.nav-toggle[aria-expanded="true"] .bar-1 { transform: translateY(7px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] .bar-2 { opacity: 0; }
+.nav-toggle[aria-expanded="true"] .bar-3 { transform: translateY(-7px) rotate(-45deg); }
+.nav-panel { display: none; }
+
+/* Scenes */
+.scene { border-radius: 24px; padding: 80px 60px; margin: 0 20px; }
+.scene-green { background: var(--scene-green); }
+
+/* product-visuals, Colorful binding */
+.pv { --pv-mat: transparent; --pv-r-outer: 24px; --pv-r-inner: 16px; --pv-r-control: 8px; --pv-text: 13px; --pv-row: 32px;
+      position: relative; font-family: var(--font-body); font-size: var(--pv-text); font-weight: 400; color: var(--text); }
+[data-mock] { --mock-positive: #1F8A65; --mock-negative: #CF2D56; --mock-attention: #FECC33;
+              --tint-pink: #FFE1F7; --tint-yellow: #FFFFD9; --tint-green: #CAEBD2; --tint-blue: #DDFCFF; --tint-peach: #FDF4E4; }
+.pv-mat { background: var(--pv-mat); border-radius: var(--pv-r-outer); padding: 6% 6% 0; overflow: hidden; }
+.pv-panel { background: var(--bg); border: 1px solid var(--surface-2); border-radius: var(--pv-r-inner); }
+.pv-row { display: grid; align-items: center; gap: 12px; min-height: var(--pv-row); padding: 0 12px; border-top: 1px solid var(--surface-2); }
+.pv-row.is-focused { background: var(--surface-1); }
+.pv-mono { font-family: var(--font-mono); } .pv-muted { opacity: 0.5; }
+.pv-label { font-family: var(--font-mono); text-transform: uppercase; opacity: 0.5; font-size: 11px; letter-spacing: 0.72px; }
+.pv-kpi { font-family: var(--font-body); font-size: 20px; font-weight: 500; }
+.pv-pill { display: inline-flex; align-items: center; padding: 0 8px; line-height: 1.6; border: 1px solid var(--surface-2); border-radius: var(--pv-r-control); white-space: nowrap; }
+.pv-pill.is-strong { background: var(--text); color: var(--text-inverse); border-color: transparent; }
+.pv-pill.is-quiet { opacity: 0.5; }
+.pv-pill.is-pos { color: var(--mock-positive); border-color: color-mix(in srgb, var(--mock-positive) 30%, transparent); }
+.pv-pill.is-neg { color: var(--mock-negative); border-color: color-mix(in srgb, var(--mock-negative) 30%, transparent); }
+.pv-pill.is-att::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mock-attention); margin-right: 6px; }
+.card-paper { text-align: left; background: var(--bg); border: none; box-shadow: var(--paper); }
+.pv-doc { border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+.pv-doc b { font-weight: 500; }
+
+/* Hero sky scene */
+.hero-scene-wrap { padding-top: 0; padding-bottom: 0; }
+.hero-scene { position: relative; isolation: isolate; margin: 0 20px; border-radius: 24px;
+    background: linear-gradient(180deg, color-mix(in srgb, #B8CAF5 88%, #4890E3) 0%, #B8CAF5 38%, color-mix(in srgb, #B8CAF5 45%, #FCF9F7) 78%, color-mix(in srgb, #B8CAF5 25%, #FCF9F7) 100%);
+    padding: 120px 60px 0; overflow: hidden; text-align: center; }
+.sky-grain { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: .22; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.ht-cloud { position: absolute; z-index: 0; pointer-events: none; }
+.ht-cloud::before, .ht-cloud::after { content: ""; position: absolute; inset: 0; -webkit-mask: var(--cloud); mask: var(--cloud); }
+.ht-cloud::before { background: rgba(255,255,255,.55); filter: blur(14px); }
+.ht-cloud::after { background: radial-gradient(circle, #FFFFFF 1.3px, transparent 1.9px) 0 0 / 5px 5px; }
+.cloud-a { left: -60px; top: 230px; width: 300px; height: 230px;
+  --cloud: radial-gradient(closest-side at 35% 60%, #000 55%, transparent), radial-gradient(closest-side at 65% 40%, #000 50%, transparent), radial-gradient(closest-side at 55% 75%, #000 45%, transparent); }
+.cloud-b { right: -40px; top: 120px; width: 260px; height: 170px;
+  --cloud: radial-gradient(closest-side at 40% 55%, #000 50%, transparent), radial-gradient(closest-side at 68% 45%, #000 50%, transparent); }
+.cut { position: absolute; z-index: 0; pointer-events: none; }
+.cut-notebook { transform: rotate(-8deg);
+  background: repeating-linear-gradient(176deg, transparent 0 30px, color-mix(in srgb, #FFE48D 70%, #030302) 30px 31px), #FFE48D;
+  clip-path: polygon(0 18%,8% 14%,16% 19%,24% 11%,33% 16%,42% 8%,52% 13%,62% 5%,72% 10%,82% 3%,92% 8%,100% 0,100% 100%,0 100%); }
+.hero-scene .cut-notebook { right: 6%; bottom: -60px; width: 340px; height: 300px; z-index: 1; }
+.hero-scene-copy, .hero-paper { position: relative; z-index: 2; }
+.hero-scene-copy { max-width: 920px; margin: 0 auto; }
+.hero-title { font-family: var(--font-display); font-size: var(--fs-hero); font-weight: 400; letter-spacing: -0.02em; line-height: 1.0; margin: 16px 0 0; }
+.hero-sub { font-size: 18px; line-height: 1.6; opacity: 0.75; max-width: 540px; margin: 24px auto 0; }
+.hero-actions { display: flex; gap: 12px; justify-content: center; margin-top: 48px; flex-wrap: wrap; }
+.hero-paper { max-width: 1060px; margin: 60px auto 0; }
+.pv-layers .pv-mat { display: grid; grid-template-columns: minmax(0, 1fr) 32px minmax(0, 0.42fr); padding: 0 6%; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.pv-layer-main { grid-column: 1 / 3; grid-row: 1; border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent);
+    padding: 32px 32px 48px 0; }
+.pv-layer-float { grid-column: 2 / 4; grid-row: 1; align-self: end; margin-bottom: 12%; position: relative; z-index: 1; padding: 24px; }
+.hero-paper .pv-row { padding: 0 32px; grid-template-columns: 10px minmax(0, 1fr) auto auto; }
+.paper-head { display: flex; justify-content: space-between; align-items: center; padding: 0 32px 16px; }
+.paper-body .pv-kpi { padding: 0 32px 16px; margin: 0; display: block; }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.is-warm { background: var(--tint-peach); }
+.pv-layer-float p { margin: 8px 0 0; font-size: 16px; line-height: 1.5; }
+.pv-layer-float .float-actions { display: flex; gap: 8px; margin-top: 14px; }
+
+/* M16 rows */
+.frow { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--gap-head); align-items: center; }
+.frow.is-flipped { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.frow.is-flipped .frow-text { order: 2; }
+.frow-text h3 { font-family: var(--ff-feature); font-size: var(--fs-feature); font-weight: 400; letter-spacing: -0.02em; line-height: 1.2; margin: 16px 0 0; }
+.frow-text p { font-size: 18px; line-height: 1.6; opacity: var(--op-sub); margin: 16px 0 0; max-width: 440px; }
+.frow-points { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 12px; font-size: 16px; }
+.frow-points li { padding-top: 12px; border-top: 1px solid rgba(3,3,2,.15); }
+.frow-visual { --pv-text: 14px; --pv-row: 36px; }
+.frow-visual .pv-mat { padding: 40px 40px 0; }
+.frow-visual .pv-panel { width: 100%; border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 0;
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); }
+.frow-head { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: space-between; align-items: baseline; padding: 16px 16px 12px; }
+.docs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px 16px; }
+.bucket-visual .pv-mat { background: var(--surface-1); }
+.matrix-rows .pv-row { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 64px; padding: 0 16px; }
+
+/* M15 steps — paper panels on one peach mat */
+.steps-mat { background: var(--scene-peach); border-radius: 24px; padding: 48px; }
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-card); }
+.step { background: var(--bg); border-radius: 16px; box-shadow: var(--paper); overflow: hidden; }
+.step-visual { --pv-text: 14px; --pv-row: 34px; height: 210px; overflow: hidden; }
+.step-visual .pv-mat { height: 100%; padding: 16px 16px 0; background: var(--surface-1); border-radius: 0; }
+.step-visual .pv-panel { border-bottom-left-radius: 0; border-bottom-right-radius: 0; min-height: 100%; background: var(--bg);
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); }
+.step-visual .pv-row { grid-template-columns: minmax(0, 1fr) auto; }
+.step-pad { padding: 12px 12px 8px; }
+.step-text { padding: 20px 24px 28px; }
+.step-num { font-family: var(--font-mono); font-size: 12px; letter-spacing: .72px; opacity: .5; }
+.step-text h3 { font-family: var(--font-body); font-size: var(--fs-card); font-weight: 500; margin: 8px 0 0; line-height: 1.3; }
+.step-text p { font-size: 16px; line-height: 1.6; opacity: 0.75; margin: 8px 0 0; }
+
+/* FAQ */
+.faq details { border-top: 1px solid var(--surface-2); padding: 24px 0; }
+.faq details:last-child { border-bottom: 1px solid var(--surface-2); }
+.faq summary { font-family: var(--font-display); font-size: 26px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px; letter-spacing: -0.02em; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; font-family: var(--font-body); opacity: 0.5; }
+.faq details[open] summary::after { content: "–"; }
+.faq p { font-size: 16px; line-height: 1.6; opacity: 0.75; margin: 12px 0 0; max-width: 640px; }
+
+.cta-center { text-align: center; }
+.cta-center p { font-size: 18px; line-height: 1.6; opacity: 0.75; margin: 24px auto 0; max-width: 540px; }
+.cta-center .row { display: flex; gap: 12px; justify-content: center; margin-top: 48px; flex-wrap: wrap; }
+
+footer { padding: 120px 0 48px; }
+.foot { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 24px; }
+.foot h4 { margin: 0 0 16px; }
+.foot a { display: block; font-size: 16px; text-decoration: none; opacity: 0.75; margin-bottom: 10px; transition: opacity 0.3s linear; }
+.foot a:hover { opacity: 1; }
+.copy { margin-top: 64px; font-size: 14px; opacity: 0.35; }
+
+.scene + section, .hero-scene-wrap + section { padding-top: 168px; }
+
+@media (prefers-reduced-motion: no-preference) {
+    .nav-toggle-bar { transition: transform 0.3s ease, opacity 0.3s ease; }
+    .hero-scene-copy > * { animation: hero-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .hero-scene-copy > :nth-child(2) { animation-delay: 100ms; }
+    .hero-scene-copy > :nth-child(3) { animation-delay: 200ms; }
+    .hero-scene-copy > :nth-child(4) { animation-delay: 300ms; }
+    @keyframes hero-rise { from { opacity: 0; transform: translateY(32px); } }
+    [data-mock] .pv-toast { transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    [data-mock] .pv-toast.is-before { opacity: 0; transform: translateY(16px); }
+    .reveal { opacity: 0; transform: translateY(32px); transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    .reveal.visible { opacity: 1; transform: none; }
+    .step { transition: transform 0.2s ease-in-out; } .step:hover { transform: translateY(-4px); }
+}
+@media (max-width: 767px) {
+    section { padding-top: 64px; padding-bottom: 64px; }
+    .scene + section, .hero-scene-wrap + section { padding-top: 96px; }
+    .container, .wide { padding: 0 20px; }
+    nav > .container { margin: 0 12px; }
+    .nav-links { display: none; } .nav-toggle { display: flex; }
+    .nav-panel.nav-open { display: flex; position: fixed; top: var(--nav-h); left: 12px; right: 12px; background: var(--bg); border: 1px solid var(--surface-2); border-radius: 24px; padding: 24px; flex-direction: column; gap: 20px; z-index: 999; }
+    .nav-panel a { text-decoration: none; font-size: 18px; }
+    .hero-scene { padding: 72px 24px 0; margin: 0 12px; border-radius: 16px; }
+    .cloud-b, .cut-notebook { display: none; }
+    .hero-actions { flex-direction: column; align-items: center; }
+    .pv-layers .pv-mat { grid-template-columns: 1fr; padding: 0; }
+    .pv-layer-main { grid-column: 1; padding-right: 0; }
+    .pv-layer-float { grid-column: 1; grid-row: 2; margin: 12px 0 24px; }
+    .hero-paper .pv-row { padding: 8px 16px; grid-template-columns: 10px minmax(0, 1fr) auto; }
+    .hero-paper .pv-row > :nth-child(3) { display: none; }
+    .scene { margin: 0 12px; padding: 60px 24px; border-radius: 16px; }
+    .frow, .frow.is-flipped { grid-template-columns: 1fr; gap: 32px; } .frow.is-flipped .frow-text { order: 0; }
+    .frow-visual .pv-mat { padding: 24px 20px 0; }
+    .steps-mat { padding: 20px; } .steps { grid-template-columns: 1fr; }
+    .foot { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav data-section="nav">
+  <div class="container">
+    <a href="#" class="brand">Next Cup</a>
+    <div class="nav-links">
+      <a href="#features">Features</a><a href="#how">How it works</a><a href="#faq">FAQ</a>
+      <a href="#get" class="btn-dark">Get the beta</a>
+    </div>
+    <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false">
+      <span class="nav-toggle-bar bar-1"></span><span class="nav-toggle-bar bar-2"></span><span class="nav-toggle-bar bar-3"></span>
+    </button>
+  </div>
+</nav>
+<div class="nav-panel" id="nav-panel"><a href="#features">Features</a><a href="#how">How it works</a><a href="#faq">FAQ</a><a href="#get" class="btn-dark">Get the beta</a></div>
+
+<main>
+<section data-section="hero" data-layout="full-bleed" data-bg="scene" data-bold="true" class="hero-scene-wrap">
+  <div class="scene hero-scene" style="padding: 120px 60px 0;">
+    <div class="sky-grain" aria-hidden="true"></div>
+    <div class="ht-cloud cloud-a" aria-hidden="true"></div>
+    <div class="ht-cloud cloud-b" aria-hidden="true"></div>
+    <div class="cut cut-notebook" aria-hidden="true"></div>
+    <div class="hero-scene-copy">
+      <p class="label">For people who weigh their coffee</p>
+      <h1 class="hero-title">A coffee journal that <em>learns your taste</em></h1>
+      <p class="hero-sub">Log each cup at the counter, keep your beans in tidy buckets, and wake up to one small change that makes tomorrow’s brew better.</p>
+      <div class="hero-actions">
+        <a href="#get" class="btn-dark">Get the TestFlight beta</a>
+        <a href="#how" class="btn-outline">See how it works</a>
+      </div>
+    </div>
+
+    <div class="pv pv-layers hero-paper" data-mock role="img" aria-label="This week's journal page with a suggestion card for tomorrow's Guji natural">
+      <div class="pv-mat">
+        <div class="pv-panel pv-layer-main card-paper">
+          <div class="paper-head"><span class="pv-label">Journal · Oct 20 – 26</span><span class="pv-pill">6 cups</span></div>
+          <div class="paper-body">
+            <span class="pv-kpi">This week’s cups</span>
+            <div class="pv-row"><span class="dot" style="background:#B23A2E"></span><span>Kiambu AA · cone dripper</span><span class="pv-mono pv-muted">Mon</span><span class="pv-pill is-pos">4.5 · Balanced</span></div>
+            <div class="pv-row is-focused"><span class="dot" style="background:#C7862B"></span><span>Guji natural · cone dripper</span><span class="pv-mono pv-muted">Sun</span><span class="pv-pill is-neg">3.5 · Sour</span></div>
+            <div class="pv-row"><span class="dot" style="background:#2F6B4F"></span><span>Huila washed · immersion</span><span class="pv-mono pv-muted">Sat</span><span class="pv-pill is-att">3 · Bitter</span></div>
+            <div class="pv-row"><span class="dot" style="background:#B23A2E"></span><span>Kiambu AA · inverted press</span><span class="pv-mono pv-muted">Fri</span><span class="pv-pill is-pos">4.5 · Balanced</span></div>
+            <div class="pv-row"><span class="dot" style="background:#4B4A8C"></span><span>Antigua · cone dripper</span><span class="pv-mono pv-muted">Thu</span><span class="pv-pill is-quiet">2.5 · Weak</span></div>
+            <div class="pv-row"><span class="dot" style="background:#C7862B"></span><span>Guji natural · espresso</span><span class="pv-mono pv-muted">Wed</span><span class="pv-pill">3.5 · Strong</span></div>
+          </div>
+        </div>
+        <div class="pv-panel pv-layer-float pv-toast card-paper is-warm">
+          <p class="pv-label">Tomorrow · Guji natural</p>
+          <p>“Sunday ran sour. Grind one step finer — try 23.”</p>
+          <div class="float-actions"><span class="pv-pill is-strong">Use it</span><span class="pv-pill">Not now</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features" data-section="features" data-layout="split-right" data-bg="base">
+  <div class="wide">
+    <div class="frow is-flipped">
+      <div class="frow-text">
+        <p class="label">01 · Buckets</p>
+        <h3>New beans meet the ones you already love</h3>
+        <p>Origin, roast, process and flavour go into simple buckets. A new bag lands beside its cousins, and so do their best recipes.</p>
+        <ul class="frow-points"><li>Snap the bag and it fills itself in, if you add an AI key</li><li>Creator recipes restated in plain words, with credit</li></ul>
+      </div>
+      <div class="pv frow-visual bucket-visual" data-mock role="img" aria-label="Kenyan light roast bucket with tinted bean cards">
+        <div class="pv-mat"><div class="pv-panel">
+          <div class="frow-head"><span class="pv-kpi">Kenyan · light roast</span><span class="pv-label">4 bags · 9 cups</span></div>
+          <div class="docs">
+            <div class="pv-doc" style="background: var(--tint-pink)"><b>Kiambu AA</b><span class="pv-muted">Larkspur · blackcurrant</span><span class="pv-mono">4.4 avg</span></div>
+            <div class="pv-doc" style="background: var(--tint-yellow)"><b>Nyeri peaberry</b><span class="pv-muted">Fernhill · grapefruit</span><span class="pv-mono">4.1 avg</span></div>
+            <div class="pv-doc" style="background: var(--tint-green)"><b>Kirinyaga AB</b><span class="pv-muted">Tidewell · tomato, cola</span><span class="pv-mono">3.8 avg</span></div>
+            <div class="pv-doc" style="background: var(--tint-blue)"><b>Embu SL28</b><span class="pv-muted">Quarry &amp; Co · new bag</span><span class="pv-mono">Untried</span></div>
+          </div>
+          <div class="pv-row" style="grid-template-columns: 1fr auto; padding: 0 16px"><span>Best method here: cone dripper, 1:16.7</span><span class="pv-pill is-pos">4.4</span></div>
+          <div class="pv-row" style="grid-template-columns: 1fr auto; padding: 0 16px"><span>Runner-up: inverted press, 1:15</span><span class="pv-pill is-pos">4.3</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section data-section="feature-showcase" data-layout="split-left" data-bg="scene" data-bold="true" style="padding-top:0; padding-bottom:0">
+  <div class="scene scene-green">
+    <div class="wide" style="padding:0">
+      <div class="frow">
+        <div class="frow-text">
+          <p class="label">02 · At the counter</p>
+          <h3>A timer you can read with wet hands</h3>
+          <p>Big numbers, a gentle haptic at every step, and the weight to pour to. When it’s done, the journal entry is already filled in.</p>
+          <ul class="frow-points"><li>Keeps going on your Lock Screen</li><li>Waits for you to taste before it asks anything</li></ul>
+        </div>
+        <div class="pv frow-visual" data-mock role="img" aria-label="Guided timer at 1:18 on step 4 of 6">
+          <div class="pv-mat" style="padding: 40px 40px 0"><div class="pv-panel card-paper">
+            <div class="frow-head"><span class="pv-kpi">1:18 <span class="pv-muted" style="font-size:14px">of 3:00</span></span><span class="pv-label">Step 4 of 6</span></div>
+            <div class="pv-row matrix-rows" style="grid-template-columns: 44px 1fr 64px; padding: 0 16px"><span class="pv-mono pv-muted">0:00</span><span>Bloom</span><span class="pv-mono pv-muted">45 g</span></div>
+            <div class="pv-row" style="grid-template-columns: 44px 1fr 64px; padding: 0 16px"><span class="pv-mono pv-muted">0:45</span><span>Slow circles</span><span class="pv-mono pv-muted">150 g</span></div>
+            <div class="pv-row is-focused" style="grid-template-columns: 44px 1fr 64px; padding: 0 16px; background: var(--tint-green)"><span class="pv-mono">1:15</span><span><b style="font-weight:500">Pour to the final weight</b></span><span class="pv-mono">240 g</span></div>
+            <div class="pv-row" style="grid-template-columns: 44px 1fr 64px; padding: 0 16px"><span class="pv-mono pv-muted">1:45</span><span>Top up, level bed</span><span class="pv-mono pv-muted">250 g</span></div>
+            <div class="pv-row" style="grid-template-columns: 44px 1fr 64px; padding: 0 16px"><span class="pv-mono pv-muted">2:15</span><span>Drawdown</span><span class="pv-mono pv-muted">—</span></div>
+            <div class="pv-row" style="grid-template-columns: 44px 1fr 64px; padding: 0 16px"><span class="pv-mono pv-muted">3:00</span><span>Taste and log</span><span class="pv-pill is-quiet">Later</span></div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how" data-section="how-it-works" data-layout="card-grid" data-bg="base">
+  <div class="wide">
+    <div class="section-head"><h2>Three steps, one cup</h2></div>
+    <div class="steps-mat">
+      <div class="steps">
+        <div class="step">
+          <div class="pv step-visual" data-mock role="img" aria-label="Recipe list with bright cone chosen"><div class="pv-mat"><div class="pv-panel">
+            <div class="step-pad"><span class="pv-label">Recipes · Kenyan</span></div>
+            <div class="pv-row is-focused"><span>Bright cone</span><span class="pv-mono pv-muted">3:00</span></div>
+            <div class="pv-row"><span>Syrupy inverted press</span><span class="pv-mono pv-muted">2:00</span></div>
+            <div class="pv-row"><span>Weekend flat-bed</span><span class="pv-mono pv-muted">3:20</span></div>
+          </div></div></div>
+          <div class="step-text"><span class="step-num">01</span><h3>Pick a recipe</h3><p>Yours, a suggestion, or a creator’s, with a link back.</p></div>
+        </div>
+        <div class="step">
+          <div class="pv step-visual" data-mock role="img" aria-label="Timer step: pour to 240 grams now"><div class="pv-mat"><div class="pv-panel">
+            <div class="step-pad"><span class="pv-label">Step 4 of 6</span></div>
+            <div class="pv-row is-focused"><span>Pour to 240 g</span><span class="pv-pill is-strong">Now</span></div>
+            <div class="pv-row"><span>Top up to 250 g</span><span class="pv-mono pv-muted">1:45</span></div>
+            <div class="pv-row"><span>Drawdown</span><span class="pv-mono pv-muted">2:15</span></div>
+          </div></div></div>
+          <div class="step-text"><span class="step-num">02</span><h3>Brew with the timer</h3><p>Each step arrives on time, with a weight to aim for.</p></div>
+        </div>
+        <div class="step">
+          <div class="pv step-visual" data-mock role="img" aria-label="Log form prefilled, rated 4.5, balanced"><div class="pv-mat"><div class="pv-panel">
+            <div class="step-pad"><span class="pv-label">Taste and log</span></div>
+            <div class="pv-row"><span>15 g → 250 g</span><span class="pv-mono pv-muted">3:04</span></div>
+            <div class="pv-row is-focused"><span>Rating</span><span class="pv-mono">4.5</span></div>
+            <div class="pv-row"><span>Taste</span><span class="pv-pill is-pos">Balanced</span></div>
+          </div></div></div>
+          <div class="step-text"><span class="step-num">03</span><h3>Taste and log</h3><p>Numbers filled in. Add a rating and a word.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq" data-section="faq" data-layout="list" data-bg="base" class="reveal" style="padding-top: 0">
+  <div class="container faq">
+    <div class="section-head"><h2>Good questions</h2></div>
+    <details open><summary>Do I need an account?</summary><p>No accounts, ads or analytics. Your journal stays on your iPhone and works offline.</p></details>
+    <details><summary>What does the AI do?</summary><p>It reads bag photos, looks at a cup that went wrong, and suggests one change. It runs only with your own OpenAI or Anthropic key, and only when you tap.</p></details>
+    <details><summary>Can my paper notebook come along?</summary><p>Photograph a page. Next Cup reads it into a draft, and you check every field before saving.</p></details>
+    <details><summary>Is it free?</summary><p>Yes. Free, no ads, as a TestFlight beta for iPhone.</p></details>
+  </div>
+</section>
+
+<section id="get" data-section="cta" data-layout="centered-stack" data-bg="alt" style="background: var(--surface-1);" class="reveal">
+  <div class="container cta-center">
+    <h2>Start tomorrow’s <em>better cup</em></h2>
+    <p>Join the TestFlight beta on iPhone. Free, private, and no account to make.</p>
+    <div class="row"><a href="#" class="btn-dark">Get the TestFlight beta</a><a href="#" class="btn-outline">View on GitHub</a></div>
+  </div>
+</section>
+</main>
+
+<footer data-section="footer">
+  <div class="container">
+    <div class="foot">
+      <div><a href="#" class="brand" style="opacity:1; font-size: 26px">Next Cup</a></div>
+      <div><h4 class="label">Product</h4><a href="#features">Features</a><a href="#how">How it works</a><a href="#faq">FAQ</a></div>
+      <div><h4 class="label">Project</h4><a href="#">GitHub</a><a href="#">Privacy</a><a href="#">Credits</a></div>
+    </div>
+    <p class="copy">© 2026 Next Cup</p>
+  </div>
+</footer>
+
+<script>
+function onMockVisible(mock, run) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (mock.closest('[data-section="hero"]')) { setTimeout(run, 300); return; }
+    var io = new IntersectionObserver(function(entries) {
+        if (!entries[0].isIntersecting) return;
+        io.disconnect();
+        setTimeout(run, 400);
+    }, { threshold: 0 });
+    io.observe(mock);
+}
+(function() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    document.querySelectorAll('[data-mock] .pv-toast').forEach(function(toast) {
+        toast.classList.add('is-before');
+        onMockVisible(toast.closest('[data-mock]'), function() { toast.classList.remove('is-before'); });
+    });
+    var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) { if (!entry.isIntersecting) return; entry.target.classList.add('visible'); observer.unobserve(entry.target); });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('section.reveal').forEach(function(s) { observer.observe(s); });
+})();
+(function initMobileNav() {
+    var toggle = document.querySelector('.nav-toggle'), panel = document.getElementById('nav-panel');
+    toggle.addEventListener('click', function() { var open = toggle.getAttribute('aria-expanded') === 'true'; toggle.setAttribute('aria-expanded', String(!open)); panel.classList.toggle('nav-open', !open); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && panel.classList.contains('nav-open')) { toggle.setAttribute('aria-expanded', 'false'); panel.classList.remove('nav-open'); toggle.focus(); } });
+    panel.addEventListener('click', function(e) { if (e.target.closest('a')) { toggle.setAttribute('aria-expanded', 'false'); panel.classList.remove('nav-open'); } });
+})();
+</script>
+</body>
+</html>

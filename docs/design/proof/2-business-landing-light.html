@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en" data-page="landing" data-archetype="A" data-style="business" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Next Cup — every brew logged, every recipe remembered</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+/* Page spec — Next Cup landing · Business · Light · Archetype A
+   Sections: nav · hero (biz-stage, M4+M3, bold) · features (M5 bento, bold lead) · feature-showcase (M16 row) · how-it-works (M15 on mats) · faq (list) · cta (centered) · footer
+   Skipped: logo wall, social proof, stats — no evidence yet (PRODUCT.md). */
+:root {
+    --bg: #FCFBF8; --surface-1: #F5F3EE; --surface-2: #D8DCE0;
+    --text: #071A31; --text-inverse: #FFFFFF; --accent: #071A31; --accent-text: #FFFFFF;
+    --font-display: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    --font-mono:    'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    --font-body:    'Inter', -apple-system, sans-serif;
+    --nav-h: 72px;
+    --fs-hero: clamp(48px, 6vw, 72px); --fs-section: clamp(32px, 4vw, 48px); --fs-feature: 28px; --ff-feature: var(--font-display);
+    --fs-card: 20px; --ff-card: var(--font-display); --fw-display: 600; --op-sub: 0.5; --gap-card: 24px;
+    --r-card: 16px; --r-frame: 24px; --fw-feature: 500; --gap-head: 48px; --gap-rows: 120px;
+    --shadow: 0 4px 5px rgba(71,103,136,.04), 0 8px 15px rgba(71,103,136,.03), 0 30px 50px rgba(71,103,136,.08);
+    --shadow-nested: 0 4px 5px rgba(71,103,136,.04), 0 8px 15px rgba(71,103,136,.03), 0 15px 30px rgba(71,103,136,.06);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; padding-top: var(--nav-h); background: var(--bg); color: var(--text); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+[id] { scroll-margin-top: var(--nav-h); }
+a { color: inherit; }
+.container { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+section { padding-top: 120px; padding-bottom: 120px; }
+h2 { font-family: var(--font-display); font-size: var(--fs-section); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; margin: 0; }
+.label { font-family: var(--font-mono); font-size: 12px; font-weight: 400; letter-spacing: 0.72px; text-transform: uppercase; color: var(--text); opacity: 0.4; margin: 0; }
+:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.section-head { text-align: center; max-width: 640px; margin: 0 auto var(--gap-head); }
+.section-head p { font-size: 18px; line-height: 1.6; opacity: 0.5; margin: 24px auto 0; max-width: 540px; }
+
+.btn-dark, .btn-outline { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; font-size: 16px; font-weight: 500; font-family: var(--font-display); line-height: 24px; border-radius: 8px; cursor: pointer; text-decoration: none; }
+.btn-dark { background: var(--accent); color: var(--accent-text); border: none; transition: transform 0.2s ease-in-out; }
+.btn-dark:hover { transform: translateY(-1px); filter: brightness(1.15); }
+.btn-outline { background: transparent; color: var(--text); border: 1px solid var(--surface-2); transition: border-color 0.3s linear; }
+.btn-outline:hover { border-color: var(--text); }
+.btn-sm { padding: 8px 16px; font-size: 14px; }
+
+nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 16px 0; }
+nav::before { content: ""; position: absolute; inset: 0; z-index: -1; background: rgba(252, 251, 248, 0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+nav > .container { display: flex; align-items: center; justify-content: space-between; }
+.brand { font-family: var(--font-display); font-weight: 600; font-size: 18px; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; }
+.brand-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--text); display: grid; place-items: center; }
+.brand-mark i { width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--bg); }
+.nav-links { display: flex; gap: 32px; align-items: center; }
+nav .nav-links a:not(.btn-dark) { font-family: var(--font-display); font-size: 14px; font-weight: 500; opacity: 0.5; text-decoration: none; transition: opacity 0.3s linear; }
+nav .nav-links a:not(.btn-dark):hover { opacity: 1; }
+.nav-toggle { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 8px; }
+.nav-toggle-bar { width: 22px; height: 2px; background: var(--text); display: block; }
+.nav-toggle[aria-expanded="true"] .bar-1 { transform: translateY(7px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] .bar-2 { opacity: 0; }
+.nav-toggle[aria-expanded="true"] .bar-3 { transform: translateY(-7px) rotate(-45deg); }
+.nav-panel { display: none; }
+
+/* product-visuals base, Business binding */
+.pv { --pv-mat: var(--surface-1); --pv-r-outer: 24px; --pv-r-inner: 16px; --pv-r-control: 8px; --pv-text: 13px; --pv-row: 32px;
+      position: relative; font-family: var(--font-body); font-size: var(--pv-text); font-weight: 400; color: var(--text); }
+[data-mock] { --mock-positive: #1F8A65; --mock-negative: #CF2D56; --mock-attention: #FECC33; --mock-brand: #1E5EA7; }
+.pv-mat { background: var(--pv-mat); border-radius: var(--pv-r-outer); padding: 6% 6% 0; overflow: hidden; }
+.pv-panel { background: #FFFFFF; border: 1px solid var(--surface-2); border-radius: var(--pv-r-inner); }
+.pv-row { display: grid; align-items: center; gap: 12px; min-height: var(--pv-row); padding: 0 12px; border-top: 1px solid var(--surface-2); }
+.pv-row.is-focused { background: var(--surface-1); }
+.pv-mono { font-family: var(--font-mono); } .pv-muted { opacity: 0.5; }
+.pv-label { font-family: var(--font-mono); text-transform: uppercase; opacity: 0.4; font-size: 11px; letter-spacing: 0.72px; }
+.pv-kpi { font-family: var(--font-display); font-size: 20px; font-weight: 500; }
+.pv-pill { display: inline-flex; align-items: center; padding: 0 8px; line-height: 1.6; border: 1px solid var(--surface-2); border-radius: var(--pv-r-control); white-space: nowrap; }
+.pv-pill.is-strong { background: var(--text); color: var(--text-inverse); border-color: transparent; }
+.pv-pill.is-quiet { opacity: 0.5; }
+.pv-pill.is-pos { color: var(--mock-positive); border-color: color-mix(in srgb, var(--mock-positive) 30%, transparent); }
+.pv-pill.is-neg { color: var(--mock-negative); border-color: color-mix(in srgb, var(--mock-negative) 30%, transparent); }
+.pv-pill.is-att::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--mock-attention); margin-right: 6px; }
+.pv-avatar { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; font-family: var(--font-mono); font-size: 10px; background: var(--surface-2); }
+.pv-avatar.a2 { background: #B23A2E; color: #fff; } .pv-avatar.a3 { background: #C7862B; color: #fff; } .pv-avatar.a4 { background: #2F6B4F; color: #fff; } .pv-avatar.a5 { background: #4B4A8C; color: #fff; }
+
+/* Gradient mats §8 */
+.mat-sky { background: linear-gradient(180deg, #6AB4FF 0%, #B3EAE8 58%, #1C558F 100%); }
+.mat-lagoon { background: linear-gradient(170deg, #C7E3FB 0%, #72DAD3 46%, #F4EFB8 68%, #295564 100%); }
+.mat-sky, .mat-lagoon { position: relative; isolation: isolate; }
+.mat-sky::after, .mat-lagoon::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: .12; mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.pv-mat.mat-sky .pv-panel, .pv-mat.mat-lagoon .pv-panel { border: none; box-shadow: var(--shadow-nested); }
+
+/* Hero — biz-stage */
+.biz-hero { padding-top: 120px; padding-bottom: 120px; }
+.biz-hero-copy { text-align: center; }
+.biz-hero h1 { font-family: var(--font-display); font-size: var(--fs-hero); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; margin: 16px auto 0; max-width: 20ch; text-wrap: balance; }
+.biz-hero-sub { font-size: 18px; line-height: 1.6; opacity: 0.5; max-width: 540px; margin: 24px auto 0; }
+.biz-hero-ctas { display: flex; gap: 12px; justify-content: center; margin-top: 48px; flex-wrap: wrap; }
+.biz-stage { position: relative; margin-top: 48px; padding: 32px 48px 0; height: 560px; border-radius: 48px; overflow: hidden; isolation: isolate;
+    background:
+        radial-gradient(38% 46% at 50% 62%, rgba(255,255,255,.95) 0%, rgba(255,255,255,0) 100%),
+        radial-gradient(48% 70% at 4% 6%,   #6BB1FF 0%, transparent 72%),
+        radial-gradient(40% 60% at 30% 0%,  color-mix(in srgb, #4890E3 55%, #FFFFFF) 0%, transparent 70%),
+        radial-gradient(46% 70% at 0% 100%, #B89FFA 0%, transparent 72%),
+        radial-gradient(40% 60% at 32% 104%,#EBB0FF 0%, transparent 70%),
+        radial-gradient(46% 72% at 100% 78%,#5DDFD7 0%, transparent 72%),
+        radial-gradient(40% 55% at 96% 4%,  color-mix(in srgb, #6BB1FF 60%, #5DDFD7) 0%, transparent 70%),
+        color-mix(in srgb, #6BB1FF 22%, #FFFFFF);
+    box-shadow: var(--shadow); }
+.biz-stage::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: .12; mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.biz-tabs { display: flex; gap: 4px; width: max-content; margin: 0 auto 24px; padding: 4px; border-radius: 9999px; background: rgba(255,255,255,.55);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-family: var(--font-display); font-size: 14px; font-weight: 500; }
+.biz-tabs span { padding: 8px 16px; border-radius: 9999px; opacity: .6; }
+.biz-tabs .is-on { background: #FFFFFF; opacity: 1; box-shadow: 0 4px 5px rgba(71,103,136,.04), 0 8px 15px rgba(71,103,136,.03); }
+.biz-ring { max-width: 960px; margin: 0 auto; padding: 8px 8px 0; border-radius: 48px 48px 0 0; background: rgba(255,255,255,.45); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.biz-card { --pv-r-outer: 48px; --pv-r-inner: 16px; --pv-r-control: 8px; display: grid; grid-template-columns: minmax(0, 1fr) 300px; background: #FFFFFF;
+    border-radius: 40px 40px 0 0; box-shadow: var(--shadow-nested);
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); }
+.biz-list { padding: 32px 0 24px; }
+.biz-list-head { display: flex; justify-content: space-between; align-items: baseline; padding: 0 32px 16px; }
+.biz-card .pv-row { grid-template-columns: 24px minmax(0,1fr) auto 84px; padding: 0 32px; }
+.biz-card .pv-row > :nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.biz-card .pv-pill { justify-self: start; }
+.biz-detail { position: relative; margin: 16px 16px 0 0; padding: 24px; background: var(--surface-1); border-radius: 24px 24px 0 0; display: grid; align-content: start; gap: 8px; }
+.biz-detail p { margin: 0; }
+.biz-slots { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+.biz-slots span { padding: 8px 12px; border-radius: 8px; background: #FFFFFF; font-family: var(--font-mono); font-size: 12px; }
+.biz-slots .is-on { box-shadow: 0 0 0 2px var(--mock-brand); }
+.biz-confirm { justify-self: start; margin-top: 8px; padding: 8px 16px; font-family: var(--font-display); font-size: 14px; font-weight: 500; border: 1px solid var(--surface-2); border-radius: 8px; }
+.biz-confirm.is-focused { background: var(--mock-brand); color: #FFFFFF; border-color: transparent; }
+.pv-cursor { position: absolute; width: 16px; pointer-events: none; }
+.pv-cursor svg { display: block; fill: var(--text); stroke: #FFFFFF; }
+
+/* M5 bento */
+.bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap-card); }
+.tile { background: var(--surface-1); border-radius: 16px; padding: 32px; box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; gap: 24px; transition: transform 0.2s ease-in-out; }
+.tile:hover { transform: translateY(-4px); }
+.tile.lead { grid-column: 1 / -1; display: grid; grid-template-columns: 40% 60%; gap: 32px; align-items: center; padding: 40px; }
+.tile h3 { font-family: var(--font-display); font-size: var(--fs-card); font-weight: 500; margin: 0; line-height: 1.3; }
+.tile.lead h3 { font-size: var(--fs-feature); letter-spacing: -0.02em; line-height: 1.2; }
+.tile p { margin: 8px 0 0; font-size: 16px; line-height: 1.6; opacity: 0.5; }
+.tile .pv-panel { background: var(--bg); }
+.lead-visual .pv-mat { padding: 32px 32px 0; }
+.lead-visual .pv-panel { border-bottom-left-radius: 0; border-bottom-right-radius: 0; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); }
+.lead-visual .pv-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 72px; padding: 0 16px; }
+.mini { padding: 14px; }
+.mini .pv-row { grid-template-columns: minmax(0,1fr) auto; padding: 0; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* M16 row */
+.frow { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--gap-head); align-items: center; }
+.frow.is-flipped { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.frow.is-flipped .frow-text { order: 2; }
+.frow-text h3 { font-family: var(--ff-feature); font-size: var(--fs-feature); font-weight: 500; letter-spacing: -0.02em; line-height: 1.2; margin: 16px 0 0; }
+.frow-text p { font-size: 18px; line-height: 1.6; opacity: var(--op-sub); margin: 16px 0 0; max-width: 440px; }
+.frow-points { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 12px; font-size: 16px; }
+.frow-points li { padding-top: 12px; border-top: 1px solid var(--surface-2); }
+.frow-visual { --pv-text: 14px; --pv-row: 36px; }
+.frow-visual .pv-mat { padding: 40px 40px 0; }
+.frow-visual .pv-panel { width: 100%; border-bottom-left-radius: 0; border-bottom-right-radius: 0; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); }
+.frow-head { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: space-between; align-items: baseline; padding: 16px 16px 12px; }
+.frow-visual .pv-row { grid-template-columns: 28px minmax(0, 1fr) 96px; padding: 0 16px; }
+
+/* M15 steps on mats */
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-card); }
+.step { background: #FFFFFF; border-radius: 24px; box-shadow: var(--shadow); overflow: hidden; }
+.step-visual { --pv-text: 14px; --pv-row: 34px; height: 240px; overflow: hidden; }
+.step-visual .pv-mat { height: 100%; padding: 20px 20px 0; border-radius: 0; }
+.step-visual .pv-panel { border-bottom-left-radius: 0; border-bottom-right-radius: 0; min-height: 100%; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); }
+.step-visual .pv-row { grid-template-columns: minmax(0,1fr) auto; }
+.step-pad { padding: 14px 12px 10px; }
+.step-text { padding: 24px 28px 32px; }
+.step-num { font-family: var(--font-mono); font-size: 12px; letter-spacing: .72px; opacity: .4; }
+.step-text h3 { font-family: var(--font-display); font-size: var(--fs-card); font-weight: 500; margin: 8px 0 0; line-height: 1.3; }
+.step-text p { font-size: 16px; line-height: 1.6; opacity: 0.5; margin: 8px 0 0; }
+
+/* FAQ */
+.faq { max-width: 800px; margin: 0 auto; }
+.faq details { border-top: 1px solid var(--surface-2); padding: 24px 0; }
+.faq details:last-child { border-bottom: 1px solid var(--surface-2); }
+.faq summary { font-family: var(--font-display); font-size: 20px; font-weight: 500; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; opacity: 0.5; font-weight: 400; }
+.faq details[open] summary::after { content: "–"; }
+.faq p { font-size: 16px; line-height: 1.6; opacity: 0.5; margin: 12px 0 0; max-width: 640px; }
+
+/* CTA */
+.cta-card { text-align: center; background: #FFFFFF; border-radius: 24px; box-shadow: var(--shadow); padding: 96px 32px; }
+.cta-card p { font-size: 18px; line-height: 1.6; opacity: 0.5; margin: 24px auto 0; max-width: 540px; }
+.cta-card .row { display: flex; gap: 12px; justify-content: center; margin-top: 48px; flex-wrap: wrap; }
+
+footer { padding: 120px 0 48px; border-top: 1px solid var(--surface-2); }
+.foot { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 24px; }
+.foot h4 { margin: 0 0 16px; }
+.foot a { display: block; font-family: var(--font-display); font-size: 14px; font-weight: 500; text-decoration: none; opacity: 0.5; margin-bottom: 10px; transition: opacity 0.3s linear; }
+.foot a:hover { opacity: 1; }
+.copy { margin-top: 64px; font-size: 14px; opacity: 0.2; }
+
+@media (prefers-reduced-motion: no-preference) {
+    .nav-toggle-bar { transition: transform 0.3s ease, opacity 0.3s ease; }
+    .biz-hero-copy { transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    .biz-hero-copy.is-before { opacity: 0; transform: translateY(32px); }
+    .pv-cursor { transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    .pv-target { transition: background-color 0.3s linear, color 0.3s linear; }
+    .reveal { opacity: 0; transform: translateY(32px); transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    .reveal.visible { opacity: 1; transform: none; }
+}
+@media (max-width: 767px) {
+    section, .biz-hero { padding-top: 64px; padding-bottom: 64px; }
+    .container { padding: 0 20px; }
+    .nav-links { display: none; } .nav-toggle { display: flex; }
+    .nav-panel.nav-open { display: flex; position: fixed; top: var(--nav-h); left: 0; right: 0; background: var(--bg); border-bottom: 1px solid var(--surface-2); padding: 24px 20px; flex-direction: column; gap: 24px; z-index: 999; }
+    .nav-panel a { text-decoration: none; font-family: var(--font-display); }
+    .biz-stage { padding: 24px 12px 0; border-radius: 24px; margin-top: 32px; height: 480px; }
+    .biz-tabs { max-width: 100%; overflow-x: auto; }
+    .biz-ring { border-radius: 24px 24px 0 0; padding: 6px 6px 0; }
+    .biz-card { grid-template-columns: 1fr; border-radius: 20px 20px 0 0; }
+    .biz-card .pv-row { padding: 8px 16px; grid-template-columns: 24px minmax(0,1fr) auto; align-items: start; }
+    .biz-card .pv-row > :nth-child(2) { white-space: normal; line-height: 1.35; }
+    .biz-card .pv-row > :nth-child(3) { display: none; }
+    .biz-list-head { padding: 0 16px 12px; }
+    .biz-detail { display: none; }
+    .bento, .steps { grid-template-columns: 1fr; } .tile.lead { grid-template-columns: 1fr; padding: 24px; }
+    .frow, .frow.is-flipped { grid-template-columns: 1fr; gap: 32px; } .frow.is-flipped .frow-text { order: 0; }
+    .frow-visual .pv-mat { padding: 24px 20px 0; }
+    .foot { grid-template-columns: 1fr; }
+    .cta-card { padding: 64px 24px; }
+}
+</style>
+</head>
+<body>
+
+<nav data-section="nav">
+  <div class="container">
+    <a href="#" class="brand"><span class="brand-mark" aria-hidden="true"><i></i></span>Next Cup</a>
+    <div class="nav-links">
+      <a href="#features">Features</a><a href="#how">How it works</a><a href="#faq">FAQ</a>
+      <a href="#get" class="btn-dark btn-sm">Get the beta</a>
+    </div>
+    <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false">
+      <span class="nav-toggle-bar bar-1"></span><span class="nav-toggle-bar bar-2"></span><span class="nav-toggle-bar bar-3"></span>
+    </button>
+  </div>
+</nav>
+<div class="nav-panel" id="nav-panel"><a href="#features">Features</a><a href="#how">How it works</a><a href="#faq">FAQ</a><a href="#get" class="btn-dark btn-sm">Get the beta</a></div>
+
+<main>
+<section data-section="hero" data-layout="centered-stack" data-bg="base" data-bold="true" class="biz-hero">
+  <div class="container">
+    <div class="biz-hero-copy">
+      <p class="label">Brew journal for iPhone</p>
+      <h1>Every brew logged, every recipe remembered</h1>
+      <p class="biz-hero-sub">Next Cup keeps your dose, water, grind, time and taste in one journal, then hands you the recipe that worked last time.</p>
+      <div class="biz-hero-ctas">
+        <a class="btn-dark" href="#get">Get the TestFlight beta</a>
+        <a class="btn-outline" href="#how">See how it works</a>
+      </div>
+    </div>
+
+    <div class="biz-stage">
+      <div class="biz-tabs" aria-hidden="true"><span class="is-on">Journal</span><span>Recipes</span><span>Beans</span><span>Dial-in</span></div>
+      <div class="biz-ring">
+        <div class="pv biz-card" data-mock role="img" aria-label="Next Cup journal with Monday's Kiambu AA cup open and Brew again selected">
+          <div class="biz-list">
+            <div class="biz-list-head"><span class="pv-kpi">This week</span><span class="pv-label">Oct 20 – Oct 26</span></div>
+            <div class="pv-row is-focused"><span class="pv-avatar a2">KE</span><span>Kiambu AA · Larkspur Roasters</span><span class="pv-mono pv-muted">Mon 07:12</span><span class="pv-pill is-pos">Balanced</span></div>
+            <div class="pv-row"><span class="pv-avatar a3">ET</span><span>Guji natural · Fernhill Coffee</span><span class="pv-mono pv-muted">Sun 08:40</span><span class="pv-pill is-neg">Sour</span></div>
+            <div class="pv-row"><span class="pv-avatar a4">CO</span><span>Huila washed · Tidewell</span><span class="pv-mono pv-muted">Sat 09:05</span><span class="pv-pill is-att">Bitter</span></div>
+            <div class="pv-row"><span class="pv-avatar a2">KE</span><span>Kiambu AA · Larkspur Roasters</span><span class="pv-mono pv-muted">Fri 06:58</span><span class="pv-pill is-pos">Balanced</span></div>
+            <div class="pv-row"><span class="pv-avatar a5">GT</span><span>Antigua · Quarry &amp; Co</span><span class="pv-mono pv-muted">Thu 07:30</span><span class="pv-pill is-quiet">Weak</span></div>
+            <div class="pv-row"><span class="pv-avatar a3">ET</span><span>Guji natural · Fernhill Coffee</span><span class="pv-mono pv-muted">Wed 07:21</span><span class="pv-pill is-att">Strong</span></div>
+            <div class="pv-row"><span class="pv-avatar a4">CO</span><span>Huila washed · Tidewell</span><span class="pv-mono pv-muted">Tue 07:02</span><span class="pv-pill is-pos">Balanced</span></div>
+          </div>
+          <div class="biz-detail">
+            <p class="pv-label">Last cup · Kiambu AA</p>
+            <p class="pv-kpi">4.5 of 5</p>
+            <p class="pv-muted">Cone dripper · 15 g → 250 g · 3:04</p>
+            <p style="margin-top:4px">“Blackcurrant and a stone-fruit finish. Clean.”</p>
+            <div class="biz-slots"><span>1:15</span><span class="is-on">1:16.7</span><span>1:18</span></div>
+            <span id="pv-again" class="pv-target is-focused biz-confirm">Brew again</span>
+            <span class="pv-cursor" data-cursor-for="pv-again" style="left: 40%; top: 88%" aria-hidden="true"><svg viewBox="0 0 14 20"><path d="M1 1v16l4.5-4 3 6.5 2.5-1-3-6.5H14z"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features" data-section="features" data-layout="bento" data-bg="alt" data-bold="true" style="background: var(--surface-1);">
+  <div class="container">
+    <div class="section-head">
+      <h2>Your beans, sorted the way you think</h2>
+      <p>Origins, roasts, processes and flavours share one set of buckets, so a new bag finds its neighbours on day one.</p>
+    </div>
+    <div class="bento">
+      <article class="tile lead" style="background: var(--bg)">
+        <div>
+          <h3>Recipes for similar beans, ranked by your own ratings</h3>
+          <p>Next Cup groups every brew by bucket and shows which method and ratio scored best for beans like the one in your hand.</p>
+        </div>
+        <div class="pv lead-visual" data-mock role="img" aria-label="Recipe matrix for Kenyan light roasts">
+          <div class="pv-mat mat-sky"><div class="pv-panel">
+            <div class="frow-head"><span class="pv-kpi">Kenyan · light roast</span><span class="pv-label">9 brews</span></div>
+            <div class="pv-row is-focused"><span>Cone dripper · 1:16.7</span><span class="pv-mono pv-muted">94 °C · 3:04</span><span class="pv-pill is-pos">4.4</span></div>
+            <div class="pv-row"><span>Inverted press · 1:15</span><span class="pv-mono pv-muted">90 °C · 2:00</span><span class="pv-pill is-pos">4.3</span></div>
+            <div class="pv-row"><span>Flat-bed · 1:16</span><span class="pv-mono pv-muted">93 °C · 3:20</span><span class="pv-pill">3.9</span></div>
+            <div class="pv-row"><span>Immersion · 1:15</span><span class="pv-mono pv-muted">96 °C · 4:00</span><span class="pv-pill is-neg">2.8</span></div>
+            <div class="pv-row"><span>Cold brew · 1:8</span><span class="pv-mono pv-muted">14 h</span><span class="pv-pill is-quiet">New</span></div>
+          </div></div>
+        </div>
+      </article>
+      <article class="tile">
+        <div class="pv" data-mock role="img" aria-label="Bean buckets: Kenyan, light roast, blackcurrant"><div class="pv-panel mini">
+          <div class="pv-label" style="margin-bottom:8px">Buckets</div>
+          <div class="chip-row"><span class="pv-pill is-strong">Kenyan</span><span class="pv-pill">Light roast</span><span class="pv-pill">Washed</span><span class="pv-pill">Blackcurrant</span></div>
+        </div></div>
+        <div><h3>Simple buckets</h3><p>Kenyan, light roast, stone fruit. One tap each, used everywhere.</p></div>
+      </article>
+      <article class="tile">
+        <div class="pv" data-mock role="img" aria-label="Paper journal import draft with three fields read"><div class="pv-panel mini">
+          <div class="pv-label" style="margin-bottom:4px">Import · photo of page 14</div>
+          <div class="pv-row"><span>Dose 18 g · water 300 g</span><span class="pv-pill is-pos">Read</span></div>
+          <div class="pv-row"><span>“A bit thin”</span><span class="pv-pill is-att">Check</span></div>
+        </div></div>
+        <div><h3>Paper journal import</h3><p>Photograph a page; review every field before it saves.</p></div>
+      </article>
+      <article class="tile">
+        <div class="pv" data-mock role="img" aria-label="Offline: two AI requests queued"><div class="pv-panel mini">
+          <div class="pv-label" style="margin-bottom:4px">Offline · Oct 26 06:51</div>
+          <div class="pv-row"><span>Bag photo · Tidewell</span><span class="pv-pill is-quiet">Queued</span></div>
+          <div class="pv-row"><span>Cup diagnosis</span><span class="pv-pill is-quiet">Queued</span></div>
+        </div></div>
+        <div><h3>Works offline</h3><p>Logging, notes and history never need a connection or an account.</p></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section data-section="feature-showcase" data-layout="split-right" data-bg="base">
+  <div class="container">
+    <div class="frow is-flipped">
+      <div class="frow-text">
+        <p class="label">Dial-in</p>
+        <h3>One suggestion for tomorrow, never more than you asked for</h3>
+        <p>Mark a cup sour or bitter and Next Cup proposes a single change, using your own AI key. It never acts on its own.</p>
+        <ul class="frow-points"><li>Your OpenAI or Anthropic key, kept in the Keychain</li><li>A plain notice before the first request</li></ul>
+      </div>
+      <div class="pv frow-visual" data-mock role="img" aria-label="Dial-in for a sour Guji natural: grind one step finer accepted">
+        <div class="pv-mat mat-lagoon"><div class="pv-panel">
+          <div class="frow-head"><span class="pv-kpi">Guji natural · sour</span><span class="pv-label">Sun 08:40</span></div>
+          <div class="pv-row"><span class="pv-mono pv-muted">1</span><span>Brew ran short for this bucket</span><span class="pv-mono pv-muted">−0:24</span></div>
+          <div class="pv-row is-focused"><span class="pv-mono pv-muted">2</span><span>Grind one step finer, try 23</span><span class="pv-pill is-strong">Accepted</span></div>
+          <div class="pv-row"><span class="pv-mono pv-muted">3</span><span>Or raise water to 94 °C</span><span class="pv-pill">Later</span></div>
+          <div class="pv-row"><span class="pv-mono pv-muted">4</span><span>Similar cups scored 4+ at 3:10</span><span class="pv-mono pv-muted">6 brews</span></div>
+          <div class="pv-row"><span class="pv-mono pv-muted">5</span><span>Keep dose and ratio the same</span><span class="pv-mono pv-muted">1:16</span></div>
+          <div class="pv-row"><span class="pv-mono pv-muted">6</span><span>Saved to tomorrow’s recipe</span><span class="pv-pill is-pos">Ready</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how" data-section="how-it-works" data-layout="card-grid" data-bg="alt" style="background: var(--surface-1);">
+  <div class="container">
+    <div class="section-head"><h2>From kettle to journal in three steps</h2></div>
+    <div class="steps">
+      <div class="step">
+        <div class="pv step-visual" data-mock role="img" aria-label="Recipe list with bright cone selected"><div class="pv-mat mat-sky"><div class="pv-panel">
+          <div class="step-pad"><span class="pv-label">Recipes · Kenyan</span></div>
+          <div class="pv-row is-focused"><span>Bright cone</span><span class="pv-mono pv-muted">3:00</span></div>
+          <div class="pv-row"><span>Syrupy inverted press</span><span class="pv-mono pv-muted">2:00</span></div>
+          <div class="pv-row"><span>Weekend flat-bed</span><span class="pv-mono pv-muted">3:20</span></div>
+        </div></div></div>
+        <div class="step-text"><span class="step-num">01</span><h3>Pick a recipe</h3><p>Yours, a matrix suggestion, or a creator recipe with credit.</p></div>
+      </div>
+      <div class="step">
+        <div class="pv step-visual" data-mock role="img" aria-label="Timer at 1:18, pour to 240 grams"><div class="pv-mat mat-lagoon"><div class="pv-panel">
+          <div class="step-pad"><span class="pv-label">Step 4 of 6</span><div class="pv-kpi" style="margin-top:4px">1:18</div></div>
+          <div class="pv-row is-focused"><span>Pour to 240 g</span><span class="pv-pill is-strong">Now</span></div>
+          <div class="pv-row"><span>Top up to 250 g</span><span class="pv-mono pv-muted">1:45</span></div>
+        </div></div></div>
+        <div class="step-text"><span class="step-num">02</span><h3>Brew with the timer</h3><p>A haptic and a target weight at every step, readable from arm’s length.</p></div>
+      </div>
+      <div class="step">
+        <div class="pv step-visual" data-mock role="img" aria-label="Log form prefilled and rated 4.5"><div class="pv-mat mat-sky"><div class="pv-panel">
+          <div class="step-pad"><span class="pv-label">Taste and log</span></div>
+          <div class="pv-row"><span>15 g → 250 g</span><span class="pv-mono pv-muted">3:04</span></div>
+          <div class="pv-row is-focused"><span>Rating</span><span class="pv-mono">4.5</span></div>
+          <div class="pv-row"><span>Taste</span><span class="pv-pill is-pos">Balanced</span></div>
+        </div></div></div>
+        <div class="step-text"><span class="step-num">03</span><h3>Taste and log</h3><p>The numbers are filled in. Add a rating and a word.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq" data-section="faq" data-layout="list" data-bg="base" class="reveal">
+  <div class="container">
+    <div class="section-head"><h2>Questions</h2></div>
+    <div class="faq">
+      <details open><summary>Does it need an account?</summary><p>No accounts, ads or analytics. Your journal stays on your iPhone and works without a connection.</p></details>
+      <details><summary>How does the AI work, and who pays?</summary><p>It runs only after you add your own OpenAI or Anthropic key. Every suggestion waits for your tap.</p></details>
+      <details><summary>Can I bring my paper journal?</summary><p>Photograph a page and Next Cup reads it into a draft for you to review before saving.</p></details>
+      <details><summary>Is it free?</summary><p>Yes, free with no ads, as a TestFlight beta for iPhone.</p></details>
+    </div>
+  </div>
+</section>
+
+<section id="get" data-section="cta" data-layout="centered-stack" data-bg="alt" style="background: var(--surface-1);" class="reveal">
+  <div class="container">
+    <div class="cta-card">
+      <h2>Start your brew journal</h2>
+      <p>Join the TestFlight beta on iPhone. Free, private, no account.</p>
+      <div class="row"><a class="btn-dark" href="#">Get the TestFlight beta</a><a class="btn-outline" href="#">View on GitHub</a></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer data-section="footer">
+  <div class="container">
+    <div class="foot">
+      <div><a href="#" class="brand" style="opacity:1"><span class="brand-mark" aria-hidden="true"><i></i></span>Next Cup</a></div>
+      <div><h4 class="label">Product</h4><a href="#features">Features</a><a href="#how">How it works</a><a href="#faq">FAQ</a></div>
+      <div><h4 class="label">Project</h4><a href="#">GitHub</a><a href="#">Privacy</a><a href="#">Credits</a></div>
+    </div>
+    <p class="copy">© 2026 Next Cup</p>
+  </div>
+</footer>
+
+<script>
+function onMockVisible(mock, run) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (mock.closest('[data-section="hero"]')) { setTimeout(run, 300); return; }
+    var io = new IntersectionObserver(function(entries) {
+        if (!entries[0].isIntersecting) return;
+        io.disconnect();
+        setTimeout(run, 400);
+    }, { threshold: 0 });
+    io.observe(mock);
+}
+(function() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var copy = document.querySelector('.biz-hero-copy');
+    copy.classList.add('is-before');
+    requestAnimationFrame(function() { requestAnimationFrame(function() { copy.classList.remove('is-before'); }); });
+    document.querySelectorAll('[data-mock] .pv-cursor[data-cursor-for]').forEach(function(cur) {
+        var mock = cur.closest('[data-mock]');
+        var target = document.getElementById(cur.getAttribute('data-cursor-for'));
+        var m = mock.getBoundingClientRect(), c = cur.getBoundingClientRect();
+        cur.style.transition = 'none';
+        cur.style.transform = 'translate(' + (m.right - c.right) + 'px,' + (m.bottom - c.bottom) + 'px)';
+        target.classList.remove('is-focused');
+        onMockVisible(mock, function() {
+            cur.style.transition = '';
+            cur.style.transform = 'none';
+            cur.addEventListener('transitionend', function() { target.classList.add('is-focused'); }, { once: true });
+        });
+    });
+    var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) { if (!entry.isIntersecting) return; entry.target.classList.add('visible'); observer.unobserve(entry.target); });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('section.reveal').forEach(function(s) { observer.observe(s); });
+})();
+(function initMobileNav() {
+    var toggle = document.querySelector('.nav-toggle'), panel = document.getElementById('nav-panel');
+    toggle.addEventListener('click', function() { var open = toggle.getAttribute('aria-expanded') === 'true'; toggle.setAttribute('aria-expanded', String(!open)); panel.classList.toggle('nav-open', !open); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && panel.classList.contains('nav-open')) { toggle.setAttribute('aria-expanded', 'false'); panel.classList.remove('nav-open'); toggle.focus(); } });
+    panel.addEventListener('click', function(e) { if (e.target.closest('a')) { toggle.setAttribute('aria-expanded', 'false'); panel.classList.remove('nav-open'); } });
+})();
+</script>
+</body>
+</html>
