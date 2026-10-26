@@ -16,6 +16,8 @@ struct BrewFormView: View {
   /// brew, with the time reset.
   var repeating: Brew?
   var onSaved: (() -> Void)?
+  /// A bean to start a new blank brew with (Bean detail's Brew this bean).
+  var startingBean: Bean?
 
   @Environment(\.modelContext) private var context
   @Environment(\.dismiss) private var dismiss
@@ -36,6 +38,9 @@ struct BrewFormView: View {
   @State private var grinderError: String?
   @State private var model: BrewFormModel?
   @State private var pickedPhoto: PhotosPickerItem?
+  @State private var libraryShown = false
+  @State private var cameraShown = false
+  @State private var detailsShown: Bool?
   @FocusState private var focused: Field?
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
@@ -54,7 +59,11 @@ struct BrewFormView: View {
       if let model {
         content(model)
       } else {
-        Color.clear
+        VStack(spacing: DS.Space.md) {
+          SkeletonRow()
+          SkeletonRow()
+        }.padding(DS.Space.lg)
+          .frame(maxHeight: .infinity, alignment: .top)
       }
     }
     .background(DS.bg)
@@ -67,6 +76,9 @@ struct BrewFormView: View {
         draftStore: editing.map { .editing($0.id) } ?? repeating.map { .repeating($0.id) }
           ?? .standard(),
         simulatesSaveFailure: Self.simulatesSaveFailure)
+      if let startingBean, editing == nil, repeating == nil, model?.draft.beans?.isEmpty ?? true {
+        model?.addBean(startingBean)
+      }
     }
   }
 
@@ -111,36 +123,59 @@ struct BrewFormView: View {
     }
   }
 
+  /// The app's main win: the cup is in the journal and the next change to try is
+  /// the largest thing on screen. The save already fired the success haptic.
   @ViewBuilder private var savedContent: some View {
-    Group {
-      EmptyState(
-        title: "Brew saved",
-        message: editing != nil
-          ? "Your changes are in your journal."
-          : "It is in your journal. The draft has been cleared.",
-        actionTitle: "Done",
-        action: {
+    if let model {
+      let draft = model.draft
+      let ratio = BrewMath.ratio(doseG: draft.doseG, waterG: draft.waterG)
+      SuccessView(
+        title: model.newBest != nil ? "New best cup" : "In your journal",
+        message: savedMessage(model),
+        rings: [
+          (Double(draft.ratingHalfSteps) / 10, DS.crema),
+          (Double(draft.totalTimeS ?? 0) / 300, DS.espresso),
+          (((ratio ?? 10) - 10) / 10, DS.sage),
+        ],
+        primaryTitle: "Done",
+        primary: {
           onSaved?()
           dismiss()
         }
-      )
-      .accessibilityIdentifier("brewform.saved")
-      if let model, let made = model.madeSuggestion {
-        VStack(alignment: .leading, spacing: DS.Space.xs) {
-          Text("TRY THIS NEXT TIME").font(DS.Font.label).foregroundStyle(DS.ink2)
-          Text(SuggestionFormat.headline(made, units))
-            .font(DS.Font.mono(.title3, .bold)).foregroundStyle(DS.ink)
-            .accessibilityIdentifier("brewform.saved.suggestion")
-          Text(made.rationale).font(.footnote).foregroundStyle(DS.ink2)
+      ) {
+        if let made = model.madeSuggestion {
+          KraftNote {
+            VStack(alignment: .leading, spacing: DS.Space.xs) {
+              Text("TRY THIS NEXT TIME").font(DS.Font.label).foregroundStyle(DS.onKraft)
+              Text(SuggestionFormat.headline(made, units))
+                .font(DS.Font.mono(.title2, .bold)).foregroundStyle(DS.onKraft)
+                .accessibilityIdentifier("brewform.saved.suggestion")
+              Text(made.rationale).font(.footnote).foregroundStyle(DS.onKraft)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+          }
+        } else if let note = model.dialInNote {
+          Text(note).font(.footnote).foregroundStyle(DS.ink2)
+            .accessibilityIdentifier("brewform.saved.dialin")
         }
-        .padding(.horizontal, DS.Space.xl).frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-      } else if let note = model?.dialInNote {
-        Text(note).font(.footnote).foregroundStyle(DS.ink2)
-          .padding(.horizontal, DS.Space.xl).frame(maxWidth: .infinity, alignment: .leading)
-          .accessibilityIdentifier("brewform.saved.dialin")
       }
+      .accessibilityIdentifier("brewform.saved")
     }
+  }
+
+  private func savedMessage(_ model: BrewFormModel) -> String {
+    if let best = model.newBest {
+      return
+        "Best cup of \(best.bean) so far: \(gradeText(best.halfSteps)), up from \(gradeText(best.previous))."
+    }
+    if editing != nil { return "Your changes are saved." }
+    return [model.draft.doseG.map { RecipeFormat.weight($0, units) + " dose" }, model.ratioLabel]
+      .compactMap { $0 }.joined(separator: " · ")
+  }
+
+  private func gradeText(_ halfSteps: Int) -> String {
+    halfSteps % 2 == 0 ? "\(halfSteps / 2)" : String(format: "%.1f", Double(halfSteps) / 2)
   }
 
   private func form(_ binding: Bindable<BrewFormModel>, _ model: BrewFormModel) -> some View {
@@ -161,23 +196,40 @@ struct BrewFormView: View {
         methodPicker(binding.draft, model)
         beansSection(model)
         suggestionSection(model)
-        brewedRow(binding.draft.date)
         let fields = shownFields(for: model.draft.methodID)
         tiles(model, fields)
         if fields.contains(.grind) {
           grindField(binding.draft.grindSetting)
-          grinderPicker(model)
+          grindHint(model)
         }
-        waterPicker(model)
         verdictRow(binding.draft.verdict)
+        if model.draft.verdict == nil, !model.isEditing {
+          Text("Not tasted yet? Save without it. We'll remind you to taste in 20 minutes.")
+            .font(.footnote).foregroundStyle(DS.ink2)
+            .accessibilityIdentifier("brewform.tasteLater")
+        }
         if fields.contains(.rating) {
           VStack(alignment: .leading, spacing: DS.Space.sm) {
             Text("GRADE").font(DS.Font.label).foregroundStyle(DS.ink2)
             GradeScale(halfSteps: binding.draft.ratingHalfSteps)
           }
         }
-        if fields.contains(.photo) { photoRow(model) }
         if fields.contains(.notes) { notesField(binding.draft.notes) }
+        // Less-used inputs fold away; a value already set keeps the section open.
+        DisclosureGroup(isExpanded: detailsBinding(model)) {
+          VStack(alignment: .leading, spacing: DS.Space.lg) {
+            brewedRow(binding.draft.date)
+            if fields.contains(.grind) { grinderPicker(model) }
+            waterPicker(model)
+            if fields.contains(.photo) { photoRow(model) }
+          }
+          .padding(.top, DS.Space.md)
+        } label: {
+          Text("More details").font(DS.Font.headline).foregroundStyle(DS.ink)
+            .frame(minHeight: DS.Size.minTap, alignment: .leading)
+        }
+        .tint(DS.ink2)
+        .accessibilityIdentifier("brewform.details")
         if let editing {
           SuggestionHistory(brew: editing, units: units)
           SteelButton(title: "Ask AI about this brew", kind: .secondary) { askingAI = true }
@@ -222,10 +274,13 @@ struct BrewFormView: View {
 
   private func header(_ model: BrewFormModel) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
-      Text(model.isEditing ? "EDIT BREW" : (model.repeatingID != nil ? "BREW AGAIN" : "NEW BREW"))
-        .font(DS.Font.display).foregroundStyle(DS.ink)
-        .dynamicTypeSize(...DS.displayCap)
-        .accessibilityAddTraits(.isHeader)
+      Text(
+        (model.isEditing ? "Edit brew" : (model.repeatingID != nil ? "Brew again" : "New brew"))
+          .dsTitle
+      )
+      .font(DS.Font.display).foregroundStyle(DS.ink)
+      .dynamicTypeSize(...DS.displayCap)
+      .accessibilityAddTraits(.isHeader)
       if let seed {
         Text([seed.recipeName, seed.methodName].compactMap { $0 }.joined(separator: " · "))
           .font(.subheadline).foregroundStyle(DS.ink2)
@@ -261,8 +316,7 @@ struct BrewFormView: View {
           .accessibilityHidden(true)
       }
       .padding(DS.Space.md).frame(minHeight: DS.Size.control)
-      .background(DS.paper, ignoresSafeAreaEdges: [])
-      .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+      .panel(DS.paper)
     }
     .accessibilityLabel("Method")
     .accessibilityValue(current?.name ?? "None chosen")
@@ -308,12 +362,11 @@ struct BrewFormView: View {
           Button(bean.name) { model.addBean(bean) }
         }
       } label: {
-        Text(chosen.isEmpty ? "ADD A BEAN" : "ADD ANOTHER BEAN")
+        Text((chosen.isEmpty ? "Add a bean" : "Add another bean").dsTitle)
           .font(DS.Font.din(22, relativeTo: .title3))
           .frame(maxWidth: .infinity, minHeight: DS.Size.control)
           .foregroundStyle(DS.ink)
-          .background(DS.paper, ignoresSafeAreaEdges: [])
-          .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+          .panel(DS.paper)
       }
       .disabled(available.isEmpty)
       .accessibilityLabel(chosen.isEmpty ? "Add a bean" : "Add another bean")
@@ -339,7 +392,7 @@ struct BrewFormView: View {
       + (isBlend ? "  ·  " + String(format: "%.0f%%", share) : "")
     return layout {
       VStack(alignment: .leading, spacing: 2) {
-        Text(entry.name.uppercased()).font(DS.Font.headline).foregroundStyle(DS.ink)
+        Text(entry.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
         HStack(spacing: DS.Space.sm) {
           Text(amount).font(DS.Font.mono(.footnote)).foregroundStyle(DS.ink2)
           if isDecaf { Tag(text: "Decaf") }
@@ -411,6 +464,18 @@ struct BrewFormView: View {
         ForEach(grinders) { grinder in
           Button(grinder.name) { model.setGrinder(grinder.id) }
         }
+        let known = Set(grinders.compactMap { GrinderGuide.find($0.name)?.name })
+        let popular = GrinderGuide.all.filter { !known.contains($0.name) }
+        if !popular.isEmpty {
+          Menu("Popular grinders") {
+            ForEach(popular) { guide in
+              Button(guide.name) {
+                grinderError =
+                  model.addGrinder(named: guide.name) ? nil : "The grinder could not be added."
+              }
+            }
+          }
+        }
         Button("New grinder…") {
           newGrinderName = ""
           addingGrinder = true
@@ -427,8 +492,7 @@ struct BrewFormView: View {
             .accessibilityHidden(true)
         }
         .padding(DS.Space.md).frame(minHeight: DS.Size.control)
-        .background(DS.paper, ignoresSafeAreaEdges: [])
-        .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+        .panel(DS.paper)
       }
       .accessibilityLabel("Grinder")
       .accessibilityValue(current?.name ?? "None chosen")
@@ -577,8 +641,7 @@ struct BrewFormView: View {
             .accessibilityHidden(true)
         }
         .padding(DS.Space.md).frame(minHeight: DS.Size.control)
-        .background(DS.paper, ignoresSafeAreaEdges: [])
-        .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+        .panel(DS.paper)
       }
       .accessibilityLabel("Water")
       .accessibilityValue(current?.name ?? "None chosen")
@@ -621,10 +684,35 @@ struct BrewFormView: View {
         .submitLabel(.done).focused($focused, equals: .grind)
         .onSubmit { focused = nil }
         .padding(DS.Space.md).frame(minHeight: DS.Size.control)
-        .background(DS.paper, ignoresSafeAreaEdges: [])
-        .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+        .panel(DS.paper)
         .accessibilityLabel("Grind setting")
         .accessibilityIdentifier("brewform.grind")
+    }
+  }
+
+  /// The chosen grinder's starting range for this method, from the bundled guide.
+  /// Says plainly that it is a starting point; nothing shows for an unknown grinder.
+  @ViewBuilder private func grindHint(_ model: BrewFormModel) -> some View {
+    let grinder = grinders.first { $0.id == model.draft.grinderID }
+    let methodName = methods.first { $0.id == model.draft.methodID }?.name
+    if let guide = GrinderGuide.find(grinder?.name),
+      let method = GrinderGuide.method(forMethodNamed: methodName)
+    {
+      let range = guide.range(for: method)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(
+          range.map {
+            "\(guide.name): start between \($0) \(guide.unitLabel) for \(methodName?.lowercased() ?? "this method"). A starting point; dial in by taste."
+          }
+            ?? "\(guide.name) is made for brewed coffee, not \(methodName?.lowercased() ?? "this method")."
+        )
+        .font(.footnote).foregroundStyle(DS.ink2)
+        if let url = URL(string: guide.source) {
+          Link("Source: Honest Coffee Guide", destination: url).font(.footnote).tint(DS.signal)
+        }
+      }
+      .accessibilityElement(children: .combine)
+      .accessibilityIdentifier("brewform.grindHint")
     }
   }
 
@@ -658,12 +746,18 @@ struct BrewFormView: View {
           .accessibilityLabel("Photo of this brew")
         SteelButton(title: "Remove photo", kind: .secondary) { model.removePhoto() }
       } else {
-        PhotosPicker(selection: $pickedPhoto, matching: .images) {
-          Text("ADD A PHOTO").font(DS.Font.din(22, relativeTo: .title3))
+        Menu {
+          if Camera.isAvailable {
+            Button("Take a photo", systemImage: "camera") { cameraShown = true }
+          }
+          Button("Choose from library", systemImage: "photo.on.rectangle") { libraryShown = true }
+        } label: {
+          Text("Add a photo".dsTitle).font(DS.Font.din(22, relativeTo: .title3))
             .frame(maxWidth: .infinity, minHeight: DS.Size.control)
             .foregroundStyle(DS.ink)
-            .background(DS.paper, ignoresSafeAreaEdges: [])
-            .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+            .background(DS.paper, in: RoundedRectangle(cornerRadius: DS.radius))
+            .overlay(
+              RoundedRectangle(cornerRadius: DS.radius).strokeBorder(DS.line, lineWidth: DS.rule))
         }
         .accessibilityLabel("Add a photo")
         .accessibilityIdentifier("brewform.photo")
@@ -671,6 +765,14 @@ struct BrewFormView: View {
       if let error = model.photoError { StateBanner(kind: .error, message: error) }
       Text("Location and camera details are removed from photos before they are kept.")
         .font(.footnote).foregroundStyle(DS.ink2)
+    }
+    .photosPicker(isPresented: $libraryShown, selection: $pickedPhoto, matching: .images)
+    .fullScreenCover(isPresented: $cameraShown) {
+      CameraPicker { data in
+        cameraShown = false
+        if let data { Task { await model.attachPhoto(data) } }
+      }
+      .ignoresSafeArea()
     }
   }
 
@@ -689,10 +791,28 @@ struct BrewFormView: View {
     }
   }
 
+  /// Open by default only when a folded value is already set (a repeat or an edit).
+  private func detailsBinding(_ model: BrewFormModel) -> Binding<Bool> {
+    Binding(
+      get: {
+        detailsShown
+          ?? (model.draft.photo != nil || model.draft.waterProfileID != nil
+            || model.isEditing)
+      },
+      set: { detailsShown = $0 })
+  }
+
   private func saveBar(_ model: BrewFormModel) -> some View {
     VStack(spacing: DS.Space.xs) {
       if !model.draft.canSave {
-        Text("Set dose and water to save.").font(.footnote).foregroundStyle(DS.ink2)
+        // How close the brew is to savable, not just what is missing.
+        let dose = (model.draft.doseG ?? 0) > 0
+        let water = (model.draft.waterG ?? 0) > 0
+        Text("Dose \(dose ? "✓" : "○")   Water \(water ? "✓" : "○")   to save")
+          .font(.footnote.weight(.semibold)).foregroundStyle(DS.ink2)
+          .accessibilityLabel(
+            "Set \([dose ? nil : "dose", water ? nil : "water"].compactMap { $0 }.joined(separator: " and ")) to save"
+          )
           .accessibilityIdentifier("brewform.save.hint")
       }
       SteelButton(title: "Save brew", isLoading: model.isSaving) { model.save() }

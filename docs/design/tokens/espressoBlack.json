@@ -1,0 +1,15 @@
+{
+  "_about": "Espresso Black (true black in dark). Source of truth for the espressoBlack palette in NextCup/DesignSystem/Tokens.swift (design/check_tokens.py). Contrast: python3 design/contrast.py and StyleTests",
+  "light": {
+    "bg": "#F2F2F7", "paper": "#FFFFFF", "steel": "#1C1C1E", "on-steel": "#F2F2F7",
+    "ink": "#000000", "ink-2": "#5C5C63", "line": "#5C5C63", "signal": "#2F6B3F",
+    "on-signal": "#FFFFFF", "signal-on-steel": "#7EE2A0", "kraft": "#E4E4EA",
+    "on-kraft": "#000000", "error": "#9A1B0A", "ok": "#2A6A2A"
+  },
+  "dark": {
+    "bg": "#000000", "paper": "#0D0D0D", "steel": "#1C1C1E", "on-steel": "#F2F2F7",
+    "ink": "#FFFFFF", "ink-2": "#9A9AA1", "line": "#9A9AA1", "signal": "#7EE2A0",
+    "on-signal": "#000000", "signal-on-steel": "#7EE2A0", "kraft": "#1F1F22",
+    "on-kraft": "#FFFFFF", "error": "#FF9C85", "ok": "#7FD18A"
+  }
+}

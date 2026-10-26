@@ -1,0 +1,15 @@
+{
+  "_about": "Café Page. Source of truth for the cafePage palette in NextCup/DesignSystem/Tokens.swift (design/check_tokens.py). Contrast: python3 design/contrast.py and StyleTests",
+  "light": {
+    "bg": "#FBF8F3", "paper": "#F3EEE6", "steel": "#2E2A33", "on-steel": "#F3EEE6",
+    "ink": "#22201C", "ink-2": "#625C52", "line": "#625C52", "signal": "#7A4A8C",
+    "on-signal": "#FFFFFF", "signal-on-steel": "#D6B3E3", "kraft": "#E6DAEC",
+    "on-kraft": "#22201C", "error": "#9A1B0A", "ok": "#2A6A2A"
+  },
+  "dark": {
+    "bg": "#1A1816", "paper": "#24211E", "steel": "#2F2B33", "on-steel": "#EDE7DD",
+    "ink": "#EDE7DD", "ink-2": "#ABA396", "line": "#ABA396", "signal": "#D6B3E3",
+    "on-signal": "#1A1816", "signal-on-steel": "#D6B3E3", "kraft": "#3A3140",
+    "on-kraft": "#EDE7DD", "error": "#FF9C85", "ok": "#7FD18A"
+  }
+}

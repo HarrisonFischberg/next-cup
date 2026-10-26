@@ -7,6 +7,7 @@ file is the refreshed list that matches the code (T034).
 | Data collected | Purpose | Collection point | Recipient / storage | Retention | Deletion mechanism |
 | --- | --- | --- | --- | --- | --- |
 | Brew logs, tasting notes, grades, recipes | Journal and dial-in | User entry | On device (SwiftData) | Until user deletes | Delete item; delete all data in Settings |
+| Taste reminder (bean name, brew id in a `nextcup://taste/<id>` link) | Remind the user to taste a brew 20 minutes after saving it untasted | Brew form save | Local notification scheduled on device (`UNUserNotificationCenter`); nothing leaves the iPhone | Until it fires or the brew is tasted | Tasting cancels it; notifications can be turned off in iOS Settings |
 | Photos of coffee, bags, handwritten pages | AI analysis, bag recognition, paper import | Camera or photo library, only on tap | On device; sent to the user's chosen AI provider only when the user triggers analysis | On device until deleted; provider retention per its own terms | Delete item; remove key to stop all AI calls |
 | User's OpenAI or Anthropic API key | Authenticate AI calls | Settings | iOS Keychain, device only | Until removed | Remove key in Settings; never logged or backed up |
 | Prompts built from notes, past brews, photos | AI insights and suggestions | User triggers | OpenAI or Anthropic (user's choice) | Provider's retention | Not controllable by the app; disclosed before the first AI call |
@@ -62,7 +63,7 @@ Checked by search of `NextCup`, `NextCupLiveActivity` and `Packages/NextCupKit/S
 | Analytics, crash reporting, ads, tracking | None found; `PrivacyInfo.xcprivacy` added: no tracking, no collected data |
 | Network endpoints | Only `api.anthropic.com` and `api.openai.com` in `AIClient.swift`, reached through `URLSessionTransport`; MapKit search is Apple's service |
 | Required-reason APIs | `UserDefaults` only (reason CA92.1); no file-timestamp, disk-space or uptime APIs found |
-| Permissions | Location when in use (string in `Config/NextCup-Info.plist`); photos via `PhotosPicker` (no permission); no camera, contacts, microphone, Bluetooth or notifications |
+| Permissions | Location when in use (string in `Config/NextCup-Info.plist`); photos via `PhotosPicker` (no permission); local notifications for the taste reminder, asked the first time a brew is saved untasted (never at launch); no contacts, microphone or Bluetooth |
 | Logging | No `print`, `NSLog`, `os_log` or `Logger` in app code |
 | Planned flows not built | Bluetooth scales, Apple Health, iCloud sync, creator-recipe import: none present in code |
 | Not verified | Runtime network capture; widget extension has no privacy manifest (no required-reason API found); on-device backup contents were not inspected beyond tests |
@@ -94,3 +95,16 @@ These supersede older rows above where they disagree:
 - The privacy manifest declares Photos or Videos and Other User Content as collected (App Functionality, not linked), not "no data".
 - Roaster match sends Apple the roaster name plus "coffee roaster" and nothing else.
 - Network calls exist (AI providers, Apple Maps search); older text saying none were made is out of date.
+
+## Camera and barcode (T037, 2026-10-25)
+
+New vendor: **Open Food Facts** (Open Food Facts association, open database, no key, no account).
+
+| Data | Where it lives or goes | Retention | Removed by |
+| --- | --- | --- | --- |
+| Scanned barcode number (8 to 14 digits, validated) | Sent once, after a scan, to `world.openfoodfacts.org/api/v2/product/<code>.json?fields=product_name,brands` with the user agent `NextCup/1.0 (iOS; hello@rarecreatures.app)`; no other data, no identifier, no location | Not stored by the app; Open Food Facts server logs per its terms | Not stored by the app |
+| Product name and first brand from Open Food Facts | Filled into the bean form for review; saved only when the user taps Save | As the bean | Delete the bean; delete all data |
+| Camera photos (brew, bag) | Taken only on a tap through the system camera; treated exactly like library photos (metadata stripped; brew photos stay on device, bag photos go to the AI provider only on a tap) | As before | As before |
+| Live barcode video | Processed on device by VisionKit; not recorded or sent | Not stored | n/a |
+
+Supersedes "No camera is used" above. Network endpoints are now the two AI providers, Apple Maps search and Open Food Facts.

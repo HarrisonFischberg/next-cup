@@ -38,6 +38,8 @@ final class BrewFormModel {
   /// What the rules made of the brew just saved: the suggestion, or why none.
   private(set) var madeSuggestion: Suggestion?
   private(set) var dialInNote: String?
+  /// Set when this brew's grade beats every earlier graded brew of one of its beans.
+  private(set) var newBest: (bean: String, halfSteps: Int, previous: Int)?
   private var followedSuggestionID: UUID?
   /// The draft value and suggested value before an answer, kept for Undo.
   private var undoDraftValue: String?
@@ -226,6 +228,19 @@ final class BrewFormModel {
     beans.append(DraftBean(beanID: bean.id, name: bean.name, grams: 0))
     for index in beans.indices { beans[index].grams = shares[index] }
     draft.beans = beans
+    if beans.count == 1 { recallGrind(for: bean) }
+  }
+
+  /// Each bean keeps its own grind: the first bean chosen on a brew with no grind
+  /// yet brings back the grinder and setting from its last saved brew.
+  private func recallGrind(for bean: Bean) {
+    guard draft.grindSetting.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+    let last = (bean.brewUses ?? []).compactMap(\.brew)
+      .filter { !$0.isDraft && $0.id != draft.id && !($0.grindSetting ?? "").isEmpty }
+      .max { $0.date < $1.date }
+    guard let last, let grind = last.grindSetting else { return }
+    draft.grindSetting = grind
+    if let grinder = last.grinder { draft.grinderID = grinder.id }
   }
 
   func removeBean(at index: Int) {
@@ -430,6 +445,11 @@ final class BrewFormModel {
 
   // MARK: Save
 
+  /// UI tests run in memory and must not meet the notification permission alert.
+  static var remindsToTaste: Bool {
+    !AppBootstrap.usesInMemoryStore || ProcessInfo.processInfo.arguments.contains("-tasteReminders")
+  }
+
   /// Writes the brew. Returns `true` only once the store confirms the write;
   /// on failure the draft is kept and the error is shown (X5).
   @discardableResult
@@ -458,13 +478,35 @@ final class BrewFormModel {
       defaults.set(grinderID.uuidString, forKey: Self.lastGrinderKey)
     }
     savedBrewID = draft.id
+    if !isEditing, draft.verdict == nil, Self.remindsToTaste {
+      TasteReminder.schedule(
+        brewID: draft.id, beanName: draft.beans?.first?.name, brewedAt: draft.date)
+    }
     makeSuggestion()
+    noteNewBest()
     if case .failure = draftStore.clear() {
       notice = FormNotice(
         kind: .info, message: "Saved. An old draft file could not be removed.")
     }
     UINotificationFeedbackGenerator().notificationOccurred(.success)
     return true
+  }
+
+  /// A new best needs an earlier graded brew of the same bean to beat.
+  private func noteNewBest() {
+    guard let brew = try? store.find(Brew.self, id: draft.id),
+      let grade = brew.ratingHalfSteps, grade > 0
+    else { return }
+    for use in brew.beans ?? [] {
+      guard let bean = use.bean else { continue }
+      let earlier = (bean.brewUses ?? []).compactMap(\.brew)
+        .filter { !$0.isDraft && $0.id != brew.id }
+        .compactMap(\.ratingHalfSteps).filter { $0 > 0 }
+      if let previous = earlier.max(), grade > previous {
+        newBest = (bean.name, grade, previous)
+        return
+      }
+    }
   }
 
   /// Asks the dial-in rules what to change next. The brew is already saved, so a

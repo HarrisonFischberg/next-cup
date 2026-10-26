@@ -43,6 +43,11 @@ struct PaperImportView: View {
       .scrollContentBackground(.hidden)
       .scrollDismissesKeyboard(.interactively)
       .background(DS.bg)
+      .safeAreaInset(edge: .top, spacing: 0) {
+        StepProgress(step: phaseStep, total: 3)
+          .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.sm)
+          .background(DS.bg)
+      }
       .navigationTitle("Import a page")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
@@ -160,11 +165,25 @@ struct PaperImportView: View {
     }
   }
 
+  private var phaseStep: Int {
+    switch model.phase {
+    case .choose: 1
+    case .reading: 2
+    case .review: 3
+    }
+  }
+
   private var reading: some View {
     VStack(alignment: .leading, spacing: DS.Space.lg) {
-      SkeletonRow()
-      Text(model.isWaitingForConnection ? "Waiting for a connection" : "Reading the page")
-        .font(.headline).foregroundStyle(DS.ink)
+      StagedProgress(
+        stages: [
+          "Page chosen",
+          model.isWaitingForConnection
+            ? "Waiting for a connection"
+            : (model.aiRequest == nil
+              ? "Reading the page on this iPhone" : "Reading the handwriting with AI"),
+          "Laying out the fields for you to check",
+        ], current: 1)
       SteelButton(title: "Cancel", kind: .secondary) { model.cancelReading() }
         .accessibilityIdentifier("import.reading.cancel")
       Spacer()

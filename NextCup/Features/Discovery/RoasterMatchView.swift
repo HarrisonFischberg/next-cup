@@ -46,7 +46,7 @@ struct RoasterMatchView: View {
                 onPick(place)
               } label: {
                 VStack(alignment: .leading, spacing: DS.Space.xs) {
-                  Text(place.name.uppercased()).font(DS.Font.headline).foregroundStyle(DS.ink)
+                  Text(place.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
                   if let city = place.city {
                     Text(city).font(.footnote).foregroundStyle(DS.ink2)
                   }

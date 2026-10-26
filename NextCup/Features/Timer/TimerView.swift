@@ -42,7 +42,8 @@ struct TimerView: View {
         .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.lg)
       }
       .onChange(of: state.currentIndex) { _, index in
-        guard let index else { return }
+        // Step 1 stays put so the recipe header is not pushed under the bar.
+        guard let index, index > 0 else { return }
         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
           proxy.scrollTo(index, anchor: .center)
         }
@@ -65,10 +66,6 @@ struct TimerView: View {
     }
     .onChange(of: scenePhase) { _, phase in if phase == .active { session.tick() } }
     .onChange(of: state.currentIndex) { _, index in announce(stepAt: index) }
-    .onChange(of: session.outcome) { _, outcome in
-      guard let outcome else { return }
-      seed = setup.seed(elapsedS: outcome.elapsedS, endedEarly: outcome.endedEarly)
-    }
     .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
     .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
   }
@@ -77,7 +74,7 @@ struct TimerView: View {
 
   private var header: some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
-      Text(setup.recipeName.uppercased()).font(DS.Font.display).foregroundStyle(DS.ink)
+      Text(setup.recipeName.dsTitle).font(DS.Font.display).foregroundStyle(DS.ink)
         .dynamicTypeSize(...DS.displayCap)
         .accessibilityAddTraits(.isHeader)
       Text(
@@ -90,7 +87,57 @@ struct TimerView: View {
     }
   }
 
-  private var readout: some View {
+  @ViewBuilder private var readout: some View {
+    if DS.isBloom { bloomReadout } else { steelReadout }
+  }
+
+  /// Bloom: one large ring with a dot at each step change, the time in its centre,
+  /// and the live step's target set large beneath it.
+  private var bloomReadout: some View {
+    let total = Double(setup.plan.totalDurationS)
+    return VStack(spacing: DS.Space.lg) {
+      ZStack {
+        TimerRing(
+          fraction: total > 0 ? state.elapsedS / total : 0,
+          stepFractions: total > 0
+            ? setup.plan.steps.dropFirst().map { Double($0.startOffsetS) / total } : [])
+        VStack(spacing: 2) {
+          Text(RecipeFormat.clock(Int(state.elapsedS)))
+            .font(DS.Font.readout).foregroundStyle(DS.ink)
+            .minimumScaleFactor(0.5).lineLimit(1)
+            .dynamicTypeSize(...DS.readoutCap)
+            .accessibilityLabel("Elapsed time")
+            .accessibilityValue(RecipeFormat.spokenTime(Int(state.elapsedS)))
+            .accessibilityAddTraits(.updatesFrequently)
+            .accessibilityIdentifier("timer.elapsed")
+          Text("of \(RecipeFormat.clock(setup.plan.totalDurationS))")
+            .font(.subheadline).foregroundStyle(DS.ink2)
+        }
+        .padding(DS.Space.xxl)
+      }
+      .frame(width: 290, height: 290)
+      .frame(maxWidth: .infinity)
+      VStack(spacing: DS.Space.xs) {
+        Text(statusLine).font(.caption.weight(.semibold)).tracking(0.8).foregroundStyle(DS.signal)
+          .multilineTextAlignment(.center)
+          .accessibilityIdentifier("timer.status")
+        if let step = state.current {
+          Text(
+            step.targetCumulativeWaterG.map { "to \(RecipeFormat.weight($0, units))" } ?? step.label
+          )
+          .font(.system(size: 46, design: .serif)).foregroundStyle(DS.ink)
+          .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.6).lineLimit(1)
+          if !step.instruction.isEmpty {
+            Text(step.instruction).font(.body).foregroundStyle(DS.ink2)
+              .multilineTextAlignment(.center)
+          }
+        }
+      }
+      .frame(maxWidth: .infinity)
+    }
+  }
+
+  private var steelReadout: some View {
     let total = Double(setup.plan.totalDurationS)
     return InstrumentPanel {
       VStack(alignment: .leading, spacing: DS.Space.md) {
@@ -128,12 +175,25 @@ struct TimerView: View {
     }
   }
 
+  /// The finish is its own moment: what was reached against the target, then one
+  /// next step. Nothing moves on until the user taps it.
   private var finishedBanner: some View {
-    StateBanner(
-      kind: .info,
-      message: session.outcome?.endedEarly == true
-        ? "Brew ended at \(RecipeFormat.clock(Int(state.elapsedS))). Log it with the time reached."
-        : "Brew complete at \(RecipeFormat.clock(Int(state.elapsedS))). Log how it tasted.")
+    let early = session.outcome?.endedEarly == true
+    return VStack(alignment: .leading, spacing: DS.Space.xs) {
+      Text((early ? "Brew ended" : "Brew complete").dsTitle).font(DS.Font.display)
+        .foregroundStyle(DS.ink).dynamicTypeSize(...DS.displayCap)
+        .accessibilityAddTraits(.isHeader)
+      Text(
+        "\(RecipeFormat.clock(Int(state.elapsedS))) · target \(RecipeFormat.clock(setup.plan.totalDurationS)). "
+          + (early ? "Log it with the time reached." : "Taste it, then log how it was.")
+      )
+      .font(.body).foregroundStyle(DS.ink2)
+    }
+    .padding(DS.Space.lg)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(DS.crema.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.controlRadius))
+    .accessibilityElement(children: .combine)
+    .accessibilityIdentifier("timer.finished")
   }
 
   private var steps: some View {
@@ -200,7 +260,7 @@ struct TimerView: View {
     case .notStarted: "Start"
     case .running: "Pause"
     case .paused: "Resume"
-    case .finished: logged ? "Brew logged" : "Log this brew"
+    case .finished: logged ? "Brew logged" : "Taste and log"
     }
   }
 
