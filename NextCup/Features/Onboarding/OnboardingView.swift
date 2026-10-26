@@ -98,18 +98,26 @@ struct OnboardingView: View {
       title("What do you brew with?", "Pick the methods you use. The rest stay out of the way.")
       MethodChips()
       Menu {
-        Button("None") { grinder = "" }
-        Section("Popular grinders") {
-          ForEach(GrinderGuide.all) { guide in Button(guide.name) { grinder = guide.name } }
+        Button("None") {
+          grinder = ""
+          typesGrinder = false
         }
         Button("Other…") {
           grinder = ""
           typesGrinder = true
         }
+        Section("Popular grinders") {
+          ForEach(GrinderGuide.all) { guide in
+            Button(guide.name) {
+              grinder = guide.name
+              typesGrinder = false  // a listed grinder needs no typed name
+            }
+          }
+        }
       } label: {
         HStack {
-          Text(grinder.isEmpty ? "Grinder (optional)" : grinder)
-            .foregroundStyle(grinder.isEmpty ? DS.ink2 : DS.ink)
+          Text(typesGrinder ? "Other grinder" : (grinder.isEmpty ? "Grinder (optional)" : grinder))
+            .foregroundStyle(grinder.isEmpty && !typesGrinder ? DS.ink2 : DS.ink)
           Spacer()
           Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink2)
         }
