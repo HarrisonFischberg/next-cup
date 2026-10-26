@@ -342,12 +342,12 @@ struct PaperImportView: View {
     return VStack(alignment: .leading, spacing: DS.Space.xs) {
       if low {
         Label("CHECK: hard to read", systemImage: "exclamationmark.triangle.fill")
-          .font(DS.Font.label).foregroundStyle(DS.onKraft)
+          .font(DS.Font.label).foregroundStyle(DS.ink)
           .accessibilityIdentifier("import.flag.\(field.rawValue)")
       }
       content()
     }
-    .listRowBackground(low ? DS.kraft : DS.paper)
+    .listRowBackground(low ? DS.signal.opacity(0.08) : DS.paper)
     .accessibilityElement(children: .contain)
   }
 

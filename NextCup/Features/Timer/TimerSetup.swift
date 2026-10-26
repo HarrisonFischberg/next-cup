@@ -44,19 +44,28 @@ enum TimerPlanBuilder {
   static func setup(for recipe: Recipe, doseG: Double) throws -> TimerSetup {
     let scaled = try RecipeScaler.scale(recipe.scalable, toDose: doseG).recipe
     let steps = recipe.orderedSteps
+    let factor = recipe.timingFactor(doseG: doseG)
     let timerSteps = steps.enumerated().map { index, step in
       TimerStep(
         order: index, label: RecipeFormat.title(step.kind), instruction: step.instruction,
-        startOffsetS: step.startOffsetS,
+        startOffsetS: RecipeTiming.scaled(step.startOffsetS, by: factor),
         targetCumulativeWaterG: index < scaled.steps.count
           ? scaled.steps[index].targetCumulativeWaterG : nil)
     }
     let lastOffset = timerSteps.map(\.startOffsetS).max() ?? 0
-    let declared = recipe.totalTimeS ?? 0
+    let declared = RecipeTiming.scaled(recipe.totalTimeS ?? 0, by: factor)
     let total = declared > lastOffset ? declared : lastOffset + tailS
     let plan = try TimerPlan(steps: timerSteps, totalDurationS: total)
     return TimerSetup(
       plan: plan, recipeID: recipe.id, recipeName: recipe.name, methodName: recipe.method?.name,
       tempC: recipe.tempC, scaled: scaled, stepTitles: timerSteps.map(\.label))
+  }
+}
+
+extension Recipe {
+  /// Pour-over times stretch gently with the dose; steeps, espresso and cold brew keep theirs.
+  func timingFactor(doseG: Double) -> Double {
+    RecipeTiming.factor(
+      isPourOver: method?.style == .pourOver, recipeDoseG: self.doseG, doseG: doseG)
   }
 }

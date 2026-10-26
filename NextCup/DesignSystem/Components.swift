@@ -251,13 +251,23 @@ struct StepperTile: View {
   let up: () -> Void
   var minusLabel: String?
   var plusLabel: String?
+  /// When set, the value is a field the user can tap and type into.
+  var text: Binding<String>?
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       VStack(alignment: .leading, spacing: 2) {
         Text(title.uppercased()).font(DS.Font.label).foregroundStyle(DS.ink2)
         HStack(alignment: .firstTextBaseline, spacing: DS.Space.xs) {
-          Text(value).font(DS.Font.dataLarge).minimumScaleFactor(0.6).lineLimit(1)
+          if let text {
+            TextField(title, text: text).font(DS.Font.dataLarge).keyboardType(.decimalPad)
+              .fixedSize().accessibilityLabel(title).accessibilityHint("Type a value")
+              .accessibilityIdentifier("stepper.\(title.lowercased()).value")
+            Image(systemName: "pencil").font(.footnote).foregroundStyle(DS.ink2)
+              .accessibilityHidden(true)
+          } else {
+            Text(value).font(DS.Font.dataLarge).minimumScaleFactor(0.6).lineLimit(1)
+          }
           Text(unit).font(DS.Font.mono(.callout))
         }
         .foregroundStyle(DS.ink)
@@ -398,7 +408,7 @@ struct KraftNote<Content: View>: View {
   var body: some View {
     content
       .padding(DS.Space.md).frame(maxWidth: .infinity, alignment: .leading)
-      .panel(DS.kraft, dash: [5, 3])
+      .panel(DS.paper, dash: [5, 3])
   }
 }
 

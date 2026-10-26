@@ -263,7 +263,7 @@ struct TasteView: View {
                 .foregroundStyle(on ? DS.signal : DS.line)
             }
             .padding(.horizontal, DS.Space.lg).frame(minHeight: 64).contentShape(Rectangle())
-            .background(on ? DS.kraft : .clear)
+            .background(on ? DS.signal.opacity(0.08) : .clear)
           }
           .buttonStyle(.plain)
           .accessibilityAddTraits(on ? .isSelected : [])
