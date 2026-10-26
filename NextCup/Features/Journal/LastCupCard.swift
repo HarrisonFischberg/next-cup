@@ -46,7 +46,7 @@ struct LastCupCard: View {
         }
       }
       .padding(DS.Space.lg)
-      .background(DS.paper, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+      .panel(DS.paper)
 
       HStack(spacing: DS.Space.sm) {
         Button(action: brewAgain) {

@@ -186,6 +186,10 @@ final class NextCupUITests: XCTestCase {
     }
 
     app.tabBars.buttons["Brew"].tap()
+
+    // Brew types open their styles; Balanced cone is a Cone dripper style.
+
+    app.descendants(matching: .any)["brew.method.Cone dripper"].firstMatch.tap()
     let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'"))
       .firstMatch
     XCTAssertTrue(row.waitForExistence(timeout: 5))
@@ -228,6 +232,8 @@ final class NextCupUITests: XCTestCase {
     app.launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
     app.tabBars.buttons["Brew"].tap()
+    // Brew types open their styles; Balanced cone is a Cone dripper style.
+    app.descendants(matching: .any)["brew.method.Cone dripper"].firstMatch.tap()
     let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'"))
       .firstMatch
     XCTAssertTrue(row.waitForExistence(timeout: 5))
@@ -423,6 +429,46 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
     app.buttons["Done"].tap()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 5))
+  }
+
+  /// Writes the Brew flow (types, styles, start brew steps) and onboarding step 1 in the
+  /// default style, light and dark. Runs only while `ralph/screenshots/.capture` exists.
+  @MainActor
+  func testCaptureBrewStylesScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    defer { XCUIDevice.shared.appearance = .light }
+    for (name, appearance) in [("light", XCUIDevice.Appearance.light), ("dark", .dark)] {
+      XCUIDevice.shared.appearance = appearance
+      let app = XCUIApplication()
+      app.launchArguments = ["-inMemoryStore", "-resetNavigationState", "-resetDraft"]
+      app.launch()
+      XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+      app.tabBars.buttons["Brew"].tap()
+      let cone = element(app, "brew.method.Cone dripper")
+      XCTAssertTrue(cone.waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/brew-types-\(name).png")
+      cone.tap()
+      XCTAssertTrue(app.staticTexts["Pick a style"].waitForExistence(timeout: 5))
+      try save(app.screenshot(), "\(folderURL.path)/brew-styles-\(name).png")
+      app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'")).firstMatch
+        .tap()
+      XCTAssertTrue(element(app, "recipe.water").waitForExistence(timeout: 5))
+      scrollUntilHittable(element(app, "recipe.step.0"), in: app)
+      app.swipeUp()
+      try save(app.screenshot(), "\(folderURL.path)/brew-start-steps-\(name).png")
+      app.terminate()
+
+      app.launchArguments += ["-showOnboarding"]
+      app.launch()
+      _ = app.staticTexts["Switchable immersion dripper"].waitForExistence(timeout: 10)
+      try save(app.screenshot(), "\(folderURL.path)/onboarding-methods-\(name).png")
+      app.terminate()
+    }
   }
 
   /// The daily loop: a brew saved untasted waits on the journal; tasting it
@@ -639,6 +685,8 @@ final class NextCupUITests: XCTestCase {
     let app = launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
     app.tabBars.buttons["Brew"].tap()
+    // Brew types open their styles; Balanced cone is a Cone dripper style.
+    app.descendants(matching: .any)["brew.method.Cone dripper"].firstMatch.tap()
     let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'"))
       .firstMatch
     XCTAssertTrue(row.waitForExistence(timeout: 5))
@@ -1004,6 +1052,7 @@ final class NextCupUITests: XCTestCase {
       XCTAssertTrue(app.staticTexts["POUR OVER"].waitForExistence(timeout: 5))
       try save(app.screenshot(), "\(folder)/recipes-library-\(variant.name).png")
 
+      element(app, "brew.method.Cone dripper").tap()
       app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'")).firstMatch
         .tap()
       XCTAssertTrue(element(app, "recipe.water").waitForExistence(timeout: 5))

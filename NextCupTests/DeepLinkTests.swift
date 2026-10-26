@@ -76,4 +76,11 @@ struct DeepLinkTests {
     #expect(AppTab.allCases.map(\.title) == ["Brew", "Journal", "Beans", "Explore"])
     #expect(AppTab.allCases.allSatisfy { !$0.symbol.isEmpty })
   }
+
+  @Test func methodLinkOpensItsStylesOnTheBrewTab() {
+    let link = DeepLink.method(id)
+    #expect(DeepLink(url: link.url) == link)
+    #expect(link.url.absoluteString == "nextcup://method/\(id.uuidString)")
+    #expect(link.tab == .recipes)
+  }
 }
