@@ -1,0 +1,15 @@
+{
+  "_about": "Quiet Ceramic. Source of truth for the quietCeramic palette in NextCup/DesignSystem/Tokens.swift (design/check_tokens.py). Contrast: python3 design/contrast.py and StyleTests",
+  "light": {
+    "bg": "#F6F1E7", "paper": "#ECE4D3", "steel": "#33403A", "on-steel": "#F6F1E7",
+    "ink": "#3B2E25", "ink-2": "#6B5B4E", "line": "#6B5B4E", "signal": "#44695A",
+    "on-signal": "#F6F1E7", "signal-on-steel": "#9DBFAE", "kraft": "#D3C8B3",
+    "on-kraft": "#3B2E25", "error": "#9B3B2A", "ok": "#2A6A2A"
+  },
+  "dark": {
+    "bg": "#1F1A16", "paper": "#2A241E", "steel": "#2F3A34", "on-steel": "#EFE7D8",
+    "ink": "#EFE7D8", "ink-2": "#B8AC9C", "line": "#8F8374", "signal": "#9DBFAE",
+    "on-signal": "#1F1A16", "signal-on-steel": "#9DBFAE", "kraft": "#D3C8B3",
+    "on-kraft": "#3B2E25", "error": "#EE9A86", "ok": "#7FD18A"
+  }
+}

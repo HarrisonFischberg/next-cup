@@ -15,7 +15,6 @@ struct BeanLibraryView: View {
   @Query(sort: \Bean.createdAt, order: .reverse) private var beans: [Bean]
   @State private var search = ""
   @State private var editor: BeanEditorTarget?
-  @State private var showsRoasters = false
   @State private var pendingDelete: UUID?
   @State private var deleteTimer: Task<Void, Never>?
   @State private var error: String?
@@ -69,15 +68,6 @@ struct BeanLibraryView: View {
     .safeAreaInset(edge: .top, spacing: 0) { if !library.isEmpty { filterBar } }
     .safeAreaInset(edge: .bottom, spacing: 0) { toast }
     .toolbar {
-      ToolbarItem(placement: .topBarLeading) {
-        Button {
-          showsRoasters = true
-        } label: {
-          Image(systemName: "map")
-        }
-        .accessibilityLabel("Find roasters")
-        .accessibilityIdentifier("beans.roasters")
-      }
       ToolbarItem(placement: .primaryAction) {
         Button {
           editor = .new
@@ -90,9 +80,6 @@ struct BeanLibraryView: View {
     }
     .sheet(item: $editor) { target in
       BeanEditorView(target: target) { editor = nil }
-    }
-    .sheet(isPresented: $showsRoasters) {
-      RoasterDiscoveryView { showsRoasters = false }
     }
     .navigationTitle("Beans")
     .navigationBarTitleDisplayMode(.inline)
@@ -277,7 +264,7 @@ private struct BeanRow: View {
   var body: some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
       HStack(alignment: .firstTextBaseline, spacing: DS.Space.sm) {
-        Text(bean.name.uppercased()).font(DS.Font.headline).foregroundStyle(DS.ink)
+        Text(bean.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
         if bean.isDecaf { Tag(text: "Decaf") }
         Spacer(minLength: DS.Space.sm)
         if let grade = bean.ratingHalfSteps, grade > 0 { GradeBadge(halfSteps: grade) }

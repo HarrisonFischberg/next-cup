@@ -11,6 +11,32 @@ struct Hairline: View {
   var body: some View { Rectangle().fill(DS.line).frame(height: DS.rule) }
 }
 
+/// A filled, bordered surface in the flavor's corner radius. Sticker flavors add a hard
+/// offset shadow in the accent (no blur), so the border and shadow carry state without color alone.
+private struct Panel: ViewModifier {
+  let fill: Color
+  var border = DS.line
+  var dash: [CGFloat] = []
+
+  func body(content: Content) -> some View {
+    let shape = RoundedRectangle(cornerRadius: DS.radius, style: .continuous)
+    content
+      .background(fill, in: shape)
+      .overlay(
+        shape.strokeBorder(border, style: StrokeStyle(lineWidth: DS.rule, dash: dash))
+      )
+      .background {
+        if DS.flavor.control == .sticker { shape.fill(DS.signal).offset(x: 3, y: 3) }
+      }
+  }
+}
+
+extension View {
+  func panel(_ fill: Color, border: Color = DS.line, dash: [CGFloat] = []) -> some View {
+    modifier(Panel(fill: fill, border: border, dash: dash))
+  }
+}
+
 // MARK: Buttons
 
 enum SteelKind { case primary, secondary }
@@ -22,10 +48,16 @@ struct SteelButtonStyle: ButtonStyle {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   func makeBody(configuration: Configuration) -> some View {
+    let shape = RoundedRectangle(cornerRadius: DS.controlRadius, style: .continuous)
     configuration.label
-      .foregroundStyle(kind == .primary ? DS.onSignal : DS.onSteel)
-      .background(kind == .primary ? DS.signal : DS.steel, in: .rect(cornerRadius: DS.radius))
-      .overlay(RoundedRectangle(cornerRadius: DS.radius).strokeBorder(DS.line, lineWidth: DS.rule))
+      .foregroundStyle(kind == .primary ? DS.onSignal : (DS.isBloom ? DS.ink : DS.onSteel))
+      .background(kind == .primary ? DS.signal : (DS.isBloom ? .clear : DS.steel), in: shape)
+      .overlay(shape.strokeBorder(DS.line, lineWidth: DS.isBloom ? 1 : DS.rule))
+      .background {
+        if DS.flavor.control == .sticker {
+          shape.fill(kind == .primary ? DS.line : DS.signal).offset(x: 3, y: 3)
+        }
+      }
       .offset(y: configuration.isPressed && !reduceMotion ? 2 : 0)
       .brightness(configuration.isPressed && reduceMotion ? -0.08 : 0)
       .opacity(enabled ? 1 : 0.4)
@@ -44,7 +76,7 @@ struct SteelButton: View {
     Button(action: action) {
       HStack(spacing: DS.Space.sm) {
         if isLoading { ProgressView().tint(kind == .primary ? DS.onSignal : DS.onSteel) }
-        Text(title.uppercased()).font(DS.Font.din(kind == .primary ? 26 : 22, relativeTo: .title2))
+        Text(title.dsTitle).font(DS.Font.din(kind == .primary ? 26 : 22, relativeTo: .title2))
           .tracking(1)
       }
       .dynamicTypeSize(...DS.displayCap)
@@ -79,9 +111,7 @@ struct SpecCell: View {
 struct PaperBox<Content: View>: View {
   @ViewBuilder let content: Content
   var body: some View {
-    content
-      .background(DS.paper, ignoresSafeAreaEdges: [])
-      .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+    content.panel(DS.paper)
   }
 }
 
@@ -97,9 +127,9 @@ struct ColumnHeader: View {
       Spacer()
       Text(trailing)
     }
-    .font(DS.Font.label).textCase(.uppercase).foregroundStyle(DS.onSteel)
+    .font(DS.Font.label).textCase(.uppercase).foregroundStyle(DS.isBloom ? DS.ink2 : DS.onSteel)
     .padding(.horizontal, DS.Space.md).frame(minHeight: 32)
-    .background(DS.steel, ignoresSafeAreaEdges: [])
+    .background(DS.isBloom ? .clear : DS.steel, ignoresSafeAreaEdges: [])
     .accessibilityHidden(true)
   }
 }
@@ -126,7 +156,7 @@ struct OperationRow: View {
     layout {
       Text(time).font(DS.Font.data).fixedSize().frame(minWidth: 52, alignment: .leading)
       VStack(alignment: .leading, spacing: 2) {
-        Text(name.uppercased()).font(DS.Font.din(live ? 26 : 20, relativeTo: .title3))
+        Text(name.dsTitle).font(DS.Font.din(live ? 26 : 20, relativeTo: .title3))
         if let instruction, live || showsInstruction {
           Text(instruction).font(live ? .subheadline : .footnote)
             .foregroundStyle(live ? DS.onSignal : DS.ink2)
@@ -155,8 +185,7 @@ struct InstrumentPanel<Content: View>: View {
   var body: some View {
     content
       .padding(DS.Space.lg)
-      .background(DS.steel, ignoresSafeAreaEdges: [])
-      .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+      .panel(DS.steel)
   }
 }
 
@@ -209,8 +238,7 @@ struct StepperTile: View {
         stepButton("plus", label: plusLabel ?? "Increase \(title)", action: up)
       }
     }
-    .background(DS.paper, ignoresSafeAreaEdges: [])
-    .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+    .panel(DS.paper)
     .accessibilityElement(children: .contain)
   }
 
@@ -240,9 +268,7 @@ struct ReadoutTile: View {
       ).lineLimit(1)
     }
     .padding(DS.Space.md).frame(maxWidth: .infinity, alignment: .leading)
-    .overlay(
-      Rectangle().strokeBorder(DS.line, style: StrokeStyle(lineWidth: DS.rule, dash: [5, 3]))
-    )
+    .panel(.clear, dash: [5, 3])
     .accessibilityElement(children: .combine)
   }
 }
@@ -254,12 +280,11 @@ struct ChoiceButton: View {
   let action: () -> Void
   var body: some View {
     Button(action: action) {
-      Text(title.uppercased()).font(DS.Font.din(20, relativeTo: .headline))
+      Text(title.dsTitle).font(DS.Font.din(20, relativeTo: .headline))
         .lineLimit(1).minimumScaleFactor(0.6)
         .frame(maxWidth: .infinity, minHeight: DS.Size.control)
         .foregroundStyle(isSelected ? DS.onSignal : DS.ink)
-        .background(isSelected ? DS.signal : DS.paper, ignoresSafeAreaEdges: [])
-        .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+        .panel(isSelected ? DS.signal : DS.paper)
     }
     .accessibilityLabel(title)
     .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -320,9 +345,11 @@ struct GradeBadge: View {
         ? "—"
         : (halfSteps % 2 == 0 ? "\(halfSteps / 2)" : String(format: "%.1f", Double(halfSteps) / 2))
     )
-    .font(DS.Font.mono(.title3, .bold)).foregroundStyle(DS.onSignal)
+    .font(DS.isBloom ? .system(.title2, design: .serif) : DS.Font.mono(.title3, .bold))
+    .foregroundStyle(DS.isBloom ? DS.ink : DS.onSignal)
     .fixedSize().padding(.horizontal, DS.Space.sm)
-    .frame(minWidth: DS.Size.minTap, minHeight: 32).background(DS.signal, ignoresSafeAreaEdges: [])
+    .frame(minWidth: DS.Size.minTap, minHeight: 32)
+    .background(DS.isBloom ? .clear : DS.signal, ignoresSafeAreaEdges: [])
     .accessibilityLabel(halfSteps == 0 ? "Unrated" : "Grade \(Double(halfSteps) / 2) of 5")
   }
 }
@@ -335,9 +362,7 @@ struct KraftNote<Content: View>: View {
   var body: some View {
     content
       .padding(DS.Space.md).frame(maxWidth: .infinity, alignment: .leading)
-      .background(DS.kraft, ignoresSafeAreaEdges: [])
-      .overlay(
-        Rectangle().strokeBorder(DS.line, style: StrokeStyle(lineWidth: DS.rule, dash: [5, 3])))
+      .panel(DS.kraft, dash: [5, 3])
   }
 }
 
@@ -357,7 +382,7 @@ struct SteelToast: View {
     layout {
       Text(message).font(.subheadline.weight(.semibold)).lineLimit(dts.isAccessibilitySize ? 4 : 2)
       if !dts.isAccessibilitySize { Spacer(minLength: DS.Space.sm) }
-      Button(actionTitle.uppercased(), action: action)
+      Button(actionTitle.dsTitle, action: action)
         .font(DS.Font.din(20, relativeTo: .headline)).foregroundStyle(DS.signalOnSteel)
         .frame(minWidth: DS.Size.minTap, minHeight: DS.Size.minTap)
     }
@@ -365,8 +390,7 @@ struct SteelToast: View {
     .foregroundStyle(DS.onSteel)
     .padding(.horizontal, DS.Space.lg)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(DS.steel, ignoresSafeAreaEdges: [])
-    .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+    .panel(DS.steel)
     // `.contain`, not `.combine`: Undo must stay its own control for VoiceOver.
     .accessibilityElement(children: .contain)
   }
@@ -402,14 +426,13 @@ struct StateBanner: View {
     }
     .padding(DS.Space.md)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(DS.paper, ignoresSafeAreaEdges: [])
-    .overlay(Rectangle().strokeBorder(kind == .error ? DS.error : DS.line, lineWidth: DS.rule))
+    .panel(DS.paper, border: kind == .error ? DS.error : DS.line)
     .accessibilityElement(children: .combine)
   }
 
   @ViewBuilder private var actionButton: some View {
     if let actionTitle, let action {
-      Button(actionTitle.uppercased(), action: action)
+      Button(actionTitle.dsTitle, action: action)
         .font(DS.Font.din(18, relativeTo: .headline)).foregroundStyle(DS.ink)
         .frame(minWidth: DS.Size.minTap, minHeight: DS.Size.minTap)
     }
@@ -424,7 +447,7 @@ struct EmptyState: View {
   var action: (() -> Void)?
   var body: some View {
     VStack(alignment: .leading, spacing: DS.Space.md) {
-      Text(title.uppercased()).font(DS.Font.display).foregroundStyle(DS.ink)
+      Text(title.dsTitle).font(DS.Font.display).foregroundStyle(DS.ink)
       Text(message).font(.body).foregroundStyle(DS.ink2)
       if let actionTitle, let action { SteelButton(title: actionTitle, action: action) }
     }

@@ -73,6 +73,24 @@ struct BlendAndFreezerTests {
     #expect(Set(brew.beanNames) == ["Ethiopia", "Brazil"])
   }
 
+  @Test func aHigherGradeThanEveryEarlierBrewOfTheBeanIsANewBest() throws {
+    let harness = try Harness()
+    let bean = try harness.bean("Guji")
+    func brew(_ grade: Int) -> BrewFormModel {
+      let model = harness.model()
+      model.draft.doseG = 15
+      model.draft.waterG = 250
+      model.draft.ratingHalfSteps = grade
+      model.addBean(bean)
+      _ = model.save()
+      return model
+    }
+    #expect(brew(14).newBest == nil, "a first brew has nothing to beat")
+    let better = try #require(brew(17).newBest)
+    #expect(better.bean == "Guji" && better.halfSteps == 17 && better.previous == 14)
+    #expect(brew(12).newBest == nil)
+  }
+
   @Test func aSingleBeanTakesTheWholeDose() throws {
     let harness = try Harness()
     let bean = try harness.bean("Solo")

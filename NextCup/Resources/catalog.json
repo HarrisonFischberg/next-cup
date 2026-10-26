@@ -1,0 +1,247 @@
+{
+ "version": 1,
+ "checkedOn": "2026-10-25",
+ "note": "Facts from each roaster's public shop page on the checked-on date. Line-ups change. Recipes are Next Cup's starting points, not the roaster's.",
+ "roasters": [
+  {
+   "key": "huckleberry",
+   "name": "Huckleberry Roasters",
+   "city": "Denver",
+   "region": "Colorado",
+   "country": "United States",
+   "website": "https://www.huckleberryroasters.com",
+   "kind": "specialty",
+   "coffees": [
+    {
+     "key": "huck-kenya-rukira",
+     "name": "Kenya Rukira",
+     "originCountry": "Kenya",
+     "isBlend": false,
+     "isDecaf": false,
+     "source": "https://www.huckleberryroasters.com/shop"
+    },
+    {
+     "key": "huck-ethiopia-haro-beddame",
+     "name": "Ethiopia Haro Beddame Natural",
+     "originCountry": "Ethiopia",
+     "process": "natural",
+     "isBlend": false,
+     "isDecaf": false,
+     "source": "https://www.huckleberryroasters.com/shop"
+    },
+    {
+     "key": "huck-phantom-limb",
+     "name": "Phantom Limb Blend",
+     "isBlend": true,
+     "isDecaf": false,
+     "source": "https://www.huckleberryroasters.com/shop"
+    },
+    {
+     "key": "huck-bom-senso",
+     "name": "Bom Senso Dark Roast",
+     "roastLevel": "dark",
+     "isBlend": false,
+     "isDecaf": false,
+     "source": "https://www.huckleberryroasters.com/shop"
+    },
+    {
+     "key": "huck-skeleton-key",
+     "name": "Skeleton Key Decaf",
+     "isBlend": false,
+     "isDecaf": true,
+     "source": "https://www.huckleberryroasters.com/shop"
+    }
+   ]
+  },
+  {
+   "key": "onyx",
+   "name": "Onyx Coffee Lab",
+   "city": "Rogers",
+   "region": "Arkansas",
+   "country": "United States",
+   "website": "https://onyxcoffeelab.com",
+   "kind": "specialty",
+   "coffees": [
+    {
+     "key": "onyx-geometry",
+     "name": "Geometry",
+     "roastLevel": "light",
+     "isBlend": true,
+     "isDecaf": false,
+     "flavorNotes": [
+      "berries",
+      "stone fruit",
+      "earl grey",
+      "honeysuckle"
+     ],
+     "source": "https://onyxcoffeelab.com/collections/coffee"
+    },
+    {
+     "key": "onyx-southern-weather",
+     "name": "Southern Weather",
+     "roastLevel": "medium",
+     "isBlend": true,
+     "isDecaf": false,
+     "flavorNotes": [
+      "milk chocolate",
+      "plum",
+      "candied walnuts",
+      "citrus"
+     ],
+     "source": "https://onyxcoffeelab.com/collections/coffee"
+    },
+    {
+     "key": "onyx-monarch",
+     "name": "Monarch",
+     "roastLevel": "dark",
+     "isBlend": true,
+     "isDecaf": false,
+     "flavorNotes": [
+      "dark chocolate",
+      "molasses",
+      "red wine",
+      "dried berries"
+     ],
+     "source": "https://onyxcoffeelab.com/collections/coffee"
+    },
+    {
+     "key": "onyx-colombia-aponte-honey",
+     "name": "Colombia Aponte Village Honey",
+     "originCountry": "Colombia",
+     "process": "honey",
+     "roastLevel": "light",
+     "isBlend": false,
+     "isDecaf": false,
+     "flavorNotes": [
+      "apple",
+      "cherry",
+      "vanilla",
+      "papaya"
+     ],
+     "source": "https://onyxcoffeelab.com/collections/coffee"
+    }
+   ]
+  },
+  {
+   "key": "counter-culture",
+   "name": "Counter Culture Coffee",
+   "city": "Durham",
+   "region": "North Carolina",
+   "country": "United States",
+   "website": "https://counterculturecoffee.com",
+   "kind": "specialty",
+   "coffees": [
+    {
+     "key": "cc-idido",
+     "name": "Idido",
+     "originCountry": "Ethiopia",
+     "region": "Yirgacheffe",
+     "roastLevel": "light",
+     "isBlend": false,
+     "isDecaf": false,
+     "flavorNotes": [
+      "floral",
+      "melon",
+      "citrus"
+     ],
+     "source": "https://counterculturecoffee.com/collections/coffee"
+    },
+    {
+     "key": "cc-el-puente-honey",
+     "name": "Finca El Puente - Honey Processed",
+     "originCountry": "Honduras",
+     "region": "Marcala",
+     "process": "honey",
+     "roastLevel": "light",
+     "isBlend": false,
+     "isDecaf": false,
+     "flavorNotes": [
+      "blackberry",
+      "chocolate",
+      "apricot"
+     ],
+     "source": "https://counterculturecoffee.com/collections/coffee"
+    },
+    {
+     "key": "cc-hologram",
+     "name": "Hologram",
+     "roastLevel": "medium",
+     "isBlend": true,
+     "isDecaf": false,
+     "flavorNotes": [
+      "fruity",
+      "milk chocolate",
+      "syrupy"
+     ],
+     "source": "https://counterculturecoffee.com/collections/coffee"
+    },
+    {
+     "key": "cc-big-trouble",
+     "name": "Big Trouble",
+     "roastLevel": "mediumDark",
+     "isBlend": true,
+     "isDecaf": false,
+     "flavorNotes": [
+      "caramel",
+      "nutty"
+     ],
+     "source": "https://counterculturecoffee.com/collections/coffee"
+    }
+   ]
+  },
+  {
+   "key": "peets",
+   "name": "Peet's Coffee",
+   "city": "Emeryville",
+   "region": "California",
+   "country": "United States",
+   "website": "https://www.peets.com",
+   "kind": "supermarket",
+   "coffees": [
+    {
+     "key": "peets-major-dickasons",
+     "name": "Major Dickason's Blend",
+     "roastLevel": "dark",
+     "isBlend": true,
+     "isDecaf": false
+    }
+   ]
+  },
+  {
+   "key": "starbucks",
+   "name": "Starbucks",
+   "city": "Seattle",
+   "region": "Washington",
+   "country": "United States",
+   "website": "https://www.starbucks.com",
+   "kind": "supermarket",
+   "coffees": [
+    {
+     "key": "sbux-pike-place",
+     "name": "Pike Place Roast",
+     "roastLevel": "medium",
+     "isBlend": true,
+     "isDecaf": false
+    }
+   ]
+  },
+  {
+   "key": "lavazza",
+   "name": "Lavazza",
+   "city": "Turin",
+   "region": "Piedmont",
+   "country": "Italy",
+   "website": "https://www.lavazza.com",
+   "kind": "supermarket",
+   "coffees": [
+    {
+     "key": "lavazza-super-crema",
+     "name": "Super Crema",
+     "roastLevel": "medium",
+     "isBlend": true,
+     "isDecaf": false
+    }
+   ]
+  }
+ ]
+}

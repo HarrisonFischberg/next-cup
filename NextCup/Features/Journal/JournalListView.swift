@@ -12,7 +12,6 @@ struct JournalListView: View {
 
   @Environment(\.modelContext) private var context
   @Environment(\.scenePhase) private var scenePhase
-  @Environment(\.dynamicTypeSize) private var dts
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Query(sort: \Brew.date, order: .reverse) private var brews: [Brew]
   @Query(sort: \BrewMethod.sortOrder) private var methods: [BrewMethod]
@@ -24,6 +23,7 @@ struct JournalListView: View {
   @AppStorage(JournalStorage.methodKey) private var methodFilter = ""
   @AppStorage(JournalStorage.beanKey) private var beanFilter = ""
   @AppStorage(JournalStorage.sortKey) private var sortChoice = JournalSort.newest.rawValue
+  @AppStorage(GettingStartedCard.dismissedKey) private var gettingStartedDismissed = false
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -57,10 +57,15 @@ struct JournalListView: View {
     Group {
       if logged.isEmpty {
         ScrollView {
-          EmptyState(
-            title: "No brews yet",
-            message: "Log a brew and it will be listed here, newest first.",
-            actionTitle: "Log a brew", action: { router.open(.newBrew) })
+          if gettingStartedDismissed {
+            EmptyState(
+              title: "No brews yet",
+              message: "Log a brew and it will be listed here, newest first.",
+              actionTitle: "Log a brew", action: { router.open(.newBrew) })
+          } else {
+            GettingStartedCard(
+              logBrew: { router.open(.newBrew) }, importPage: { showImport = true })
+          }
         }
       } else if shown.isEmpty {
         ScrollView {
@@ -73,28 +78,38 @@ struct JournalListView: View {
       }
     }
     .background(DS.bg)
-    .searchable(text: $search, prompt: "Search brews")
+    .searchable(
+      text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search brews"
+    )
     .safeAreaInset(edge: .top, spacing: 0) { if !logged.isEmpty { filterBar } }
     .safeAreaInset(edge: .bottom, spacing: 0) { toast }
     .toolbar {
       ToolbarItem(placement: .topBarLeading) {
         Button {
-          showImport = true
+          router.journalPath.append(.settings)
         } label: {
-          Image(systemName: "doc.text.viewfinder")
+          Image(systemName: "gearshape")
         }
-        .accessibilityLabel("Import a journal page")
-        .accessibilityIdentifier("journal.import")
+        .accessibilityLabel("Settings")
+        .accessibilityIdentifier("journal.settings")
       }
-      if !logged.isEmpty {
-        ToolbarItem(placement: .primaryAction) {
-          Button {
-            router.open(.newBrew)
-          } label: {
-            Image(systemName: "plus")
+      ToolbarItem(placement: .primaryAction) {
+        // A tap logs a brew at once; holding opens the other ways to add one.
+        Menu {
+          Button("Log a brew", systemImage: "plus") { router.open(.newBrew) }
+          Button("Import a journal page", systemImage: "doc.text.viewfinder") {
+            showImport = true
           }
-          .accessibilityLabel("Log a brew")
+          .accessibilityIdentifier("journal.import.menu")
+        } label: {
+          Image(systemName: "plus")
+        } primaryAction: {
+          router.open(.newBrew)
         }
+        .accessibilityLabel("Log a brew")
+        .accessibilityHint("Hold for more ways to add a brew")
+        .accessibilityAction(named: "Import a journal page") { showImport = true }
+        .accessibilityIdentifier("journal.add")
       }
     }
     .navigationTitle("Journal")
@@ -122,6 +137,22 @@ struct JournalListView: View {
         .accessibilityIdentifier("journal.error")
         .listRowInsets(EdgeInsets())
         .listRowBackground(DS.bg)
+      }
+      if let last = logged.first, TodayCard.applies(to: last) {
+        TodayCard(brew: last) { router.open(.taste(last.id)) }
+          .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.sm)
+          .listRowInsets(EdgeInsets())
+          .listRowBackground(DS.bg)
+          .listRowSeparator(.hidden)
+      }
+      if DS.isBloom, let last = logged.first, !TodayCard.applies(to: last) {
+        LastCupCard(
+          brew: last, brewedDays: LastCupCard.brewedDays(logged),
+          brewAgain: { brewAgain(last) }, quickLog: { router.open(.newBrew) }
+        )
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(DS.bg)
+        .listRowSeparator(.hidden)
       }
       ForEach(shown) { brew in
         NavigationLink(value: DeepLink.brew(brew.id)) {
@@ -174,59 +205,69 @@ struct JournalListView: View {
 
   // MARK: Filter bar
 
+  /// One quiet Filter button instead of three pinned menus; it names how many
+  /// filters are on so a filtered list never looks like missing brews.
   private var filterBar: some View {
-    let layout =
-      dts.isAccessibilitySize
-      ? AnyLayout(VStackLayout(alignment: .leading, spacing: DS.Space.sm))
-      : AnyLayout(HStackLayout(spacing: DS.Space.sm))
     let active = filter
-    return layout {
-      FilterMenu(
-        title: "Method",
-        value: methods.first { $0.id == active.methodID }?.name ?? "All"
-      ) {
-        Button("All methods") { methodFilter = "" }
-        ForEach(methods.filter { !$0.isHidden || $0.id == active.methodID }) { method in
-          Button {
-            methodFilter = method.id.uuidString
-          } label: {
-            if method.id == active.methodID {
-              Label(method.name, systemImage: "checkmark")
-            } else {
-              Text(method.name)
-            }
-          }
-        }
-      }
-      .accessibilityIdentifier("journal.filter.method")
-      if !beanNames.isEmpty {
-        FilterMenu(title: "Bean", value: active.beanName ?? "All") {
-          Button("All beans") { beanFilter = "" }
-          ForEach(beanNames, id: \.self) { name in
+    let count = (active.methodID == nil ? 0 : 1) + (active.beanName == nil ? 0 : 1)
+    return HStack {
+      Menu {
+        Menu("Method") {
+          Button("All methods") { methodFilter = "" }
+          ForEach(methods.filter { !$0.isHidden || $0.id == active.methodID }) { method in
             Button {
-              beanFilter = name
+              methodFilter = method.id.uuidString
             } label: {
-              if name == active.beanName {
-                Label(name, systemImage: "checkmark")
+              if method.id == active.methodID {
+                Label(method.name, systemImage: "checkmark")
               } else {
-                Text(name)
+                Text(method.name)
               }
             }
           }
         }
-        .accessibilityIdentifier("journal.filter.bean")
-      }
-      FilterMenu(title: "Order", value: active.sort.title) {
+        .accessibilityIdentifier("journal.filter.method")
+        if !beanNames.isEmpty {
+          Menu("Bean") {
+            Button("All beans") { beanFilter = "" }
+            ForEach(beanNames, id: \.self) { name in
+              Button {
+                beanFilter = name
+              } label: {
+                if name == active.beanName {
+                  Label(name, systemImage: "checkmark")
+                } else {
+                  Text(name)
+                }
+              }
+            }
+          }
+          .accessibilityIdentifier("journal.filter.bean")
+        }
         Picker("Order", selection: $sortChoice) {
           ForEach(JournalSort.allCases) { Text($0.title).tag($0.rawValue) }
         }
+        .accessibilityIdentifier("journal.filter.order")
+        if count > 0 {
+          Button("Clear filters", systemImage: "xmark.circle", action: clearFilters)
+        }
+      } label: {
+        Label(
+          count > 0 ? "Filter · \(count) on" : "Filter · \(active.sort.title)",
+          systemImage: "line.3.horizontal.decrease"
+        )
+        .font(.subheadline.weight(.semibold)).foregroundStyle(count > 0 ? DS.ink : DS.ink2)
+        .padding(.horizontal, DS.Space.md)
+        .frame(minHeight: DS.Size.minTap)
+        .overlay(Capsule().strokeBorder(DS.line, lineWidth: 1))
       }
-      .accessibilityIdentifier("journal.filter.order")
+      .accessibilityLabel("Filter")
+      .accessibilityValue(count > 0 ? "\(count) on, \(active.sort.title)" : active.sort.title)
+      .accessibilityIdentifier("journal.filter")
+      Spacer()
     }
-    .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.sm)
-    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.xs)
     .background(DS.bg)
-    .overlay(alignment: .bottom) { Hairline() }
   }
 
   private func brewAgain(_ brew: Brew) {
@@ -317,8 +358,10 @@ struct FilterMenu<Content: View>: View {
       }
       .padding(.horizontal, DS.Space.md).padding(.vertical, DS.Space.xs)
       .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
-      .background(DS.paper, ignoresSafeAreaEdges: [])
-      .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+      .background(DS.paper, in: RoundedRectangle(cornerRadius: DS.controlRadius))
+      .overlay(
+        RoundedRectangle(cornerRadius: DS.controlRadius)
+          .strokeBorder(DS.line, lineWidth: DS.isBloom ? 1 : DS.rule))
     }
     .accessibilityLabel(title)
     .accessibilityValue(value)
@@ -331,9 +374,29 @@ private struct BrewRow: View {
   let units: UnitPreferences
 
   var body: some View {
+    HStack(alignment: .top, spacing: DS.Space.md) {
+      if DS.isBloom { RingGlyph(color: ringColor) }
+      details
+    }
+    .padding(DS.Space.md)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .accessibilityElement(children: .combine)
+  }
+
+  /// Bloom's row ring, by taste verdict (the verdict is also written in the row).
+  private var ringColor: Color {
+    switch brew.verdict {
+    case .balanced: DS.sage
+    case .sour, .weak: DS.crema
+    case .bitter, .strong: DS.espresso
+    case nil: DS.line
+    }
+  }
+
+  private var details: some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
       HStack(alignment: .firstTextBaseline, spacing: DS.Space.sm) {
-        Text((brew.method?.name ?? "Brew").uppercased()).font(DS.Font.headline)
+        Text((brew.method?.name ?? "Brew").dsTitle).font(DS.Font.headline)
           .foregroundStyle(DS.ink)
         Spacer(minLength: DS.Space.sm)
         if let grade = brew.ratingHalfSteps, grade > 0 { GradeBadge(halfSteps: grade) }
@@ -354,9 +417,6 @@ private struct BrewRow: View {
           .accessibilityIdentifier("journal.row.dialin")
       }
     }
-    .padding(DS.Space.md)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .accessibilityElement(children: .combine)
   }
 
   private var numbers: String? {

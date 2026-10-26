@@ -1,0 +1,15 @@
+{
+  "_about": "Night Mint. Source of truth for the nightMint palette in NextCup/DesignSystem/Tokens.swift (design/check_tokens.py). Contrast: python3 design/contrast.py and StyleTests",
+  "light": {
+    "bg": "#F4F8F7", "paper": "#FFFFFF", "steel": "#13201D", "on-steel": "#E3EEEB",
+    "ink": "#13201D", "ink-2": "#4F615C", "line": "#4F615C", "signal": "#0F766E",
+    "on-signal": "#FFFFFF", "signal-on-steel": "#82D5C8", "kraft": "#CFE5DF",
+    "on-kraft": "#13201D", "error": "#9A1B0A", "ok": "#2A6A2A"
+  },
+  "dark": {
+    "bg": "#0E1513", "paper": "#18211F", "steel": "#1F2B28", "on-steel": "#E3EEEB",
+    "ink": "#E3EEEB", "ink-2": "#9FB3AE", "line": "#9FB3AE", "signal": "#82D5C8",
+    "on-signal": "#0E1513", "signal-on-steel": "#82D5C8", "kraft": "#2A3B37",
+    "on-kraft": "#E3EEEB", "error": "#FF9C85", "ok": "#7FD18A"
+  }
+}

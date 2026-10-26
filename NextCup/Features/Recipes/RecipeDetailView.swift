@@ -117,7 +117,7 @@ private struct RecipeDetailContent: View {
 
   private var header: some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
-      Text(recipe.name.uppercased()).font(DS.Font.display).foregroundStyle(DS.ink)
+      Text(recipe.name.dsTitle).font(DS.Font.display).foregroundStyle(DS.ink)
         .dynamicTypeSize(...DS.displayCap)
         .accessibilityAddTraits(.isHeader)
       if let method = recipe.method?.name {

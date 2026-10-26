@@ -7,6 +7,8 @@ struct SettingsRootView: View {
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
 
+  @AppStorage(AppearanceMode.storageKey) private var appearance = AppearanceMode.system.rawValue
+
   private var appVersion: String {
     let info = Bundle.main.infoDictionary
     let version = info?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -15,6 +17,19 @@ struct SettingsRootView: View {
   }
 
   var body: some View {
+    ScrollViewReader { proxy in
+      list
+        .onAppear {
+          // Changing a flavor rebuilds the app; come back to the section being edited.
+          let defaults = UserDefaults.standard
+          guard defaults.bool(forKey: FlavorPicker.returnKey) else { return }
+          defaults.removeObject(forKey: FlavorPicker.returnKey)
+          proxy.scrollTo("appearance", anchor: .top)
+        }
+    }
+  }
+
+  private var list: some View {
     List {
       Section {
         Picker("Weight", selection: $weightUnit) {
@@ -87,6 +102,24 @@ struct SettingsRootView: View {
         .accessibilityIdentifier("settings.data")
       } header: {
         Text("Data")
+      }
+      // Below the rows that existing flows reach, so they stay on the first screen.
+      Section {
+        Picker("Appearance", selection: $appearance) {
+          ForEach(AppearanceMode.allCases) { Text($0.title).tag($0.rawValue) }
+        }
+        .pickerStyle(.segmented)
+        .frame(minHeight: DS.Size.control)
+        .listRowBackground(DS.paper)
+        .accessibilityIdentifier("settings.appearance")
+        FlavorPicker()
+          .id("appearance")
+          .listRowBackground(Color.clear)
+          .listRowInsets(EdgeInsets())
+      } header: {
+        Text("Appearance")
+      } footer: {
+        Text("A flavor sets colors, type, corners and spacing. Pick one to try it.")
       }
       Section {
         NavigationLink {

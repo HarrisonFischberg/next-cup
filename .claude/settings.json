@@ -23,7 +23,17 @@
       "Bash(swift format:*)",
       "Bash(swift test:*)",
       "Bash(xcodebuild:*)",
-      "Bash(xcrun simctl:*)"
+      "Bash(xcrun simctl:*)",
+      "Bash(grep:*)",
+      "Bash(rtk grep:*)",
+      "Bash(git show:*)",
+      "Bash(rtk git show:*)",
+      "Bash(git ls-files:*)",
+      "Bash(rtk git ls-files:*)",
+      "Bash(python3 ~/.claude/plugins/cache/replica-skill/replica-skill/1.0.0/replica-design/contrast.py:*)",
+      "Bash(rtk python3 ~/.claude/plugins/cache/replica-skill/replica-skill/1.0.0/replica-design/contrast.py:*)",
+      "Bash(python3 /Users/harrison/.claude/plugins/cache/replica-skill/replica-skill/1.0.0/replica-design/contrast.py:*)",
+      "Bash(rtk python3 /Users/harrison/.claude/plugins/cache/replica-skill/replica-skill/1.0.0/replica-design/contrast.py:*)"
     ],
     "deny": [
       "Bash(curl:*)",

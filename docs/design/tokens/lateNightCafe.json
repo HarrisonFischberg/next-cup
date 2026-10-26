@@ -1,0 +1,15 @@
+{
+  "_about": "Late-Night Café. Source of truth for the lateNightCafe palette in NextCup/DesignSystem/Tokens.swift (design/check_tokens.py). Contrast: python3 design/contrast.py and StyleTests",
+  "light": {
+    "bg": "#F2E6CF", "paper": "#E7D7B6", "steel": "#2A1A10", "on-steel": "#F1E4CC",
+    "ink": "#2A1A10", "ink-2": "#5E4630", "line": "#5E4630", "signal": "#8A4B08",
+    "on-signal": "#F8EEDB", "signal-on-steel": "#F0AE4A", "kraft": "#C9A15B",
+    "on-kraft": "#17100C", "error": "#9B2A14", "ok": "#2A6A2A"
+  },
+  "dark": {
+    "bg": "#17100C", "paper": "#241911", "steel": "#2E2217", "on-steel": "#F1E4CC",
+    "ink": "#F1E4CC", "ink-2": "#C2AE92", "line": "#8F7C62", "signal": "#F0AE4A",
+    "on-signal": "#17100C", "signal-on-steel": "#F0AE4A", "kraft": "#C9A15B",
+    "on-kraft": "#17100C", "error": "#FF9F85", "ok": "#7FD18A"
+  }
+}

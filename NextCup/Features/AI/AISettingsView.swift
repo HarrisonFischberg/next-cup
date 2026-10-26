@@ -8,6 +8,20 @@ struct AISettingsView: View {
   @State private var saved: Set<AIProvider> = []
   @State private var pending: AIProvider?
   @State private var errorMessage: String?
+  @State private var defaultProvider = AIProvider.anthropic
+  @State private var defaultModel = ""
+  /// Rebuilds the per-feature rows after "Use for every feature" rewrites them.
+  @State private var perFeatureID = UUID()
+
+  /// AI setup is two steps; say how far along it is.
+  private var setupLine: String {
+    let key = !saved.isEmpty
+    let model = AIFeature.allCases.contains { AIPreferences().modelID(for: $0) != nil }
+    let done = (key ? 1 : 0) + (model ? 1 : 0)
+    return done == 2
+      ? "Set up: key and model are ready."
+      : "\(done) of 2 set up: key \(key ? "✓" : "○"), model \(model ? "✓" : "○")"
+  }
 
   var body: some View {
     List {
@@ -19,13 +33,45 @@ struct AISettingsView: View {
         .listRowInsets(EdgeInsets())
         .listRowBackground(DS.bg)
       }
+      Section {
+        Text(setupLine).font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
+          .listRowBackground(DS.paper)
+          .accessibilityIdentifier("ai.setup")
+      }
       ForEach(AIProvider.allCases, id: \.self) { provider in keySection(provider) }
       Section {
-        ForEach(AIFeature.allCases, id: \.self) { feature in FeatureModelRow(feature: feature) }
+        Picker("Provider", selection: $defaultProvider) {
+          ForEach(AIProvider.allCases, id: \.self) { Text($0.title).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        .listRowBackground(DS.paper)
+        TextField("Model ID", text: $defaultModel)
+          .textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.done)
+          .frame(minHeight: DS.Size.control).listRowBackground(DS.paper)
+          .accessibilityIdentifier("ai.model.default")
+        Button("Use for every feature") {
+          let preferences = AIPreferences()
+          for feature in AIFeature.allCases {
+            preferences.setChoice(defaultProvider, model: defaultModel, for: feature)
+          }
+          perFeatureID = UUID()
+        }
+        .frame(minHeight: DS.Size.control).listRowBackground(DS.paper)
+        .disabled(defaultModel.trimmingCharacters(in: .whitespaces).isEmpty)
+        .accessibilityIdentifier("ai.model.applyAll")
       } header: {
-        Text("Model for each feature")
+        Text("Model")
       } footer: {
         Text("Type the model ID your provider documents. Nothing is chosen for you.")
+      }
+      Section {
+        DisclosureGroup("A different model for each feature") {
+          ForEach(AIFeature.allCases, id: \.self) { feature in FeatureModelRow(feature: feature) }
+        }
+        .id(perFeatureID)
+        .listRowBackground(DS.paper)
+      } header: {
+        Text("Advanced")
       }
     }
     .listStyle(.insetGrouped)

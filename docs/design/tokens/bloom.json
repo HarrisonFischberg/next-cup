@@ -1,0 +1,35 @@
+{
+  "_about": "Bloom. Source of truth for the bloom palette in NextCup/DesignSystem/Tokens.swift (design/check_tokens.py). Contrast: python3 design/contrast.py and StyleTests",
+  "light": {
+    "bg": "#F5EFE6",
+    "paper": "#FBF8F3",
+    "steel": "#2B1D14",
+    "on-steel": "#FBF8F3",
+    "ink": "#2B1D14",
+    "ink-2": "#6E5E52",
+    "line": "#8F7C6C",
+    "signal": "#9A5222",
+    "on-signal": "#FFFFFF",
+    "signal-on-steel": "#E0A06A",
+    "kraft": "#EDE3D6",
+    "on-kraft": "#2B1D14",
+    "error": "#9A1B0A",
+    "ok": "#55684A"
+  },
+  "dark": {
+    "bg": "#17110D",
+    "paper": "#221A14",
+    "steel": "#2E241C",
+    "on-steel": "#F3EADF",
+    "ink": "#F3EADF",
+    "ink-2": "#B8A898",
+    "line": "#7A6B5E",
+    "signal": "#E0A06A",
+    "on-signal": "#17110D",
+    "signal-on-steel": "#E0A06A",
+    "kraft": "#2E241C",
+    "on-kraft": "#F3EADF",
+    "error": "#FF9C85",
+    "ok": "#A9BC97"
+  }
+}

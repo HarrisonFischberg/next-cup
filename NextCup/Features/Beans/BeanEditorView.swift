@@ -2,6 +2,7 @@ import NextCupKit
 import PhotosUI
 import SwiftData
 import SwiftUI
+import UIKit
 
 /// What the bean editor sheet opens for.
 enum BeanEditorTarget: Identifiable, Hashable {
@@ -44,7 +45,16 @@ struct BeanEditorView: View {
   @State private var matchShown = false
   @State private var matchedRoaster: String?
   @State private var disclosureProvider: AIProvider?
-  @State private var deferredItem: PhotosPickerItem?
+  @State private var deferredLoad: (() async -> Data?)?
+  @State private var cameraShown = false
+  @State private var scannerShown = false
+  @State private var lookingUp = false
+  /// Set when a barcode was not found, so the AI photo route is offered next.
+  @State private var offerPhotoRoute = false
+  /// The last two stages of a scan, shown while the result goes into the fields.
+  @State private var fillStages: [String]?
+  @State private var fillStage = 0
+  @State private var filledMessage: String?
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -106,7 +116,21 @@ struct BeanEditorView: View {
       }
       .task { load() }
       .photosPicker(isPresented: $pickerShown, selection: $pickedPhoto, matching: .images)
-      .onChange(of: pickedPhoto) { _, item in if let item { startScan(item) } }
+      .onChange(of: pickedPhoto) { _, item in
+        guard let item else { return }
+        pickedPhoto = nil
+        startScan { try? await item.loadTransferable(type: Data.self) }
+      }
+      .fullScreenCover(isPresented: $cameraShown) {
+        CameraPicker { data in
+          cameraShown = false
+          if let data { startScan { data } }
+        }
+        .ignoresSafeArea()
+      }
+      .fullScreenCover(isPresented: $scannerShown) {
+        BarcodeScannerView(onCode: lookUp, onCancel: { scannerShown = false })
+      }
       .onChange(of: scan?.status) { _, status in if status != nil { finishScan() } }
       .sheet(isPresented: $matchShown) {
         RoasterMatchView(
@@ -124,11 +148,11 @@ struct BeanEditorView: View {
         AIDisclosureView(provider: provider) {
           AIPreferences().acceptDisclosure(for: provider)
           disclosureProvider = nil
-          if let item = deferredItem { startScan(item) }
-          deferredItem = nil
+          if let load = deferredLoad { startScan(load) }
+          deferredLoad = nil
         } cancel: {
           disclosureProvider = nil
-          deferredItem = nil
+          deferredLoad = nil
         }
       }
       // A request still waiting must not be sent after the user has left.
@@ -145,23 +169,47 @@ struct BeanEditorView: View {
   private var photoFill: some View {
     Section {
       if let scan, scanning {
-        HStack {
-          Text(scan.status == .queued ? "Waiting for a connection" : "Reading the photo")
-            .foregroundStyle(DS.ink2)
-          Spacer()
-          Button("Cancel") { scanQueue?.cancel(scan) }
-            .accessibilityIdentifier("beans.editor.scan.cancel")
-        }
-        .frame(minHeight: DS.Size.control)
+        StagedProgress(
+          stages: [
+            "Photo prepared",
+            scan.status == .queued ? "Waiting for a connection" : "Reading the label with AI",
+            "Filling the fields",
+          ], current: 1)
+        Button("Cancel") { scanQueue?.cancel(scan) }
+          .frame(minHeight: DS.Size.control)
+          .accessibilityIdentifier("beans.editor.scan.cancel")
+      } else if let stages = fillStages {
+        StagedProgress(stages: stages, current: fillStage)
+      } else if lookingUp {
+        StagedProgress(stages: ["Looking up the barcode", "Filling the fields"], current: 0)
       } else {
+        Button(action: startBarcode) {
+          Label("Scan the barcode", systemImage: "barcode.viewfinder")
+            .frame(minHeight: DS.Size.control, alignment: .leading)
+        }
+        .accessibilityIdentifier("beans.editor.barcode")
         Menu {
-          Button("Read a bag label") { chooseScan(.bagRecognition) }
-          Button("Describe a coffee photo") { chooseScan(.photoInterpretation) }
+          Section("Read the bag label") { sourceButtons(.bagRecognition) }
+          Section("Describe a coffee photo") { sourceButtons(.photoInterpretation) }
         } label: {
-          Label("Fill from a photo", systemImage: "text.viewfinder")
+          Label("Fill from a photo", systemImage: "camera.viewfinder")
             .frame(minHeight: DS.Size.control, alignment: .leading)
         }
         .accessibilityIdentifier("beans.editor.scan")
+        if offerPhotoRoute {
+          Button {
+            chooseScan(.bagRecognition, camera: Camera.isAvailable)
+          } label: {
+            Label("Read the bag label with AI instead", systemImage: "sparkles")
+              .frame(minHeight: DS.Size.control, alignment: .leading)
+          }
+          .accessibilityIdentifier("beans.editor.photoRoute")
+        }
+      }
+      if let filledMessage {
+        StateBanner(kind: .info, message: filledMessage)
+          .listRowInsets(EdgeInsets()).listRowBackground(DS.bg)
+          .accessibilityIdentifier("beans.editor.scan.filled")
       }
       if let scanMessage {
         StateBanner(kind: .error, message: scanMessage)
@@ -169,7 +217,9 @@ struct BeanEditorView: View {
           .accessibilityIdentifier("beans.editor.scan.error")
       }
     } footer: {
-      Text("Sent to your AI provider with your key. You review every field before saving.")
+      Text(
+        "A barcode is looked up in Open Food Facts. Photos go to your AI provider with your key. You review every field before saving."
+      )
     }
     .listRowBackground(DS.paper)
   }
@@ -314,14 +364,69 @@ struct BeanEditorView: View {
     loaded = true
   }
 
-  private func chooseScan(_ feature: AIFeature) {
-    scanFeature = feature
-    scanMessage = nil
-    pickerShown = true
+  @ViewBuilder private func sourceButtons(_ feature: AIFeature) -> some View {
+    if Camera.isAvailable {
+      Button("Take a photo", systemImage: "camera") { chooseScan(feature, camera: true) }
+    }
+    Button("Choose from library", systemImage: "photo.on.rectangle") {
+      chooseScan(feature, camera: false)
+    }
   }
 
-  private func startScan(_ item: PhotosPickerItem) {
-    pickedPhoto = nil
+  private func chooseScan(_ feature: AIFeature, camera: Bool) {
+    scanFeature = feature
+    scanMessage = nil
+    offerPhotoRoute = false
+    if camera { cameraShown = true } else { pickerShown = true }
+  }
+
+  private func startBarcode() {
+    scanMessage = nil
+    offerPhotoRoute = false
+    Task {
+      guard await BarcodeScanner.requestIfNeeded() else {
+        scanMessage =
+          "Barcode scanning needs the camera on an iPhone that supports it, with camera access allowed. Try a photo of the bag instead."
+        offerPhotoRoute = true
+        return
+      }
+      scannerShown = true
+    }
+  }
+
+  /// Looks a scanned code up once. A match fills name and roaster for review and offers
+  /// the map match; anything else offers the AI photo route. Nothing is saved here.
+  private func lookUp(_ code: String) {
+    scannerShown = false
+    lookingUp = true
+    Task {
+      let started = Date()
+      let result = await BarcodeLookup.lookUp(code) { request in
+        let (data, response) = try await URLSession.shared.data(for: request)
+        return (data, (response as? HTTPURLResponse)?.statusCode ?? 0)
+      }
+      lookingUp = false
+      switch result {
+      case .success(let product):
+        await showFilling(["Barcode found", "Filling the fields"], since: started) {
+          fields.name = product.name
+          if let brand = product.brand { fields.roasterName = brand }
+        }
+        if product.brand != nil { matchShown = true }
+      case .failure(let failure):
+        offerPhotoRoute = true
+        scanMessage =
+          switch failure {
+          case .notFound: "That barcode is not in Open Food Facts yet."
+          case .offline: "The barcode could not be looked up. Check your connection."
+          case .invalidCode: "That does not look like a retail barcode."
+          case .unreadable: "Open Food Facts sent an answer that could not be read."
+          }
+      }
+    }
+  }
+
+  private func startScan(_ load: @escaping () async -> Data?) {
     let feature = scanFeature
     let preferences = AIPreferences()
     guard let provider = preferences.provider(for: feature),
@@ -331,12 +436,12 @@ struct BeanEditorView: View {
       return
     }
     guard preferences.hasAcceptedDisclosure(for: provider) else {
-      deferredItem = item
+      deferredLoad = load
       disclosureProvider = provider
       return
     }
     Task {
-      guard let raw = try? await item.loadTransferable(type: Data.self),
+      guard let raw = await load(),
         let photo = PhotoSanitizer.sanitized(raw)
       else {
         scanMessage = "That photo could not be read."
@@ -365,10 +470,14 @@ struct BeanEditorView: View {
     case .done:
       switch BagRecognition.draft(from: scan) {
       case .success(let draft):
-        BagRecognition.fill(&fields, with: draft)
-        hasRoastDate = fields.roastDate != nil
-        if weightText.isEmpty, let grams = fields.bagWeightG {
-          weightText = RecipeFormat.weight(grams, units, withSymbol: false)
+        Task {
+          await showFilling(["Label read", "Filling the fields"], since: Date()) {
+            BagRecognition.fill(&fields, with: draft)
+            hasRoastDate = fields.roastDate != nil
+            if weightText.isEmpty, let grams = fields.bagWeightG {
+              weightText = RecipeFormat.weight(grams, units, withSymbol: false)
+            }
+          }
         }
       case .failure(let failure):
         scanMessage = failure.errorDescription
@@ -383,6 +492,25 @@ struct BeanEditorView: View {
     case .queued, .sending:
       break
     }
+  }
+
+  /// Shows the fill as its own stage, fills, then says how many fields changed.
+  /// The hold only keeps a stage readable (see `StagedProgress.hold`).
+  private func showFilling(_ stages: [String], since start: Date, fill: () -> Void) async {
+    filledMessage = nil
+    fillStages = stages
+    fillStage = 1
+    await StagedProgress.hold(since: start)
+    let before = fields
+    fill()
+    let count = before.changedCount(to: fields)
+    UINotificationFeedbackGenerator().notificationOccurred(.success)
+    await StagedProgress.hold(since: Date())
+    fillStages = nil
+    filledMessage =
+      count == 0
+      ? "Nothing new was found to fill. Check the fields before saving."
+      : "Filled \(count) \(count == 1 ? "field" : "fields"). Check them before saving."
   }
 
   private func save() {
