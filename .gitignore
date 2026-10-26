@@ -13,3 +13,4 @@ ralph/logs/
 .build/
 xcuserdata/
 *.xcuserstate
+docs/design/looks4/raw/
