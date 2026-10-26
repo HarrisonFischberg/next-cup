@@ -11,23 +11,35 @@ struct Hairline: View {
   var body: some View { Rectangle().fill(DS.line).frame(height: DS.rule) }
 }
 
-/// A filled, bordered surface in the flavor's corner radius. Sticker flavors add a hard
-/// offset shadow in the accent (no blur), so the border and shadow carry state without color alone.
+/// A surface in the flavor's corner radius: Liquid Glass tinted with the fill, its content
+/// clipped to the rounded shape. Sticker flavors and Reduce Transparency get the solid fill
+/// and full border instead (stickers add a hard offset shadow in the accent, no blur).
 private struct Panel: ViewModifier {
   let fill: Color
   var border = DS.line
   var dash: [CGFloat] = []
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
   func body(content: Content) -> some View {
     let shape = RoundedRectangle(cornerRadius: DS.radius, style: .continuous)
-    content
-      .background(fill, in: shape)
-      .overlay(
-        shape.strokeBorder(border, style: StrokeStyle(lineWidth: DS.rule, dash: dash))
-      )
-      .background {
-        if DS.flavor.control == .sticker { shape.fill(DS.signal).offset(x: 3, y: 3) }
-      }
+    if DS.flavor.control == .sticker || reduceTransparency {
+      content
+        .clipShape(shape)
+        .background(fill, in: shape)
+        .overlay(
+          shape.strokeBorder(border, style: StrokeStyle(lineWidth: DS.rule, dash: dash))
+        )
+        .background {
+          if DS.flavor.control == .sticker { shape.fill(DS.signal).offset(x: 3, y: 3) }
+        }
+    } else {
+      content
+        .clipShape(shape)
+        .glassEffect(.regular.tint(fill.opacity(0.6)), in: shape)
+        .overlay(
+          shape.strokeBorder(border.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: dash))
+        )
+    }
   }
 }
 
@@ -46,9 +58,25 @@ struct SteelButtonStyle: ButtonStyle {
   var kind: SteelKind = .primary
   @Environment(\.isEnabled) private var enabled
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
   func makeBody(configuration: Configuration) -> some View {
     let shape = RoundedRectangle(cornerRadius: DS.controlRadius, style: .continuous)
+    if DS.flavor.control == .sticker || reduceTransparency {
+      solid(configuration, shape)
+    } else {
+      // Liquid Glass: the primary tinted with the accent, the secondary clear.
+      configuration.label
+        .foregroundStyle(kind == .primary ? DS.onSignal : DS.ink)
+        .glassEffect(
+          (kind == .primary ? Glass.regular.tint(DS.signal) : Glass.regular).interactive(),
+          in: shape
+        )
+        .opacity(enabled ? 1 : 0.4)
+    }
+  }
+
+  private func solid(_ configuration: Configuration, _ shape: RoundedRectangle) -> some View {
     configuration.label
       .foregroundStyle(kind == .primary ? DS.onSignal : (DS.isBloom ? DS.ink : DS.onSteel))
       .background(kind == .primary ? DS.signal : (DS.isBloom ? .clear : DS.steel), in: shape)
@@ -128,8 +156,11 @@ struct ColumnHeader: View {
       Text(trailing)
     }
     .font(DS.Font.label).textCase(.uppercase).foregroundStyle(DS.isBloom ? DS.ink2 : DS.onSteel)
-    .padding(.horizontal, DS.Space.md).frame(minHeight: 32)
-    .background(DS.isBloom ? .clear : DS.steel, ignoresSafeAreaEdges: [])
+    .padding(.horizontal, DS.Space.md).frame(minHeight: 36)
+    .background(
+      DS.isBloom ? .clear : DS.steel,
+      in: RoundedRectangle(cornerRadius: min(DS.radius, 12), style: .continuous)
+    )
     .accessibilityHidden(true)
   }
 }
@@ -145,6 +176,8 @@ struct OperationRow: View {
   var scale: String?
   var state: RowState = .upcoming
   var showsInstruction = true
+  /// Off for the last row, so the table ends on its rounded edge, not a rule.
+  var showsDivider = true
   @Environment(\.dynamicTypeSize) private var dts
 
   var body: some View {
@@ -168,9 +201,12 @@ struct OperationRow: View {
     .foregroundStyle(live ? DS.onSignal : (state == .done ? DS.ink2 : DS.ink))
     .padding(.horizontal, DS.Space.md).padding(.vertical, live ? DS.Space.md : DS.Space.md - 3)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(live ? DS.signal : DS.paper, ignoresSafeAreaEdges: [])
+    .background(live ? DS.signal : .clear, ignoresSafeAreaEdges: [])
     .overlay(alignment: .bottom) {
-      Rectangle().fill(DS.line.opacity(0.5)).frame(height: DS.hairline)
+      if showsDivider {
+        Rectangle().fill(DS.line.opacity(0.5)).frame(height: DS.hairline)
+          .padding(.horizontal, DS.Space.md)
+      }
     }
     .accessibilityElement(children: .combine)
     .accessibilityAddTraits(live ? .isSelected : [])

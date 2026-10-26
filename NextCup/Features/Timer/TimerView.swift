@@ -206,7 +206,7 @@ struct TimerView: View {
               time: RecipeFormat.clock(step.startOffsetS), name: step.label,
               instruction: step.instruction.isEmpty ? nil : step.instruction,
               scale: step.targetCumulativeWaterG.map { RecipeFormat.weight($0, units) },
-              state: rowState(index)
+              state: rowState(index), showsDivider: index < setup.plan.steps.count - 1
             )
             .id(index)
             .accessibilityIdentifier("timer.step.\(index)")
