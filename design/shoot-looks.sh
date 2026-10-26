@@ -16,8 +16,8 @@ for mode in light dark; do
   for n in "$@"; do
     for stage in ${STAGES:-journal timer log}; do
       xcrun simctl terminate "$DEV" "$BUNDLE" >/dev/null 2>&1 || true
-      EXTRA=(); [ "$stage" = timer ] && EXTRA=(-elapsed 78); [ "$stage" = next ] && EXTRA=(-next)
-      xcrun simctl launch "$DEV" "$BUNDLE" -look "$n" -stage ${stage/next/log} ${EXTRA[@]+"${EXTRA[@]}"} >/dev/null
+      EXTRA=(); [ "$stage" = timer ] && EXTRA=(-elapsed 78); [ "$stage" = next ] && EXTRA=(-next); [ "$stage" = grind ] && EXTRA=(-grind)
+      xcrun simctl launch "$DEV" "$BUNDLE" -look "$n" -stage $(echo $stage | sed "s/^next$/log/; s/^grind$/recipe/") ${EXTRA[@]+"${EXTRA[@]}"} >/dev/null
       sleep 2.8
       xcrun simctl io "$DEV" screenshot --type=png "$OUT/raw/$n-$stage-$mode${SIZE:+-$SIZE}.png" >/dev/null 2>&1
     done

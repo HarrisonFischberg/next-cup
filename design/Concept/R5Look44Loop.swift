@@ -26,6 +26,8 @@ private enum C {
 }
 
 private let tasteDelayMin = 20
+/// The grinder saved with this bean (per bean in the real app, so each bag keeps its own setting).
+private let beanGrinder = "Comandante C40 MK4"
 
 private extension Font {
     static func display(_ style: Font.TextStyle, _ weight: Font.Weight = .regular) -> Font { .system(style, design: .serif, weight: weight) }
@@ -34,8 +36,8 @@ private extension Font {
 /// One change for the next cup from how it tasted (the same direction as DialInRules in the app).
 private func nextCupTip(_ v: Verdict?, grind: Int, dose: Double, water: Double) -> (title: String, unit: String, from: String, to: String, why: String) {
     switch v {
-    case .sour: ("Grind one step finer", "Grind", "\(grind)", "\(grind - 1)", "Sour and thin means the water ran through too fast. Finer grounds slow it down and pull out more sweetness.")
-    case .bitter: ("Grind one step coarser", "Grind", "\(grind)", "\(grind + 1)", "Bitter and dry means too much was pulled out. Coarser grounds let the water through sooner.")
+    case .sour: ("Grind one click finer", "Clicks", "\(grind)", "\(grind - 1)", "Sour and thin means the water ran through too fast. Finer grounds slow it down and pull out more sweetness.")
+    case .bitter: ("Grind one click coarser", "Clicks", "\(grind)", "\(grind + 1)", "Bitter and dry means too much was pulled out. Coarser grounds let the water through sooner.")
     case .weak: ("Use a little more coffee", "Beans", Fmt.num(dose), Fmt.num(dose + 1), "Weak means too much water for the coffee. One more gram fills the cup out without touching the grind.")
     case .strong: ("Add a little more water", "Water", Fmt.num(water), Fmt.num(water + 20), "Strong and heavy means the cup is too concentrated. A little more water opens it up.")
     default: ("Brew it the same way", "", "", "", "It tasted balanced. Make it the same way tomorrow to see that it repeats.")
@@ -167,7 +169,8 @@ private struct Home44: View {
         return layout {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Tomorrow, \(tip.title.prefix(1).lowercased() + tip.title.dropFirst())").font(.display(.title3))
-                Text("From yesterday's sour cup").font(.footnote).foregroundStyle(.secondary)
+                Text("On your \(beanGrinder)").font(.footnote).foregroundStyle(.secondary)
+                
             }
             if !stacked { Spacer(minLength: 12) }
             if !tip.from.isEmpty {
@@ -209,6 +212,8 @@ private struct Today44: View {
     @State private var method = "Cone"
     @State private var dose = 20.0
     @State private var water = 320.0
+    @State private var grinder = beanGrinder
+    @State private var setting = "22"
     @Environment(\.dynamicTypeSize) private var dts
 
     var body: some View {
@@ -218,9 +223,11 @@ private struct Today44: View {
                 beanCard
                 grams
                 methods
+                grind
             }
             .padding(.horizontal, 20).padding(.bottom, 100)
         }
+        .defaultScrollAnchor(ProcessInfo.processInfo.arguments.contains("-grind") ? .bottom : .top) // screenshots of the grind card
         .background(C.bg)
         .navigationTitle("Today's brew")
         .safeAreaInset(edge: .bottom) {
@@ -288,7 +295,54 @@ private struct Today44: View {
                 amount("Beans", $dose, 0.5)
                 amount("Water", $water, 5)
             }
-            Text("Grind 22, one step finer than yesterday.").font(.footnote).foregroundStyle(.secondary)
+        }
+    }
+
+    private var grind: some View {
+        let g = GrinderGuide.all.first { $0.name == grinder }
+        let range = g?.range(for: method)
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Grind").font(.display(.title3))
+            VStack(alignment: .leading, spacing: 14) {
+                Menu {
+                    Picker("Grinder", selection: $grinder) {
+                        Section("Hand") { ForEach(GrinderGuide.all.filter { $0.kind == "Hand" }) { Text($0.name).tag($0.name) } }
+                        Section("Electric") { ForEach(GrinderGuide.all.filter { $0.kind == "Electric" }) { Text($0.name).tag($0.name) } }
+                    }
+                } label: {
+                    HStack {
+                        Text(grinder).font(.body).foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.up.chevron.down").font(.footnote).foregroundStyle(.secondary)
+                    }
+                    .frame(minHeight: 44).contentShape(.rect)
+                }
+                .accessibilityLabel("Grinder, \(grinder)")
+                Rectangle().fill(C.line).frame(height: 1)
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("For this bean").font(.subheadline).foregroundStyle(.secondary)
+                        Text("One click finer than yesterday").font(.footnote).foregroundStyle(C.accent)
+                    }
+                    Spacer()
+                    if g?.notation == "clicks" || g?.notation == "dial" {
+                        let n = Int(setting) ?? 0
+                        Button("Finer", systemImage: "minus") { setting = String(max(0, n - 1)) }.frame(width: 44, height: 44).background(C.bg, in: .circle)
+                        Text(setting).font(.display(.title)).monospacedDigit().frame(minWidth: 44).contentTransition(.numericText())
+                        Button("Coarser", systemImage: "plus") { setting = String(n + 1) }.frame(width: 44, height: 44).background(C.bg, in: .circle)
+                    } else {
+                        TextField("Setting", text: $setting).font(.display(.title)).multilineTextAlignment(.trailing).frame(maxWidth: 120)
+                    }
+                }
+                .labelStyle(.iconOnly).foregroundStyle(.primary).animation(.snappy(duration: 0.2), value: setting)
+                if let g {
+                    Text(range.map { "Starting range for \(method.lowercased()): \($0) \(g.unitLabel). A starting point only; every grinder and bean differs, so dial in by taste." }
+                         ?? "\(g.name) is made for brewed coffee, not \(method.lowercased()).")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    Link("Source: Honest Coffee Guide", destination: URL(string: g.source)!).font(.footnote)
+                }
+            }
+            .padding(16).background(C.card, in: .rect(cornerRadius: 22, style: .continuous))
         }
     }
 
@@ -472,6 +526,7 @@ private struct Taste44: View {
                     Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 10) {
                         GridRow { keep("Beans", "\(Fmt.num(d.doseG)) g"); keep("Water", "\(Fmt.num(d.waterG)) g") }
                         GridRow { keep("Temperature", "\(Fmt.num(d.tempC)) °C"); keep("Method", "Cone dripper") }
+                        GridRow { keep("Grinder", beanGrinder).gridCellColumns(2) }
                     }
                 }
                 Text("Tomorrow's brew opens with this change already set. You can still adjust it.").font(.footnote).foregroundStyle(.secondary)

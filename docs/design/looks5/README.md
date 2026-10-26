@@ -33,3 +33,16 @@ What the real app already has: brew drafts (`isDraft`), bag text/barcode scannin
 rule-based dial-in suggestions (`SuggestionService`/`DialInRules`) and bring-your-own-key AI.
 Missing: the taste reminder notification, on-device Foundation Models for reading the bag photo,
 and "Today's brew" opening prefilled with the accepted tip.
+
+## Grind settings (look 44)
+
+Each bean keeps its own grinder and setting; Today's brew shows it with a step control (clicks and
+numbered dials) or a text field (rotation · number · tick notations), and the next-cup tip speaks in
+that grinder's units ("Clicks 22 → 21 on your Comandante C40 MK4").
+
+`design/Concept/GrinderGuide.swift` bundles starting ranges for 21 grinders per method (pour over,
+AeroPress, French press, moka, espresso, cold brew) in each grinder's own notation, from Honest Coffee
+Guide's per-grinder tables (each entry links its page), read 2026-10-26. Spot checks: Fellow suggests
+about 5 for pour over on Ode Gen 2 (table: 2.2–5.2); Comandante ships at 24 clicks for filter (table:
+15–25). Espresso is left empty for brew-only grinders (Encore, Virtuoso+, Ode Gen 2, Sculptor 078,
+Chestnut S3, Pietro Pro Brewing). Shown in the app as starting points, never exact.
