@@ -138,7 +138,14 @@ struct JournalListView: View {
         .listRowInsets(EdgeInsets())
         .listRowBackground(DS.bg)
       }
-      if DS.isBloom, let last = logged.first {
+      if let last = logged.first, TodayCard.applies(to: last) {
+        TodayCard(brew: last) { router.open(.taste(last.id)) }
+          .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.sm)
+          .listRowInsets(EdgeInsets())
+          .listRowBackground(DS.bg)
+          .listRowSeparator(.hidden)
+      }
+      if DS.isBloom, let last = logged.first, !TodayCard.applies(to: last) {
         LastCupCard(
           brew: last, brewedDays: LastCupCard.brewedDays(logged),
           brewAgain: { brewAgain(last) }, quickLog: { router.open(.newBrew) }

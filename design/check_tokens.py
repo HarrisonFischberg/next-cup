@@ -15,8 +15,8 @@ def load(style):
 
 bad = 0
 blocks = re.findall(r"case \.(\w+):\s*Palette\((.*?)\)\n(?=\s*(?:case|\}))", swift, re.S)
-if len(blocks) != 11:
-    print(f"expected 11 palettes, found {len(blocks)}"); sys.exit(1)
+if len(blocks) != 12:
+    print(f"expected 12 palettes, found {len(blocks)}"); sys.exit(1)
 swatches = {m.group(1): (m.group(2).upper(), m.group(3).upper()) for m in re.finditer(r'Swatch\(id: "(\w+)", light: 0x([0-9A-Fa-f]{6}), dark: 0x([0-9A-Fa-f]{6})\)', swift)}
 want_swatches = {s["name"]: (s["light"].lstrip("#").upper(), s["dark"].lstrip("#").upper()) for s in json.load(open(tokens + "makeItYours.json"))["swatches"]}
 if swatches != want_swatches:

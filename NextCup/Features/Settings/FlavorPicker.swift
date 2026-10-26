@@ -6,7 +6,7 @@ import SwiftUI
 struct FlavorPicker: View {
   static let returnKey = "settings.returnToAppearance"
 
-  @AppStorage(AppStyle.storageKey) private var style = AppStyle.bloom.rawValue
+  @AppStorage(AppStyle.storageKey) private var style = AppStyle.daily.rawValue
   @AppStorage(MakeItYours.accentKey) private var accent = Swatch.all[2].id
   @AppStorage(MakeItYours.cornersKey) private var corners = Corners.soft.rawValue
   @AppStorage(MakeItYours.densityKey) private var density = Density.regular.rawValue
@@ -14,9 +14,9 @@ struct FlavorPicker: View {
   @Environment(\.dynamicTypeSize) private var dts
   @State private var showsAll = false
 
-  /// Bloom, plus the chosen look when it is another; the rest wait behind More looks.
+  /// Daily, plus the chosen look when it is another; the rest wait behind More looks.
   private var shown: [AppStyle] {
-    showsAll ? AppStyle.allCases : AppStyle.allCases.filter { $0 == .bloom || $0.rawValue == style }
+    showsAll ? AppStyle.allCases : AppStyle.allCases.filter { $0 == .daily || $0.rawValue == style }
   }
 
   private var columns: [GridItem] {

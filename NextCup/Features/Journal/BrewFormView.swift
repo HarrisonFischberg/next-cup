@@ -198,8 +198,16 @@ struct BrewFormView: View {
         suggestionSection(model)
         let fields = shownFields(for: model.draft.methodID)
         tiles(model, fields)
-        if fields.contains(.grind) { grindField(binding.draft.grindSetting) }
+        if fields.contains(.grind) {
+          grindField(binding.draft.grindSetting)
+          grindHint(model)
+        }
         verdictRow(binding.draft.verdict)
+        if model.draft.verdict == nil, !model.isEditing {
+          Text("Not tasted yet? Save without it. We'll remind you to taste in 20 minutes.")
+            .font(.footnote).foregroundStyle(DS.ink2)
+            .accessibilityIdentifier("brewform.tasteLater")
+        }
         if fields.contains(.rating) {
           VStack(alignment: .leading, spacing: DS.Space.sm) {
             Text("GRADE").font(DS.Font.label).foregroundStyle(DS.ink2)
@@ -456,6 +464,18 @@ struct BrewFormView: View {
         ForEach(grinders) { grinder in
           Button(grinder.name) { model.setGrinder(grinder.id) }
         }
+        let known = Set(grinders.compactMap { GrinderGuide.find($0.name)?.name })
+        let popular = GrinderGuide.all.filter { !known.contains($0.name) }
+        if !popular.isEmpty {
+          Menu("Popular grinders") {
+            ForEach(popular) { guide in
+              Button(guide.name) {
+                grinderError =
+                  model.addGrinder(named: guide.name) ? nil : "The grinder could not be added."
+              }
+            }
+          }
+        }
         Button("New grinder…") {
           newGrinderName = ""
           addingGrinder = true
@@ -667,6 +687,32 @@ struct BrewFormView: View {
         .panel(DS.paper)
         .accessibilityLabel("Grind setting")
         .accessibilityIdentifier("brewform.grind")
+    }
+  }
+
+  /// The chosen grinder's starting range for this method, from the bundled guide.
+  /// Says plainly that it is a starting point; nothing shows for an unknown grinder.
+  @ViewBuilder private func grindHint(_ model: BrewFormModel) -> some View {
+    let grinder = grinders.first { $0.id == model.draft.grinderID }
+    let methodName = methods.first { $0.id == model.draft.methodID }?.name
+    if let guide = GrinderGuide.find(grinder?.name),
+      let method = GrinderGuide.method(forMethodNamed: methodName)
+    {
+      let range = guide.range(for: method)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(
+          range.map {
+            "\(guide.name): start between \($0) \(guide.unitLabel) for \(methodName?.lowercased() ?? "this method"). A starting point; dial in by taste."
+          }
+            ?? "\(guide.name) is made for brewed coffee, not \(methodName?.lowercased() ?? "this method")."
+        )
+        .font(.footnote).foregroundStyle(DS.ink2)
+        if let url = URL(string: guide.source) {
+          Link("Source: Honest Coffee Guide", destination: url).font(.footnote).tint(DS.signal)
+        }
+      }
+      .accessibilityElement(children: .combine)
+      .accessibilityIdentifier("brewform.grindHint")
     }
   }
 

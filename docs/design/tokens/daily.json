@@ -1,0 +1,35 @@
+{
+  "_about": "Daily (default). Source of truth for the daily palette in NextCup/DesignSystem/Tokens.swift (design/check_tokens.py). Contrast: python3 design/contrast.py and StyleTests",
+  "light": {
+    "bg": "#F7F5F1",
+    "paper": "#FFFFFF",
+    "steel": "#1C1A17",
+    "on-steel": "#FFFFFF",
+    "ink": "#1C1A17",
+    "ink-2": "#6B645C",
+    "line": "#8C847A",
+    "signal": "#93591A",
+    "on-signal": "#FFFFFF",
+    "signal-on-steel": "#E3A75C",
+    "kraft": "#F3E9DC",
+    "on-kraft": "#1C1A17",
+    "error": "#9A1B0A",
+    "ok": "#55684A"
+  },
+  "dark": {
+    "bg": "#0F0F10",
+    "paper": "#1C1C1E",
+    "steel": "#2A2A2D",
+    "on-steel": "#F2EFEA",
+    "ink": "#F2EFEA",
+    "ink-2": "#A8A39C",
+    "line": "#6E6A64",
+    "signal": "#E3A75C",
+    "on-signal": "#1A1208",
+    "signal-on-steel": "#E3A75C",
+    "kraft": "#2A2117",
+    "on-kraft": "#F2EFEA",
+    "error": "#FF9C85",
+    "ok": "#A9BC97"
+  }
+}

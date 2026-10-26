@@ -127,6 +127,31 @@ private struct TabRoot: View {
     case .bean(let id): BeanDestination(link: link, beanID: id)
     case .timer(let id, let doseG): TimerDestination(link: link, recipeID: id, doseG: doseG)
     case .settings: SettingsRootView()
+    case .taste(let id): TasteDestination(link: link, brewID: id)
+    }
+  }
+}
+
+/// The taste screen for a saved brew; a brew that is gone says so.
+private struct TasteDestination: View {
+  let link: DeepLink
+  let brewID: UUID
+  @Environment(\.modelContext) private var context
+
+  var body: some View {
+    if let brew = try? Store(context: context).find(Brew.self, id: brewID) {
+      TasteView(brew: brew).background {
+        Color.clear.accessibilityElement().accessibilityIdentifier(link.identifier)
+      }
+    } else {
+      ScrollView {
+        EmptyState(
+          title: "Brew not found",
+          message: "This brew is no longer in your journal. It may have been deleted.")
+      }
+      .background(DS.bg)
+      .navigationTitle(link.screenName)
+      .accessibilityIdentifier(link.identifier)
     }
   }
 }
