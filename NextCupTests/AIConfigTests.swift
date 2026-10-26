@@ -88,12 +88,31 @@ struct AIConfigTests {
   }
 
   @Test func modelChoiceIsPerFeatureAndNeverGuessed() {
-    let prefs = AIPreferences(defaults: defaults())
+    let prefs = AIPreferences(defaults: defaults(), appleAvailable: false)
     #expect(prefs.modelID(for: .insights) == nil)
     #expect(prefs.provider(for: .insights) == nil)
     prefs.setChoice(.openAI, model: " my-model ", for: .insights)
     #expect(prefs.modelID(for: .insights) == "my-model")
     #expect(prefs.provider(for: .insights) == .openAI)
     #expect(prefs.modelID(for: .diagnosis) == nil)
+  }
+
+  @Test func appleIsTheDefaultWhereAvailableAndNeedsNoKeyOrDisclosure() {
+    let prefs = AIPreferences(defaults: defaults(), appleAvailable: true)
+    #expect(prefs.provider(for: .diagnosis) == .apple)
+    #expect(prefs.modelID(for: .diagnosis) == AppleIntelligence.modelID)
+    #expect(prefs.hasAcceptedDisclosure(for: .apple))
+    #expect(store().hasKey(for: .apple))
+    prefs.setChoice(.openAI, model: "m", for: .diagnosis)
+    #expect(prefs.provider(for: .diagnosis) == .openAI, "a choice beats the default")
+  }
+
+  @Test func effortIsStoredOnceForEveryFeature() {
+    let prefs = AIPreferences(defaults: defaults())
+    #expect(prefs.effort == nil)
+    prefs.effort = "low"
+    #expect(prefs.effort == "low")
+    prefs.effort = ""
+    #expect(prefs.effort == nil)
   }
 }

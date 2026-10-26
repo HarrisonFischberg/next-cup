@@ -50,7 +50,7 @@ final class NextCupUITests: XCTestCase {
   func testAppLaunchesToJournalTab() {
     let app = launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-    for title in ["Journal", "Recipes", "Beans", "Explore"] {
+    for title in ["Brew", "Journal", "Beans", "Explore"] {
       XCTAssertTrue(app.tabBars.buttons[title].exists, "missing tab \(title)")
     }
     XCTAssertFalse(app.tabBars.buttons["Settings"].exists, "Settings is behind the gear")
@@ -62,7 +62,7 @@ final class NextCupUITests: XCTestCase {
     let links: [(url: String, destination: String, tab: String)] = [
       ("nextcup://brew/new", "destination.brew.new", "Journal"),
       ("nextcup://brew/\(sampleID)", "destination.brew.\(sampleID)", "Journal"),
-      ("nextcup://recipe/\(sampleID)", "destination.recipe.\(sampleID)", "Recipes"),
+      ("nextcup://recipe/\(sampleID)", "destination.recipe.\(sampleID)", "Brew"),
       ("nextcup://bean/\(sampleID)", "destination.bean.\(sampleID)", "Beans"),
     ]
     for link in links {
@@ -142,7 +142,7 @@ final class NextCupUITests: XCTestCase {
   func testRecipeLibraryGroupsSearchesAndScales() {
     let app = launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-    app.tabBars.buttons["Recipes"].tap()
+    app.tabBars.buttons["Brew"].tap()
     XCTAssertTrue(element(app, "tab.root.recipes").waitForExistence(timeout: 5))
     XCTAssertTrue(
       element(app, "POUR OVER").waitForExistence(timeout: 5),
@@ -185,7 +185,7 @@ final class NextCupUITests: XCTestCase {
       element(app, "settings.units.weight").buttons["Grams (g)"].tap()
     }
 
-    app.tabBars.buttons["Recipes"].tap()
+    app.tabBars.buttons["Brew"].tap()
     let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'"))
       .firstMatch
     XCTAssertTrue(row.waitForExistence(timeout: 5))
@@ -227,7 +227,7 @@ final class NextCupUITests: XCTestCase {
       + extraArguments
     app.launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-    app.tabBars.buttons["Recipes"].tap()
+    app.tabBars.buttons["Brew"].tap()
     let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'"))
       .firstMatch
     XCTAssertTrue(row.waitForExistence(timeout: 5))
@@ -638,7 +638,7 @@ final class NextCupUITests: XCTestCase {
   func testCustomizingABuiltInRecipeSavesACopy() {
     let app = launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-    app.tabBars.buttons["Recipes"].tap()
+    app.tabBars.buttons["Brew"].tap()
     let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'"))
       .firstMatch
     XCTAssertTrue(row.waitForExistence(timeout: 5))
@@ -1000,7 +1000,7 @@ final class NextCupUITests: XCTestCase {
       }
       app.launch()
       XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-      app.tabBars.buttons["Recipes"].tap()
+      app.tabBars.buttons["Brew"].tap()
       XCTAssertTrue(app.staticTexts["POUR OVER"].waitForExistence(timeout: 5))
       try save(app.screenshot(), "\(folder)/recipes-library-\(variant.name).png")
 
@@ -1074,17 +1074,20 @@ final class NextCupUITests: XCTestCase {
     app.launch()
     let progress = element(app, "progress.step")
     XCTAssertTrue(progress.waitForExistence(timeout: 10))
-    XCTAssertTrue(progress.label.contains("Step 1 of 3"), "got \(progress.label)")
+    XCTAssertTrue(progress.label.contains("Step 1 of 4"), "got \(progress.label)")
     element(app, "onboarding.next").tap()
-    XCTAssertTrue(progress.label.contains("Step 2 of 3"), "got \(progress.label)")
+    XCTAssertTrue(progress.label.contains("Step 2 of 4"), "got \(progress.label)")
     element(app, "onboarding.next").tap()
-    XCTAssertTrue(progress.label.contains("Step 3 of 3"), "got \(progress.label)")
+    XCTAssertTrue(progress.label.contains("Step 3 of 4"), "got \(progress.label)")
     element(app, "onboarding.later").tap()
+    XCTAssertTrue(progress.label.contains("Step 4 of 4"), "got \(progress.label)")
+    XCTAssertTrue(element(app, "onboarding.ai").exists, "the last step says which AI is on")
+    element(app, "onboarding.next").tap()
     let finish = app.buttons["Browse recipes"]
     XCTAssertTrue(finish.waitForExistence(timeout: 5), "the finish names the next step")
     finish.tap()
-    XCTAssertTrue(app.tabBars.buttons["Recipes"].waitForExistence(timeout: 5))
-    XCTAssertTrue(app.tabBars.buttons["Recipes"].isSelected)
+    XCTAssertTrue(app.tabBars.buttons["Brew"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.tabBars.buttons["Brew"].isSelected)
   }
 
   @MainActor
@@ -1530,6 +1533,8 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
     openSettings(app)
     let link = element(app, "settings.data")
+    // Appearance sits at the top, so Your data starts below the fold.
+    scrollUntilHittable(link, in: app)
     XCTAssertTrue(link.waitForExistence(timeout: 5))
     link.tap()
     let delete = element(app, "data.deleteAll")

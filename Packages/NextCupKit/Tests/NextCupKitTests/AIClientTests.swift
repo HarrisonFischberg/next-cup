@@ -45,9 +45,12 @@ struct AIClientTests {
     .success(HTTPResult(status: code, body: Data()))
   }
 
-  private var anthropicBody: String {
-    #"{"content":[{"type":"text","text":"hi"},{"type":"tool_use","input":\#(answer)}]}"#
+  private func anthropicBody(_ text: String) -> String {
+    let escaped = text.replacingOccurrences(of: "\"", with: "\\\"")
+    return #"{"content":[{"type":"thinking","thinking":""},{"type":"text","text":"\#(escaped)"}]}"#
   }
+
+  private var anthropicBody: String { anthropicBody(answer) }
 
   private func openAIBody(_ text: String) -> String {
     let escaped = text.replacingOccurrences(of: "\"", with: "\\\"")
@@ -94,11 +97,33 @@ struct AIClientTests {
     #expect(request.url?.absoluteString == "https://api.anthropic.com/v1/messages")
     #expect(request.value(forHTTPHeaderField: "x-api-key") == "sk-test")
     #expect(request.value(forHTTPHeaderField: "anthropic-version") != nil)
-    #expect(request.timeoutInterval == 60)
+    #expect(request.timeoutInterval == 120)
     let body = String(decoding: try #require(request.httpBody), as: UTF8.self)
     #expect(body.contains("\"model\":\"model-a\""))
     #expect(body.contains(image.base64EncodedString()))
-    #expect(body.contains("\"tool_choice\""))
+    #expect(body.contains("\"json_schema\""))
+    #expect(!body.contains("\"tool_choice\""), "current models refuse a forced tool")
+    #expect(!body.contains("\"effort\""), "no effort unless one is chosen")
+  }
+
+  @Test func effortIsSentWhenChosen() async throws {
+    let stub = StubTransport([ok(anthropicBody), ok(openAIBody(answer))])
+    _ = try await client(stub).send(payload(), provider: .anthropic, model: "m", effort: "low")
+    _ = try await client(stub).send(payload(), provider: .openAI, model: "m", effort: "high")
+    let bodies = await stub.requests.map { String(decoding: $0.httpBody ?? Data(), as: UTF8.self) }
+    #expect(bodies[0].contains(#""output_config":{"effort":"low""#))
+    #expect(bodies[1].contains(#""reasoning":{"effort":"high"}"#))
+  }
+
+  @Test func modelsListChecksTheKey() async throws {
+    let stub = StubTransport([
+      ok(#"{"data":[{"id":"claude-a"},{"id":"claude-b"}]}"#),
+      ok(#"{"data":[{"id":"gpt-5"},{"id":"tts-1"},{"id":"o4-mini"},{"id":"gpt-4o-audio"}]}"#),
+      status(401),
+    ])
+    #expect(try await client(stub).models(.anthropic) == ["claude-a", "claude-b"])
+    #expect(try await client(stub).models(.openAI) == ["o4-mini", "gpt-5"])
+    await #expect(throws: AIError.keyRejected) { try await client(stub).models(.anthropic) }
   }
 
   @Test func openAIRequestAndResult() async throws {
@@ -146,10 +171,11 @@ struct AIClientTests {
 
   @Test(arguments: [
     #"not json"#, #"{"content":[]}"#,
-    #"{"content":[{"type":"tool_use","input":{"field":"grind"}}]}"#,
-    #"{"content":[{"type":"tool_use","input":{"field":"water","delta":1}}]}"#,
-    #"{"content":[{"type":"tool_use","input":{"field":"grind","delta":1.5}}]}"#,
-    #"{"content":[{"type":"tool_use","input":{"field":"grind","delta":1,"extra":true}}]}"#,
+    #"{"content":[{"type":"text","text":"{\"field\":\"grind\"}"}]}"#,
+    #"{"content":[{"type":"text","text":"{\"field\":\"water\",\"delta\":1}"}]}"#,
+    #"{"content":[{"type":"text","text":"{\"field\":\"grind\",\"delta\":1.5}"}]}"#,
+    #"{"content":[{"type":"text","text":"{\"field\":\"grind\",\"delta\":1,\"extra\":true}"}]}"#,
+    #"{"content":[{"type":"text","text":"sure, grind finer"}]}"#,
   ])
   func invalidOutputIsDiscarded(body: String) async {
     let stub = StubTransport([ok(body), ok(anthropicBody)])

@@ -165,26 +165,27 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
   }
 }
 
-/// Ten flavors. Each is a palette plus a `Flavor` (type, corners, density, control and
+/// The flavors. Each is a palette plus a `Flavor` (type, corners, density, control and
 /// number style). Palettes are mirrored in docs/design/tokens/<name>.json.
 enum AppStyle: String, CaseIterable, Identifiable {
   case daily, bloom
-  case steelKraft, charcoalCrema, quietCeramic, terracotta, lateNightCafe
-  case nightMint, espressoBlack, cafePage, roasterPoster, makeItYours
+  case steelKraft, charcoalCrema, quietCeramic
+  case nightMint, espressoBlack, cafePage, roasterPoster
 
   static let storageKey = "appStyle"
 
-  /// Read live so `DS` colors and fonts follow the Settings choice.
+  /// Read live so `DS` colors and fonts follow the Settings choice. A removed look falls
+  /// back to the default.
   static var current: AppStyle {
-    UserDefaults.standard.string(forKey: storageKey).flatMap(AppStyle.init) ?? .daily
+    UserDefaults.standard.string(forKey: storageKey).flatMap(AppStyle.init) ?? .nightMint
   }
 
-  /// Moves everyone onto Daily once, the first launch after it ships. A launch
+  /// Moves everyone onto Night Mint once, the first launch after it ships. A launch
   /// argument (UI tests) still wins, because the argument domain is read first.
-  static func adoptDailyOnce(_ d: UserDefaults = .standard) {
-    guard !d.bool(forKey: "style.dailyAdopted") else { return }
-    d.set(AppStyle.daily.rawValue, forKey: storageKey)
-    d.set(true, forKey: "style.dailyAdopted")
+  static func adoptNightMintOnce(_ d: UserDefaults = .standard) {
+    guard !d.bool(forKey: "style.nightMintAdopted") else { return }
+    d.set(AppStyle.nightMint.rawValue, forKey: storageKey)
+    d.set(true, forKey: "style.nightMintAdopted")
   }
 
   var id: String { rawValue }
@@ -196,13 +197,10 @@ enum AppStyle: String, CaseIterable, Identifiable {
     case .steelKraft: "Steel & Kraft"
     case .charcoalCrema: "Charcoal & Crema"
     case .quietCeramic: "Quiet Ceramic"
-    case .terracotta: "Terracotta"
-    case .lateNightCafe: "Late-Night Café"
     case .nightMint: "Night Mint"
     case .espressoBlack: "Espresso Black"
     case .cafePage: "Café Page"
     case .roasterPoster: "Roaster Poster"
-    case .makeItYours: "Make It Yours"
     }
   }
 
@@ -214,13 +212,10 @@ enum AppStyle: String, CaseIterable, Identifiable {
     case .steelKraft: "Spec sheet, square, one orange"
     case .charcoalCrema: "Ledger, Didot numerals"
     case .quietCeramic: "Calm, airy, celadon"
-    case .terracotta: "Warm clay, chunky chips"
-    case .lateNightCafe: "Amber menu card"
     case .nightMint: "Calm mint, rounded"
     case .espressoBlack: "True black, high contrast"
     case .cafePage: "Serif headings on paper"
     case .roasterPoster: "Loud stickers with offset shadow"
-    case .makeItYours: "Your accent, corners and type"
     }
   }
 
@@ -243,14 +238,6 @@ enum AppStyle: String, CaseIterable, Identifiable {
       Flavor(
         displayFont: "HiraMinProN-W6", radius: 20, density: .airy, control: .pill,
         numbers: .rounded)
-    case .terracotta:
-      Flavor(
-        bodyDesign: .rounded, displayFont: "Cochin-Bold", radius: 18, density: .regular,
-        control: .pill, numbers: .rounded)
-    case .lateNightCafe:
-      Flavor(
-        displayFont: "BodoniSvtyTwoOSITCTT-Bold", radius: 4, density: .airy, control: .square,
-        numbers: .monospaced)
     case .nightMint:
       Flavor(
         bodyDesign: .rounded, displayDesign: .rounded, displayWeight: .semibold, radius: 20,
@@ -267,15 +254,10 @@ enum AppStyle: String, CaseIterable, Identifiable {
       Flavor(
         displayDesign: .rounded, displayWeight: .heavy, radius: 12, density: .regular,
         control: .sticker, numbers: .condensed)
-    case .makeItYours: MakeItYours.current.flavor
     }
   }
 
   var palette: Palette {
-    self == .makeItYours ? MakeItYours.current.accent.applied(to: basePalette) : basePalette
-  }
-
-  private var basePalette: Palette {
     switch self {
     // The Daily Loop look: warm white ground, white cards, one amber that passes
     // AA with white text in light (5.1:1) and with near-black text in dark.
@@ -319,22 +301,6 @@ enum AppStyle: String, CaseIterable, Identifiable {
         onSignal: P(0xF6F1E7, 0x1F1A16), signalOnSteel: P(0x9DBFAE, 0x9DBFAE),
         kraft: P(0xD3C8B3, 0xD3C8B3), onKraft: P(0x3B2E25, 0x3B2E25),
         error: P(0x9B3B2A, 0xEE9A86), ok: P(0x2A6A2A, 0x7FD18A))
-    case .terracotta:
-      Palette(
-        bg: P(0xF3E3CF, 0x2A1710), paper: P(0xE8C7A2, 0x3D2318), steel: P(0x4A2515, 0x4A2B1E),
-        onSteel: P(0xFFF3E4, 0xF7E6D2), ink: P(0x3A1F14, 0xF7E6D2), ink2: P(0x6B4332, 0xD4B59B),
-        line: P(0x6B4332, 0xA88670), signal: P(0x962F14, 0xE58A63),
-        onSignal: P(0xFFF3E4, 0x2A1710), signalOnSteel: P(0xF0A07A, 0xF0A07A),
-        kraft: P(0xD9B48A, 0xD9B48A), onKraft: P(0x3A1F14, 0x3A1F14),
-        error: P(0x9A2A16, 0xFFA58A), ok: P(0x1F5A1F, 0x7FD18A))
-    case .lateNightCafe:
-      Palette(
-        bg: P(0xF2E6CF, 0x17100C), paper: P(0xE7D7B6, 0x241911), steel: P(0x2A1A10, 0x2E2217),
-        onSteel: P(0xF1E4CC, 0xF1E4CC), ink: P(0x2A1A10, 0xF1E4CC), ink2: P(0x5E4630, 0xC2AE92),
-        line: P(0x5E4630, 0x8F7C62), signal: P(0x8A4B08, 0xF0AE4A),
-        onSignal: P(0xF8EEDB, 0x17100C), signalOnSteel: P(0xF0AE4A, 0xF0AE4A),
-        kraft: P(0xC9A15B, 0xC9A15B), onKraft: P(0x17100C, 0x17100C),
-        error: P(0x9B2A14, 0xFF9F85), ok: P(0x2A6A2A, 0x7FD18A))
     case .nightMint:
       Palette(
         bg: P(0xF4F8F7, 0x0E1513), paper: P(0xFFFFFF, 0x18211F), steel: P(0x13201D, 0x1F2B28),
@@ -366,14 +332,6 @@ enum AppStyle: String, CaseIterable, Identifiable {
         line: P(0x0B0B0B, 0xF2F5F2), signal: P(0x1E7A3E, 0x8FF0A4),
         onSignal: P(0xFFFFFF, 0x0B0B0B), signalOnSteel: P(0x8FF0A4, 0x8FF0A4),
         kraft: P(0xD9F2DF, 0x233326), onKraft: P(0x0B0B0B, 0xF2F5F2),
-        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
-    case .makeItYours:
-      Palette(
-        bg: P(0xF7F6F4, 0x111111), paper: P(0xFFFFFF, 0x1C1C1E), steel: P(0x1A1A1A, 0x2C2C2E),
-        onSteel: P(0xF2F2F2, 0xF2F2F2), ink: P(0x1A1A1A, 0xF2F2F2), ink2: P(0x5E5E5E, 0xA0A0A5),
-        line: P(0x5E5E5E, 0xA0A0A5), signal: P(0xB4531F, 0xF0915A),
-        onSignal: P(0xFFFFFF, 0x111111), signalOnSteel: P(0xF0915A, 0xF0915A),
-        kraft: P(0xECE7DF, 0x2A2724), onKraft: P(0x1A1A1A, 0xF2F2F2),
         error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
     }
   }
@@ -476,91 +434,5 @@ extension EnvironmentValues {
   var flavor: Flavor {
     get { self[FlavorKey.self] }
     set { self[FlavorKey.self] = newValue }
-  }
-}
-
-// MARK: Make It Yours
-
-/// An accent that passes AA on both grounds (docs/design/tokens/makeItYours.json).
-struct Swatch: Identifiable {
-  let id: String
-  let light: UInt32
-  let dark: UInt32
-
-  static let all = [
-    Swatch(id: "cherry", light: 0xB3202F, dark: 0xFF8A93),
-    Swatch(id: "honey", light: 0x8A5A00, dark: 0xF2B84B),
-    Swatch(id: "roast", light: 0xB4531F, dark: 0xF0915A),
-    Swatch(id: "sage", light: 0x3F6B4A, dark: 0x9CCBA6),
-    Swatch(id: "slate", light: 0x475A73, dark: 0xA9BCD6),
-    Swatch(id: "blueberry", light: 0x4B4FA8, dark: 0xA8ACF0),
-    Swatch(id: "crema", light: 0x7A5C3A, dark: 0xE0C097),
-    Swatch(id: "matcha", light: 0x4C6B1F, dark: 0xB5D86B),
-  ]
-
-  var title: String { id.capitalized }
-
-  /// The accent replaces `signal`; `signalOnSteel` takes the dark value on either steel.
-  func applied(to p: Palette) -> Palette {
-    var out = p
-    out.signal = P(light, dark)
-    out.signalOnSteel = P(dark, dark)
-    return out
-  }
-}
-
-enum Corners: String, CaseIterable, Identifiable {
-  case square, soft, round
-  var id: String { rawValue }
-  var title: String { rawValue.capitalized }
-  var radius: CGFloat {
-    switch self {
-    case .square: 2
-    case .soft: 12
-    case .round: 24
-    }
-  }
-}
-
-enum FontChoice: String, CaseIterable, Identifiable {
-  case standard, rounded, serif, mono
-  var id: String { rawValue }
-  var title: String { rawValue.capitalized }
-  var design: SwiftUI.Font.Design {
-    switch self {
-    case .standard: .default
-    case .rounded: .rounded
-    case .serif: .serif
-    case .mono: .monospaced
-    }
-  }
-}
-
-/// The four settings of the Make It Yours flavor, kept in UserDefaults.
-struct MakeItYours {
-  static let accentKey = "mine.accent"
-  static let cornersKey = "mine.corners"
-  static let densityKey = "mine.density"
-  static let fontKey = "mine.font"
-
-  var accent: Swatch
-  var corners: Corners
-  var density: Density
-  var font: FontChoice
-
-  var flavor: Flavor {
-    Flavor(
-      bodyDesign: font == .standard ? nil : font.design, displayDesign: font.design,
-      displayWeight: .semibold, radius: corners.radius, density: density,
-      control: corners == .round ? .pill : .square, numbers: .monospaced)
-  }
-
-  static var current: MakeItYours {
-    let d = UserDefaults.standard
-    return MakeItYours(
-      accent: Swatch.all.first { $0.id == d.string(forKey: accentKey) } ?? Swatch.all[2],
-      corners: d.string(forKey: cornersKey).flatMap(Corners.init) ?? .soft,
-      density: d.string(forKey: densityKey).flatMap(Density.init) ?? .regular,
-      font: d.string(forKey: fontKey).flatMap(FontChoice.init) ?? .standard)
   }
 }

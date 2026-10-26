@@ -20,7 +20,7 @@ private actor StubTransport: Transport {
 @Suite(.serialized) @MainActor struct AIQueueTests {
   private static var containers: [ModelContainer] = []
   private let schema = JSONSchema.object(["field": .string(allowed: ["grind"])])
-  private let valid = #"{"content":[{"type":"tool_use","input":{"field":"grind"}}]}"#
+  private let valid = #"{"content":[{"type":"text","text":"{\"field\":\"grind\"}"}]}"#
 
   private func payload() -> AIRequestPayload {
     AIRequestPayload(system: "s", userText: "u", schemaName: "suggest", schema: schema)

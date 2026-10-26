@@ -29,6 +29,8 @@ public struct AIRequestPayload: Codable, Equatable, Sendable {
 /// Output that already passed the payload's schema.
 public struct AIResult: Equatable, Sendable {
   public let json: Data
+
+  public init(json: Data) { self.json = json }
 }
 
 public enum AIError: Error, Equatable, LocalizedError, Sendable {
@@ -104,12 +106,14 @@ public struct AIClient: Sendable {
     self.sleep = sleep
   }
 
-  public func send(_ payload: AIRequestPayload, provider: AIProviderKind, model: String)
-    async throws -> AIResult
-  {
+  /// `effort` is "low", "medium" or "high"; nil leaves the provider's default.
+  public func send(
+    _ payload: AIRequestPayload, provider: AIProviderKind, model: String, effort: String? = nil
+  ) async throws -> AIResult {
     guard disclosureAccepted(provider) else { throw AIError.disclosureNotAccepted }
     guard let apiKey = key(provider), !apiKey.isEmpty else { throw AIError.noKey }
-    let request = try Self.request(payload, provider: provider, model: model, key: apiKey)
+    let request = try Self.request(
+      payload, provider: provider, model: model, key: apiKey, effort: effort)
 
     for attempt in 1...Self.maxAttempts {
       let result: HTTPResult
@@ -141,6 +145,50 @@ public struct AIClient: Sendable {
     throw AIError.unavailable(nil)
   }
 
+  /// The models this key can use, newest first as the provider lists them. Also checks the
+  /// key: a rejected one throws `keyRejected`. Sends only the key, never user data.
+  public func models(_ provider: AIProviderKind) async throws -> [String] {
+    guard let apiKey = key(provider), !apiKey.isEmpty else { throw AIError.noKey }
+    var request: URLRequest
+    switch provider {
+    case .anthropic:
+      request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/models?limit=1000")!)
+      request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+      request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+    case .openAI:
+      request = URLRequest(url: URL(string: "https://api.openai.com/v1/models")!)
+      request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+    }
+    request.timeoutInterval = 30
+    let result: HTTPResult
+    do {
+      result = try await transport.send(request)
+    } catch let error as URLError
+      where [.notConnectedToInternet, .dataNotAllowed, .internationalRoamingOff].contains(
+        error.code)
+    {
+      throw AIError.offline
+    } catch {
+      throw AIError.unavailable(nil)
+    }
+    switch result.status {
+    case 200..<300: break
+    case 401, 403: throw AIError.keyRejected
+    default: throw AIError.http(result.status)
+    }
+    guard let root = try? JSONSerialization.jsonObject(with: result.body) as? [String: Any],
+      let data = root["data"] as? [[String: Any]]
+    else { throw AIError.invalidResponse }
+    let ids = data.compactMap { $0["id"] as? String }
+    guard provider == .openAI else { return ids }
+    // OpenAI lists every model it has; keep the chat ones that take a JSON schema.
+    let skip = ["audio", "realtime", "tts", "transcribe", "image", "search", "embedding"]
+    return ids.filter { id in
+      (id.hasPrefix("gpt-") || (id.hasPrefix("o") && id.dropFirst().first?.isNumber == true))
+        && !skip.contains { id.contains($0) }
+    }.sorted(by: >)
+  }
+
   private func pause(_ attempt: Int) async throws {
     do { try await sleep(backoff * (1 << (attempt - 1))) } catch { throw AIError.cancelled }
   }
@@ -148,7 +196,8 @@ public struct AIClient: Sendable {
   // MARK: Requests
 
   static func request(
-    _ payload: AIRequestPayload, provider: AIProviderKind, model: String, key: String
+    _ payload: AIRequestPayload, provider: AIProviderKind, model: String, key: String,
+    effort: String? = nil
   ) throws -> URLRequest {
     var request: URLRequest
     let body: [String: Any]
@@ -166,16 +215,15 @@ public struct AIClient: Sendable {
         ])
       }
       content.append(["type": "text", "text": payload.userText])
+      // Structured output, not a forced tool: current Claude models refuse forced tool_choice.
+      var output: [String: Any] = [
+        "format": ["type": "json_schema", "schema": payload.schema.jsonObject]
+      ]
+      if let effort { output["effort"] = effort }
       body = [
-        "model": model, "max_tokens": 1024, "system": payload.system,
+        "model": model, "max_tokens": 16000, "system": payload.system,
         "messages": [["role": "user", "content": content]],
-        "tools": [
-          [
-            "name": payload.schemaName, "description": "Return the answer in this shape.",
-            "input_schema": payload.schema.jsonObject,
-          ]
-        ],
-        "tool_choice": ["type": "tool", "name": payload.schemaName],
+        "output_config": output,
       ]
     case .openAI:
       request = URLRequest(url: URL(string: "https://api.openai.com/v1/responses")!)
@@ -184,7 +232,7 @@ public struct AIClient: Sendable {
       if let image {
         content.append(["type": "input_image", "image_url": "data:image/jpeg;base64,\(image)"])
       }
-      body = [
+      var openAIBody: [String: Any] = [
         "model": model, "instructions": payload.system,
         "input": [["role": "user", "content": content]],
         "text": [
@@ -194,9 +242,11 @@ public struct AIClient: Sendable {
           ]
         ],
       ]
+      if let effort { openAIBody["reasoning"] = ["effort": effort] }
+      body = openAIBody
     }
     request.httpMethod = "POST"
-    request.timeoutInterval = 60
+    request.timeoutInterval = 120
     request.setValue("application/json", forHTTPHeaderField: "content-type")
     request.httpBody = try JSONSerialization.data(withJSONObject: body, options: .sortedKeys)
     return request
@@ -213,8 +263,10 @@ public struct AIClient: Sendable {
     let answer: Any?
     switch provider {
     case .anthropic:
-      let blocks = root["content"] as? [[String: Any]] ?? []
-      answer = blocks.first { $0["type"] as? String == "tool_use" }?["input"]
+      let text =
+        (root["content"] as? [[String: Any]] ?? [])
+        .first { $0["type"] as? String == "text" }?["text"] as? String
+      answer = text.flatMap { try? JSONSerialization.jsonObject(with: Data($0.utf8)) }
     case .openAI:
       let text =
         (root["output"] as? [[String: Any]] ?? [])

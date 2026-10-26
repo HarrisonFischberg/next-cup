@@ -106,7 +106,7 @@ struct BagRecognitionTests {
   @Test func queueDeliversADraftAfterASend() async throws {
     let context = try make()
     let stub = StubBagTransport(
-      #"{"content":[{"type":"tool_use","input":\#(bag)}]}"#)
+      #"{"content":[{"type":"text","text":"\#(bag.escapedForJSON)"}]}"#)
     let client = AIClient(
       transport: stub, key: { _ in "sk-test" }, disclosureAccepted: { _ in true }, sleep: { _ in })
     let queue = AIQueue(context: context, client: client)
@@ -143,4 +143,9 @@ private actor StubBagTransport: Transport {
     calls += 1
     return HTTPResult(status: 200, body: Data(body.utf8))
   }
+}
+
+extension String {
+  /// The string as the inside of a JSON string literal, for stubbed provider answers.
+  var escapedForJSON: String { replacingOccurrences(of: "\"", with: "\\\"") }
 }
