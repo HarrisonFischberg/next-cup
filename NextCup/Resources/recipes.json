@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "recipes": [
     {
       "key": "cone-balanced",
@@ -137,6 +137,473 @@
         { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 800, "instruction": "Add cool water over the grounds." },
         { "kind": "stir", "startOffsetS": 60, "instruction": "Stir until no dry pockets remain." },
         { "kind": "wait", "startOffsetS": 120, "instruction": "Cover and steep in the fridge, then strain." }
+      ]
+    },
+    {
+      "key": "cone-balanced/strong",
+      "methodKey": "cone-dripper",
+      "name": "Strong cup",
+      "doseG": 20,
+      "waterG": 300,
+      "tempC": 93,
+      "totalTimeS": 230,
+      "tuningNote": "Tetsu Kasuya's 4:6: the last 60% of the water in three pours makes a stronger cup.",
+      "includesIce": false,
+      "credit": "Tetsu Kasuya, 4:6 method (stronger)",
+      "creditURL": "https://honestcoffeeguide.com/brew-recipes/tetsu-kasuya-4-6-method-stronger",
+      "steps": [
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 60, "instruction": "Pour 60 g in a spiral and let it drain." },
+        { "kind": "pour", "startOffsetS": 45, "targetCumulativeWaterG": 120, "instruction": "Pour 60 g once the bed runs dry." },
+        { "kind": "pour", "startOffsetS": 90, "targetCumulativeWaterG": 180, "instruction": "Pour 60 g." },
+        { "kind": "pour", "startOffsetS": 135, "targetCumulativeWaterG": 240, "instruction": "Pour 60 g." },
+        { "kind": "pour", "startOffsetS": 180, "targetCumulativeWaterG": 300, "instruction": "Pour the last 60 g." },
+        { "kind": "drawdown", "startOffsetS": 225, "instruction": "Remove the dripper as it finishes." }
+      ]
+    },
+    {
+      "key": "cone-balanced/lighter",
+      "methodKey": "cone-dripper",
+      "name": "Lighter, sweeter cup",
+      "doseG": 20,
+      "waterG": 300,
+      "tempC": 93,
+      "totalTimeS": 170,
+      "tuningNote": "Tetsu Kasuya's 4:6: the last 60% in one pour gives a lighter body that lets sweetness show.",
+      "includesIce": false,
+      "credit": "Tetsu Kasuya, 4:6 method (lighter)",
+      "creditURL": "https://honestcoffeeguide.com/brew-recipes/tetsu-kasuya-4-6-method-lighter",
+      "steps": [
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 60, "instruction": "Pour 60 g in a spiral and let it drain." },
+        { "kind": "pour", "startOffsetS": 45, "targetCumulativeWaterG": 120, "instruction": "Pour 60 g once the bed runs dry." },
+        { "kind": "pour", "startOffsetS": 90, "targetCumulativeWaterG": 300, "instruction": "Pour the remaining 180 g in one go." },
+        { "kind": "drawdown", "startOffsetS": 135, "instruction": "Remove the dripper at about 2:45." }
+      ]
+    },
+    {
+      "key": "cone-balanced/hoffmann",
+      "methodKey": "cone-dripper",
+      "name": "Hoffmann's big V60",
+      "doseG": 30,
+      "waterG": 500,
+      "tempC": 100,
+      "totalTimeS": 210,
+      "tuningNote": "Two cups. Stir and swirl so the bed ends flat; if it chokes, grind coarser.",
+      "includesIce": false,
+      "credit": "James Hoffmann, Ultimate V60",
+      "creditURL": "https://honestcoffeeguide.com/brew-recipes/james-hoffmann-v60",
+      "steps": [
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 60, "instruction": "Pour 60 g from the centre out." },
+        { "kind": "swirl", "startOffsetS": 10, "instruction": "Swirl until there are no dry lumps." },
+        { "kind": "pour", "startOffsetS": 45, "targetCumulativeWaterG": 300, "instruction": "Pour to 300 g, centre out then in circles." },
+        { "kind": "pour", "startOffsetS": 75, "targetCumulativeWaterG": 500, "instruction": "Pour to 500 g in the centre, keeping it full." },
+        { "kind": "stir", "startOffsetS": 105, "instruction": "Stir gently one way, then the other." },
+        { "kind": "swirl", "startOffsetS": 120, "instruction": "Swirl two or three times." },
+        { "kind": "drawdown", "startOffsetS": 125, "instruction": "Let it drain fully, about 3:30." }
+      ]
+    },
+    {
+      "key": "flat-even/many-pours",
+      "methodKey": "flat-dripper",
+      "name": "Many small pours",
+      "doseG": 21,
+      "waterG": 355,
+      "tempC": 97,
+      "totalTimeS": 210,
+      "tuningNote": "Pour about every 25 seconds, whenever the slurry drops below the grounds.",
+      "includesIce": false,
+      "credit": "Madcap Coffee, Kalita 185",
+      "creditURL": "https://www.madcapcoffee.com/blogs/news/how-we-brew-kalita-185-recipe",
+      "steps": [
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 50, "instruction": "Pour 50 g in circles from the centre out." },
+        { "kind": "pour", "startOffsetS": 15, "targetCumulativeWaterG": 100, "instruction": "Pour to 100 g." },
+        { "kind": "pour", "startOffsetS": 40, "targetCumulativeWaterG": 150, "instruction": "Pour to 150 g." },
+        { "kind": "pour", "startOffsetS": 65, "targetCumulativeWaterG": 200, "instruction": "Pour to 200 g." },
+        { "kind": "pour", "startOffsetS": 90, "targetCumulativeWaterG": 250, "instruction": "Pour to 250 g." },
+        { "kind": "pour", "startOffsetS": 115, "targetCumulativeWaterG": 300, "instruction": "Pour to 300 g, one pass over the filter ridges." },
+        { "kind": "pour", "startOffsetS": 140, "targetCumulativeWaterG": 355, "instruction": "Pour the last 55 g." },
+        { "kind": "drawdown", "startOffsetS": 165, "instruction": "Let it drain; aim to finish by 3:15 to 3:45." }
+      ]
+    },
+    {
+      "key": "flat-even/three-pours",
+      "methodKey": "flat-dripper",
+      "name": "Three big pours",
+      "doseG": 22,
+      "waterG": 350,
+      "tempC": 100,
+      "totalTimeS": 180,
+      "tuningNote": "Fewer, bigger pours. Use just-off-boil water.",
+      "includesIce": false,
+      "credit": "Rosso Coffee Roasters, Kalita Wave 185",
+      "creditURL": "https://rossocoffeeroasters.com/pages/kalita-wave-185",
+      "steps": [
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 90, "instruction": "Pour 90 g in a circle." },
+        { "kind": "pour", "startOffsetS": 45, "targetCumulativeWaterG": 250, "instruction": "Pour to 250 g." },
+        { "kind": "pour", "startOffsetS": 90, "targetCumulativeWaterG": 350, "instruction": "Pour to 350 g." },
+        { "kind": "drawdown", "startOffsetS": 120, "instruction": "Let it drain, about 3:00 in all." }
+      ]
+    },
+    {
+      "key": "flat-even/classic",
+      "methodKey": "flat-dripper",
+      "name": "Classic 1:16",
+      "doseG": 20,
+      "waterG": 320,
+      "totalTimeS": 210,
+      "tuningNote": "A steady four-pour recipe; finish between 3:00 and 3:30.",
+      "includesIce": false,
+      "credit": "Dilworth Coffee, Kalita 185",
+      "creditURL": "https://www.dilworthcoffee.com/blogs/brew-guides/kalita-185-pour-over",
+      "steps": [
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 50, "instruction": "Pour 50 g and wait 30 seconds." },
+        { "kind": "pour", "startOffsetS": 30, "targetCumulativeWaterG": 150, "instruction": "Pour about 100 g in circles." },
+        { "kind": "pour", "startOffsetS": 70, "targetCumulativeWaterG": 250, "instruction": "Pour about 100 g." },
+        { "kind": "pour", "startOffsetS": 110, "targetCumulativeWaterG": 320, "instruction": "Pour the last 70 g." },
+        { "kind": "drawdown", "startOffsetS": 140, "instruction": "Let it drain fully." }
+      ]
+    },
+    {
+      "key": "switchable-steep/hybrid",
+      "methodKey": "switchable-dripper",
+      "name": "Sweet hybrid",
+      "doseG": 20,
+      "waterG": 280,
+      "tempC": 93,
+      "totalTimeS": 185,
+      "tuningNote": "Percolate hot, then steep cooler: cool the kettle to about 70 °C before closing the valve.",
+      "includesIce": false,
+      "credit": "Tetsu Kasuya, hybrid method",
+      "creditURL": "https://honestcoffeeguide.com/brew-recipes/tetsu-kasuya-hybrid-method",
+      "steps": [
+        { "kind": "openValve", "startOffsetS": 0, "instruction": "Start with the valve open." },
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 60, "instruction": "Pour 60 g from the centre out." },
+        { "kind": "pour", "startOffsetS": 30, "targetCumulativeWaterG": 120, "instruction": "Spiral pour to 120 g, then add cold water to the kettle." },
+        { "kind": "closeValve", "startOffsetS": 75, "instruction": "Close the valve." },
+        { "kind": "pour", "startOffsetS": 75, "targetCumulativeWaterG": 280, "instruction": "Pour to 280 g at about 70 °C." },
+        { "kind": "openValve", "startOffsetS": 105, "instruction": "Open the valve to drain." },
+        { "kind": "drawdown", "startOffsetS": 110, "instruction": "Close it again at 3:00 even if it is still dripping." }
+      ]
+    },
+    {
+      "key": "switchable-steep/water-first",
+      "methodKey": "switchable-dripper",
+      "name": "Water first, long steep",
+      "doseG": 18,
+      "waterG": 300,
+      "tempC": 90,
+      "totalTimeS": 205,
+      "tuningNote": "Water goes in before the coffee, so every ground is wet at once.",
+      "includesIce": false,
+      "credit": "James Hoffmann, Clever Dripper",
+      "creditURL": "https://honestcoffeeguide.com/brew-recipes/james-hoffmann-clever-dripper",
+      "steps": [
+        { "kind": "closeValve", "startOffsetS": 0, "instruction": "Close the valve." },
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 300, "instruction": "Pour all the water, then add the coffee." },
+        { "kind": "stir", "startOffsetS": 10, "instruction": "Stir until saturated." },
+        { "kind": "wait", "startOffsetS": 20, "instruction": "Steep." },
+        { "kind": "stir", "startOffsetS": 120, "instruction": "Break the crust so the grounds sink." },
+        { "kind": "openValve", "startOffsetS": 142, "instruction": "Open the valve to drain." },
+        { "kind": "drawdown", "startOffsetS": 145, "instruction": "Should finish about a minute later." }
+      ]
+    },
+    {
+      "key": "switchable-steep/bright",
+      "methodKey": "switchable-dripper",
+      "name": "Bright light-roast steep",
+      "doseG": 19,
+      "waterG": 300,
+      "tempC": 100,
+      "totalTimeS": 175,
+      "tuningNote": "Made for light roasts: boiling water and a short steep.",
+      "includesIce": false,
+      "credit": "Workshop Coffee, Clever Dripper",
+      "creditURL": "https://honestcoffeeguide.com/brew-recipes/workshop-coffee-clever-dripper",
+      "steps": [
+        { "kind": "closeValve", "startOffsetS": 0, "instruction": "Close the valve." },
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 300, "instruction": "Pour all the water, then add the coffee." },
+        { "kind": "stir", "startOffsetS": 10, "instruction": "Stir until saturated, then cover." },
+        { "kind": "wait", "startOffsetS": 20, "instruction": "Steep." },
+        { "kind": "stir", "startOffsetS": 115, "instruction": "Stir the crust so the grounds settle." },
+        { "kind": "openValve", "startOffsetS": 120, "instruction": "Open the valve to drain." },
+        { "kind": "drawdown", "startOffsetS": 125, "instruction": "Let it drain, about a minute." }
+      ]
+    },
+    {
+      "key": "press-classic/clean",
+      "methodKey": "press",
+      "name": "Clean, no-sludge cup",
+      "doseG": 30,
+      "waterG": 500,
+      "tempC": 100,
+      "totalTimeS": 540,
+      "tuningNote": "The long settle makes the cup clean. Don't push the plunger down; pour slowly.",
+      "includesIce": false,
+      "credit": "James Hoffmann, French press",
+      "creditURL": "https://honestcoffeeguide.com/brew-recipes/james-hoffmann-french-press",
+      "steps": [
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 500, "instruction": "Pour all 500 g in about 10 seconds." },
+        { "kind": "wait", "startOffsetS": 10, "instruction": "Steep." },
+        { "kind": "stir", "startOffsetS": 240, "instruction": "Break the crust with a spoon." },
+        { "kind": "wait", "startOffsetS": 250, "instruction": "Skim off the foam with two spoons, then wait for the grounds to sink." },
+        { "kind": "press", "startOffsetS": 540, "instruction": "Set the plunger at the surface without pressing, and pour slowly." }
+      ]
+    },
+    {
+      "key": "press-classic/big-batch",
+      "methodKey": "press",
+      "name": "Big batch",
+      "doseG": 45,
+      "waterG": 720,
+      "tempC": 96,
+      "totalTimeS": 250,
+      "tuningNote": "For a full 1-litre press.",
+      "includesIce": false,
+      "credit": "Honest Coffee Guide, basic French press",
+      "creditURL": "https://honestcoffeeguide.com/brew-recipes/basic-french-press",
+      "steps": [
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 180, "instruction": "Pour 180 g and wet every ground." },
+        { "kind": "stir", "startOffsetS": 30, "instruction": "Stir." },
+        { "kind": "pour", "startOffsetS": 45, "targetCumulativeWaterG": 720, "instruction": "Pour to 720 g." },
+        { "kind": "wait", "startOffsetS": 60, "instruction": "Put the lid on and steep." },
+        { "kind": "press", "startOffsetS": 240, "instruction": "Press gently and slowly." }
+      ]
+    },
+    {
+      "key": "press-classic/strong",
+      "methodKey": "press",
+      "name": "Strong cup",
+      "doseG": 18,
+      "waterG": 250,
+      "tempC": 95,
+      "totalTimeS": 240,
+      "tuningNote": "A tighter 1:14 ratio for more body. Too heavy: go back to the classic.",
+      "includesIce": false,
+      "steps": [
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 250, "instruction": "Pour all the water over the grounds." },
+        { "kind": "stir", "startOffsetS": 30, "instruction": "Stir gently." },
+        { "kind": "wait", "startOffsetS": 45, "instruction": "Lid on and steep." },
+        { "kind": "press", "startOffsetS": 210, "instruction": "Press slowly and pour right away." }
+      ]
+    },
+    {
+      "key": "inverted-short/blue-bottle",
+      "methodKey": "inverted-press",
+      "name": "Bloom and steep",
+      "doseG": 15,
+      "waterG": 200,
+      "tempC": 93,
+      "totalTimeS": 160,
+      "tuningNote": "A short bloom first, then the rest of the water.",
+      "includesIce": false,
+      "credit": "Blue Bottle, inverted AeroPress",
+      "creditURL": "https://honestcoffeeguide.com/brew-recipes/blue-bottle-inverted-aeropress",
+      "steps": [
+        { "kind": "plug", "startOffsetS": 0, "instruction": "Seat the plunger in the chamber, upside down." },
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 30, "instruction": "Pour 30 g." },
+        { "kind": "stir", "startOffsetS": 5, "instruction": "Stir 3 or 4 times." },
+        { "kind": "wait", "startOffsetS": 10, "instruction": "Let it bloom." },
+        { "kind": "pour", "startOffsetS": 30, "targetCumulativeWaterG": 200, "instruction": "Pour to 200 g." },
+        { "kind": "invert", "startOffsetS": 90, "instruction": "Fit a rinsed filter cap, push out the air, and flip onto the cup." },
+        { "kind": "press", "startOffsetS": 120, "instruction": "Press gently for about 30 seconds." }
+      ]
+    },
+    {
+      "key": "inverted-short/quick",
+      "methodKey": "inverted-press",
+      "name": "Quick and bright",
+      "doseG": 15,
+      "waterG": 200,
+      "tempC": 100,
+      "totalTimeS": 70,
+      "tuningNote": "Fast and bright. Press ends early: grind finer. Runs long: coarser.",
+      "includesIce": false,
+      "credit": "Honest Coffee Guide, basic inverted AeroPress",
+      "creditURL": "https://honestcoffeeguide.com/brew-recipes/basic-inverted-aeropress-recipe",
+      "steps": [
+        { "kind": "plug", "startOffsetS": 0, "instruction": "Seat the plunger in the chamber, upside down." },
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 200, "instruction": "Pour 200 g in about 10 seconds." },
+        { "kind": "stir", "startOffsetS": 10, "instruction": "Stir 3 or 4 times." },
+        { "kind": "wait", "startOffsetS": 15, "instruction": "Steep." },
+        { "kind": "invert", "startOffsetS": 35, "instruction": "Fit the cap, push out the air, and flip." },
+        { "kind": "press", "startOffsetS": 40, "instruction": "Press slowly, about 30 seconds." }
+      ]
+    },
+    {
+      "key": "inverted-short/strong",
+      "methodKey": "inverted-press",
+      "name": "Strong cup",
+      "doseG": 18,
+      "waterG": 220,
+      "tempC": 92,
+      "totalTimeS": 165,
+      "tuningNote": "A 1:12 ratio for a heavier cup; top up with hot water if it is too strong.",
+      "includesIce": false,
+      "steps": [
+        { "kind": "plug", "startOffsetS": 0, "instruction": "Seat the plunger in the chamber, upside down." },
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 220, "instruction": "Pour all the water." },
+        { "kind": "stir", "startOffsetS": 15, "instruction": "Stir briefly." },
+        { "kind": "wait", "startOffsetS": 25, "instruction": "Steep." },
+        { "kind": "invert", "startOffsetS": 120, "instruction": "Fit the cap and flip onto the cup." },
+        { "kind": "press", "startOffsetS": 135, "instruction": "Press down steadily until it stops." }
+      ]
+    },
+    {
+      "key": "espresso-starting-point/ristretto",
+      "methodKey": "espresso",
+      "name": "Sweet ristretto",
+      "doseG": 20,
+      "waterG": 30,
+      "tempC": 93,
+      "totalTimeS": 27,
+      "tuningNote": "1:1.5. Shorter and syrupy; about 23 s for dark roasts, 30 s for lighter ones.",
+      "includesIce": false,
+      "credit": "Clive Coffee, brew ratios",
+      "creditURL": "https://clivecoffee.com/blogs/learn/brew-ratios-basket-sizes-and-the-confusion-over-a-double-shot",
+      "steps": [
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 30, "instruction": "Start the shot and watch the yield." },
+        { "kind": "wait", "startOffsetS": 23, "instruction": "Stop at 30 g." }
+      ]
+    },
+    {
+      "key": "espresso-starting-point/double",
+      "methodKey": "espresso",
+      "name": "Big 21 g double",
+      "doseG": 21,
+      "waterG": 42,
+      "tempC": 93,
+      "totalTimeS": 30,
+      "tuningNote": "1:2 from a bigger basket, a classic café double.",
+      "includesIce": false,
+      "credit": "Clive Coffee, brew ratios",
+      "creditURL": "https://clivecoffee.com/blogs/learn/brew-ratios-basket-sizes-and-the-confusion-over-a-double-shot",
+      "steps": [
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 42, "instruction": "Start the shot and watch the yield." },
+        { "kind": "wait", "startOffsetS": 26, "instruction": "Stop at 42 g." }
+      ]
+    },
+    {
+      "key": "espresso-starting-point/lungo",
+      "methodKey": "espresso",
+      "name": "Bright lungo",
+      "doseG": 18,
+      "waterG": 50,
+      "tempC": 93,
+      "totalTimeS": 35,
+      "tuningNote": "About 1:2.8. Lighter body, more clarity; good for light roasts.",
+      "includesIce": false,
+      "credit": "Clive Coffee, brew ratios",
+      "creditURL": "https://clivecoffee.com/blogs/learn/brew-ratios-basket-sizes-and-the-confusion-over-a-double-shot",
+      "steps": [
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 50, "instruction": "Start the shot and watch the yield." },
+        { "kind": "wait", "startOffsetS": 30, "instruction": "Stop at 50 g." }
+      ]
+    },
+    {
+      "key": "iced-flash-chill/workshop",
+      "methodKey": "iced-pour-over",
+      "name": "Iced V60 for two",
+      "doseG": 32,
+      "waterG": 300,
+      "tempC": 100,
+      "totalTimeS": 180,
+      "tuningNote": "Grind slightly finer than for hot filter. Stir into the ice when done.",
+      "includesIce": true,
+      "iceG": 200,
+      "credit": "Workshop Coffee, iced filter",
+      "creditURL": "https://workshopcoffee.com/pages/brewing-iced-filter-coffee-at-home",
+      "steps": [
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 75, "instruction": "Pour 75 g. 200 g of ice is already in the server." },
+        { "kind": "stir", "startOffsetS": 10, "instruction": "Stir the bed to wet it evenly." },
+        { "kind": "pour", "startOffsetS": 45, "targetCumulativeWaterG": 300, "instruction": "Pour slowly to 300 g by about 3:00." },
+        { "kind": "swirl", "startOffsetS": 170, "instruction": "Stir the coffee into the ice." }
+      ]
+    },
+    {
+      "key": "iced-flash-chill/forty",
+      "methodKey": "iced-pour-over",
+      "name": "40% ice",
+      "doseG": 30,
+      "waterG": 300,
+      "totalTimeS": 180,
+      "tuningNote": "Ice is 40% of the total water, so the cup lands at full strength.",
+      "includesIce": true,
+      "iceG": 200,
+      "credit": "Balance Coffee, Japanese iced coffee",
+      "creditURL": "https://balancecoffee.co.uk/blogs/blog/how-to-make-iced-coffee-japanese-style",
+      "steps": [
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 60, "instruction": "Pour 60 g. 200 g of ice is in the server." },
+        { "kind": "pour", "startOffsetS": 45, "targetCumulativeWaterG": 180, "instruction": "Pour to 180 g." },
+        { "kind": "pour", "startOffsetS": 90, "targetCumulativeWaterG": 300, "instruction": "Pour to 300 g." },
+        { "kind": "swirl", "startOffsetS": 160, "instruction": "Swirl the server until the ice is mostly melted." }
+      ]
+    },
+    {
+      "key": "iced-flash-chill/strong",
+      "methodKey": "iced-pour-over",
+      "name": "Strong iced",
+      "doseG": 22,
+      "waterG": 180,
+      "tempC": 94,
+      "totalTimeS": 150,
+      "tuningNote": "Less hot water and more ice for a punchier, colder cup.",
+      "includesIce": true,
+      "iceG": 140,
+      "steps": [
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 40, "instruction": "Wet the bed. The ice is already in the server." },
+        { "kind": "pour", "startOffsetS": 35, "targetCumulativeWaterG": 110, "instruction": "Pour in slow circles." },
+        { "kind": "pour", "startOffsetS": 70, "targetCumulativeWaterG": 180, "instruction": "Pour to the final hot-water weight." },
+        { "kind": "swirl", "startOffsetS": 120, "instruction": "Swirl to finish chilling." }
+      ]
+    },
+    {
+      "key": "cold-steep-concentrate/bottle",
+      "methodKey": "cold-brew",
+      "name": "Room-temperature bottle",
+      "doseG": 68,
+      "waterG": 750,
+      "totalTimeS": 64800,
+      "tuningNote": "Ready to drink, no dilution needed. Coarse grind, like a French press.",
+      "includesIce": false,
+      "credit": "Blue Bottle, cold brew bottle",
+      "creditURL": "https://www.hario-usa.com/blogs/cold-brew-recipes-and-guides/blue-bottle-cold-brew-recipe",
+      "steps": [
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 750, "instruction": "Add the water over the grounds." },
+        { "kind": "stir", "startOffsetS": 60, "instruction": "Shake or stir gently." },
+        { "kind": "wait", "startOffsetS": 120, "instruction": "Steep up to 18 hours at room temperature, shake again, then strain." }
+      ]
+    },
+    {
+      "key": "cold-steep-concentrate/strong",
+      "methodKey": "cold-brew",
+      "name": "Strong concentrate",
+      "doseG": 100,
+      "waterG": 500,
+      "totalTimeS": 57600,
+      "tuningNote": "1:5. Dilute about 1:1 with water or milk when serving.",
+      "includesIce": false,
+      "credit": "Omni Calculator, cold brew ratio",
+      "creditURL": "https://www.omnicalculator.com/food/cold-brew-ratio",
+      "steps": [
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 500, "instruction": "Add cool water over the grounds." },
+        { "kind": "stir", "startOffsetS": 60, "instruction": "Stir until no dry pockets remain." },
+        { "kind": "wait", "startOffsetS": 120, "instruction": "Cover and steep about 16 hours, then strain." }
+      ]
+    },
+    {
+      "key": "cold-steep-concentrate/light",
+      "methodKey": "cold-brew",
+      "name": "Light concentrate",
+      "doseG": 90,
+      "waterG": 500,
+      "totalTimeS": 57600,
+      "tuningNote": "1:5.6. Softer; dilute less when serving.",
+      "includesIce": false,
+      "credit": "Omni Calculator, cold brew ratio",
+      "creditURL": "https://www.omnicalculator.com/food/cold-brew-ratio",
+      "steps": [
+        { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 500, "instruction": "Add cool water over the grounds." },
+        { "kind": "stir", "startOffsetS": 60, "instruction": "Stir until no dry pockets remain." },
+        { "kind": "wait", "startOffsetS": 120, "instruction": "Cover and steep about 16 hours, then strain." }
       ]
     }
   ]

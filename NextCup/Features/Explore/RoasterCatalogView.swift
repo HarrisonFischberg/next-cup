@@ -12,6 +12,7 @@ struct RoasterCatalogView: View {
         Text("Facts checked \(catalog.checkedOn). \(catalog.note)").font(.footnote)
           .foregroundStyle(DS.ink2)
           .accessibilityIdentifier("catalog.note")
+        SavedRoasters()
         ForEach(catalog.roasters) { roaster in
           NavigationLink {
             CatalogRoasterView(roaster: roaster, checkedOn: catalog.checkedOn)
@@ -35,6 +36,56 @@ struct RoasterCatalogView: View {
     .navigationTitle("Roaster catalog")
     .navigationBarTitleDisplayMode(.inline)
     .accessibilityIdentifier("catalog.list")
+  }
+}
+
+/// Roasters saved from Find roasters near me, on the Explore home and in the catalog.
+struct SavedRoasters: View {
+  @Query(filter: #Predicate<Roaster> { $0.savedFromMap }, sort: \Roaster.name)
+  private var saved: [Roaster]
+
+  var body: some View {
+    if !saved.isEmpty {
+      VStack(alignment: .leading, spacing: DS.Space.sm) {
+        Text("SAVED ROASTERS").font(DS.Font.label).foregroundStyle(DS.ink2)
+          .accessibilityAddTraits(.isHeader)
+        PaperBox {
+          VStack(spacing: 0) {
+            ForEach(saved) { roaster in
+              if let website = roaster.website {
+                Link(destination: website) { row(roaster, linked: true) }
+              } else {
+                row(roaster, linked: false)
+              }
+              if roaster.id != saved.last?.id { Hairline() }
+            }
+          }
+        }
+      }
+      .accessibilityElement(children: .contain)
+      .accessibilityIdentifier("explore.savedRoasters")
+    }
+  }
+
+  private func row(_ roaster: Roaster, linked: Bool) -> some View {
+    HStack(spacing: DS.Space.md) {
+      Image(systemName: "mappin.and.ellipse").foregroundStyle(DS.ink2).frame(width: 24)
+        .accessibilityHidden(true)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(roaster.name).font(DS.Font.headline).foregroundStyle(DS.ink)
+        if let city = roaster.city { Text(city).font(.footnote).foregroundStyle(DS.ink2) }
+      }
+      Spacer(minLength: DS.Space.sm)
+      if linked {
+        Image(systemName: "arrow.up.right").font(.footnote.weight(.semibold))
+          .foregroundStyle(DS.ink2).accessibilityHidden(true)
+      }
+    }
+    .padding(DS.Space.md)
+    .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
+    .contentShape(Rectangle())
+    .accessibilityElement(children: .combine)
+    .accessibilityIdentifier("explore.savedRoaster.\(roaster.name)")
   }
 }
 

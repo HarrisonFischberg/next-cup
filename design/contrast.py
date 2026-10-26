@@ -16,15 +16,9 @@ def ratio(a, b):
     return (hi + 0.05) / (lo + 0.05)
 
 styles = {"steelKraft": (json.load(open(tokens + "tokens.light.json"))["color"], json.load(open(tokens + "tokens.dark.json"))["color"])}
-for s in ("daily", "bloom", "charcoalCrema", "quietCeramic", "terracotta", "lateNightCafe", "nightMint",
-          "espressoBlack", "cafePage", "roasterPoster", "makeItYours"):
+for s in ("daily", "bloom", "charcoalCrema", "quietCeramic", "nightMint",
+          "espressoBlack", "cafePage", "roasterPoster"):
     d = json.load(open(tokens + s + ".json")); styles[s] = (d["light"], d["dark"])
-# Every Make It Yours accent replaces signal and signal-on-steel, then runs the same pairs.
-for sw in json.load(open(tokens + "makeItYours.json"))["swatches"]:
-    light, dark = (dict(c) for c in styles["makeItYours"])
-    light["signal"], dark["signal"] = sw["light"], sw["dark"]
-    light["signal-on-steel"] = dark["signal-on-steel"] = sw["dark"]
-    styles["makeItYours/" + sw["name"]] = (light, dark)
 
 bad = 0
 for style, modes in styles.items():

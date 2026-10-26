@@ -42,6 +42,8 @@ enum AIFeature: String, Codable, CaseIterable, Sendable {
 
 enum AIProvider: String, Codable, CaseIterable, Sendable {
   case anthropic, openAI
+  /// Apple's on-device model: no key, nothing leaves the iPhone.
+  case apple
 }
 
 enum AIRequestStatus: String, Codable, CaseIterable, Sendable {

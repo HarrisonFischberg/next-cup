@@ -4,8 +4,9 @@ import Foundation
 /// stored `settings` value from an older build falls back to Journal. The raw value is what is persisted
 /// under `storageKey`, so it must never change once shipped.
 enum AppTab: String, CaseIterable, Identifiable, Sendable {
-  case journal
+  /// Shown as "Brew"; the raw value stays "recipes" because it is persisted.
   case recipes
+  case journal
   case beans
   case explore
 
@@ -16,7 +17,7 @@ enum AppTab: String, CaseIterable, Identifiable, Sendable {
   var title: String {
     switch self {
     case .journal: "Journal"
-    case .recipes: "Recipes"
+    case .recipes: "Brew"
     case .beans: "Beans"
     case .explore: "Explore"
     }
@@ -25,7 +26,7 @@ enum AppTab: String, CaseIterable, Identifiable, Sendable {
   var symbol: String {
     switch self {
     case .journal: "book.closed"
-    case .recipes: "list.bullet.rectangle"
+    case .recipes: "cup.and.saucer"
     case .beans: "leaf"
     case .explore: "safari"
     }

@@ -50,20 +50,22 @@ struct StyleTests {
     }
   }
 
-  @Test func dailyFirstThenBloomAndTheTenEarlierFlavors() {
-    #expect(AppStyle.allCases.count == 12)
-    #expect(AppStyle.allCases.first == .daily)
-    #expect(Set(AppStyle.allCases.map(\.title)).count == 12)
+  @Test func nineFlavorsWithoutTheRemovedOnes() {
+    #expect(AppStyle.allCases.count == 9)
+    #expect(Set(AppStyle.allCases.map(\.title)).count == 9)
+    for removed in ["terracotta", "lateNightCafe", "makeItYours"] {
+      #expect(AppStyle(rawValue: removed) == nil)
+    }
   }
 
-  @Test func everyoneMovesToDailyOnceThenKeepsTheirChoice() {
-    let d = UserDefaults(suiteName: "daily.\(UUID().uuidString)")!
+  @Test func everyoneMovesToNightMintOnceThenKeepsTheirChoice() {
+    let d = UserDefaults(suiteName: "mint.\(UUID().uuidString)")!
     d.set(AppStyle.bloom.rawValue, forKey: AppStyle.storageKey)
-    AppStyle.adoptDailyOnce(d)
-    #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.daily.rawValue)
-    d.set(AppStyle.nightMint.rawValue, forKey: AppStyle.storageKey)
-    AppStyle.adoptDailyOnce(d)
+    AppStyle.adoptNightMintOnce(d)
     #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.nightMint.rawValue)
+    d.set(AppStyle.daily.rawValue, forKey: AppStyle.storageKey)
+    AppStyle.adoptNightMintOnce(d)
+    #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.daily.rawValue)
   }
 
   @Test func defaultFlavorKeepsTheOriginalShape() {
@@ -78,43 +80,6 @@ struct StyleTests {
     #expect(AppStyle.nightMint.flavor.density == .airy)
     #expect(AppStyle.cafePage.flavor.displayDesign == .serif)
     #expect(AppStyle.espressoBlack.palette.bg.dark == 0x000000)
-  }
-
-  @Test(arguments: Swatch.all)
-  func everySwatchPassesAAOnBothGrounds(swatch: Swatch) {
-    let p = swatch.applied(to: AppStyle.makeItYours.palette)
-    for (name, fg, bg, need) in pairs(p) {
-      #expect(ratio(fg.light, bg.light) >= need, "\(swatch.id) light \(name)")
-      #expect(ratio(fg.dark, bg.dark) >= need, "\(swatch.id) dark \(name)")
-    }
-  }
-
-  @Test func makeItYoursReadsItsChoices() {
-    let defaults = UserDefaults.standard
-    let keys = [
-      AppStyle.storageKey, MakeItYours.accentKey, MakeItYours.cornersKey, MakeItYours.densityKey,
-      MakeItYours.fontKey,
-    ]
-    let saved = keys.map { defaults.object(forKey: $0) }
-    defer { for (key, value) in zip(keys, saved) { defaults.set(value, forKey: key) } }
-
-    defaults.set(AppStyle.makeItYours.rawValue, forKey: AppStyle.storageKey)
-    defaults.set("sage", forKey: MakeItYours.accentKey)
-    defaults.set("round", forKey: MakeItYours.cornersKey)
-    defaults.set("compact", forKey: MakeItYours.densityKey)
-    defaults.set("serif", forKey: MakeItYours.fontKey)
-    #expect(DS.palette.signal.light == 0x3F6B4A)
-    #expect(DS.radius == 24 && DS.controlRadius == 999)
-    #expect(DS.flavor.density == .compact && DS.flavor.displayDesign == .serif)
-
-    // Nothing is cached: the next choice shows at once.
-    defaults.set("honey", forKey: MakeItYours.accentKey)
-    defaults.set("square", forKey: MakeItYours.cornersKey)
-    #expect(DS.palette.signal.light == 0x8A5A00)
-    #expect(DS.radius == 2 && DS.controlRadius == 2)
-
-    defaults.set("nonsense", forKey: MakeItYours.accentKey)
-    #expect(DS.palette.signal.light == 0xB4531F)
   }
 
   @Test func switchingFlavorChangesColorsSpaceAndShapeAtOnce() {
@@ -135,14 +100,14 @@ struct StyleTests {
     defer { defaults.set(saved, forKey: AppStyle.storageKey) }
 
     defaults.removeObject(forKey: AppStyle.storageKey)
-    #expect(AppStyle.current == .daily)
+    #expect(AppStyle.current == .nightMint)
 
-    defaults.set(AppStyle.terracotta.rawValue, forKey: AppStyle.storageKey)
-    #expect(AppStyle.current == .terracotta)
-    #expect(DS.palette.bg.light == AppStyle.terracotta.palette.bg.light)
+    defaults.set(AppStyle.cafePage.rawValue, forKey: AppStyle.storageKey)
+    #expect(AppStyle.current == .cafePage)
+    #expect(DS.palette.bg.light == AppStyle.cafePage.palette.bg.light)
 
-    defaults.set("not-a-style", forKey: AppStyle.storageKey)
-    #expect(AppStyle.current == .daily)
+    defaults.set("terracotta", forKey: AppStyle.storageKey)
+    #expect(AppStyle.current == .nightMint, "a removed look falls back to Night Mint")
   }
 
   @Test func appearanceModesMapToColorSchemes() {

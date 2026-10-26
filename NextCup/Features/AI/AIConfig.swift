@@ -34,7 +34,10 @@ struct KeychainStore: Sendable {
     }
   }
 
-  func hasKey(for provider: AIProvider) -> Bool { ((try? key(for: provider)) ?? nil) != nil }
+  /// Apple's on-device model needs no key.
+  func hasKey(for provider: AIProvider) -> Bool {
+    provider == .apple || ((try? key(for: provider)) ?? nil) != nil
+  }
 
   func setKey(_ key: String, for provider: AIProvider) throws {
     let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -69,9 +72,21 @@ struct AIPreferences {
   }
 
   var defaults: UserDefaults = .standard
+  /// With nothing chosen, features use Apple's on-device model when this iPhone has it.
+  var appleAvailable = AppleIntelligence.isAvailable
 
+  static let effortKey = "ai.effort"
+
+  /// "low", "medium" or "high" for every feature; nil leaves the provider's default.
+  var effort: String? {
+    get { defaults.string(forKey: Self.effortKey).flatMap { $0.isEmpty ? nil : $0 } }
+    nonmutating set { defaults.set(newValue, forKey: Self.effortKey) }
+  }
+
+  /// Nothing leaves the device with Apple's model, so there is nothing to disclose.
   func hasAcceptedDisclosure(for provider: AIProvider) -> Bool {
-    defaults.integer(forKey: Self.disclosureKey(provider)) >= Self.disclosureVersion
+    provider == .apple
+      || defaults.integer(forKey: Self.disclosureKey(provider)) >= Self.disclosureVersion
   }
 
   func acceptDisclosure(for provider: AIProvider) {
@@ -81,13 +96,18 @@ struct AIPreferences {
   static func providerKey(_ feature: AIFeature) -> String { "ai.provider.\(feature.rawValue)" }
   static func modelKey(_ feature: AIFeature) -> String { "ai.model.\(feature.rawValue)" }
 
-  /// `nil` until the user picks one; nothing is guessed (blueprint §3b).
+  /// The user's pick, else Apple's on-device model where there is one; a cloud model is
+  /// never guessed (blueprint §3b).
   func modelID(for feature: AIFeature) -> String? {
-    defaults.string(forKey: Self.modelKey(feature)).flatMap { $0.isEmpty ? nil : $0 }
+    if let chosen = defaults.string(forKey: Self.modelKey(feature)), !chosen.isEmpty {
+      return chosen
+    }
+    return provider(for: feature) == .apple ? AppleIntelligence.modelID : nil
   }
 
   func provider(for feature: AIFeature) -> AIProvider? {
     defaults.string(forKey: Self.providerKey(feature)).flatMap(AIProvider.init(rawValue:))
+      ?? (appleAvailable ? .apple : nil)
   }
 
   func setChoice(_ provider: AIProvider, model: String, for feature: AIFeature) {
@@ -102,8 +122,12 @@ extension AIProvider {
     switch self {
     case .anthropic: "Anthropic"
     case .openAI: "OpenAI"
+    case .apple: "Apple"
     }
   }
+
+  /// The providers that take a key.
+  static let keyed: [AIProvider] = [.anthropic, .openAI]
 }
 
 extension AIFeature {
