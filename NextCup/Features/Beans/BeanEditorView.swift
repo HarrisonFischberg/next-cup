@@ -540,7 +540,9 @@ struct BeanEditorView: View {
       fields.bagWeightG = trimmed.isEmpty ? nil : typedWeightG
     }
     switch service.save(fields, editing: bean) {
-    case .success: close()
+    case .success(let saved):
+      if bean == nil { BeanDetailsAI.fill([saved], in: context) }
+      close()
     case .failure(let failure): error = failure.message
     }
   }
