@@ -22,6 +22,16 @@ struct LookRoot: View {
         case 8: Look08()
         case 9: Look09()
         case 10: Look10()
+        case 11: Look11()
+        case 12: Look12()
+        case 13: Look13()
+        case 14: Look14()
+        case 15: Look15()
+        case 16: Look16()
+        case 17: Look17()
+        case 18: Look18()
+        case 19: Look19()
+        case 20: Look20()
         default: ConceptRoot()
         }
     }
@@ -98,4 +108,54 @@ struct LookRating: View {
             halfSteps = dir == .increment ? min(10, halfSteps + 1) : max(0, halfSteps - 1)
         }
     }
+}
+
+// MARK: Round 3 craft pieces (heyimjames final-5%, swiftui-microinteractions)
+
+/// Press: scale to 0.96 on touch-down with a light haptic on the down edge only.
+struct PressScale: ButtonStyle {
+    var scale: CGFloat = 0.96
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? scale : 1)
+            .opacity(configuration.isPressed ? 0.85 : 1)
+            .animation(.spring(duration: 0.16, bounce: 0), value: configuration.isPressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed) { _, new in new }
+    }
+}
+
+/// Rows rise in once, 60 ms apart; Reduce Motion shows them in place.
+struct Assemble: ViewModifier {
+    let index: Int
+    @State private var shown = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown || reduceMotion ? 1 : 0)
+            .offset(y: shown || reduceMotion ? 0 : 14)
+            .onAppear {
+                withAnimation(.spring(duration: 0.5, bounce: 0.12).delay(0.08 + Double(min(index, 8)) * 0.06)) { shown = true }
+            }
+    }
+}
+
+extension View {
+    func assemble(_ index: Int) -> some View { modifier(Assemble(index: index)) }
+}
+
+/// Shared sample beans with a colour each, for looks that show beans as artwork.
+enum BeanArt {
+    static func color(_ bean: String) -> Color {
+        switch bean.split(separator: " ").first ?? "" {
+        case "Kenya": Color(0xB23A2E, 0xD9574A)
+        case "Ethiopia": Color(0xC7862B, 0xE3A447)
+        case "Colombia": Color(0x2F6B4F, 0x4E9C76)
+        case "Guatemala": Color(0x4B4A8C, 0x7473C2)
+        default: Color(0x6B4A33, 0x9C7457)
+        }
+    }
+    static func origin(_ bean: String) -> String { String(bean.split(separator: " ").first ?? "") }
 }
