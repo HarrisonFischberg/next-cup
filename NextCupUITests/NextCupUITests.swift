@@ -1533,6 +1533,8 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
     openSettings(app)
     let link = element(app, "settings.data")
+    // Appearance sits at the top, so Your data starts below the fold.
+    scrollUntilHittable(link, in: app)
     XCTAssertTrue(link.waitForExistence(timeout: 5))
     link.tap()
     let delete = element(app, "data.deleteAll")
