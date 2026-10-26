@@ -14,10 +14,10 @@ xcrun simctl launch "$DEV" "$BUNDLE" >/dev/null; sleep 4  # first launch after i
 for mode in light dark; do
   xcrun simctl ui "$DEV" appearance $mode
   for n in "$@"; do
-    for stage in journal timer log; do
+    for stage in ${STAGES:-journal timer log}; do
       xcrun simctl terminate "$DEV" "$BUNDLE" >/dev/null 2>&1 || true
-      EXTRA=(); [ "$stage" = timer ] && EXTRA=(-elapsed 78)
-      xcrun simctl launch "$DEV" "$BUNDLE" -look "$n" -stage $stage ${EXTRA[@]+"${EXTRA[@]}"} >/dev/null
+      EXTRA=(); [ "$stage" = timer ] && EXTRA=(-elapsed 78); [ "$stage" = next ] && EXTRA=(-next)
+      xcrun simctl launch "$DEV" "$BUNDLE" -look "$n" -stage ${stage/next/log} ${EXTRA[@]+"${EXTRA[@]}"} >/dev/null
       sleep 2.8
       xcrun simctl io "$DEV" screenshot --type=png "$OUT/raw/$n-$stage-$mode.png" >/dev/null 2>&1
     done
