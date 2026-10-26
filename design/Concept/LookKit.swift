@@ -52,6 +52,9 @@ struct LookRoot: View {
         case 38: Look38()
         case 39: Look39()
         case 40: Look40()
+        case 41: Look41()
+        case 42: Look42()
+        case 43: Look43()
         default: ConceptRoot()
         }
     }
