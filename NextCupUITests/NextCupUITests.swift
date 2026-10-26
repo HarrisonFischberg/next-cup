@@ -248,7 +248,8 @@ final class NextCupUITests: XCTestCase {
   @MainActor
   func testTimerRunsARecipeToTheEndAndOpensThePrefilledForm() {
     let app = openTimer(speed: 60)
-    XCTAssertTrue(element(app, "timer.status").label.hasPrefix("READY"))
+    XCTAssertTrue(
+      element(app, "timer.status").label.hasPrefix("READY"), app.debugDescription)
     app.buttons["Start"].tap()
     // Pause and resume keep the controls reachable and change the label.
     XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 5))
@@ -548,6 +549,37 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(
       app.buttons["Press pot"].exists || app.staticTexts["Press pot"].exists,
       "the method is set: \(app.debugDescription)")
+  }
+
+  /// Start brew: tap the dose to type grams; water scales and pour-over times stretch gently.
+  /// After Start, the time stays on screen.
+  @MainActor
+  func testTypingADoseScalesWaterAndPourTimesAndTheTimerStaysInView() throws {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Brew"].tap()
+    element(app, "brew.method.Cone dripper").tap()
+    app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'")).firstMatch
+      .tap()
+    let value = element(app, "stepper.dose.value")
+    XCTAssertTrue(value.waitForExistence(timeout: 5))
+    value.tap()
+    value.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 6) + "30")
+    let doubled = NSPredicate(format: "label CONTAINS %@", "500")
+    expectation(for: doubled, evaluatedWith: element(app, "recipe.water"))
+    waitForExpectations(timeout: 5)  // the water target follows the dose
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    let capture = FileManager.default.fileExists(
+      atPath: folderURL.appendingPathComponent(".capture").path)
+    if capture { try save(app.screenshot(), "\(folderURL.path)/start-brew-top.png") }
+    app.buttons["Start brew"].tap()
+    XCTAssertTrue(element(app, "timer.screen").waitForExistence(timeout: 5))
+    app.buttons["Start"].tap()
+    sleep(2)
+    XCTAssertTrue(element(app, "timer.elapsed").isHittable, "the time stays in view")
+    if capture { try save(app.screenshot(), "\(folderURL.path)/timer-running.png") }
   }
 
   /// One brew type picked in set-up: Start brewing goes straight to its styles.

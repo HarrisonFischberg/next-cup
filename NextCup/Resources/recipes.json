@@ -9,7 +9,7 @@
       "waterG": 250,
       "tempC": 94,
       "totalTimeS": 180,
-      "tuningNote": "Sour or thin: grind finer. Bitter or dry: grind coarser.",
+      "tuningNote": "Tastes sour or thin? Grind finer.\nTastes bitter or dry? Grind coarser.",
       "includesIce": false,
       "steps": [
         { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 45, "instruction": "Wet every ground and give the dripper a gentle swirl." },
@@ -44,7 +44,7 @@
       "waterG": 270,
       "tempC": 95,
       "totalTimeS": 210,
-      "tuningNote": "Taste too heavy: shorten the steep. Too sharp: lengthen it.",
+      "tuningNote": "Tastes bitter or heavy? Steep for less time.\nTastes sour or sharp? Steep for longer.",
       "includesIce": false,
       "steps": [
         { "kind": "closeValve", "startOffsetS": 0, "instruction": "Close the valve before adding anything." },
@@ -99,7 +99,7 @@
       "waterG": 36,
       "tempC": 93,
       "totalTimeS": 28,
-      "tuningNote": "Running fast and sour: grind finer. Slow and bitter: grind coarser.",
+      "tuningNote": "Runs fast and tastes sour? Grind finer.\nRuns slow and tastes bitter? Grind coarser.",
       "includesIce": false,
       "steps": [
         { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 36, "instruction": "Start the shot and watch the yield on the scale." },
