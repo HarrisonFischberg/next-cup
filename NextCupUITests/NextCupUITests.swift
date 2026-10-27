@@ -854,8 +854,15 @@ final class NextCupUITests: XCTestCase {
 
   private func openMethods(_ app: XCUIApplication) {
     openSettings(app)
-    XCTAssertTrue(element(app, "settings.methods").waitForExistence(timeout: 5))
-    element(app, "settings.methods").tap()
+    // All five looks sit above it now, so the row may start below the fold.
+    let row = element(app, "settings.methods")
+    var swipes = 0
+    while !row.waitForExistence(timeout: 1) && swipes < 4 {
+      app.swipeUp()
+      swipes += 1
+    }
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+    row.tap()
     XCTAssertTrue(element(app, "methods.screen").waitForExistence(timeout: 5))
   }
 

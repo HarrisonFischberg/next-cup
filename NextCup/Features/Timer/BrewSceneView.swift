@@ -177,7 +177,8 @@ private struct SceneArt {
       let cup = Art.svg("M76 150 H124 V170 Q124 180 114 180 H86 Q76 180 76 170 Z")
       mp.glass(cup)
       var inside = mug
-      inside.clip(to: Art.svg("M77.5 151 H122.5 V170 Q122.5 178.5 114 178.5 H86 Q77.5 178.5 77.5 170 Z"))
+      inside.clip(
+        to: Art.svg("M77.5 151 H122.5 V170 Q122.5 178.5 114 178.5 H86 Q77.5 178.5 77.5 170 Z"))
       let h = 24 * m.vessel
       inside.fill(Art.rect(76, 178.5 - h, 48, h), with: .color(pen.ink.coffee))
       mp.line(Art.svg("M124 156 H128 Q134 156 134 163 Q134 170 124 171"))
@@ -273,7 +274,8 @@ private struct SceneArt {
     if m.kettle > 0.85 {
       let tx = -44 * cos(rad) + 22 * sin(rad)
       let ty = -44 * sin(rad) - 22 * cos(rad)
-      let sx = x - s * tx, sy = y + s * ty
+      let sx = x - s * tx
+      let sy = y + s * ty
       var stream = Path()
       stream.move(to: CGPoint(x: sx, y: sy))
       stream.addQuadCurve(to: CGPoint(x: 100, y: streamEnd), control: CGPoint(x: sx + 5, y: sy + 3))
@@ -287,7 +289,9 @@ private struct SceneArt {
     body.rotate(by: .degrees(angle))
     let kp = Pen(ctx: body, ink: pen.ink)
     kp.glass(
-      Art.svg("M-16 14 H16 Q20 14 19 10 L15 -10 Q14 -14 10 -14 H-10 Q-14 -14 -15 -10 L-19 10 Q-20 14 -16 14 Z"))
+      Art.svg(
+        "M-16 14 H16 Q20 14 19 10 L15 -10 Q14 -14 10 -14 H-10 Q-14 -14 -15 -10 L-19 10 Q-20 14 -16 14 Z"
+      ))
     kp.trim(Art.svg("M-10 -14 Q0 -22 10 -14 Z"))
     kp.trim(Art.circle(0, -20.5, 2.4))
     kp.trimLine(Art.svg("M16 -10 C28 -10 28 10 17 10"), 3.5)

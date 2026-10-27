@@ -108,7 +108,8 @@ enum Art {
         current.y = next()
         path.addLine(to: current)
       case "C":
-        let c1 = point(), c2 = point()
+        let c1 = point()
+        let c2 = point()
         current = point()
         path.addCurve(to: current, control1: c1, control2: c2)
       case "Q":

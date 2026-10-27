@@ -127,7 +127,10 @@ struct RecipeLibraryView: View {
     }
     .frame(maxWidth: .infinity)
     .contentShape(Rectangle())
-    .accessibilityElement(children: .combine)
+    .accessibilityElement(children: .ignore)
+    // The full name, since the label under the drawing may be shortened.
+    .accessibilityLabel(method.name)
+    .accessibilityValue(count == 1 ? "1 style" : "\(count) styles")
   }
 
   /// The pull-down for methods left out in onboarding.

@@ -387,6 +387,8 @@ struct MethodChips: View {
           .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
         }
       }
+      // Room for the picked ring and check, which sit just outside each medallion.
+      .padding(.horizontal, 6)
     }
   }
 

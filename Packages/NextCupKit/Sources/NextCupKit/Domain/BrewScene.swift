@@ -97,7 +97,8 @@ public enum BrewScene {
       let drainStart =
         steps.first { $0.kind == "drawdown" }?.startS ?? lastPourEnd(steps, totalS: totalS)
       let full = min(1, poured * 3)
-      f.bed = t < drainStart ? full : full * (1 - clamp((t - drainStart) / max(1, totalS - drainStart)))
+      f.bed =
+        t < drainStart ? full : full * (1 - clamp((t - drainStart) / max(1, totalS - drainStart)))
       f.vessel = clamp((t - firstPour - 10) / max(1, totalS - firstPour - 10)) * 0.92
       f.dripping = running && t > firstPour + 6 && f.bed > 0.05
 
