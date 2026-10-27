@@ -151,6 +151,9 @@ struct GlyphInk {
   var coffee: Color
 
   static var current: GlyphInk { GlyphInk(line: DS.ink, trim: DS.signal, coffee: DS.coffee) }
+  /// The still drawings (method tiles, medallions) show empty brewers; only the timer's
+  /// moving scene fills them with coffee.
+  static var still: GlyphInk { GlyphInk(line: DS.ink, trim: DS.signal, coffee: .clear) }
 }
 
 /// The handful of strokes and fills every drawing is made from.
@@ -407,7 +410,7 @@ struct BrewGlyphView: View {
       let s = min(size.width, size.height) / 100
       ctx.translateBy(x: (size.width - 100 * s) / 2, y: (size.height - 100 * s) / 2 + glyph.dy * s)
       ctx.scaleBy(x: s, y: s)
-      BrewArt.draw(glyph, Pen(ctx: ctx, ink: .current))
+      BrewArt.draw(glyph, Pen(ctx: ctx, ink: .still))
     }
     .aspectRatio(1, contentMode: .fit)
     .accessibilityHidden(true)
