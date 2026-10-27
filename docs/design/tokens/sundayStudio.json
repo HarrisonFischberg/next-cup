@@ -1,5 +1,5 @@
 {
-  "_about": "Sunday Studio. A contemporary cafe: butter, cobalt, off-white, espresso text. Dark: navy ground, indigo blocks, periwinkle buttons; butter only on cobalt panels.",
+  "_about": "Sunday Studio. A contemporary cafe: butter, cobalt, off-white, espresso text. Dark: navy ground, indigo blocks, orange buttons and accent.",
   "light": {
     "bg": "#FFFDF3",
     "paper": "#FFFFFF",
@@ -24,7 +24,7 @@
     "ink": "#FFFDF3",
     "ink-2": "#C9CCE6",
     "line": "#7B82B8",
-    "signal": "#6B8CFF",
+    "signal": "#FF9F5A",
     "on-signal": "#0E1230",
     "signal-on-steel": "#F5E8A4",
     "kraft": "#14204F",
