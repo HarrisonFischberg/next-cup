@@ -6,7 +6,12 @@ import SwiftUI
 /// Bloom (and Daily, built on it) draw rings instead of steel panels.
 extension DS {
   static var isBloom: Bool { [.bloom, .daily].contains(AppStyle.current) }
-  static let crema = Color(P(0xB8652A, 0xE0A06A))
+  /// The ring and progress colour. The handoff looks use their own accent, so no terracotta
+  /// shows up where the owner asked for none.
+  static var crema: Color {
+    [.sundayStudio, .morningEdition, .precisionAtelier].contains(AppStyle.current)
+      ? accent : Color(P(0xB8652A, 0xE0A06A))
+  }
   static let espresso = Color(P(0x4A2C1D, 0xD9C2AE))
   static let sage = Color(P(0x7C8C6A, 0xA9BC97))
   static let ringTrack = Color(P(0xEDE3D6, 0x2E241C))
