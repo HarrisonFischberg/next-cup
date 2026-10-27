@@ -125,7 +125,7 @@ struct TimerView: View {
       if ring {
         ZStack {
           TimerRing(
-            fraction: state.progress, stepFractions: stepFractions, color: DS.signal,
+            fraction: state.progress, stepFractions: stepFractions, color: DS.accent,
             track: DS.line.opacity(0.35)
           )
           .animation(reduceMotion ? nil : .linear(duration: 0.25), value: state.progress)
@@ -153,7 +153,7 @@ struct TimerView: View {
   private var elapsed: some View {
     Text(RecipeFormat.clock(Int(state.elapsedS)))
       .font(DS.flavor.timerReadout)
-      .foregroundStyle(DS.flavor.accentReadout ? DS.signal : DS.ink)
+      .foregroundStyle(DS.flavor.accentReadout ? DS.accent : DS.ink)
       .minimumScaleFactor(0.5).lineLimit(1)
       .dynamicTypeSize(...DS.readoutCap)
       .accessibilityLabel("Elapsed time")
@@ -175,7 +175,7 @@ struct TimerView: View {
       }
     return Text(line).font(.subheadline.weight(.medium))
       .fixedSize(horizontal: false, vertical: true)
-      .foregroundStyle(state.targetReached && running ? DS.signal : DS.ink2)
+      .foregroundStyle(state.targetReached && running ? DS.accent : DS.ink2)
       .accessibilityIdentifier("timer.remaining")
   }
 
@@ -183,7 +183,7 @@ struct TimerView: View {
     GeometryReader { g in
       ZStack(alignment: .leading) {
         Capsule().fill(DS.line.opacity(0.3))
-        Capsule().fill(DS.signal).frame(width: g.size.width * state.progress)
+        Capsule().fill(DS.accent).frame(width: g.size.width * state.progress)
           .animation(reduceMotion ? nil : .linear(duration: 0.25), value: state.progress)
       }
     }
@@ -248,7 +248,7 @@ struct TimerView: View {
             .fixedSize(horizontal: false, vertical: true)
             .contentTransition(.opacity)
         }
-        Text(nextLine).font(.subheadline.weight(.semibold)).foregroundStyle(DS.signal)
+        Text(nextLine).font(.subheadline.weight(.semibold)).foregroundStyle(DS.accent)
           .fixedSize(horizontal: false, vertical: true)
           .accessibilityIdentifier("timer.next")
       }
@@ -349,7 +349,7 @@ struct TimerView: View {
   /// The recipe's numbers. Water is the recipe's target: nothing here is measured.
   private var context: some View {
     HStack(alignment: .top, spacing: DS.Space.md) {
-      Image(systemName: "drop.fill").font(.title3.weight(.semibold)).foregroundStyle(DS.signal)
+      Image(systemName: "drop.fill").font(.title3.weight(.semibold)).foregroundStyle(DS.accent)
         .frame(width: 28).accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 2) {
         Text(RecipeFormat.weight(setup.scaled.totalWaterG, units)).font(DS.Font.dataLarge)
@@ -417,7 +417,7 @@ struct TimerView: View {
     let early = session.outcome?.endedEarly == true
     return HStack(alignment: .top, spacing: DS.Space.md) {
       Image(systemName: early ? "stop.circle.fill" : "checkmark.circle.fill").font(.title)
-        .foregroundStyle(DS.signal).accessibilityHidden(true)
+        .foregroundStyle(DS.accent).accessibilityHidden(true)
         .scaleEffect(finishedShown || reduceMotion ? 1 : 0.6)
         .opacity(finishedShown ? 1 : 0)
       VStack(alignment: .leading, spacing: 2) {
@@ -432,7 +432,7 @@ struct TimerView: View {
     }
     .padding(DS.Space.md)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .panel(DS.paper, border: DS.signal)
+    .panel(DS.paper, border: DS.accent)
     .accessibilityElement(children: .combine)
     .accessibilityIdentifier("timer.finished")
     .onAppear {

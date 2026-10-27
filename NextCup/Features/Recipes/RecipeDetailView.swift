@@ -207,7 +207,7 @@ private struct RecipeDetailContent: View {
         LabeledRow(symbol: "dial.low.fill", label: "Grinder setting", value: grinder.name) {
           TextField(recommended ?? "Setting", text: $grindSetting)
             .multilineTextAlignment(.trailing)
-            .font(DS.Font.mono(.title, .bold)).foregroundStyle(DS.signal)
+            .font(DS.Font.mono(.title, .bold)).foregroundStyle(DS.accent)
             .frame(maxWidth: 96, minHeight: DS.Size.minTap)
             .accessibilityLabel("Grind setting")
             .accessibilityIdentifier("recipe.grindSetting")
@@ -234,7 +234,7 @@ private struct RecipeDetailContent: View {
     VStack(alignment: .leading, spacing: 0) {
       HStack(spacing: DS.Space.sm) {
         Image(systemName: "scalemass.fill").font(.body.weight(.semibold))
-          .foregroundStyle(DS.signal).frame(width: 28).accessibilityHidden(true)
+          .foregroundStyle(DS.accent).frame(width: 28).accessibilityHidden(true)
         Text("Dose").font(.footnote).foregroundStyle(DS.ink2).fixedSize()
         Spacer(minLength: DS.Space.sm)
         stepButton("minus", label: "Decrease dose") { adjustDose(by: -stepG) }
@@ -250,7 +250,7 @@ private struct RecipeDetailContent: View {
         Button {
           typingDose = true
         } label: {
-          Image(systemName: "pencil").font(.body.weight(.semibold)).foregroundStyle(DS.signal)
+          Image(systemName: "pencil").font(.body.weight(.semibold)).foregroundStyle(DS.accent)
             .frame(width: DS.Size.minTap, height: DS.Size.minTap)
         }
         .accessibilityLabel("Type the dose")
@@ -286,9 +286,9 @@ private struct RecipeDetailContent: View {
     -> some View
   {
     Button(action: action) {
-      Image(systemName: symbol).font(.body.weight(.heavy)).foregroundStyle(DS.signal)
+      Image(systemName: symbol).font(.body.weight(.heavy)).foregroundStyle(DS.accent)
         .frame(width: DS.Size.minTap, height: DS.Size.minTap)
-        .overlay(Circle().strokeBorder(DS.signal, lineWidth: 1.5))
+        .overlay(Circle().strokeBorder(DS.accent, lineWidth: 1.5))
     }
     .accessibilityLabel(label)
   }
@@ -352,7 +352,7 @@ private struct RecipeDetailContent: View {
           Button(showsInstructions ? "Hide instructions" : "Show instructions") {
             showsInstructions.toggle()
           }
-          .font(.subheadline.weight(.semibold)).foregroundStyle(DS.signal)
+          .font(.subheadline.weight(.semibold)).foregroundStyle(DS.accent)
           .frame(minHeight: DS.Size.minTap)
           .accessibilityIdentifier("recipe.steps.instructions")
         }

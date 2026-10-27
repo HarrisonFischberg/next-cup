@@ -27,7 +27,8 @@ enum DS {
       })
   }
   static var line: Color { Color(palette.line) }  // rules and control outlines (3:1 UI)
-  static var signal: Color { Color(palette.signal) }  // the one accent
+  static var signal: Color { Color(palette.signal) }  // buttons and selection
+  static var accent: Color { Color(palette.accent ?? palette.signal) }  // labels, icons, digits
   static var onSignal: Color { Color(palette.onSignal) }
   static var signalOnSteel: Color { Color(palette.signalOnSteel) }  // accent on steel
   static var kraft: Color { Color(palette.kraft) }  // label stock for notes
@@ -146,6 +147,8 @@ struct P {
 struct Palette {
   var bg, paper, steel, onSteel, ink, ink2, line, signal, onSignal, signalOnSteel: P
   var kraft, onKraft, error, ok: P
+  /// Labels, icons, digits and progress, where it differs from the button colour.
+  var accent: P? = nil
 }
 
 /// The owner's choice of Light, Dark or the system setting.
@@ -365,10 +368,11 @@ enum AppStyle: String, CaseIterable, Identifiable {
       Palette(
         bg: P(0xFFFDF3, 0x0E1230), paper: P(0xFFFFFF, 0x171D45), steel: P(0x1B2F7A, 0x2448C8),
         onSteel: P(0xFFFDF3, 0xFFFDF3), ink: P(0x2B1A12, 0xFFFDF3), ink2: P(0x625046, 0xC9CCE6),
-        line: P(0x8A7A6E, 0x7B82B8), signal: P(0x2448C8, 0xFF9F5A),
+        line: P(0x8A7A6E, 0x7B82B8), signal: P(0x2448C8, 0xFFFDF3),
         onSignal: P(0xFFFFFF, 0x0E1230), signalOnSteel: P(0xF5E8A4, 0xF5E8A4),
         kraft: P(0xF5E8A4, 0x14204F), onKraft: P(0x2B1A12, 0xFFFDF3),
-        error: P(0x9A1B0A, 0xFFA08C), ok: P(0x2A6A2A, 0x9FE0A8))
+        error: P(0x9A1B0A, 0xFFA08C), ok: P(0x2A6A2A, 0x9FE0A8),
+        accent: P(0x2448C8, 0xFF9F5A))
     case .morningEdition:
       Palette(
         bg: P(0xF4EFE4, 0x1C1713), paper: P(0xFBF8F1, 0x27201A), steel: P(0x302820, 0x302820),
