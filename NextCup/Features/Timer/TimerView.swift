@@ -109,9 +109,13 @@ struct TimerView: View {
             kind: setup.sceneKind, glyph: setup.glyph, frame: frame,
             running: state.phase == .running)
         }
-        .padding(26)
+        // A square tile needs more room, so its corners stay inside the ring.
+        .padding(DS.flavor.control == .square ? 36 : 22)
       }
-      .frame(width: 250, height: 250)
+      // Smaller at accessibility sizes, so the step list keeps room below the time.
+      .frame(
+        width: dts.isAccessibilitySize ? 170 : 220, height: dts.isAccessibilitySize ? 170 : 220
+      )
       .frame(maxWidth: .infinity)
       HStack(alignment: .firstTextBaseline, spacing: DS.Space.sm) {
         Text(RecipeFormat.clock(Int(state.elapsedS)))
@@ -126,7 +130,7 @@ struct TimerView: View {
         Text("of \(RecipeFormat.clock(setup.plan.totalDurationS))")
           .font(.subheadline).foregroundStyle(DS.ink2)
       }
-      .padding(.top, DS.Space.md)
+      .padding(.top, DS.Space.xs)
       Text(statusLine).font(.caption.weight(.semibold)).tracking(0.8).foregroundStyle(DS.signal)
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)

@@ -39,7 +39,10 @@ struct BrewSceneTests {
   }
 
   @Test func switchableHoldsWaterUntilTheValveOpens() {
-    let s = steps([(0, "closeValve"), (5, "pour"), (30, "stir"), (40, "wait"), (120, "openValve"), (150, "drawdown")])
+    let s = steps([
+      (0, "closeValve"), (5, "pour"), (30, "stir"), (40, "wait"), (120, "openValve"),
+      (150, "drawdown"),
+    ])
     let steep = BrewScene.frame(.switchable, steps: s, totalS: 210, elapsedS: 80)
     #expect(steep.bed == 1 && !steep.dripping && steep.vessel == 0 && steep.lidOn)
     let release = BrewScene.frame(.switchable, steps: s, totalS: 210, elapsedS: 140)
@@ -55,7 +58,9 @@ struct BrewSceneTests {
   }
 
   @Test func invertedPressFlipsHalfwayThroughTheInvertStep() {
-    let s = steps([(0, "plug"), (5, "pour"), (25, "stir"), (35, "wait"), (90, "invert"), (100, "press")])
+    let s = steps([
+      (0, "plug"), (5, "pour"), (25, "stir"), (35, "wait"), (90, "invert"), (100, "press"),
+    ])
     #expect(BrewScene.frame(.inverted, steps: s, totalS: 130, elapsedS: 60).inverted)
     #expect(BrewScene.frame(.inverted, steps: s, totalS: 130, elapsedS: 94).inverted)
     #expect(!BrewScene.frame(.inverted, steps: s, totalS: 130, elapsedS: 96).inverted)
