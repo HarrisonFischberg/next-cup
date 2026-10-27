@@ -14,7 +14,8 @@
     "kraft": "#EADFCB",
     "on-kraft": "#302820",
     "error": "#9A1B0A",
-    "ok": "#55684A"
+    "ok": "#55684A",
+    "accent": "#A9472F"
   },
   "dark": {
     "bg": "#1C1713",
@@ -24,12 +25,13 @@
     "ink": "#F4EFE4",
     "ink-2": "#BFB2A4",
     "line": "#7E7064",
-    "signal": "#E08A6E",
+    "signal": "#F4EFE4",
     "on-signal": "#1C1713",
     "signal-on-steel": "#E8A085",
     "kraft": "#332A22",
     "on-kraft": "#F4EFE4",
     "error": "#FF9C85",
-    "ok": "#A9BC97"
+    "ok": "#A9BC97",
+    "accent": "#E08A6E"
   }
 }
