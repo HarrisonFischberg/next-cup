@@ -54,13 +54,13 @@ enum AppBootstrap {
 
 /// Ratings moved from half points out of 5 to tenths out of 10: 4 of 5 (8) becomes 8.0 of 10
 /// (80). Runs once, before anything can save a rating on the new scale, then remembers it ran.
+/// Saved drafts convert themselves when read (`BrewDraft` reads the old key).
 @MainActor
 enum RatingMigration {
   static let doneKey = "rating.tenthsMigrated"
 
   static func run(
-    _ context: ModelContext, defaults: UserDefaults = .standard,
-    drafts: DraftStore = .standard()
+    _ context: ModelContext, defaults: UserDefaults = .standard
   ) -> Result<Void, StoreError> {
     guard !defaults.bool(forKey: doneKey) else { return .success(()) }
     for brew in (try? context.fetch(FetchDescriptor<Brew>())) ?? [] {
@@ -70,10 +70,6 @@ enum RatingMigration {
       bean.ratingTenths = bean.ratingTenths.map { $0 * 10 }
     }
     if case .failure(let error) = Store(context: context).save() { return .failure(error) }
-    if case .draft(var draft) = drafts.load() {
-      draft.ratingTenths *= 10
-      _ = drafts.save(draft)
-    }
     defaults.set(true, forKey: doneKey)
     return .success(())
   }

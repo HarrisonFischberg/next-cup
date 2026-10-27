@@ -96,7 +96,7 @@ struct BeanDetailView: View {
 
   /// The brew to repeat: the best graded one (newest on a tie), else the newest.
   private var bestBrew: Brew? {
-    let used = (bean.brewUses ?? []).compactMap(\.brew).filter { !$0.isDraft }
+    let used = (bean.brewUses ?? []).compactMap(\.brew)
     return used.max {
       ($0.ratingTenths ?? 0, $0.date) < ($1.ratingTenths ?? 0, $1.date)
     }

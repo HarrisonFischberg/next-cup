@@ -238,7 +238,7 @@ final class BrewFormModel {
   private func recallGrind(for bean: Bean) {
     guard draft.grindSetting.trimmingCharacters(in: .whitespaces).isEmpty else { return }
     let last = (bean.brewUses ?? []).compactMap(\.brew)
-      .filter { !$0.isDraft && $0.id != draft.id && !($0.grindSetting ?? "").isEmpty }
+      .filter { $0.id != draft.id && !($0.grindSetting ?? "").isEmpty }
       .max { $0.date < $1.date }
     guard let last, let grind = last.grindSetting else { return }
     draft.grindSetting = grind
@@ -502,7 +502,7 @@ final class BrewFormModel {
     for use in brew.beans ?? [] {
       guard let bean = use.bean else { continue }
       let earlier = (bean.brewUses ?? []).compactMap(\.brew)
-        .filter { !$0.isDraft && $0.id != brew.id }
+        .filter { $0.id != brew.id }
         .compactMap(\.ratingTenths).filter { $0 > 0 }
       if let previous = earlier.max(), grade > previous {
         newBest = (bean.name, grade, previous)
@@ -550,7 +550,6 @@ final class BrewFormModel {
     brew.notes = draft.notes
     brew.photo = draft.photo
     brew.targetsJSON = draft.targets.flatMap { try? JSONEncoder().encode($0) }
-    brew.isDraft = false
     brew.grinder = draft.grinderID.flatMap { try? store.find(Grinder.self, id: $0) }
     if let followedSuggestionID {
       brew.suggestionFollowed = try? store.find(Suggestion.self, id: followedSuggestionID)

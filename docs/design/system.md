@@ -1,7 +1,8 @@
 # Design system: Steel & Kraft (Phase 3C)
 
 Approved direction: Steel & Kraft (owner, 2026-10-21). Spec: `DESIGN.md`.
-Code: `design/DesignSystem/` (`Tokens.swift`, `Components.swift`, `Gallery.swift`).
+Code: `NextCup/DesignSystem/`. The concept app that first held it (`design/Concepts.xcodeproj`,
+`design/DesignSystem`, `design/shoot*.sh`) was removed on 2026-10-27; it is in git history.
 Tokens: `docs/design/tokens/tokens.light.json`, `tokens.dark.json`.
 
 ## Checks (run 2026-10-21)

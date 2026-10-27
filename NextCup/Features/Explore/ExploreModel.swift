@@ -38,7 +38,7 @@ enum ExploreModel {
     of brews: [Brew], taxonomy: Taxonomy, aliases: [Taxonomy.Alias]
   ) -> [RecommenderBrew] {
     brews.compactMap { brew in
-      guard !brew.isDraft, let method = brew.method else { return nil }
+      guard let method = brew.method else { return nil }
       var seen = Set<BucketRef>()
       let buckets = (brew.beans ?? []).compactMap(\.bean).flatMap {
         buckets(of: $0, taxonomy: taxonomy, aliases: aliases)

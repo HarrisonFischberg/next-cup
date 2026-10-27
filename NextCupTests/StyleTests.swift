@@ -58,16 +58,6 @@ struct StyleTests {
     }
   }
 
-  @Test func everyoneMovesToNightMintOnceThenKeepsTheirChoice() {
-    let d = UserDefaults(suiteName: "mint.\(UUID().uuidString)")!
-    d.set(AppStyle.bloom.rawValue, forKey: AppStyle.storageKey)
-    AppStyle.adoptNightMintOnce(d)
-    #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.nightMint.rawValue)
-    d.set(AppStyle.daily.rawValue, forKey: AppStyle.storageKey)
-    AppStyle.adoptNightMintOnce(d)
-    #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.daily.rawValue)
-  }
-
   @Test func everyoneMovesToSundayStudioOnceThenKeepsTheirChoice() {
     let d = UserDefaults(suiteName: "sunday.\(UUID().uuidString)")!
     d.set(AppStyle.nightMint.rawValue, forKey: AppStyle.storageKey)

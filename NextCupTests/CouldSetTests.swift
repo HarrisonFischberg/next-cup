@@ -131,16 +131,14 @@ struct CouldSetTests {
     #expect(IntentLinks.logBrew == .newBrew)
   }
 
-  @Test func brewAgainPicksTheLatestSavedBrewAndIgnoresDrafts() throws {
+  @Test func brewAgainPicksTheLatestSavedBrew() throws {
     let harness = try Harness()
     let context = harness.container.mainContext
     #expect(IntentLinks.brewAgain(in: context) == nil)
 
     let older = Brew(date: Date(timeIntervalSince1970: 1_000))
     let newer = Brew(date: Date(timeIntervalSince1970: 2_000))
-    let draft = Brew(date: Date(timeIntervalSince1970: 3_000))
-    draft.isDraft = true
-    for brew in [older, newer, draft] { context.insert(brew) }
+    for brew in [older, newer] { context.insert(brew) }
     _ = harness.store.save()
     #expect(IntentLinks.brewAgain(in: context) == .brewAgain(newer.id))
   }

@@ -19,7 +19,7 @@ final class AIQueue {
   var onDone: ((AIRequest) -> Void)?
   private let context: ModelContext
   private let client: AIClient
-  private let monitor = NWPathMonitor()
+  private var monitor: NWPathMonitor?
   private var tasks: [UUID: Task<Void, Never>] = [:]
   /// Only requests this queue enqueued are ever sent by it, so a tap on one screen
   /// cannot release a request left over from another.
@@ -48,11 +48,14 @@ final class AIQueue {
   }
 
   func startMonitoring() {
+    monitor?.cancel()
+    let monitor = NWPathMonitor()
     monitor.pathUpdateHandler = { [weak self] path in
       let online = path.status == .satisfied
       Task { @MainActor in self?.setOnline(online) }
     }
     monitor.start(queue: .global(qos: .utility))
+    self.monitor = monitor
   }
 
   func setOnline(_ online: Bool) {
@@ -97,8 +100,11 @@ final class AIQueue {
     save(request)
   }
 
-  /// Cancels everything this queue still holds; called when its screen goes away.
+  /// Cancels everything this queue still holds and stops watching the network;
+  /// called when its screen goes away.
   func cancelAll() {
+    monitor?.cancel()
+    monitor = nil
     for request in ((try? context.fetch(FetchDescriptor<AIRequest>())) ?? [])
     where owned.contains(request.id) { cancel(request) }
   }

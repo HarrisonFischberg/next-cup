@@ -8,7 +8,7 @@ import SwiftData
 ///   edited or deleted is never touched or brought back.
 ///
 /// Offered keys live in `defaults` (blueprint §5, client preferences). Delete-all
-/// calls `forgetOfferedKeys()` before reseeding.
+/// clears all of `defaults` before reseeding, so every built-in comes back.
 @MainActor
 struct BuiltInSeeder {
   struct Report: Equatable {
@@ -88,11 +88,5 @@ struct BuiltInSeeder {
     } catch {
       return .failure(.saveFailed(error.localizedDescription))
     }
-  }
-
-  /// Lets the next `seed` bring every built-in back (used by delete-all).
-  func forgetOfferedKeys() {
-    defaults.removeObject(forKey: Self.methodsLedgerKey)
-    defaults.removeObject(forKey: Self.recipesLedgerKey)
   }
 }

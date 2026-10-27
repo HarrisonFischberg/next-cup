@@ -108,6 +108,24 @@ import Testing
       backups: backups, clearKeys: keys, endActivity: {}, scratchDirectories: [])
   }
 
+  /// Delete all keeps the ratings flag, so the next launch does not convert ratings
+  /// that are already out of 10 a second time.
+  @Test func eraseKeepsRatingsOutOfTen() throws {
+    let env = try makeEnv()
+    env.defaults.set(true, forKey: RatingMigration.doneKey)
+    let dir = tempDir()
+    _ = try eraser(
+      env, drafts: dir.appendingPathComponent("Drafts"),
+      backups: BackupStore(directory: dir.appendingPathComponent("B"))
+    ).eraseAll(reseeding: try BuiltInContent(bundle: .main)).get()
+
+    let brew = Brew()
+    brew.ratingTenths = 85
+    env.store.context.insert(brew)
+    _ = try RatingMigration.run(env.store.context, defaults: env.defaults).get()
+    #expect(brew.ratingTenths == 85)
+  }
+
   // MARK: Round trip
 
   @Test func exportWipeImportIsLossless() throws {

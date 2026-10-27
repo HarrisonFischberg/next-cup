@@ -8,14 +8,32 @@ enum BackupStatus {
   static let errorKey = "backup.lastError"
 
   /// Writes today's backup if there is none yet. A failure is remembered and
-  /// shown in Settings instead of being dropped.
+  /// shown in Settings instead of being dropped. Rows are read on the main thread;
+  /// encoding them, every photo included, runs off it so launch never freezes.
   @MainActor static func runDaily(_ container: ModelContainer, defaults: UserDefaults = .standard) {
-    let exporter = DataExporter(store: Store(context: container.mainContext))
+    let backups = BackupStore.standard()
+    guard !backups.hasBackup() else { return }
+    let archive: DataArchive
     do {
-      try BackupStore.standard().backUp { try DataExporter.encode(exporter.archive()) }
-      defaults.removeObject(forKey: errorKey)
+      archive = try DataExporter(store: Store(context: container.mainContext)).archive()
     } catch {
       defaults.set(error.localizedDescription, forKey: errorKey)
+      return
+    }
+    Task {
+      let failure = await Task.detached(priority: .utility) { () -> String? in
+        do {
+          try backups.backUp { try DataExporter.encode(archive) }
+          return nil
+        } catch {
+          return error.localizedDescription
+        }
+      }.value
+      if let failure {
+        defaults.set(failure, forKey: errorKey)
+      } else {
+        defaults.removeObject(forKey: errorKey)
+      }
     }
   }
 }
@@ -201,7 +219,7 @@ struct DataSettingsView: View {
     Task {
       var start = Date()
       let brews =
-        (try? context.fetchCount(FetchDescriptor<Brew>(predicate: #Predicate { !$0.isDraft }))) ?? 0
+        (try? context.fetchCount(FetchDescriptor<Brew>())) ?? 0
       let beans = (try? context.fetchCount(FetchDescriptor<Bean>())) ?? 0
       stages = [
         "Gathering \(brews) \(brews == 1 ? "brew" : "brews") and \(beans) \(beans == 1 ? "bean" : "beans")",

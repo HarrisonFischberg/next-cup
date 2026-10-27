@@ -10,8 +10,7 @@ enum IntentLinks {
 
   /// The link that repeats the most recent saved brew, or `nil` when there is none.
   static func brewAgain(in context: ModelContext) -> DeepLink? {
-    var latest = FetchDescriptor<Brew>(
-      predicate: #Predicate { !$0.isDraft }, sortBy: [SortDescriptor(\.date, order: .reverse)])
+    var latest = FetchDescriptor<Brew>(sortBy: [SortDescriptor(\.date, order: .reverse)])
     latest.fetchLimit = 1
     return (try? context.fetch(latest))?.first.map { .brewAgain($0.id) }
   }

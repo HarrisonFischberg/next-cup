@@ -243,7 +243,6 @@ final class PaperImportModel {
     brew.ratingTenths = draft.ratingTenths
     brew.notes = draft.notes
     brew.photo = photo
-    brew.isDraft = false
     let name = draft.bean.trimmingCharacters(in: .whitespacesAndNewlines)
     for old in brew.beans ?? [] { store.context.delete(old) }
     brew.beans = []
