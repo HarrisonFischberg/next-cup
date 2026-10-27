@@ -601,7 +601,8 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "onboarding.next").waitForExistence(timeout: 10))
     for name in [
       "Flat-bed dripper", "Switchable immersion dripper", "Press pot", "Inverted press",
-      "Espresso", "Iced pour over", "Cold brew",
+      "Espresso", "Iced pour over", "Cold brew", "Moka pot", "AeroPress", "Chemex",
+      "Drip machine",
     ] {
       app.buttons[name].tap()
     }
