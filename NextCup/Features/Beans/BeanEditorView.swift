@@ -28,6 +28,8 @@ enum BeanCaptureStart: String, Identifiable {
 struct BeanEditorView: View {
   let target: BeanEditorTarget
   var start: BeanCaptureStart?
+  /// Hears about the bean once it is saved, e.g. so a brew being logged can use it.
+  var onSaved: ((Bean) -> Void)?
   let close: () -> Void
 
   @Environment(\.modelContext) private var context
@@ -542,6 +544,7 @@ struct BeanEditorView: View {
     switch service.save(fields, editing: bean) {
     case .success(let saved):
       if bean == nil { BeanDetailsAI.fill([saved], in: context) }
+      onSaved?(saved)
       close()
     case .failure(let failure): error = failure.message
     }

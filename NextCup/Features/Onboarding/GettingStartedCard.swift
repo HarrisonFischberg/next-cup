@@ -71,7 +71,7 @@ struct GettingStartedCard: View {
     .padding(DS.Space.lg)
     .background(
       DS.paper,
-      in: RoundedRectangle(cornerRadius: DS.isBloom ? 32 : DS.controlRadius, style: .continuous)
+      in: RoundedRectangle(cornerRadius: DS.isBloom ? 32 : DS.radius, style: .continuous)
     )
     .padding(DS.Space.lg)
     .accessibilityElement(children: .contain)
