@@ -152,7 +152,11 @@ private struct RecipeDetailContent: View {
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-      if !stacked { BrewHero(glyph: recipe.method?.glyph ?? .cup, role: .setup, size: 132) }
+      if !stacked {
+        BrewHero(
+          glyph: recipe.method?.glyph ?? .cup, methodKey: recipe.method?.builtInKey, role: .setup,
+          size: 132)
+      }
     }
     .padding(DS.Space.lg)
     .frame(maxWidth: .infinity, alignment: .leading)
