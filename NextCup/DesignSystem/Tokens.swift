@@ -194,14 +194,6 @@ enum AppStyle: String, CaseIterable, Identifiable {
     d.set(true, forKey: "style.sundayStudioAdopted")
   }
 
-  /// Moves everyone onto Night Mint once, the first launch after it ships. A launch
-  /// argument (UI tests) still wins, because the argument domain is read first.
-  static func adoptNightMintOnce(_ d: UserDefaults = .standard) {
-    guard !d.bool(forKey: "style.nightMintAdopted") else { return }
-    d.set(AppStyle.nightMint.rawValue, forKey: storageKey)
-    d.set(true, forKey: "style.nightMintAdopted")
-  }
-
   var id: String { rawValue }
 
   var title: String {

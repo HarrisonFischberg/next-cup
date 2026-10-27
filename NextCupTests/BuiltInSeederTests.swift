@@ -181,7 +181,8 @@ import Testing
     try seeder.seed(content).get()
     #expect(try context.fetchCount(FetchDescriptor<Recipe>()) == content.recipes.count - 1)
 
-    seeder.forgetOfferedKeys()
+    seeder.defaults.removeObject(forKey: BuiltInSeeder.methodsLedgerKey)
+    seeder.defaults.removeObject(forKey: BuiltInSeeder.recipesLedgerKey)
     let report = try seeder.seed(content).get()
     #expect(report == .init(methodsAdded: 0, recipesAdded: 1))
     #expect(try context.fetchCount(FetchDescriptor<Recipe>()) == content.recipes.count)

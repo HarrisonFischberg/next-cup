@@ -12,7 +12,7 @@ You are Sonnet; you build. You do not redesign the blueprint.
    and the verification command whose real output decides it>`. At most 5
    goal turns.
 4. Implement only that task, to the blueprint and the design system
-   (`design/DesignSystem` tokens and components; never hard-code colors or
+   (`NextCup/DesignSystem` tokens and components; never hard-code colors or
    fonts). Write complete files; no placeholder comments. Original code only.
 5. Run the task's verification commands from `prd.md` ("Verification commands"
    table) and read their real output. For a UI task also build and run it on

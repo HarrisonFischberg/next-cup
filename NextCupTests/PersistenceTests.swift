@@ -137,7 +137,6 @@ import Testing
   @Test func defaultsAreSane() {
     let brew = Brew()
     #expect(brew.notes == "")
-    #expect(!brew.isDraft)
     #expect(brew.doseG == nil)
     let bean = Bean()
     #expect(bean.status == .inUse)
@@ -286,24 +285,15 @@ import Testing
     context.insert(unrated)
     context.insert(bean)
     let defaults = try #require(UserDefaults(suiteName: "rating.\(UUID().uuidString)"))
-    let drafts = DraftStore(
-      fileURL: FileManager.default.temporaryDirectory
-        .appendingPathComponent("rating-\(UUID().uuidString)/draft.json"))
-    _ = drafts.save(BrewDraft(ratingTenths: 8))
 
     #expect(throws: Never.self) {
-      try RatingMigration.run(context, defaults: defaults, drafts: drafts).get()
+      try RatingMigration.run(context, defaults: defaults).get()
     }
     #expect(brew.ratingTenths == 70)
     #expect(unrated.ratingTenths == nil)
     #expect(bean.ratingTenths == 100)
-    guard case .draft(let migrated) = drafts.load() else {
-      Issue.record("draft lost")
-      return
-    }
-    #expect(migrated.ratingTenths == 80)
 
-    _ = RatingMigration.run(context, defaults: defaults, drafts: drafts)
+    _ = RatingMigration.run(context, defaults: defaults)
     #expect(brew.ratingTenths == 70, "a second launch leaves it alone")
   }
 }

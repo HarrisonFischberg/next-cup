@@ -10,7 +10,7 @@ extension Bean {
   var brewSamples: [BrewSample] {
     var seen = Set<UUID>()
     return (brewUses ?? []).compactMap(\.brew)
-      .filter { !$0.isDraft && seen.insert($0.id).inserted }
+      .filter { seen.insert($0.id).inserted }
       .map { brew in
         BrewSample(
           date: brew.date, ratingTenths: brew.ratingTenths, doseG: brew.doseG,

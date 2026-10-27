@@ -127,7 +127,6 @@ struct PaperImportAppTests {
     #expect(brew.doseG == 18)
     #expect(brew.totalTimeS == 165)
     #expect(brew.ratingTenths == 80)
-    #expect(brew.isDraft == false)
     #expect(brew.photo != nil)
     let use = try #require(brew.beans?.first)
     #expect(use.bean?.id == bean.id)

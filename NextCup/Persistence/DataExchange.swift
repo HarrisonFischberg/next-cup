@@ -36,7 +36,7 @@ struct DataExporter {
     return archive
   }
 
-  static func encode(_ archive: DataArchive) throws -> Data {
+  nonisolated static func encode(_ archive: DataArchive) throws -> Data {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys]
     return try encoder.encode(archive)
@@ -62,25 +62,25 @@ struct DataExporter {
     let brews = try store.context.fetch(FetchDescriptor<Brew>(sortBy: [SortDescriptor(\.date)]))
     var rows = [
       [
-        "id", "date", "method", "recipe", "beans", "grinder", "dose_g", "water_g", "yield_g",
-        "temp_c", "time_s", "grind", "tds", "rating", "verdict", "notes",
+        "id", "date", "method", "recipe", "beans", "grinder", "dose_g", "water_g", "temp_c",
+        "time_s", "grind", "tds", "rating", "verdict", "notes",
       ]
     ]
-    for brew in brews where !brew.isDraft {
+    for brew in brews {
       rows.append([
         brew.id.uuidString, brew.date.formatted(.iso8601), brew.method?.name ?? "",
         brew.recipe?.name ?? "",
         (brew.beans ?? []).map { $0.bean?.name ?? $0.beanNameSnapshot }.sorted().joined(
           separator: "; "),
         brew.grinder?.name ?? "", Self.number(brew.doseG), Self.number(brew.waterG),
-        Self.number(brew.yieldG), Self.number(brew.tempC), brew.totalTimeS.map(String.init) ?? "",
+        Self.number(brew.tempC), brew.totalTimeS.map(String.init) ?? "",
         brew.grindSetting ?? "", Self.number(brew.tds),
         brew.ratingTenths.map { Self.number(Double($0) / 10) } ?? "",
         brew.verdict?.rawValue ?? "",
         brew.notes,
       ])
     }
-    return Self.csv(rows, textColumns: [2, 3, 4, 5, 11, 15])
+    return Self.csv(rows, textColumns: [2, 3, 4, 5, 10, 14])
   }
 
   func beansCSV() throws -> String {
@@ -346,13 +346,22 @@ struct BackupStore: Sendable {
   /// `keep`. Returns the new file, or `nil` when today already has one.
   @discardableResult
   func backUp(now: Date = Date(), make: () throws -> Data) throws -> URL? {
-    let stamp = now.formatted(Date.ISO8601FormatStyle(timeZone: .current).year().month().day())
-    let url = directory.appendingPathComponent("backup-\(stamp).json")
+    let url = file(for: now)
     guard !FileManager.default.fileExists(atPath: url.path) else { return nil }
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     try make().write(to: url, options: [.atomic, .completeFileProtection])
     for old in list().dropFirst(keep) { try? FileManager.default.removeItem(at: old.url) }
     return url
+  }
+
+  /// Whether the day of `now` already has its backup.
+  func hasBackup(for now: Date = Date()) -> Bool {
+    FileManager.default.fileExists(atPath: file(for: now).path)
+  }
+
+  private func file(for now: Date) -> URL {
+    let stamp = now.formatted(Date.ISO8601FormatStyle(timeZone: .current).year().month().day())
+    return directory.appendingPathComponent("backup-\(stamp).json")
   }
 
   /// Newest first; the date is in the file name, so names sort by day.
@@ -441,10 +450,13 @@ struct DataEraser {
         Self.empty(directory)
       }
       // The selected tab stays, so the screen the user is on (and its Undo toast)
-      // does not jump away.
+      // does not jump away. The rating flag stays, or the next launch would convert
+      // ratings already out of 10 a second time.
       let tab = defaults.object(forKey: AppTab.storageKey)
+      let ratingsMigrated = defaults.bool(forKey: RatingMigration.doneKey)
       defaults.removePersistentDomain(forName: defaultsDomain)
       if let tab { defaults.set(tab, forKey: AppTab.storageKey) }
+      if ratingsMigrated { defaults.set(true, forKey: RatingMigration.doneKey) }
       clearKeys()
       return BuiltInSeeder(store: store, defaults: defaults).seed(content).map { _ in snapshot }
     } catch {

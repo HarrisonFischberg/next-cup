@@ -13,3 +13,6 @@ ralph/logs/
 .build/
 xcuserdata/
 *.xcuserstate
+
+# Loop screenshots stay on the Mac; they made every clone slow.
+ralph/screenshots/

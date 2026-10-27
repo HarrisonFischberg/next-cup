@@ -410,7 +410,7 @@ private struct RecipeDetailContent: View {
   private func choose(_ bean: Bean) {
     beanID = bean.id
     let last = (bean.brewUses ?? []).compactMap(\.brew)
-      .filter { !$0.isDraft && !($0.grindSetting ?? "").isEmpty }
+      .filter { !($0.grindSetting ?? "").isEmpty }
       .max { $0.date < $1.date }
     grindSetting = last?.grindSetting ?? grindSetting
   }
