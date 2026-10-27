@@ -36,6 +36,7 @@ struct BrewFormView: View {
   @State private var addingGrinder = false
   @State private var newGrinderName = ""
   @State private var grinderError: String?
+  @State private var addingBean = false
   @State private var model: BrewFormModel?
   @State private var pickedPhoto: PhotosPickerItem?
   @State private var libraryShown = false
@@ -361,6 +362,9 @@ struct BrewFormView: View {
         ForEach(available) { bean in
           Button(bean.name) { model.addBean(bean) }
         }
+        if !available.isEmpty { Divider() }
+        Button("New bean…", systemImage: "plus") { addingBean = true }
+          .accessibilityIdentifier("brewform.beans.new")
       } label: {
         Text((chosen.isEmpty ? "Add a bean" : "Add another bean").dsTitle)
           .font(DS.Font.din(22, relativeTo: .title3))
@@ -368,13 +372,12 @@ struct BrewFormView: View {
           .foregroundStyle(DS.ink)
           .panel(DS.paper)
       }
-      .disabled(available.isEmpty)
       .accessibilityLabel(chosen.isEmpty ? "Add a bean" : "Add another bean")
       .accessibilityIdentifier("brewform.beans.add")
-      if available.isEmpty && chosen.isEmpty {
-        Text("Add beans on the Beans tab, then choose them here.")
-          .font(.footnote).foregroundStyle(DS.ink2)
-      }
+    }
+    // The full bean screen (photo, barcode, every field); Save comes back here with it chosen.
+    .sheet(isPresented: $addingBean) {
+      BeanEditorView(target: .new, onSaved: { model.addBean($0) }) { addingBean = false }
     }
   }
 
