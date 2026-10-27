@@ -112,6 +112,17 @@ public struct Recommendation: Equatable, Sendable {
   public var start: StartParameters
   public var basis: Basis
 
+  public init(
+    methodKey: String?, methodName: String, recipeName: String?, start: StartParameters,
+    basis: Basis
+  ) {
+    self.methodKey = methodKey
+    self.methodName = methodName
+    self.recipeName = recipeName
+    self.start = start
+    self.basis = basis
+  }
+
   public var isDefault: Bool {
     if case .bundledDefault = basis { return true }
     return false

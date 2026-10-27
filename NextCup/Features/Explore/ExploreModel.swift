@@ -33,12 +33,13 @@ enum ExploreModel {
     }
   }
 
-  /// Every saved brew that has a method, with the buckets of all beans in it.
+  /// Every saved brew made with a method the user brews with (not hidden), with the
+  /// buckets of all beans in it. A hidden method is never recommended back.
   static func history(
     of brews: [Brew], taxonomy: Taxonomy, aliases: [Taxonomy.Alias]
   ) -> [RecommenderBrew] {
     brews.compactMap { brew in
-      guard let method = brew.method else { return nil }
+      guard let method = brew.method, !method.isHidden else { return nil }
       var seen = Set<BucketRef>()
       let buckets = (brew.beans ?? []).compactMap(\.bean).flatMap {
         buckets(of: $0, taxonomy: taxonomy, aliases: aliases)
@@ -54,5 +55,45 @@ enum ExploreModel {
   /// Beans worth planning a brew for: the ones in use or marked to buy again.
   static func planned(_ beans: [Bean]) -> [Bean] {
     beans.filter { $0.status == .inUse || $0.status == .buyAgain }
+  }
+
+  /// Keeps a default pick to the brew types the user brews with: the bundled default
+  /// becomes recipes of the shown methods, ones not brewed yet first, the default's
+  /// own method ahead of the rest. History picks are already limited by `history`.
+  static func limited(
+    _ result: RecommendationResult, to methods: [BrewMethod], limit: Int = 3
+  ) -> RecommendationResult {
+    let shown = methods.filter { !$0.isHidden }
+    guard result.isDefault, let fallback = result.items.first, let first = shown.first else {
+      return result
+    }
+    let rank = { (method: BrewMethod, recipe: Recipe) in
+      (
+        recipe.brews?.count ?? 0, method.builtInKey == fallback.methodKey ? 0 : 1,
+        method.sortOrder, recipe.name
+      )
+    }
+    let picks = shown.flatMap { method in (method.recipes ?? []).map { (method, $0) } }
+      .sorted { rank($0.0, $0.1) < rank($1.0, $1.1) }.prefix(limit)
+      .map { method, recipe in
+        Recommendation(
+          methodKey: method.builtInKey, methodName: method.name, recipeName: recipe.name,
+          start: StartParameters(
+            doseG: recipe.doseG, waterG: recipe.waterG, tempC: recipe.tempC,
+            totalTimeS: recipe.totalTimeS),
+          basis: fallback.basis)
+      }
+    var limited = result
+    if !picks.isEmpty {
+      limited.items = Array(picks)
+    } else if !shown.contains(where: { $0.builtInKey == fallback.methodKey }) {
+      // No recipes to offer: keep the starting values, on a method the user brews with.
+      limited.items = [
+        Recommendation(
+          methodKey: first.builtInKey, methodName: first.name, recipeName: nil,
+          start: fallback.start, basis: fallback.basis)
+      ]
+    }
+    return limited
   }
 }

@@ -85,6 +85,7 @@ struct JournalListView: View {
     .safeAreaInset(edge: .top, spacing: 0) { if !logged.isEmpty { filterBar } }
     .safeAreaInset(edge: .bottom, spacing: 0) { toast }
     .toolbar {
+      ToolbarItem(placement: .primaryAction) { SettingsGear(id: "journal.settings") }
       ToolbarItem(placement: .primaryAction) {
         // A tap logs a brew at once; holding opens the other ways to add one.
         Menu {
@@ -119,21 +120,7 @@ struct JournalListView: View {
     .onDisappear { commitPendingDelete() }
   }
 
-  /// The page title with Settings beside it: a filled round button, so it is found.
-  private var header: some View {
-    PageHeader(title: "Journal") {
-      Button {
-        router.journalPath.append(.settings)
-      } label: {
-        Label("Settings", systemImage: "gearshape.fill").labelStyle(.titleAndIcon)
-          .font(.subheadline.weight(.bold)).foregroundStyle(DS.onSignal)
-          .padding(.horizontal, DS.Space.lg).frame(minHeight: DS.Size.control)
-          .background(DS.signal, in: Capsule())
-      }
-      .accessibilityLabel("Settings")
-      .accessibilityIdentifier("journal.settings")
-    }
-  }
+  private var header: some View { PageHeader("Journal") }
 
   // MARK: List
 
@@ -170,9 +157,18 @@ struct JournalListView: View {
         NavigationLink(value: DeepLink.brew(brew.id)) {
           BrewRow(brew: brew, units: units)
         }
-        .listRowInsets(EdgeInsets())
-        .listRowBackground(DS.paper)
-        .listRowSeparatorTint(DS.line)
+        // Each brew is its own soft card, spaced from the next, with no rule between. The
+        // wider trailing inset keeps the row's chevron inside the card.
+        .listRowInsets(
+          EdgeInsets(
+            top: DS.Space.xs, leading: DS.Space.lg, bottom: DS.Space.xs,
+            trailing: DS.Space.lg + DS.Space.md)
+        )
+        .listRowBackground(
+          RoundedRectangle(cornerRadius: max(DS.radius, 18), style: .continuous).fill(DS.paper)
+            .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.xs)
+        )
+        .listRowSeparator(.hidden)
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
           Button {
             brewAgain(brew)

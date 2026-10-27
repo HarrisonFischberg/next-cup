@@ -147,4 +147,44 @@ struct ExploreModelTests {
     #expect(result.items.map(\.methodKey) == ["cone-dripper", "press"])
     #expect(result.items[0].explanation.contains("averaged 8.5 of 10"))
   }
+
+  @Test func hiddenMethodsAreNeverRecommended() throws {
+    let harness = try Harness()
+    let old = harness.bean("Washed Ethiopia", status: .finished)
+    let current = harness.bean("Washed Kenya", origin: "Kenya")
+    let press = harness.method("Press pot", key: "press")
+    press.isHidden = true
+    for day in 1...3 { harness.brew([old], method: press, grade: 90, day: day) }
+    let taxonomy = try taxonomy()
+    let history = ExploreModel.history(
+      of: try harness.context.fetch(FetchDescriptor<Brew>()), taxonomy: taxonomy, aliases: [])
+    #expect(history.isEmpty)
+    let refs = ExploreModel.buckets(of: current, taxonomy: taxonomy, aliases: [])
+    #expect(Recommender.recommend(for: refs, history: history).isDefault)
+  }
+
+  @Test func aDefaultBecomesUntriedRecipesOfTheShownMethods() throws {
+    let harness = try Harness()
+    let bean = harness.bean("Dark Brazil", roast: .dark)
+    let press = harness.method("Press pot", key: "press")
+    press.isHidden = true
+    let switchable = harness.method("Switchable", key: "switchable")
+    let tried = Recipe(name: "Tried", doseG: 15, waterG: 250)
+    let fresh = Recipe(name: "Fresh", doseG: 18, waterG: 300)
+    let pressRecipe = Recipe(name: "Press", doseG: 16, waterG: 250)
+    for (recipe, method) in [(tried, switchable), (fresh, switchable), (pressRecipe, press)] {
+      harness.context.insert(recipe)
+      recipe.method = method
+    }
+    harness.brew([bean], method: switchable, grade: nil).recipe = tried
+    let refs = ExploreModel.buckets(of: bean, taxonomy: try taxonomy(), aliases: [])
+    let raw = Recommender.recommend(for: refs, history: [])
+    #expect(raw.items[0].methodKey == "press")
+
+    let result = ExploreModel.limited(raw, to: [press, switchable])
+    #expect(result.isDefault)
+    #expect(result.items.map(\.recipeName) == ["Fresh", "Tried"])
+    #expect(result.items.allSatisfy { $0.methodKey == "switchable" })
+    #expect(result.items[0].start.doseG == 18)
+  }
 }
