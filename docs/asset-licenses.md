@@ -22,3 +22,21 @@
 ## App icon (2026-10-25)
 
 `NextCup/Assets.xcassets/AppIcon.appiconset/AppIcon-Light-1024.png` (yellow, light appearance) and `AppIcon-Dark-1024.png` (blue, dark appearance): cropped from the owner's image `AppIcon-options-yellow-blue.png` (512×512, supplied 2026-10-26) and upscaled to 1024. Origin and license as the owner supplied them; confirm the source and get a full-resolution original before an App Store release.
+
+## Handoff redesign hero photographs (2026-10-27)
+
+Six photographs in `NextCup/Assets.xcassets/Handoff/hero.<look>.<slot>.imageset`, one card and
+one setup hero per look, downloaded through the Unsplash API (downloads recorded). All are under the
+[Unsplash License](https://unsplash.com/license): free for commercial use, no permission needed,
+attribution appreciated but not required; may not be sold unaltered or used to build a competing service.
+
+| Asset | Photographer | Photo |
+| --- | --- | --- |
+| `hero.sundayStudio.card` | Thomas Murphy | https://unsplash.com/photos/WyD1PTucBZc |
+| `hero.sundayStudio.setup` | Moon Moons | https://unsplash.com/photos/mil1ye4BTmY |
+| `hero.morningEdition.card` | andrew welch | https://unsplash.com/photos/1pZbNwlGzNY |
+| `hero.morningEdition.setup` | Emma Smith | https://unsplash.com/photos/8iEPHGbsp70 |
+| `hero.precisionAtelier.card` | Ryan ODee | https://unsplash.com/photos/yWPs9knfK9o |
+| `hero.precisionAtelier.setup` | Ashkan Forouzani | https://unsplash.com/photos/1SATo8GQBYg |
+
+The brewer drawings on the active brew screen and the method tiles remain original Canvas line art.
