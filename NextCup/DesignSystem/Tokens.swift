@@ -375,12 +375,12 @@ enum AppStyle: String, CaseIterable, Identifiable {
         accent: P(0x2448C8, 0xFF9F5A))
     case .morningEdition:
       Palette(
-        bg: P(0xF4EFE4, 0x1C1713), paper: P(0xFBF8F1, 0x27201A), steel: P(0x302820, 0x302820),
-        onSteel: P(0xF4EFE4, 0xF4EFE4), ink: P(0x302820, 0xF4EFE4), ink2: P(0x675A4D, 0xBFB2A4),
-        line: P(0x8E7E6E, 0x7E7064), signal: P(0xA9472F, 0xF4EFE4),
-        onSignal: P(0xFFFFFF, 0x1C1713), signalOnSteel: P(0xE8A085, 0xE8A085),
-        kraft: P(0xEADFCB, 0x332A22), onKraft: P(0x302820, 0xF4EFE4),
-        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x55684A, 0xA9BC97),
+        bg: P(0xFAF8F4, 0x141414), paper: P(0xFFFFFF, 0x1E1E1F), steel: P(0x1E1D1B, 0x262628),
+        onSteel: P(0xFAF8F4, 0xF4F1EA), ink: P(0x1E1D1B, 0xF4F1EA), ink2: P(0x5F5B55, 0xB9B5AE),
+        line: P(0x8E8A84, 0x77746F), signal: P(0xA9472F, 0xF4F1EA),
+        onSignal: P(0xFFFFFF, 0x141414), signalOnSteel: P(0xE8A085, 0xE8A085),
+        kraft: P(0xEFEDE8, 0x262628), onKraft: P(0x1E1D1B, 0xF4F1EA),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x9FE0A8),
         accent: P(0xA9472F, 0xE08A6E))
     case .precisionAtelier:
       Palette(
