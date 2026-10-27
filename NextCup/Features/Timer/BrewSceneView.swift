@@ -95,6 +95,22 @@ private struct SceneArt {
       BrewArt.espressoMachine(
         Pen(ctx: c, ink: pen.ink), needle: m.needle, cup: m.vessel, shot: m.shot > 0.5, phase: t)
     case .cold: cold()
+    case .still: still(glyph)
+    }
+  }
+
+  /// The brewer's own drawing, filling with coffee as the schedule runs.
+  private func still(_ glyph: BrewGlyph) {
+    var c = ctx
+    c.translateBy(x: 20, y: 20)
+    c.scaleBy(x: 1.6, y: 1.6)
+    let p = Pen(ctx: c, ink: pen.ink)
+    switch glyph {
+    case .moka: BrewArt.mokaPot(p, fill: m.vessel)
+    case .aeroPress: BrewArt.aeroPress(p, fill: m.vessel)
+    case .chemex: BrewArt.chemex(p, fill: m.vessel)
+    case .dripMachine: BrewArt.dripMachine(p, fill: m.vessel)
+    default: BrewArt.draw(glyph, p)
     }
   }
 

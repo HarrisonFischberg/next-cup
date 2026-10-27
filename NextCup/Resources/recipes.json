@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "recipes": [
     {
       "key": "cone-balanced",
@@ -604,6 +604,267 @@
         { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 500, "instruction": "Add cool water over the grounds." },
         { "kind": "stir", "startOffsetS": 60, "instruction": "Stir until no dry pockets remain." },
         { "kind": "wait", "startOffsetS": 120, "instruction": "Cover and steep about 16 hours, then strain." }
+      ]
+    },
+    {
+      "key": "moka-classic",
+      "methodKey": "moka-pot",
+      "name": "Classic stovetop",
+      "doseG": 18,
+      "waterG": 180,
+      "totalTimeS": 240,
+      "tuningNote": "Tastes sharp or thin? Grind a little finer.\nTastes bitter or burnt? Take it off the heat sooner.",
+      "includesIce": false,
+      "steps": [
+        {"kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 180, "instruction": "Fill the base with hot water just under the valve. Fill the basket level; don't tamp."},
+        {"kind": "heat", "startOffsetS": 30, "instruction": "Screw it together and set it on medium heat with the lid open."},
+        {"kind": "wait", "startOffsetS": 150, "instruction": "Coffee starts to rise. Turn the heat down."},
+        {"kind": "offHeat", "startOffsetS": 200, "instruction": "When it turns pale and starts to gurgle, take it off the heat and cool the base under the tap."}
+      ]
+    },
+    {
+      "key": "moka-classic/hot-start",
+      "methodKey": "moka-pot",
+      "name": "Hot start",
+      "doseG": 18,
+      "waterG": 180,
+      "totalTimeS": 180,
+      "tuningNote": "Starting with just-boiled water shortens the time on the heat, which keeps it from tasting burnt.",
+      "includesIce": false,
+      "steps": [
+        {"kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 180, "instruction": "Fill the base with just-boiled water to the valve. Use a towel; it's hot."},
+        {"kind": "heat", "startOffsetS": 20, "instruction": "Assemble and set it on medium-low heat, lid open."},
+        {"kind": "wait", "startOffsetS": 80, "instruction": "Coffee starts to rise. Keep the flow slow and steady."},
+        {"kind": "offHeat", "startOffsetS": 140, "instruction": "At the first gurgle, take it off the heat and cool the base."}
+      ]
+    },
+    {
+      "key": "moka-classic/low-slow",
+      "methodKey": "moka-pot",
+      "name": "Low and slow",
+      "doseG": 17,
+      "waterG": 170,
+      "totalTimeS": 330,
+      "tuningNote": "A gentle flame gives a rounder, less bitter cup. Take longer, not hotter.",
+      "includesIce": false,
+      "steps": [
+        {"kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 170, "instruction": "Fill the base with cold water to the valve and fill the basket level."},
+        {"kind": "heat", "startOffsetS": 30, "instruction": "Assemble and set it on the lowest flame, lid open."},
+        {"kind": "wait", "startOffsetS": 240, "instruction": "Coffee starts to rise. Leave the flame low."},
+        {"kind": "offHeat", "startOffsetS": 300, "instruction": "When the flow turns pale, take it off the heat and cool the base."}
+      ]
+    },
+    {
+      "key": "aeropress-standard",
+      "methodKey": "aeropress",
+      "name": "Standard",
+      "doseG": 15,
+      "waterG": 200,
+      "tempC": 90,
+      "totalTimeS": 120,
+      "tuningNote": "Tastes sour? Grind finer or steep longer.\nTastes bitter? Grind coarser or press sooner.",
+      "includesIce": false,
+      "steps": [
+        {"kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 200, "instruction": "Pour all the water over the grounds."},
+        {"kind": "stir", "startOffsetS": 10, "instruction": "Stir three times."},
+        {"kind": "plug", "startOffsetS": 20, "instruction": "Set the plunger on top to stop the drip."},
+        {"kind": "press", "startOffsetS": 90, "instruction": "Press down slowly and steadily for about 30 seconds."}
+      ]
+    },
+    {
+      "key": "aeropress-standard/bypass",
+      "methodKey": "aeropress",
+      "name": "Bypass",
+      "doseG": 18,
+      "waterG": 200,
+      "tempC": 92,
+      "totalTimeS": 120,
+      "tuningNote": "Brews a strong shot, then tops it up. Change the top-up to taste.",
+      "includesIce": false,
+      "steps": [
+        {"kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 100, "instruction": "Pour 100 g of water over the grounds."},
+        {"kind": "stir", "startOffsetS": 10, "instruction": "Stir well so every ground is wet."},
+        {"kind": "plug", "startOffsetS": 20, "instruction": "Set the plunger on top to stop the drip."},
+        {"kind": "press", "startOffsetS": 60, "instruction": "Press slowly into the mug."},
+        {"kind": "bypass", "startOffsetS": 90, "targetCumulativeWaterG": 200, "instruction": "Top up with 100 g of hot water."}
+      ]
+    },
+    {
+      "key": "aeropress-standard/quick",
+      "methodKey": "aeropress",
+      "name": "One-minute",
+      "doseG": 15,
+      "waterG": 220,
+      "tempC": 95,
+      "totalTimeS": 75,
+      "tuningNote": "Hotter water and a finer grind make up for the short time.",
+      "includesIce": false,
+      "steps": [
+        {"kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 220, "instruction": "Pour all the water quickly."},
+        {"kind": "stir", "startOffsetS": 10, "instruction": "Stir five times."},
+        {"kind": "plug", "startOffsetS": 15, "instruction": "Set the plunger on top."},
+        {"kind": "press", "startOffsetS": 45, "instruction": "Press steadily to the end."}
+      ]
+    },
+    {
+      "key": "chemex-classic",
+      "methodKey": "chemex",
+      "name": "Classic",
+      "doseG": 30,
+      "waterG": 480,
+      "tempC": 96,
+      "totalTimeS": 270,
+      "tuningNote": "Draining slowly? Grind coarser.\nTastes thin? Grind finer.",
+      "includesIce": false,
+      "steps": [
+        {"kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 60, "instruction": "Rinse the paper first, then wet the bed and let it bloom."},
+        {"kind": "pour", "startOffsetS": 45, "targetCumulativeWaterG": 300, "instruction": "Pour in slow circles to 300 g."},
+        {"kind": "pour", "startOffsetS": 90, "targetCumulativeWaterG": 480, "instruction": "Pour to the final weight."},
+        {"kind": "drawdown", "startOffsetS": 150, "instruction": "Let it drain. Lift the filter out when the bed is dry."}
+      ]
+    },
+    {
+      "key": "chemex-classic/two",
+      "methodKey": "chemex",
+      "name": "Big batch for two",
+      "doseG": 42,
+      "waterG": 680,
+      "tempC": 96,
+      "totalTimeS": 330,
+      "tuningNote": "A bigger bed drains slower; a slightly coarser grind keeps the time in check.",
+      "includesIce": false,
+      "steps": [
+        {"kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 90, "instruction": "Wet the whole bed and let it bloom."},
+        {"kind": "pour", "startOffsetS": 50, "targetCumulativeWaterG": 400, "instruction": "Pour in slow circles to 400 g."},
+        {"kind": "pour", "startOffsetS": 110, "targetCumulativeWaterG": 680, "instruction": "Pour to the final weight."},
+        {"kind": "drawdown", "startOffsetS": 180, "instruction": "Let it drain fully."}
+      ]
+    },
+    {
+      "key": "chemex-classic/iced",
+      "methodKey": "chemex",
+      "name": "Iced Chemex",
+      "doseG": 30,
+      "waterG": 300,
+      "tempC": 96,
+      "totalTimeS": 240,
+      "tuningNote": "Hot water is the brewed amount; the ice sits in the carafe and melts into the cup.",
+      "includesIce": true,
+      "iceG": 200,
+      "steps": [
+        {"kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 60, "instruction": "Ice is already in the carafe. Wet the bed and let it bloom."},
+        {"kind": "pour", "startOffsetS": 45, "targetCumulativeWaterG": 300, "instruction": "Pour in slow circles to the final hot-water weight."},
+        {"kind": "drawdown", "startOffsetS": 120, "instruction": "Let it drain, then swirl the carafe to finish chilling."}
+      ]
+    },
+    {
+      "key": "drip-pot",
+      "methodKey": "drip-machine",
+      "name": "Standard pot",
+      "doseG": 50,
+      "waterG": 850,
+      "totalTimeS": 360,
+      "tuningNote": "Tastes weak? Use more coffee, not a finer grind.\nTastes bitter? Grind a little coarser.",
+      "includesIce": false,
+      "steps": [
+        {"kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 850, "instruction": "Fill the reservoir with fresh cold water and fill the basket."},
+        {"kind": "brew", "startOffsetS": 15, "instruction": "Start the machine."},
+        {"kind": "wait", "startOffsetS": 330, "instruction": "When it stops dripping, swirl the pot before you pour."}
+      ]
+    },
+    {
+      "key": "drip-pot/mug",
+      "methodKey": "drip-machine",
+      "name": "Single mug",
+      "doseG": 20,
+      "waterG": 330,
+      "totalTimeS": 240,
+      "tuningNote": "A small batch brews fast; a slightly finer grind keeps it from tasting thin.",
+      "includesIce": false,
+      "steps": [
+        {"kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 330, "instruction": "Fill the reservoir with one mug of water and fill the basket."},
+        {"kind": "brew", "startOffsetS": 15, "instruction": "Start the machine."},
+        {"kind": "wait", "startOffsetS": 210, "instruction": "When it stops dripping, it's ready."}
+      ]
+    },
+    {
+      "key": "drip-pot/strong",
+      "methodKey": "drip-machine",
+      "name": "Strong",
+      "doseG": 60,
+      "waterG": 850,
+      "totalTimeS": 360,
+      "tuningNote": "More coffee for the same water gives a bolder pot without a bitter grind.",
+      "includesIce": false,
+      "steps": [
+        {"kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 850, "instruction": "Fill the reservoir and fill the basket a little fuller than usual."},
+        {"kind": "brew", "startOffsetS": 15, "instruction": "Start the machine."},
+        {"kind": "wait", "startOffsetS": 330, "instruction": "Swirl the pot before you pour."}
+      ]
+    },
+    {
+      "key": "moka-classic/small",
+      "methodKey": "moka-pot",
+      "name": "Three-cup pot",
+      "doseG": 15,
+      "waterG": 150,
+      "totalTimeS": 210,
+      "tuningNote": "A small pot heats fast; keep the flame low so it doesn't scorch.",
+      "includesIce": false,
+      "steps": [
+        {"kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 150, "instruction": "Fill the base with hot water to the valve and fill the basket level."},
+        {"kind": "heat", "startOffsetS": 20, "instruction": "Assemble and set it on low to medium heat, lid open."},
+        {"kind": "wait", "startOffsetS": 120, "instruction": "Coffee starts to rise. Turn the heat down."},
+        {"kind": "offHeat", "startOffsetS": 170, "instruction": "At the first gurgle, take it off the heat and cool the base."}
+      ]
+    },
+    {
+      "key": "aeropress-standard/light",
+      "methodKey": "aeropress",
+      "name": "Light and long",
+      "doseG": 12,
+      "waterG": 220,
+      "tempC": 88,
+      "totalTimeS": 150,
+      "tuningNote": "Less coffee, cooler water and a longer steep give a lighter, tea-like cup.",
+      "includesIce": false,
+      "steps": [
+        {"kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 220, "instruction": "Pour all the water over the grounds."},
+        {"kind": "stir", "startOffsetS": 10, "instruction": "Stir gently twice."},
+        {"kind": "plug", "startOffsetS": 20, "instruction": "Set the plunger on top to stop the drip."},
+        {"kind": "press", "startOffsetS": 120, "instruction": "Press slowly to the end."}
+      ]
+    },
+    {
+      "key": "chemex-classic/bright",
+      "methodKey": "chemex",
+      "name": "Bright",
+      "doseG": 28,
+      "waterG": 480,
+      "tempC": 97,
+      "totalTimeS": 255,
+      "tuningNote": "More water for the coffee and hotter water bring out brighter, lighter notes.",
+      "includesIce": false,
+      "steps": [
+        {"kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 60, "instruction": "Wet the bed and let it bloom."},
+        {"kind": "pour", "startOffsetS": 45, "targetCumulativeWaterG": 300, "instruction": "Pour in slow circles to 300 g."},
+        {"kind": "pour", "startOffsetS": 90, "targetCumulativeWaterG": 480, "instruction": "Pour to the final weight."},
+        {"kind": "drawdown", "startOffsetS": 140, "instruction": "Let it drain fully."}
+      ]
+    },
+    {
+      "key": "drip-pot/light",
+      "methodKey": "drip-machine",
+      "name": "Light",
+      "doseG": 45,
+      "waterG": 810,
+      "totalTimeS": 360,
+      "tuningNote": "Less coffee for the water makes a lighter pot for sipping all morning.",
+      "includesIce": false,
+      "steps": [
+        {"kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 810, "instruction": "Fill the reservoir and fill the basket."},
+        {"kind": "brew", "startOffsetS": 15, "instruction": "Start the machine."},
+        {"kind": "wait", "startOffsetS": 330, "instruction": "Swirl the pot before you pour."}
       ]
     }
   ]

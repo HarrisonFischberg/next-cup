@@ -26,6 +26,8 @@ struct RootTabView: View {
       }
     }
     .tint(DS.ink)
+    // The ink tint is white in dark looks, so an on switch would vanish; switches use the accent.
+    .toggleStyle(SwitchToggleStyle(tint: DS.accent))
     .onOpenURL { handle($0) }
     .fullScreenCover(isPresented: $showsOnboarding) {
       OnboardingView { tab in
