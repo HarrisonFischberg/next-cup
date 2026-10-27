@@ -64,6 +64,9 @@ enum RecipeFormat {
     case .openValve: "Open valve"
     case .closeValve: "Close valve"
     case .drawdown: "Drawdown"
+    case .heat: "Heat"
+    case .offHeat: "Off the heat"
+    case .brew: "Brew"
     }
   }
 

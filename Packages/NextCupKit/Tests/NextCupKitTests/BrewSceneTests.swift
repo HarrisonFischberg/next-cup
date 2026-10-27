@@ -82,4 +82,13 @@ struct BrewSceneTests {
     let f = BrewScene.frame(.cold, steps: s, totalS: 57600, elapsedS: 28800)
     #expect(f.bed == 1 && f.darkness == 0.5)
   }
+
+  @Test func newBrewersFillTheirOwnDrawingOverTheSchedule() {
+    #expect(BrewSceneKind(methodKey: "moka-pot", style: "espresso") == .still)
+    #expect(BrewSceneKind(methodKey: "drip-machine", style: "pourOver") == .still)
+    let steps = [BrewSceneStep(startS: 0, kind: "pour"), BrewSceneStep(startS: 30, kind: "heat")]
+    let half = BrewScene.frame(.still, steps: steps, totalS: 200, elapsedS: 100)
+    #expect(half.vessel == 0.5)
+    #expect(!half.pouring)
+  }
 }

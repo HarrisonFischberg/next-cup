@@ -78,8 +78,19 @@ struct OnboardingView: View {
       .background(DS.bg)
       .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: step)
       .toolbar {
+        // Every step after the first, and the finish, can go back one; nothing typed is lost.
+        if step > 1 {
+          ToolbarItem(placement: .topBarLeading) {
+            Button {
+              step -= 1
+            } label: {
+              Label("Back", systemImage: "chevron.left").labelStyle(.titleAndIcon)
+            }
+            .accessibilityIdentifier("onboarding.back")
+          }
+        }
         if step <= Self.steps {
-          ToolbarItem(placement: .cancellationAction) {
+          ToolbarItem(placement: .topBarTrailing) {
             Button("Skip") { done(.journal) }.accessibilityIdentifier("onboarding.skip")
           }
         }
@@ -88,6 +99,8 @@ struct OnboardingView: View {
         BeanEditorView(target: .new, start: start) { capture = nil }
       }
     }
+    // A cover does not inherit the tab view's toggle style.
+    .toggleStyle(SwitchToggleStyle(tint: DS.accent))
     .accessibilityIdentifier("onboarding")
   }
 
@@ -247,14 +260,14 @@ struct OnboardingView: View {
         )
         Toggle(isOn: $fillsBeans) {
           VStack(alignment: .leading, spacing: 2) {
-            Text("Fill in my beans").font(.body.weight(.semibold)).foregroundStyle(DS.ink)
+            Text("Bean me up, Scotty").font(.body.weight(.semibold)).foregroundStyle(DS.ink)
             Text(
               "When you add a coffee, Apple AI fills in the roast, origin and process it knows of. It works from what it already knows and what's on the bag, not a web search, so check them."
             )
             .font(.footnote).foregroundStyle(DS.ink2)
           }
         }
-        .tint(DS.signal).padding(DS.Space.md).panel(DS.paper)
+        .padding(DS.Space.md).panel(DS.paper)
         .accessibilityIdentifier("onboarding.ai.fill")
         Text("To use Claude or ChatGPT instead, add a key later in Settings on the Journal page.")
           .font(.footnote).foregroundStyle(DS.ink2)

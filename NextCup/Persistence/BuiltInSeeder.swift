@@ -44,6 +44,9 @@ struct BuiltInSeeder {
         method.defaultStepKinds = entry.defaultStepKinds
         method.sortOrder = nextSortOrder
         method.builtInKey = entry.key
+        // A method added by an update waits under More methods; the first seed shows all
+        // and onboarding lets the user pick.
+        method.isHidden = !offeredMethods.isEmpty
         nextSortOrder += 1
         store.context.insert(method)
         methodsByKey[entry.key] = method

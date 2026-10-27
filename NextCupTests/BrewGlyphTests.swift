@@ -19,6 +19,7 @@ struct BrewGlyphTests {
   @Test func methodsTheOwnerAddsGetTheMug() {
     #expect(BrewGlyph(methodKey: nil) == .cup)
     #expect(BrewGlyph(methodKey: "my-siphon") == .cup)
+    #expect(BrewGlyph(methodKey: "moka-pot") == .moka)
   }
 
   @Test func pathReaderFollowsTheMockupData() {
