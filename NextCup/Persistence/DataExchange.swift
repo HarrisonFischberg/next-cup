@@ -75,7 +75,7 @@ struct DataExporter {
         brew.grinder?.name ?? "", Self.number(brew.doseG), Self.number(brew.waterG),
         Self.number(brew.yieldG), Self.number(brew.tempC), brew.totalTimeS.map(String.init) ?? "",
         brew.grindSetting ?? "", Self.number(brew.tds),
-        brew.ratingHalfSteps.map { Self.number(Double($0) / 2) } ?? "",
+        brew.ratingTenths.map { Self.number(Double($0) / 10) } ?? "",
         brew.verdict?.rawValue ?? "",
         brew.notes,
       ])
@@ -97,7 +97,7 @@ struct DataExporter {
         bean.region ?? "", bean.process ?? "", bean.varietal ?? "", bean.roastLevel?.rawValue ?? "",
         bean.roastDate?.formatted(.iso8601) ?? "", Self.number(bean.bagWeightG),
         bean.status.rawValue,
-        bean.isDecaf ? "yes" : "no", bean.ratingHalfSteps.map { Self.number(Double($0) / 2) } ?? "",
+        bean.isDecaf ? "yes" : "no", bean.ratingTenths.map { Self.number(Double($0) / 10) } ?? "",
       ])
     }
     return Self.csv(rows, textColumns: [1, 2, 3, 4, 5, 6])

@@ -49,7 +49,7 @@ public struct BrewDraft: Codable, Equatable, Sendable {
   public var totalTimeS: Int?
   public var grindSetting: String
   public var verdict: String?
-  public var ratingHalfSteps: Int
+  public var ratingTenths: Int
   public var notes: String
   public var photo: Data?
   public var targets: BrewTargets?
@@ -69,7 +69,7 @@ public struct BrewDraft: Codable, Equatable, Sendable {
     id: UUID = UUID(), sourceKey: String? = nil, date: Date = Date(), methodID: UUID? = nil,
     recipeID: UUID? = nil, doseG: Double? = nil, waterG: Double? = nil, tempC: Double? = nil,
     totalTimeS: Int? = nil, grindSetting: String = "", verdict: String? = nil,
-    ratingHalfSteps: Int = 0, notes: String = "", photo: Data? = nil, targets: BrewTargets? = nil,
+    ratingTenths: Int = 0, notes: String = "", photo: Data? = nil, targets: BrewTargets? = nil,
     endedEarly: Bool = false, beans: [DraftBean]? = nil, grinderID: UUID? = nil, tds: Double? = nil,
     waterProfileID: UUID? = nil
   ) {
@@ -84,7 +84,7 @@ public struct BrewDraft: Codable, Equatable, Sendable {
     self.totalTimeS = totalTimeS
     self.grindSetting = grindSetting
     self.verdict = verdict
-    self.ratingHalfSteps = ratingHalfSteps
+    self.ratingTenths = ratingTenths
     self.notes = notes
     self.photo = photo
     self.targets = targets

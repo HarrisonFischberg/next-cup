@@ -413,7 +413,7 @@ private struct BrewRow: View {
         Text((brew.method?.name ?? "Brew").dsTitle).font(DS.Font.headline)
           .foregroundStyle(DS.ink)
         Spacer(minLength: DS.Space.sm)
-        if let grade = brew.ratingHalfSteps, grade > 0 { GradeBadge(halfSteps: grade) }
+        if let grade = brew.ratingTenths, grade > 0 { GradeBadge(tenths: grade) }
       }
       Text(brew.date.formatted(date: .abbreviated, time: .shortened))
         .font(.footnote).foregroundStyle(DS.ink2)

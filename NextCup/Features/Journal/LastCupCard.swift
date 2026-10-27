@@ -21,7 +21,7 @@ struct LastCupCard: View {
           .frame(maxWidth: .infinity, alignment: .leading)
         ZStack {
           BrewRings(rings: [
-            (Double(brew.ratingHalfSteps ?? 0) / 10, DS.crema),
+            (Double(brew.ratingTenths ?? 0) / 100, DS.crema),
             // A 5-minute dial: long enough for pour over and immersion.
             (Double(brew.totalTimeS ?? 0) / 300, DS.espresso),
             // Ratio on a 1:10 to 1:20 dial.
@@ -40,7 +40,7 @@ struct LastCupCard: View {
         .frame(width: 220, height: 220)
         HStack {
           stat(
-            brew.ratingHalfSteps.map { String(format: "%.1f", Double($0) / 2) }, "rating", DS.crema)
+            brew.ratingTenths.map { Rating.text($0) }, "rating", DS.crema)
           stat(brew.totalTimeS.map(RecipeFormat.clock), "time", DS.espresso)
           stat(BrewMath.ratioLabel(ratio), "ratio", DS.sage)
         }

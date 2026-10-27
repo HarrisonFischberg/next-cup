@@ -80,14 +80,14 @@ struct BlendAndFreezerTests {
       let model = harness.model()
       model.draft.doseG = 15
       model.draft.waterG = 250
-      model.draft.ratingHalfSteps = grade
+      model.draft.ratingTenths = grade
       model.addBean(bean)
       _ = model.save()
       return model
     }
     #expect(brew(14).newBest == nil, "a first brew has nothing to beat")
     let better = try #require(brew(17).newBest)
-    #expect(better.bean == "Guji" && better.halfSteps == 17 && better.previous == 14)
+    #expect(better.bean == "Guji" && better.tenths == 17 && better.previous == 14)
     #expect(brew(12).newBest == nil)
   }
 
@@ -226,7 +226,7 @@ struct BlendAndFreezerTests {
       brew.tempC = 94
       brew.totalTimeS = 180
       brew.grindSetting = grind
-      brew.ratingHalfSteps = rating
+      brew.ratingTenths = rating
       brew.isDraft = draft
       brew.grinder = grinder
       harness.context.insert(brew)
@@ -243,7 +243,7 @@ struct BlendAndFreezerTests {
 
     let summary = bean.bestSoFar
     #expect(summary.brewCount == 3)  // the draft is not a brew yet
-    #expect(summary.spread.map(\.halfSteps) == [6, 7, 9])
+    #expect(summary.spread.map(\.tenths) == [6, 7, 9])
     #expect(summary.best?.grindSetting == "23")
     #expect(summary.best?.grinder == "Hand mill")
     // Same dose: newest first; then the larger dose.
@@ -258,12 +258,12 @@ struct BlendAndFreezerTests {
     let model = harness.model()
     model.draft.doseG = 20
     model.draft.waterG = 320
-    model.draft.ratingHalfSteps = 8
+    model.draft.ratingTenths = 8
     model.addBean(one)
     model.addBean(two)
     #expect(model.save())
-    #expect(one.bestSoFar.best?.ratingHalfSteps == 8)
-    #expect(two.bestSoFar.best?.ratingHalfSteps == 8)
+    #expect(one.bestSoFar.best?.ratingTenths == 8)
+    #expect(two.bestSoFar.best?.ratingTenths == 8)
     #expect(one.bestSoFar.brewCount == 1)
   }
 

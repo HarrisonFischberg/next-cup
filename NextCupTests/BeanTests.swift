@@ -207,8 +207,8 @@ struct BeanTests {
         $0.status = .wishlist
       },
     ]
-    beans[0].ratingHalfSteps = 6
-    beans[1].ratingHalfSteps = 9
+    beans[0].ratingTenths = 6
+    beans[1].ratingTenths = 9
     // Distinct creation times make "recent" deterministic.
     for (index, bean) in beans.enumerated() {
       bean.createdAt = Date(timeIntervalSince1970: Double(1000 + index))

@@ -26,7 +26,7 @@ private func succeeded<F: Error>(_ result: Result<Void, F>) -> Bool {
     let store = DraftStore(fileURL: makeURL())
     let draft = BrewDraft(
       sourceKey: "run-1", methodID: UUID(), recipeID: UUID(), doseG: 15.5, waterG: 250,
-      tempC: 94, totalTimeS: 187, grindSetting: "21 clicks", verdict: "sour", ratingHalfSteps: 7,
+      tempC: 94, totalTimeS: 187, grindSetting: "21 clicks", verdict: "sour", ratingTenths: 7,
       notes: "Bright, a little thin.", photo: Data([1, 2, 3]),
       targets: BrewTargets(doseG: 15, waterG: 250, tempC: 96, totalTimeS: 180), endedEarly: true)
     #expect(succeeded(store.save(draft)))

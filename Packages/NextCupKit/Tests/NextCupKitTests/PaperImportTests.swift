@@ -22,7 +22,7 @@ struct PaperImportTests {
     #expect(draft.tempC == 94)
     #expect(draft.totalTimeS == 165)
     #expect(draft.grind == "24 clicks")
-    #expect(draft.ratingHalfSteps == 9)
+    #expect(draft.ratingTenths == 90)
     #expect(draft.notes == "panela, bright")
     #expect(draft.needsCheckCount == 0)
   }
@@ -34,7 +34,7 @@ struct PaperImportTests {
     #expect(abs((draft.waterG ?? 0) - 297.67) < 0.01)
     #expect(abs((draft.tempC ?? 0) - 93.33) < 0.01)
     #expect(draft.totalTimeS == 150)
-    #expect(draft.ratingHalfSteps == 8)
+    #expect(draft.ratingTenths == 80)
   }
 
   @Test func timeAndRatingForms() {
@@ -45,11 +45,13 @@ struct PaperImportTests {
     #expect(seconds("0") == nil)
     #expect(seconds("9999") == nil)
     func grade(_ text: String) -> Int? {
-      PaperImport.parse(lines(["Rating: \(text)"])).ratingHalfSteps
+      PaperImport.parse(lines(["Rating: \(text)"])).ratingTenths
     }
-    #expect(grade("8/10") == 8)
-    #expect(grade("4") == 8)
-    #expect(grade("9") == nil)
+    #expect(grade("8/10") == 80)
+    #expect(grade("7.4/10") == 74)
+    #expect(grade("4") == 80, "a bare number up to 5 is out of 5")
+    #expect(grade("9") == 90, "a bare number above 5 is out of 10")
+    #expect(grade("11") == nil)
   }
 
   @Test func coffeeIsADoseWhenNumericAndABeanWhenNot() {
@@ -120,7 +122,7 @@ struct PaperImportTests {
     #expect(draft.doseG == 18)
     #expect(draft.tempC == 94)
     #expect(draft.totalTimeS == 165)
-    #expect(draft.ratingHalfSteps == 9)
+    #expect(draft.ratingTenths == 90)
     #expect(draft.needsCheck(.grind))
     #expect(draft.needsCheck(.time))
     #expect(!draft.needsCheck(.dose))

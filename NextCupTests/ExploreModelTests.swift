@@ -41,7 +41,7 @@ struct ExploreModelTests {
       _ beans: [Bean], method: BrewMethod?, grade: Int?, draft: Bool = false, day: Int = 0
     ) -> Brew {
       let brew = Brew(date: Date(timeIntervalSince1970: 1_700_000_000 + Double(day) * 86_400))
-      brew.ratingHalfSteps = grade
+      brew.ratingTenths = grade
       brew.isDraft = draft
       brew.method = method
       brew.doseG = 15
@@ -94,7 +94,7 @@ struct ExploreModelTests {
       of: try harness.context.fetch(FetchDescriptor<Brew>()), taxonomy: try taxonomy(), aliases: [])
     #expect(history.count == 1)
     #expect(history[0].methodKey == "cone-dripper")
-    #expect(history[0].ratingHalfSteps == 8)
+    #expect(history[0].ratingTenths == 8)
   }
 
   @Test func aBlendBrewCarriesTheBucketsOfEveryBean() throws {
@@ -137,9 +137,9 @@ struct ExploreModelTests {
     let current = harness.bean("Washed Kenya", origin: "Kenya")
     let cone = harness.method("Cone dripper", key: "cone-dripper")
     let press = harness.method("Press pot", key: "press")
-    harness.brew([old], method: cone, grade: 9, day: 1)
-    harness.brew([old], method: cone, grade: 8, day: 2)
-    harness.brew([old], method: press, grade: 5, day: 3)
+    harness.brew([old], method: cone, grade: 90, day: 1)
+    harness.brew([old], method: cone, grade: 80, day: 2)
+    harness.brew([old], method: press, grade: 50, day: 3)
     let taxonomy = try taxonomy()
     let history = ExploreModel.history(
       of: try harness.context.fetch(FetchDescriptor<Brew>()), taxonomy: taxonomy, aliases: [])
@@ -147,6 +147,6 @@ struct ExploreModelTests {
     let result = Recommender.recommend(for: refs, history: history)
     #expect(!result.isDefault)
     #expect(result.items.map(\.methodKey) == ["cone-dripper", "press"])
-    #expect(result.items[0].explanation.contains("averaged 4.3 of 5"))
+    #expect(result.items[0].explanation.contains("averaged 8.5 of 10"))
   }
 }
