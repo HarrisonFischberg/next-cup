@@ -1,5 +1,5 @@
 {
-  "_about": "Sunday Studio. A contemporary cafe: butter, cobalt, off-white, espresso text. Source of truth for NextCup/DesignSystem/Tokens.swift (design/check_tokens.py). Contrast: python3 design/contrast.py and StyleTests",
+  "_about": "Sunday Studio. A contemporary cafe: butter, cobalt, off-white, espresso text. Dark inverts it: navy ground, cobalt blocks, butter accent.",
   "light": {
     "bg": "#FFFDF3",
     "paper": "#FFFFFF",
@@ -17,19 +17,19 @@
     "ok": "#2A6A2A"
   },
   "dark": {
-    "bg": "#14121A",
-    "paper": "#1E1B26",
-    "steel": "#25345E",
+    "bg": "#0E1230",
+    "paper": "#171D45",
+    "steel": "#2448C8",
     "on-steel": "#FFFDF3",
     "ink": "#FFFDF3",
-    "ink-2": "#C2B9AD",
-    "line": "#7C7488",
-    "signal": "#8FA6FF",
-    "on-signal": "#0F1433",
+    "ink-2": "#C9CCE6",
+    "line": "#7B82B8",
+    "signal": "#F5E8A4",
+    "on-signal": "#2B1A12",
     "signal-on-steel": "#F5E8A4",
-    "kraft": "#3A3320",
-    "on-kraft": "#F5E8A4",
-    "error": "#FF9C85",
-    "ok": "#7FD18A"
+    "kraft": "#1E3A9E",
+    "on-kraft": "#FFFDF3",
+    "error": "#FFA08C",
+    "ok": "#9FE0A8"
   }
 }
