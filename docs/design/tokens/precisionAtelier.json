@@ -1,0 +1,35 @@
+{
+  "_about": "Precision Atelier. A brewing instrument: midnight, cream, copper. Dark is the home mode. Source of truth for NextCup/DesignSystem/Tokens.swift (design/check_tokens.py). Contrast: python3 design/contrast.py and StyleTests",
+  "light": {
+    "bg": "#F5EBD7",
+    "paper": "#FBF4E6",
+    "steel": "#101B24",
+    "on-steel": "#F5EBD7",
+    "ink": "#101B24",
+    "ink-2": "#4F5962",
+    "line": "#7A8089",
+    "signal": "#9A5A22",
+    "on-signal": "#FFFFFF",
+    "signal-on-steel": "#DB9154",
+    "kraft": "#E6D9C0",
+    "on-kraft": "#101B24",
+    "error": "#9A1B0A",
+    "ok": "#2A6A2A"
+  },
+  "dark": {
+    "bg": "#101B24",
+    "paper": "#18242E",
+    "steel": "#1F2D38",
+    "on-steel": "#F5EBD7",
+    "ink": "#F5EBD7",
+    "ink-2": "#B5BCC2",
+    "line": "#6E7A85",
+    "signal": "#DB9154",
+    "on-signal": "#101B24",
+    "signal-on-steel": "#DB9154",
+    "kraft": "#1F2D38",
+    "on-kraft": "#F5EBD7",
+    "error": "#FF9C85",
+    "ok": "#7FD18A"
+  }
+}

@@ -171,13 +171,22 @@ enum AppStyle: String, CaseIterable, Identifiable {
   case daily, bloom
   case steelKraft, charcoalCrema, quietCeramic
   case nightMint, espressoBlack, cafePage, roasterPoster
+  /// The three handoff directions (docs/design/handoff): alternative complete systems.
+  case sundayStudio, morningEdition, precisionAtelier
 
   static let storageKey = "appStyle"
 
   /// Read live so `DS` colors and fonts follow the Settings choice. A removed look falls
   /// back to the default.
   static var current: AppStyle {
-    UserDefaults.standard.string(forKey: storageKey).flatMap(AppStyle.init) ?? .nightMint
+    UserDefaults.standard.string(forKey: storageKey).flatMap(AppStyle.init) ?? .sundayStudio
+  }
+
+  /// Moves everyone onto Sunday Studio once, the first launch after the redesign ships.
+  static func adoptSundayStudioOnce(_ d: UserDefaults = .standard) {
+    guard !d.bool(forKey: "style.sundayStudioAdopted") else { return }
+    d.set(AppStyle.sundayStudio.rawValue, forKey: storageKey)
+    d.set(true, forKey: "style.sundayStudioAdopted")
   }
 
   /// Moves everyone onto Night Mint once, the first launch after it ships. A launch
@@ -201,6 +210,9 @@ enum AppStyle: String, CaseIterable, Identifiable {
     case .espressoBlack: "Espresso Black"
     case .cafePage: "Café Page"
     case .roasterPoster: "Roaster Poster"
+    case .sundayStudio: "Sunday Studio"
+    case .morningEdition: "Morning Edition"
+    case .precisionAtelier: "Precision Atelier"
     }
   }
 
@@ -216,6 +228,9 @@ enum AppStyle: String, CaseIterable, Identifiable {
     case .espressoBlack: "True black, high contrast"
     case .cafePage: "Serif headings on paper"
     case .roasterPoster: "Loud stickers with offset shadow"
+    case .sundayStudio: "Butter and cobalt, bold rounded type"
+    case .morningEdition: "Ivory and terracotta, editorial serif"
+    case .precisionAtelier: "Midnight and copper, instrument numerals"
     }
   }
 
@@ -254,6 +269,18 @@ enum AppStyle: String, CaseIterable, Identifiable {
       Flavor(
         displayDesign: .rounded, displayWeight: .heavy, radius: 12, density: .regular,
         control: .sticker, numbers: .condensed)
+    case .sundayStudio:
+      Flavor(
+        bodyDesign: .rounded, displayDesign: .rounded, displayWeight: .heavy, radius: 22,
+        density: .airy, control: .pill, numbers: .rounded, caps: false, motion: .playful)
+    case .morningEdition:
+      Flavor(
+        displayDesign: .serif, displayWeight: .medium, radius: 8, density: .airy,
+        control: .pill, numbers: .serif, caps: false, motion: .quiet)
+    case .precisionAtelier:
+      Flavor(
+        displayFont: "DINCondensed-Bold", radius: 10, density: .regular, control: .square,
+        numbers: .monospaced, motion: .crisp)
     }
   }
 
@@ -333,6 +360,30 @@ enum AppStyle: String, CaseIterable, Identifiable {
         onSignal: P(0xFFFFFF, 0x0B0B0B), signalOnSteel: P(0x8FF0A4, 0x8FF0A4),
         kraft: P(0xD9F2DF, 0x233326), onKraft: P(0x0B0B0B, 0xF2F5F2),
         error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
+    case .sundayStudio:
+      Palette(
+        bg: P(0xFFFDF3, 0x14121A), paper: P(0xFFFFFF, 0x1E1B26), steel: P(0x1B2F7A, 0x25345E),
+        onSteel: P(0xFFFDF3, 0xFFFDF3), ink: P(0x2B1A12, 0xFFFDF3), ink2: P(0x625046, 0xC2B9AD),
+        line: P(0x8A7A6E, 0x7C7488), signal: P(0x2448C8, 0x8FA6FF),
+        onSignal: P(0xFFFFFF, 0x0F1433), signalOnSteel: P(0xF5E8A4, 0xF5E8A4),
+        kraft: P(0xF5E8A4, 0x3A3320), onKraft: P(0x2B1A12, 0xF5E8A4),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
+    case .morningEdition:
+      Palette(
+        bg: P(0xF4EFE4, 0x1C1713), paper: P(0xFBF8F1, 0x27201A), steel: P(0x302820, 0x302820),
+        onSteel: P(0xF4EFE4, 0xF4EFE4), ink: P(0x302820, 0xF4EFE4), ink2: P(0x675A4D, 0xBFB2A4),
+        line: P(0x8E7E6E, 0x7E7064), signal: P(0xA9472F, 0xE08A6E),
+        onSignal: P(0xFFFFFF, 0x1C1713), signalOnSteel: P(0xE8A085, 0xE8A085),
+        kraft: P(0xEADFCB, 0x332A22), onKraft: P(0x302820, 0xF4EFE4),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x55684A, 0xA9BC97))
+    case .precisionAtelier:
+      Palette(
+        bg: P(0xF5EBD7, 0x101B24), paper: P(0xFBF4E6, 0x18242E), steel: P(0x101B24, 0x1F2D38),
+        onSteel: P(0xF5EBD7, 0xF5EBD7), ink: P(0x101B24, 0xF5EBD7), ink2: P(0x4F5962, 0xB5BCC2),
+        line: P(0x7A8089, 0x6E7A85), signal: P(0x9A5A22, 0xDB9154),
+        onSignal: P(0xFFFFFF, 0x101B24), signalOnSteel: P(0xDB9154, 0xDB9154),
+        kraft: P(0xE6D9C0, 0x1F2D38), onKraft: P(0x101B24, 0xF5EBD7),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
     }
   }
 }
@@ -359,6 +410,33 @@ enum ControlStyle { case square, pill, sticker }
 /// How measured values are set.
 enum NumberStyle { case monospaced, rounded, condensed, serif }
 
+/// The personality of a flavor's movement. Reduce Motion overrides all three.
+enum MotionStyle {
+  /// Soft fades and small moves.
+  case quiet
+  /// Short, instrument-like.
+  case crisp
+  /// A little spring on secondary feedback; the timer and the instruction never bounce.
+  case playful
+
+  /// A state change on screen (a step card, a kicker, a check).
+  var transition: Animation {
+    switch self {
+    case .quiet: .easeInOut(duration: 0.3)
+    case .crisp: .easeOut(duration: 0.18)
+    case .playful: .spring(response: 0.35, dampingFraction: 0.72)
+    }
+  }
+  /// Text and instructions: never a bounce.
+  var text: Animation {
+    switch self {
+    case .quiet: .easeInOut(duration: 0.3)
+    case .crisp: .easeOut(duration: 0.18)
+    case .playful: .easeOut(duration: 0.25)
+    }
+  }
+}
+
 struct Flavor {
   var bodyDesign: SwiftUI.Font.Design?
   /// PostScript name of the display face; nil sets display text in the system font.
@@ -371,6 +449,7 @@ struct Flavor {
   var numbers: NumberStyle
   /// Display text in capitals (spec-sheet flavors) or as written (Bloom).
   var caps = true
+  var motion: MotionStyle = .quiet
 
   /// Display text. A named face scales from `size`; the system face uses the text style.
   func display(_ size: CGFloat, relativeTo style: SwiftUI.Font.TextStyle) -> SwiftUI.Font {
@@ -389,6 +468,16 @@ struct Flavor {
       .custom(
         "DINCondensed-Bold", size: UIFont.preferredFont(forTextStyle: style.uiKit).pointSize * 1.15,
         relativeTo: style)
+    }
+  }
+
+  /// The brew timer's elapsed time: big, with room beside it for remaining and total.
+  var timerReadout: SwiftUI.Font {
+    switch numbers {
+    case .monospaced: .system(size: 72, weight: .bold, design: .monospaced)
+    case .serif: .system(size: 80, weight: .medium, design: .serif).monospacedDigit()
+    case .rounded: .system(size: 84, weight: .heavy, design: .rounded).monospacedDigit()
+    case .condensed: .custom("DINCondensed-Bold", size: 88)
     }
   }
 

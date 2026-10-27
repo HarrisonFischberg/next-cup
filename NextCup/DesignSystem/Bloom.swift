@@ -64,6 +64,7 @@ struct RingGlyph: View {
 struct TimerRing: View {
   let fraction: Double
   let stepFractions: [Double]
+  var color = DS.crema
 
   var body: some View {
     GeometryReader { g in
@@ -77,13 +78,13 @@ struct TimerRing: View {
       ZStack {
         Circle().stroke(DS.ringTrack, lineWidth: 14).frame(width: r * 2, height: r * 2)
         Circle().trim(from: 0, to: min(1, max(0, fraction)))
-          .stroke(DS.crema, style: StrokeStyle(lineWidth: 14, lineCap: .round))
+          .stroke(color, style: StrokeStyle(lineWidth: 14, lineCap: .round))
           .rotationEffect(.degrees(-90)).frame(width: r * 2, height: r * 2)
         ForEach(stepFractions.indices, id: \.self) { i in
           Circle().fill(stepFractions[i] <= fraction ? DS.paper : DS.ink2)
             .frame(width: 7, height: 7).position(point(stepFractions[i]))
         }
-        Circle().fill(DS.paper).overlay(Circle().stroke(DS.crema, lineWidth: 4))
+        Circle().fill(DS.paper).overlay(Circle().stroke(color, lineWidth: 4))
           .frame(width: 20, height: 20).position(point(min(1, max(0, fraction))))
       }
       .frame(width: g.size.width, height: g.size.height)

@@ -2,8 +2,9 @@ import NextCupKit
 import SwiftData
 import SwiftUI
 
-/// S06, the Brew tab: the brew types the user brews with (Cone dripper, Press pot…), each
-/// opening its styles, then More methods. Searching lists matching recipes by brew style.
+/// S06, the Brew tab: a big title, search, the brew methods as drawings (tap one for its
+/// styles), More methods for the ones left out in onboarding, then Your recipes as cards.
+/// Searching lists matching recipes by brew style.
 struct RecipeLibraryView: View {
   @Query(sort: \Recipe.name) private var allRecipes: [Recipe]
   @Query(filter: #Predicate<BrewMethod> { $0.isHidden }) private var hiddenMethods: [BrewMethod]
@@ -11,6 +12,7 @@ struct RecipeLibraryView: View {
   private var shownMethods: [BrewMethod]
   @State private var search = ""
   @State private var editor: RecipeEditorTarget?
+  @Environment(\.dynamicTypeSize) private var dts
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -26,6 +28,8 @@ struct RecipeLibraryView: View {
     let hidden = Set(hiddenMethods.map(\.id))
     return allRecipes.filter { !hidden.contains($0.method?.id ?? UUID()) }
   }
+
+  private var searching: Bool { !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
   private var matches: [Recipe] {
     let term = search.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -46,149 +50,160 @@ struct RecipeLibraryView: View {
 
   var body: some View {
     ScrollView {
-      if recipes.isEmpty {
-        EmptyState(
-          title: "No recipes yet",
-          message: "Starter recipes load with the app. Recipes you create will be listed here.",
-          actionTitle: "New recipe", action: { editor = .new })
-      } else if matches.isEmpty {
-        EmptyState(
-          title: "No matches", message: "No recipe matches “\(search)”. Try a method or a name.",
-          actionTitle: "Clear search", action: { search = "" })
-      } else {
-        LazyVStack(alignment: .leading, spacing: DS.Space.xl) {
-          if search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            brewTypes
-            moreMethods
-          } else {
-            ForEach(groups, id: \.title) { group in
-              section(group.title, group.recipes)
-            }
+      LazyVStack(alignment: .leading, spacing: DS.Space.xl) {
+        PageHeader(title: "Brew") {
+          Button {
+            editor = .new
+          } label: {
+            Image(systemName: "plus").font(.title2.weight(.bold)).foregroundStyle(DS.onSignal)
+              .frame(width: 52, height: 52).background(DS.signal, in: Circle())
           }
+          .accessibilityLabel("New recipe")
+          .accessibilityIdentifier("recipes.add")
         }
-        .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.lg)
+        if recipes.isEmpty {
+          EmptyState(
+            title: "No recipes yet",
+            message: "Starter recipes load with the app. Recipes you create will be listed here.",
+            actionTitle: "New recipe", action: { editor = .new })
+        } else if matches.isEmpty {
+          EmptyState(
+            title: "No matches", message: "No recipe matches “\(search)”. Try a method or a name.",
+            actionTitle: "Clear search", action: { search = "" })
+        } else if searching {
+          ForEach(groups, id: \.title) { group in section(group.title, group.recipes) }
+        } else {
+          methods
+          SectionRule("Your recipes")
+          ForEach(groups, id: \.title) { group in section(group.title, group.recipes) }
+        }
       }
+      .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.lg)
     }
     .background(DS.bg)
     .searchable(text: $search, prompt: "Search recipes")
     .navigationTitle("Brew")
+    .toolbar(removing: .title)
     .navigationBarTitleDisplayMode(.inline)
-    .toolbar {
-      ToolbarItem(placement: .topBarTrailing) {
-        Button {
-          editor = .new
-        } label: {
-          Label("New recipe", systemImage: "plus")
-        }
-        .accessibilityIdentifier("recipes.add")
-      }
-    }
     .sheet(item: $editor) { target in
       RecipeEditorView(target: target) { _ in editor = nil }
     }
     .accessibilityIdentifier("tab.root.recipes")
   }
 
-  /// One button per brew type, grouped under its brew style.
-  private var brewTypes: some View {
-    let styles = BrewStyle.allCases.filter { style in shownMethods.contains { $0.style == style } }
-    return VStack(alignment: .leading, spacing: DS.Space.lg) {
-      ForEach(styles, id: \.self) { style in
-        VStack(alignment: .leading, spacing: DS.Space.sm) {
-          Text(RecipeFormat.title(style).uppercased()).font(DS.Font.label).tracking(0.5)
-            .foregroundStyle(DS.ink2).accessibilityAddTraits(.isHeader)
-          ForEach(shownMethods.filter { $0.style == style }) { method in
-            NavigationLink(value: DeepLink.method(method.id)) { methodCard(method) }
+  /// The brewers in use, drawn, each opening its styles; then the pull-down for the rest.
+  private var methods: some View {
+    VStack(alignment: .leading, spacing: DS.Space.md) {
+      SectionRule(title: "Explore by method") { moreMethods }
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(alignment: .top, spacing: DS.Space.md) {
+          ForEach(shownMethods) { method in
+            NavigationLink(value: DeepLink.method(method.id)) { methodTile(method) }
               .buttonStyle(.plain)
               .accessibilityIdentifier("brew.method.\(method.name)")
           }
         }
+        .padding(.vertical, DS.Space.xs)
       }
+      .scrollClipDisabled()
     }
   }
 
-  private func methodCard(_ method: BrewMethod) -> some View {
+  private func methodTile(_ method: BrewMethod) -> some View {
     let count = method.recipes?.count ?? 0
-    return HStack(spacing: DS.Space.md) {
-      Image(systemName: method.symbol).font(.title2.weight(.light)).foregroundStyle(DS.signal)
-        .frame(width: 48, height: 48).accessibilityHidden(true)
-      VStack(alignment: .leading, spacing: 2) {
-        Text(method.name).font(DS.Font.headline).foregroundStyle(DS.ink)
-        Text(count == 1 ? "1 style" : "\(count) styles").font(.footnote).foregroundStyle(DS.ink2)
-      }
-      Spacer(minLength: DS.Space.sm)
-      Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
-        .foregroundStyle(DS.ink2).accessibilityHidden(true)
+    return VStack(spacing: DS.Space.xs) {
+      BrewMedallion(method.glyph).frame(width: dts.isAccessibilitySize ? 120 : 92)
+      Text(method.shortName).font(.footnote.weight(.semibold)).foregroundStyle(DS.ink)
+        .multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.85)
+      Text(count == 1 ? "1 style" : "\(count) styles").font(.caption).foregroundStyle(DS.ink2)
     }
-    .padding(DS.Space.md)
-    .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
-    .panel(DS.paper)
+    .frame(width: dts.isAccessibilitySize ? 132 : 104)
     .contentShape(Rectangle())
     .accessibilityElement(children: .combine)
   }
 
-  /// The pull-down for methods left out in onboarding.
+  /// The pull-down for methods left out in onboarding; a sheet keeps the row tidy.
   private var moreMethods: some View {
-    DisclosureGroup {
-      MethodChips().padding(.top, DS.Space.sm)
+    NavigationLink {
+      ScrollView {
+        VStack(alignment: .leading, spacing: DS.Space.lg) {
+          Text("Tap a brewer to show or hide it on the Brew page.").font(.subheadline)
+            .foregroundStyle(DS.ink2)
+          MethodChips()
+        }
+        .padding(DS.Space.lg)
+      }
+      .background(DS.bg)
+      .navigationTitle("Methods")
+      .navigationBarTitleDisplayMode(.inline)
     } label: {
-      Text(hiddenMethods.isEmpty ? "Methods" : "More methods (\(hiddenMethods.count))")
-        .font(DS.Font.headline).foregroundStyle(DS.ink)
-        .frame(minHeight: DS.Size.minTap, alignment: .leading)
+      HStack(spacing: DS.Space.xs) {
+        Text(hiddenMethods.isEmpty ? "All methods" : "More methods (\(hiddenMethods.count))")
+          .font(.subheadline.weight(.semibold))
+        Image(systemName: "chevron.right").font(.caption.weight(.bold))
+      }
+      .foregroundStyle(DS.signal).frame(minHeight: DS.Size.minTap)
     }
-    .tint(DS.ink)
     .accessibilityIdentifier("recipes.moreMethods")
   }
 
   private func section(_ title: String, _ members: [Recipe]) -> some View {
-    VStack(alignment: .leading, spacing: 0) {
-      // A quiet label: the recipes, not their group, are what the eye should find.
-      Text(title.uppercased()).font(DS.Font.label).tracking(0.5)
-        .foregroundStyle(DS.ink2)
-        .padding(.horizontal, DS.Space.xs).frame(
-          maxWidth: .infinity, minHeight: 32, alignment: .leading
-        )
-        .accessibilityAddTraits(.isHeader)
-      PaperBox {
-        VStack(spacing: 0) {
-          ForEach(members) { recipe in
-            NavigationLink(value: DeepLink.recipe(recipe.id)) { row(recipe) }
-              .buttonStyle(.plain)
-              .contextMenu {
-                if recipe.builtInKey == nil {
-                  Button("Edit", systemImage: "pencil") { editor = .edit(recipe.id) }
-                }
-                Button(
-                  recipe.builtInKey == nil ? "Duplicate" : "Customize",
-                  systemImage: recipe.builtInKey == nil
-                    ? "plus.square.on.square" : "slider.horizontal.3"
-                ) { editor = .copy(recipe.id) }
-              }
-              .accessibilityIdentifier("recipe.row.\(recipe.id.uuidString)")
-            if recipe.id != members.last?.id { Hairline() }
+    VStack(alignment: .leading, spacing: DS.Space.md) {
+      Kicker(title, color: DS.ink2).accessibilityAddTraits(.isHeader)
+      ForEach(members) { recipe in
+        NavigationLink(value: DeepLink.recipe(recipe.id)) { card(recipe) }
+          .buttonStyle(.plain)
+          .contextMenu {
+            if recipe.builtInKey == nil {
+              Button("Edit", systemImage: "pencil") { editor = .edit(recipe.id) }
+            }
+            Button(
+              recipe.builtInKey == nil ? "Duplicate" : "Customize",
+              systemImage: recipe.builtInKey == nil
+                ? "plus.square.on.square" : "slider.horizontal.3"
+            ) { editor = .copy(recipe.id) }
           }
-        }
+          .accessibilityIdentifier("recipe.row.\(recipe.id.uuidString)")
       }
     }
   }
 
-  private func row(_ recipe: Recipe) -> some View {
-    VStack(alignment: .leading, spacing: DS.Space.xs) {
-      Text(recipe.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
-      Text(summary(recipe)).font(DS.Font.mono(.footnote)).foregroundStyle(DS.ink2)
-      if let method = recipe.method?.name {
-        Text(method).font(.footnote).foregroundStyle(DS.ink2)
+  /// A recipe card: its brewer on a colour block, then the name, method and numbers.
+  private func card(_ recipe: Recipe) -> some View {
+    VStack(alignment: .leading, spacing: 0) {
+      HStack {
+        Spacer(minLength: 0)
+        BrewHero(glyph: recipe.method?.glyph ?? .cup, size: 120)
+        Spacer(minLength: 0)
       }
+      .padding(.vertical, DS.Space.lg)
+      .frame(maxWidth: .infinity)
+      .background(DS.kraft.opacity(0.55))
+      VStack(alignment: .leading, spacing: DS.Space.xs) {
+        HStack(alignment: .firstTextBaseline) {
+          Text(recipe.name.dsTitle).font(DS.Font.din(28, relativeTo: .title2))
+            .foregroundStyle(DS.ink).lineLimit(2).minimumScaleFactor(0.8)
+          Spacer(minLength: DS.Space.sm)
+          Image(systemName: "chevron.right").font(.footnote.weight(.bold))
+            .foregroundStyle(DS.ink2).accessibilityHidden(true)
+        }
+        if let method = recipe.method?.name {
+          Text(method).font(.subheadline).foregroundStyle(DS.ink2)
+        }
+        Hairline().opacity(0.5).padding(.vertical, DS.Space.xs)
+        Text(summary(recipe)).font(DS.Font.mono(.footnote, .semibold)).foregroundStyle(DS.ink)
+      }
+      .padding(DS.Space.lg)
     }
-    .padding(DS.Space.md)
-    .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .panel(DS.paper)
     .contentShape(Rectangle())
     .accessibilityElement(children: .combine)
   }
 
   private func summary(_ recipe: Recipe) -> String {
     var parts = [
-      "\(RecipeFormat.weight(recipe.doseG, units)) : \(RecipeFormat.weight(recipe.waterG, units))"
+      RecipeFormat.weight(recipe.doseG, units), RecipeFormat.weight(recipe.waterG, units),
     ]
     if let ratio = BrewMath.ratioLabel(
       BrewMath.ratio(

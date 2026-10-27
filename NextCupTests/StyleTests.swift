@@ -50,9 +50,9 @@ struct StyleTests {
     }
   }
 
-  @Test func nineFlavorsWithoutTheRemovedOnes() {
-    #expect(AppStyle.allCases.count == 9)
-    #expect(Set(AppStyle.allCases.map(\.title)).count == 9)
+  @Test func twelveFlavorsWithoutTheRemovedOnes() {
+    #expect(AppStyle.allCases.count == 12)
+    #expect(Set(AppStyle.allCases.map(\.title)).count == 12)
     for removed in ["terracotta", "lateNightCafe", "makeItYours"] {
       #expect(AppStyle(rawValue: removed) == nil)
     }
@@ -66,6 +66,25 @@ struct StyleTests {
     d.set(AppStyle.daily.rawValue, forKey: AppStyle.storageKey)
     AppStyle.adoptNightMintOnce(d)
     #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.daily.rawValue)
+  }
+
+  @Test func everyoneMovesToSundayStudioOnceThenKeepsTheirChoice() {
+    let d = UserDefaults(suiteName: "sunday.\(UUID().uuidString)")!
+    d.set(AppStyle.nightMint.rawValue, forKey: AppStyle.storageKey)
+    AppStyle.adoptSundayStudioOnce(d)
+    #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.sundayStudio.rawValue)
+    d.set(AppStyle.morningEdition.rawValue, forKey: AppStyle.storageKey)
+    AppStyle.adoptSundayStudioOnce(d)
+    #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.morningEdition.rawValue)
+  }
+
+  @Test func handoffDirectionsKeepTheirOwnPersonalities() {
+    #expect(AppStyle.sundayStudio.flavor.motion == .playful)
+    #expect(AppStyle.sundayStudio.flavor.control == .pill && !AppStyle.sundayStudio.flavor.caps)
+    #expect(AppStyle.morningEdition.flavor.motion == .quiet)
+    #expect(AppStyle.morningEdition.flavor.displayDesign == .serif)
+    #expect(AppStyle.precisionAtelier.flavor.motion == .crisp)
+    #expect(AppStyle.precisionAtelier.flavor.control == .square)
   }
 
   @Test func defaultFlavorKeepsTheOriginalShape() {
@@ -100,14 +119,14 @@ struct StyleTests {
     defer { defaults.set(saved, forKey: AppStyle.storageKey) }
 
     defaults.removeObject(forKey: AppStyle.storageKey)
-    #expect(AppStyle.current == .nightMint)
+    #expect(AppStyle.current == .sundayStudio)
 
     defaults.set(AppStyle.cafePage.rawValue, forKey: AppStyle.storageKey)
     #expect(AppStyle.current == .cafePage)
     #expect(DS.palette.bg.light == AppStyle.cafePage.palette.bg.light)
 
     defaults.set("terracotta", forKey: AppStyle.storageKey)
-    #expect(AppStyle.current == .nightMint, "a removed look falls back to Night Mint")
+    #expect(AppStyle.current == .sundayStudio, "a removed look falls back to Sunday Studio")
   }
 
   @Test func appearanceModesMapToColorSchemes() {
