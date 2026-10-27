@@ -7,6 +7,9 @@ struct SettingsRootView: View {
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
 
+  @AppStorage(SystemTimerHaptics.soundKey) private var sound = true
+  @AppStorage(BrewAudio.tickKey) private var tick = true
+  @AppStorage(BrewAudio.musicKey) private var music = true
   @AppStorage(AppearanceMode.storageKey) private var appearance = AppearanceMode.system.rawValue
 
   private var appVersion: String {
@@ -85,8 +88,22 @@ struct SettingsRootView: View {
         }
         .listRowBackground(DS.paper)
         .accessibilityIdentifier("settings.methods")
+        Toggle("Brew sounds", isOn: $sound)
+          .listRowBackground(DS.paper).accessibilityIdentifier("settings.sound")
+        if sound {
+          Toggle("Ticking timer", isOn: $tick)
+            .listRowBackground(DS.paper).accessibilityIdentifier("settings.sound.tick")
+          if !BrewAudio.tracks.isEmpty {
+            Toggle("Music while brewing", isOn: $music)
+              .listRowBackground(DS.paper).accessibilityIdentifier("settings.sound.music")
+          }
+        }
       } header: {
         Text("Brewing")
+      } footer: {
+        Text(
+          "Brew sounds play even with the ringer switch off, and music plays at 20% volume. Music stays off while something else is playing."
+        )
       }
       Section {
         NavigationLink {
