@@ -78,8 +78,19 @@ struct OnboardingView: View {
       .background(DS.bg)
       .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: step)
       .toolbar {
+        // Every step after the first, and the finish, can go back one; nothing typed is lost.
+        if step > 1 {
+          ToolbarItem(placement: .topBarLeading) {
+            Button {
+              step -= 1
+            } label: {
+              Label("Back", systemImage: "chevron.left").labelStyle(.titleAndIcon)
+            }
+            .accessibilityIdentifier("onboarding.back")
+          }
+        }
         if step <= Self.steps {
-          ToolbarItem(placement: .cancellationAction) {
+          ToolbarItem(placement: .topBarTrailing) {
             Button("Skip") { done(.journal) }.accessibilityIdentifier("onboarding.skip")
           }
         }
@@ -249,7 +260,7 @@ struct OnboardingView: View {
         )
         Toggle(isOn: $fillsBeans) {
           VStack(alignment: .leading, spacing: 2) {
-            Text("Bean Machine").font(.body.weight(.semibold)).foregroundStyle(DS.ink)
+            Text("Bean me up, Scotty").font(.body.weight(.semibold)).foregroundStyle(DS.ink)
             Text(
               "When you add a coffee, Apple AI fills in the roast, origin and process it knows of. It works from what it already knows and what's on the bag, not a web search, so check them."
             )
