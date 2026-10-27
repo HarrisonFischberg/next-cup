@@ -5,15 +5,16 @@ import SwiftUI
 struct FlavorPicker: View {
   static let returnKey = "settings.returnToAppearance"
 
-  @AppStorage(AppStyle.storageKey) private var style = AppStyle.nightMint.rawValue
+  @AppStorage(AppStyle.storageKey) private var style = AppStyle.sundayStudio.rawValue
   @Environment(\.dynamicTypeSize) private var dts
   @State private var showsAll = false
 
-  /// Night Mint, plus the chosen look when it is another; the rest wait behind More looks.
+  /// The three directions, plus the chosen look when it is another; the rest wait behind More looks.
+  private static let featured: [AppStyle] = [.sundayStudio, .morningEdition, .precisionAtelier]
   private var shown: [AppStyle] {
     showsAll
       ? AppStyle.allCases
-      : AppStyle.allCases.filter { $0 == .nightMint || $0 == AppStyle.current }
+      : AppStyle.allCases.filter { Self.featured.contains($0) || $0 == AppStyle.current }
   }
 
   private var columns: [GridItem] {

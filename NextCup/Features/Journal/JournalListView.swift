@@ -57,6 +57,7 @@ struct JournalListView: View {
     Group {
       if logged.isEmpty {
         ScrollView {
+          PageHeader("Journal").padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.sm)
           if gettingStartedDismissed {
             EmptyState(
               title: "No brews yet",
@@ -113,6 +114,7 @@ struct JournalListView: View {
       }
     }
     .navigationTitle("Journal")
+    .toolbar(removing: .title)
     .navigationBarTitleDisplayMode(.inline)
     // A marker, not an identifier on the list: that would replace the
     // identifiers of the rows inside it.
@@ -130,6 +132,9 @@ struct JournalListView: View {
 
   private func list(_ shown: [Brew]) -> some View {
     List {
+      PageHeader("Journal")
+        .padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.sm)
+        .listRowInsets(EdgeInsets()).listRowBackground(DS.bg).listRowSeparator(.hidden)
       if let deleteError {
         StateBanner(kind: .error, message: deleteError, actionTitle: "Dismiss") {
           self.deleteError = nil

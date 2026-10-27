@@ -15,8 +15,8 @@ def load(style):
 
 bad = 0
 blocks = re.findall(r"case \.(\w+):\s*Palette\((.*?)\)\n(?=\s*(?:case|\}))", swift, re.S)
-if len(blocks) != 9:
-    print(f"expected 9 palettes, found {len(blocks)}"); sys.exit(1)
+if len(blocks) != 12:
+    print(f"expected 12 palettes, found {len(blocks)}"); sys.exit(1)
 for style, body in blocks:
     found = {m.group(1): (m.group(2).upper(), m.group(3).upper()) for m in re.finditer(r"(\w+): P\(0x([0-9A-Fa-f]{6}), 0x([0-9A-Fa-f]{6})\)", body)}
     light, dark = load(style)

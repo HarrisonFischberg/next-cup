@@ -7,10 +7,11 @@ import UserNotifications
 struct NextCupApp: App {
   @State private var startup = AppBootstrap.start()
   @AppStorage(AppearanceMode.storageKey) private var appearance = AppearanceMode.system.rawValue
-  @AppStorage(AppStyle.storageKey) private var style = AppStyle.nightMint.rawValue
+  @AppStorage(AppStyle.storageKey) private var style = AppStyle.sundayStudio.rawValue
 
   init() {
     AppStyle.adoptNightMintOnce()
+    AppStyle.adoptSundayStudioOnce()
     UNUserNotificationCenter.current().delegate = TasteReminder.delegate
     // UI tests start from a known tab; relaunches in the same test omit this.
     if ProcessInfo.processInfo.arguments.contains("-resetNavigationState") {
