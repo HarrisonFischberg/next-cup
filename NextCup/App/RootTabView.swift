@@ -9,7 +9,9 @@ struct RootTabView: View {
   @State private var router = AppRouter()
   @AppStorage(OnboardingView.doneKey) private var onboarded = false
   @Environment(\.modelContext) private var context
-  @State private var showsOnboarding = false
+  /// Set once onboarding finishes; until then the first-run check decides, so a fresh
+  /// install opens straight on Step 1 with no frame of the tabs behind it.
+  @State private var onboardingFinished = false
 
   private var selection: Binding<AppTab> {
     Binding(
@@ -17,31 +19,35 @@ struct RootTabView: View {
       set: { storedTab = $0.rawValue })
   }
 
+  private var showsOnboarding: Bool {
+    !onboardingFinished && Self.needsOnboarding(onboarded: onboarded, context: context)
+  }
+
   var body: some View {
-    TabView(selection: selection) {
-      ForEach(AppTab.allCases) { tab in
-        Tab(tab.title, systemImage: tab.symbol, value: tab) {
-          TabRoot(tab: tab, router: router)
+    Group {
+      if showsOnboarding {
+        OnboardingView { tab in
+          storedTab = tab.rawValue
+          onboardingFinished = true
+          // One brew type goes straight to its styles; several land on the Brew page to pick.
+          if tab == .recipes {
+            let shown = (try? context.fetch(FetchDescriptor<BrewMethod>()))?.filter {
+              !$0.isHidden
+            }
+            if let shown, shown.count == 1, let only = shown.first {
+              router.open(.method(only.id))
+            }
+          }
         }
+        .transition(.opacity)
+      } else {
+        tabs
       }
     }
-    .tint(DS.ink)
-    // The ink tint is white in dark looks, so an on switch would vanish; switches use the accent.
-    .toggleStyle(SwitchToggleStyle(tint: DS.accent))
     .onOpenURL { handle($0) }
-    .fullScreenCover(isPresented: $showsOnboarding) {
-      OnboardingView { tab in
-        storedTab = tab.rawValue
-        showsOnboarding = false
-        // One brew type goes straight to its styles; several land on the Brew page to pick.
-        if tab == .recipes {
-          let shown = (try? context.fetch(FetchDescriptor<BrewMethod>()))?.filter { !$0.isHidden }
-          if let shown, shown.count == 1, let only = shown.first { router.open(.method(only.id)) }
-        }
-      }
-    }
     .onAppear {
-      showsOnboarding = Self.needsOnboarding(onboarded: onboarded, context: context)
+      // Someone upgrading with brews already logged counts as set up, so the check stops.
+      if !onboarded, !showsOnboarding, !AppBootstrap.usesInMemoryStore { onboarded = true }
       // A new look rebuilds the whole tree; reopen Settings where the change was made.
       guard UserDefaults.standard.bool(forKey: FlavorPicker.returnKey) else { return }
       handle(DeepLink.settings.url)
@@ -60,18 +66,26 @@ struct RootTabView: View {
     #endif
   }
 
+  private var tabs: some View {
+    TabView(selection: selection) {
+      ForEach(AppTab.allCases) { tab in
+        Tab(tab.title, systemImage: tab.symbol, value: tab) {
+          TabRoot(tab: tab, router: router)
+        }
+      }
+    }
+    .tint(DS.ink)
+    // The ink tint is white in dark looks, so an on switch would vanish; switches use the accent.
+    .toggleStyle(SwitchToggleStyle(tint: DS.accent))
+  }
+
   /// First run only: someone upgrading with brews already logged never sees it.
   /// UI tests skip it unless they ask for it.
   private static func needsOnboarding(onboarded: Bool, context: ModelContext) -> Bool {
     let arguments = ProcessInfo.processInfo.arguments
     if arguments.contains("-showOnboarding") { return true }
     guard !onboarded, !AppBootstrap.usesInMemoryStore else { return false }
-    let brews = (try? context.fetchCount(FetchDescriptor<Brew>())) ?? 0
-    if brews > 0 {
-      UserDefaults.standard.set(true, forKey: OnboardingView.doneKey)
-      return false
-    }
-    return true
+    return ((try? context.fetchCount(FetchDescriptor<Brew>())) ?? 0) == 0
   }
 
   private func handle(_ url: URL) {
