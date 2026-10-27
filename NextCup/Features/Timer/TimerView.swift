@@ -152,7 +152,8 @@ struct TimerView: View {
 
   private var elapsed: some View {
     Text(RecipeFormat.clock(Int(state.elapsedS)))
-      .font(DS.flavor.timerReadout).foregroundStyle(DS.ink)
+      .font(DS.flavor.timerReadout)
+      .foregroundStyle(DS.flavor.accentReadout ? DS.signal : DS.ink)
       .minimumScaleFactor(0.5).lineLimit(1)
       .dynamicTypeSize(...DS.readoutCap)
       .accessibilityLabel("Elapsed time")
