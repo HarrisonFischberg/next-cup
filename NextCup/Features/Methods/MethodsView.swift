@@ -85,8 +85,7 @@ struct MethodsView: View {
       HStack(spacing: DS.Space.md) {
         // The icon is decoration; at accessibility sizes it would crowd the text.
         if !dts.isAccessibilitySize {
-          Image(systemName: method.symbol).font(.title3).frame(width: 32)
-            .foregroundStyle(method.isHidden ? DS.ink2 : DS.ink).accessibilityHidden(true)
+          BrewMedallion(method.glyph, dimmed: method.isHidden).frame(width: 40)
         }
         VStack(alignment: .leading, spacing: 2) {
           Text(method.name).font(DS.Font.headline)

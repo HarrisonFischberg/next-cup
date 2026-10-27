@@ -1,7 +1,7 @@
+import AudioToolbox
 import NextCupKit
 import Observation
 import SwiftUI
-import AudioToolbox
 import UIKit
 
 enum TimerHaptic: Equatable {
