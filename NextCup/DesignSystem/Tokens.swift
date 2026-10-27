@@ -176,6 +176,8 @@ enum AppStyle: String, CaseIterable, Identifiable {
   case nightMint, espressoBlack, cafePage, roasterPoster
   /// The three handoff directions (docs/design/handoff): alternative complete systems.
   case sundayStudio, morningEdition, precisionAtelier
+  /// Morning Edition's layout and type on the ink palette with a steel-blue accent.
+  case steelBlue
 
   static let storageKey = "appStyle"
 
@@ -214,7 +216,8 @@ enum AppStyle: String, CaseIterable, Identifiable {
     case .cafePage: "Café Page"
     case .roasterPoster: "Roaster Poster"
     case .sundayStudio: "Sunday Studio"
-    case .morningEdition: "Morning Edition"
+    case .morningEdition: "Brass"
+    case .steelBlue: "Steel Blue"
     case .precisionAtelier: "Precision Atelier"
     }
   }
@@ -232,7 +235,8 @@ enum AppStyle: String, CaseIterable, Identifiable {
     case .cafePage: "Serif headings on paper"
     case .roasterPoster: "Loud stickers with offset shadow"
     case .sundayStudio: "Butter and cobalt, bold rounded type"
-    case .morningEdition: "Ivory and terracotta, editorial serif"
+    case .morningEdition: "Ink and brass, editorial serif"
+    case .steelBlue: "Ink and steel blue, editorial serif"
     case .precisionAtelier: "Midnight and copper, instrument numerals"
     }
   }
@@ -277,7 +281,7 @@ enum AppStyle: String, CaseIterable, Identifiable {
         bodyDesign: .rounded, displayDesign: .rounded, displayWeight: .heavy, radius: 22,
         density: .airy, control: .pill, numbers: .rounded, caps: false, motion: .playful,
         accentReadout: true)
-    case .morningEdition:
+    case .morningEdition, .steelBlue:
       Flavor(
         displayDesign: .serif, displayWeight: .medium, radius: 8, density: .airy,
         control: .pill, numbers: .serif, caps: false, motion: .quiet)
@@ -382,6 +386,15 @@ enum AppStyle: String, CaseIterable, Identifiable {
         kraft: P(0xE9ECEF, 0x1F2935), onKraft: P(0x1A2129, 0xF2F0EA),
         error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x9FE0A8),
         accent: P(0x7A5C14, 0xD9B36A))
+    case .steelBlue:
+      Palette(
+        bg: P(0xF7F7F4, 0x10151B), paper: P(0xFFFFFF, 0x18202A), steel: P(0x1A2129, 0x1F2935),
+        onSteel: P(0xF7F7F4, 0xF2F0EA), ink: P(0x1A2129, 0xF2F0EA), ink2: P(0x55606B, 0xB4BCC6),
+        line: P(0x85909B, 0x6E7A87), signal: P(0x1A2129, 0xF2F0EA),
+        onSignal: P(0xF7F7F4, 0x10151B), signalOnSteel: P(0xC9D3DE, 0xC9D3DE),
+        kraft: P(0xE9ECEF, 0x1F2935), onKraft: P(0x1A2129, 0xF2F0EA),
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x9FE0A8),
+        accent: P(0x2F5E9E, 0x8FB3E8))
     case .precisionAtelier:
       Palette(
         bg: P(0xF5EBD7, 0x101B24), paper: P(0xFBF4E6, 0x18242E), steel: P(0x101B24, 0x1F2D38),

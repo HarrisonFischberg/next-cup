@@ -10,11 +10,12 @@ struct FlavorPicker: View {
   @State private var showsAll = false
 
   /// The three directions, plus the chosen look when it is another; the rest wait behind More looks.
-  private static let featured: [AppStyle] = [.sundayStudio, .morningEdition, .precisionAtelier]
+  /// The owner's three; Precision Atelier and the older looks wait behind More looks.
+  private static let featured: [AppStyle] = [.sundayStudio, .morningEdition, .steelBlue]
   private var shown: [AppStyle] {
     showsAll
       ? AppStyle.allCases
-      : AppStyle.allCases.filter { Self.featured.contains($0) || $0 == AppStyle.current }
+      : Self.featured + (Self.featured.contains(AppStyle.current) ? [] : [AppStyle.current])
   }
 
   private var columns: [GridItem] {
@@ -78,8 +79,8 @@ struct FlavorTile: View {
         }
         HStack(alignment: .firstTextBaseline, spacing: 6) {
           Text("18 g").font(flavor.number(.title3, .bold))
-          Text("1:16").font(flavor.number(.footnote, .regular))
-            .foregroundStyle(palette.ink2.color)
+          Text("1:16").font(flavor.number(.footnote, .bold))
+            .foregroundStyle((palette.accent ?? palette.signal).color)
         }
         .foregroundStyle(palette.ink.color)
         Text("Brew")
