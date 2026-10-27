@@ -15,6 +15,8 @@ struct TimerView: View {
   @State private var logged = false
   @State private var confirmsEnd = false
   @State private var finishedShown = false
+  /// The phone's volume is all the way down while the brew's sound is on.
+  @State private var muted = false
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -50,6 +52,13 @@ struct TimerView: View {
       ScrollView {
         VStack(alignment: .leading, spacing: DS.Space.lg) {
           if dts.isAccessibilitySize { readout }
+          if muted, sound, session.outcome == nil {
+            StateBanner(
+              kind: .info,
+              message: "Your volume is all the way down. Turn it up to hear the ticks and music."
+            )
+            .accessibilityIdentifier("timer.muted")
+          }
           if session.outcome != nil { finishedBanner } else { currentStep }
           context
           schedule
@@ -75,7 +84,7 @@ struct TimerView: View {
             sound ? "Sound on" : "Sound off",
             systemImage: sound ? "speaker.wave.2.fill" : "speaker.slash.fill")
         }
-        .accessibilityHint("Plays a short tone when a step changes")
+        .accessibilityHint("Plays a soft tick, a chime at each step, and music")
         .accessibilityIdentifier("timer.sound")
       }
     }
@@ -94,6 +103,7 @@ struct TimerView: View {
     .task {
       while !Task.isCancelled {
         session.tick()
+        muted = BrewAudio.isMuted
         try? await Task.sleep(for: .milliseconds(250))
       }
     }
@@ -103,8 +113,30 @@ struct TimerView: View {
     .onChange(of: state.targetReached) { _, reached in
       if reached, running { AccessibilityNotification.Announcement("Target time reached").post() }
     }
+    // A tick each running second; the music follows the brew: playing, paused, over.
+    .onChange(of: Int(state.elapsedS)) { _, _ in
+      if state.phase == .running { BrewAudio.shared.tick() }
+    }
+    .onChange(of: state.phase, initial: true) { _, phase in
+      switch phase {
+      case .running: BrewAudio.shared.playMusic()
+      case .paused: BrewAudio.shared.pauseMusic()
+      case .finished: BrewAudio.shared.stop()
+      case .notStarted: break
+      }
+    }
+    .onChange(of: sound) { _, on in
+      if on, state.phase == .running {
+        BrewAudio.shared.playMusic()
+      } else if !on {
+        BrewAudio.shared.stop()
+      }
+    }
     .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
-    .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+    .onDisappear {
+      UIApplication.shared.isIdleTimerDisabled = false
+      BrewAudio.shared.stop()
+    }
   }
 
   // MARK: Readout
