@@ -21,7 +21,7 @@ struct RecommenderTests {
     buckets: [BucketRef] = [eastAfrica, washed, light], grind: String? = nil
   ) -> RecommenderBrew {
     RecommenderBrew(
-      date: Self.day(offset), ratingHalfSteps: grade, methodKey: key, methodName: method,
+      date: Self.day(offset), ratingTenths: grade, methodKey: key, methodName: method,
       doseG: 15, waterG: 250, tempC: 94, totalTimeS: 170, grindSetting: grind, buckets: buckets)
   }
 
@@ -68,9 +68,9 @@ struct RecommenderTests {
 
   @Test func explanationUsesOnlyComputedFacts() {
     let history = [
-      brew("Cone dripper", key: "cone-dripper", grade: 9, day: 1),
-      brew("Cone dripper", key: "cone-dripper", grade: 8, day: 2),
-      brew("Cone dripper", key: "cone-dripper", grade: 7, day: 3),
+      brew("Cone dripper", key: "cone-dripper", grade: 90, day: 1),
+      brew("Cone dripper", key: "cone-dripper", grade: 80, day: 2),
+      brew("Cone dripper", key: "cone-dripper", grade: 70, day: 3),
     ]
     let item = Recommender.recommend(for: bean, history: history).items[0]
     guard case .history(let facts) = item.basis else {
@@ -79,12 +79,12 @@ struct RecommenderTests {
     }
     #expect(facts.methodBrews == 3)
     #expect(facts.similarBrews == 3)
-    #expect(facts.averageHalfSteps == 8)
-    #expect(facts.bestHalfSteps == 9)
+    #expect(facts.averageTenths == 80)
+    #expect(facts.bestTenths == 90)
     #expect(facts.sharedBuckets == ["East Africa", "Washed", "Light"])
     #expect(
       item.explanation
-        == "Your 3 brews with beans like this (East Africa, Washed, Light) averaged 4 of 5; the best was 4.5."
+        == "Your 3 brews with beans like this (East Africa, Washed, Light) averaged 8 of 10; the best was 9."
     )
   }
 

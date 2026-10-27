@@ -98,7 +98,7 @@ struct BeanDetailView: View {
   private var bestBrew: Brew? {
     let used = (bean.brewUses ?? []).compactMap(\.brew).filter { !$0.isDraft }
     return used.max {
-      ($0.ratingHalfSteps ?? 0, $0.date) < ($1.ratingHalfSteps ?? 0, $1.date)
+      ($0.ratingTenths ?? 0, $0.date) < ($1.ratingTenths ?? 0, $1.date)
     }
   }
 
@@ -135,20 +135,20 @@ struct BeanDetailView: View {
 
   /// First and latest grade of this bean's graded brews, oldest first. Needs two.
   private var trend: (first: Int, last: Int, count: Int)? {
-    let graded = bean.brewSamples.filter { ($0.ratingHalfSteps ?? 0) > 0 }.sorted {
+    let graded = bean.brewSamples.filter { ($0.ratingTenths ?? 0) > 0 }.sorted {
       $0.date < $1.date
     }
-    guard graded.count >= 2, let first = graded.first?.ratingHalfSteps,
-      let last = graded.last?.ratingHalfSteps
+    guard graded.count >= 2, let first = graded.first?.ratingTenths,
+      let last = graded.last?.ratingTenths
     else { return nil }
     return (first, last, graded.count)
   }
 
   private func trendLine(_ trend: (first: Int, last: Int, count: Int)) -> some View {
-    let grade = { (h: Int) in h % 2 == 0 ? "\(h / 2)" : String(format: "%.1f", Double(h) / 2) }
+    let grade = { (h: Int) in Rating.text(h) }
     return VStack(alignment: .leading, spacing: 2) {
       Text("DIAL-IN").font(DS.Font.label).foregroundStyle(DS.ink2)
-      Text("Grade \(grade(trend.first)) → \(grade(trend.last)) over \(trend.count) brews")
+      Text("Rating \(grade(trend.first)) → \(grade(trend.last)) over \(trend.count) brews")
         .font(DS.Font.mono(.title3, .bold)).foregroundStyle(DS.ink)
     }
     .accessibilityElement(children: .combine)
@@ -387,7 +387,7 @@ private struct BrewUseRow: View {
           .foregroundStyle(DS.ink2)
       }
       Spacer(minLength: DS.Space.sm)
-      if let grade = brew.ratingHalfSteps, grade > 0 { GradeBadge(halfSteps: grade) }
+      if let grade = brew.ratingTenths, grade > 0 { GradeBadge(tenths: grade) }
     }
     .padding(DS.Space.md)
     .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)

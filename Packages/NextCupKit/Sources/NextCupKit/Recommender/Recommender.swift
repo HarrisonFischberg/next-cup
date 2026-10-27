@@ -25,7 +25,7 @@ public struct BucketRef: Hashable, Sendable {
 /// was made, and the buckets of the beans in it. Canonical units.
 public struct RecommenderBrew: Equatable, Sendable {
   public var date: Date
-  public var ratingHalfSteps: Int?
+  public var ratingTenths: Int?
   /// The method's `builtInKey`, `nil` for a method the user made.
   public var methodKey: String?
   public var methodName: String
@@ -38,12 +38,12 @@ public struct RecommenderBrew: Equatable, Sendable {
   public var buckets: [BucketRef]
 
   public init(
-    date: Date, ratingHalfSteps: Int? = nil, methodKey: String? = nil, methodName: String,
+    date: Date, ratingTenths: Int? = nil, methodKey: String? = nil, methodName: String,
     recipeName: String? = nil, doseG: Double? = nil, waterG: Double? = nil, tempC: Double? = nil,
     totalTimeS: Int? = nil, grindSetting: String? = nil, buckets: [BucketRef] = []
   ) {
     self.date = date
-    self.ratingHalfSteps = ratingHalfSteps
+    self.ratingTenths = ratingTenths
     self.methodKey = methodKey
     self.methodName = methodName
     self.recipeName = recipeName
@@ -55,7 +55,7 @@ public struct RecommenderBrew: Equatable, Sendable {
     self.buckets = buckets
   }
 
-  fileprivate var isRated: Bool { (ratingHalfSteps ?? 0) > 0 }
+  fileprivate var isRated: Bool { (ratingTenths ?? 0) > 0 }
 
   /// Brews of the same method group together: by built-in key, else by name.
   fileprivate var methodID: String {
@@ -91,8 +91,8 @@ public struct HistoryFacts: Equatable, Sendable {
   /// Rated, similar brews made with any method.
   public var similarBrews: Int
   /// Mean grade in half-stars over `methodBrews`.
-  public var averageHalfSteps: Double
-  public var bestHalfSteps: Int
+  public var averageTenths: Double
+  public var bestTenths: Int
   public var bestDate: Date
   /// Names of the buckets the similar brews share with the bean.
   public var sharedBuckets: [String]
@@ -130,7 +130,7 @@ public struct Recommendation: Equatable, Sendable {
         facts.sharedBuckets.isEmpty
         ? "" : " (\(facts.sharedBuckets.joined(separator: ", ")))"
       return
-        "Your \(brews)\(similar) with beans like this\(shared) averaged \(Recommender.grade(facts.averageHalfSteps)) of 5; the best was \(Recommender.grade(Double(facts.bestHalfSteps)))."
+        "Your \(brews)\(similar) with beans like this\(shared) averaged \(Recommender.grade(facts.averageTenths)) of 10; the best was \(Recommender.grade(Double(facts.bestTenths)))."
     case .bundledDefault(let roast):
       let band = roast.map { "\($0.lowercased()) roasts" } ?? "a bean with no roast level"
       return
@@ -204,7 +204,7 @@ public enum Recommender {
 
     let groups = Dictionary(grouping: similar.map(\.brew), by: \.methodID)
     let ranked = groups.values.map { group -> (average: Double, group: [RecommenderBrew]) in
-      let grades = group.compactMap(\.ratingHalfSteps)
+      let grades = group.compactMap(\.ratingTenths)
       return (Double(grades.reduce(0, +)) / Double(grades.count), group)
     }.sorted { a, b in
       if a.average != b.average { return a.average > b.average }
@@ -218,12 +218,12 @@ public enum Recommender {
 
     let items = ranked.prefix(max(1, limit)).map { entry -> Recommendation in
       let best = entry.group.max {
-        let (a, b) = ($0.ratingHalfSteps ?? 0, $1.ratingHalfSteps ?? 0)
+        let (a, b) = ($0.ratingTenths ?? 0, $1.ratingTenths ?? 0)
         return a == b ? $0.date < $1.date : a < b
       }!
       let facts = HistoryFacts(
         methodBrews: entry.group.count, similarBrews: similar.count,
-        averageHalfSteps: entry.average, bestHalfSteps: best.ratingHalfSteps ?? 0,
+        averageTenths: entry.average, bestTenths: best.ratingTenths ?? 0,
         bestDate: best.date, sharedBuckets: sharedNames)
       let grind = best.grindSetting?.trimmingCharacters(in: .whitespacesAndNewlines)
       return Recommendation(
@@ -246,10 +246,6 @@ public enum Recommender {
       basis: .bundledDefault(roast: entry == nil ? nil : roast?.name))
   }
 
-  /// Half-stars as stars with at most one decimal: 7 → "3.5", 8 → "4".
-  static func grade(_ halfSteps: Double) -> String {
-    let stars = halfSteps / 2
-    let tenths = (stars * 10).rounded() / 10
-    return tenths == tenths.rounded() ? String(Int(tenths)) : String(format: "%.1f", tenths)
-  }
+  /// A rating out of 10 with at most one decimal: 74 → "7.4", 80 → "8".
+  static func grade(_ tenths: Double) -> String { Rating.text(Int(tenths.rounded())) }
 }

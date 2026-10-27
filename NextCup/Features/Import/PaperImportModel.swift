@@ -240,7 +240,7 @@ final class PaperImportModel {
     brew.totalTimeS = draft.totalTimeS
     let grind = draft.grind.trimmingCharacters(in: .whitespacesAndNewlines)
     brew.grindSetting = grind.isEmpty ? nil : grind
-    brew.ratingHalfSteps = draft.ratingHalfSteps
+    brew.ratingTenths = draft.ratingTenths
     brew.notes = draft.notes
     brew.photo = photo
     brew.isDraft = false

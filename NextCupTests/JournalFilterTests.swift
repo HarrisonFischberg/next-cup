@@ -30,7 +30,7 @@ struct JournalFilterTests {
         let brew = Brew(date: Date(timeIntervalSince1970: 1_800_000_000 - Double(daysAgo) * 86_400))
         brew.method = method
         brew.notes = notes
-        brew.ratingHalfSteps = grade
+        brew.ratingTenths = grade
         context.insert(brew)
         if let bean {
           let use = BrewBean(grams: 15, beanNameSnapshot: bean)
@@ -83,7 +83,7 @@ struct JournalFilterTests {
   func topGrade() throws {
     let h = try Harness()
     let result = JournalFilter(sort: .topGrade).apply(to: h.brews)
-    #expect(result.map(\.ratingHalfSteps) == [8, 6, 4, nil])
+    #expect(result.map(\.ratingTenths) == [8, 6, 4, nil])
     let oldest = JournalFilter(sort: .oldest).apply(to: h.brews)
     #expect(oldest.first?.date == h.brews.last?.date)
   }

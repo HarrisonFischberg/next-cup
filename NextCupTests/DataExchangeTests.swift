@@ -60,7 +60,7 @@ import Testing
     brew.waterG = 250
     brew.notes = "Sweet, \"bright\"\nsecond line"
     brew.verdict = .sour
-    brew.ratingHalfSteps = 7
+    brew.ratingTenths = 7
     brew.method = method
     brew.recipe = recipe
     brew.grinder = grinder

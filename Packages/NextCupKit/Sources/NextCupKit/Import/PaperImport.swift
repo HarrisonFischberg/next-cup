@@ -31,7 +31,7 @@ public struct PaperBrewDraft: Equatable, Sendable {
   public var waterG: Double?
   public var tempC: Double?
   public var totalTimeS: Int?
-  public var ratingHalfSteps: Int?
+  public var ratingTenths: Int?
   public var confidence: [PaperField: Double] = [:]
 
   public init() {}
@@ -125,8 +125,8 @@ public enum PaperImport {
       guard let seconds = seconds(value) else { return false }
       draft.totalTimeS = seconds
     case .rating:
-      guard let halfSteps = rating(value) else { return false }
-      draft.ratingHalfSteps = halfSteps
+      guard let tenths = rating(value) else { return false }
+      draft.ratingTenths = tenths
     }
     draft.confidence[field] = min(confidence, draft.confidence[field] ?? 1)
     return true
@@ -202,16 +202,18 @@ public enum PaperImport {
   }
 
   /// "4", "4.5/5", "8/10" and "★★★★" are grades; the result is in half steps.
+  /// A rating as tenths out of 10. Stars and "x/5" count double; "x/10" or a bare number
+  /// above 5 is read as out of 10.
   private static func rating(_ text: String) -> Int? {
     let stars = text.filter { $0 == "★" }.count
-    var grade = Double(stars)
+    var outOfTen = Double(stars) * 2
     if stars == 0 {
       guard let (value, rest) = number(in: text) else { return nil }
-      let outOf = number(in: String(rest)).map(\.value) ?? 5
-      grade = outOf == 10 ? value / 2 : value
+      let outOf = number(in: String(rest)).map(\.value) ?? (value > 5 ? 10 : 5)
+      outOfTen = outOf == 10 ? value : value * 2
     }
-    guard (0.5...5).contains(grade) else { return nil }
-    return Int((grade * 2).rounded())
+    guard outOfTen > 0, outOfTen <= 10 else { return nil }
+    return Int((outOfTen * 10).rounded())
   }
 
   // MARK: AI reading

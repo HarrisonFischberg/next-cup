@@ -277,8 +277,8 @@ struct PaperImportView: View {
       }
       .listRowBackground(DS.paper)
 
-      Section("Grade") {
-        flagged(.rating) { GradeScale(halfSteps: grade) }
+      Section("Rating") {
+        flagged(.rating) { GradeScale(tenths: grade) }
       }
       .listRowBackground(DS.paper)
 
@@ -406,9 +406,9 @@ struct PaperImportView: View {
 
   private var grade: Binding<Int> {
     Binding(
-      get: { model.draft.ratingHalfSteps ?? 0 },
+      get: { model.draft.ratingTenths ?? 0 },
       set: {
-        model.draft.ratingHalfSteps = $0 == 0 ? nil : $0
+        model.draft.ratingTenths = $0 == 0 ? nil : $0
         model.draft.confidence[.rating] = nil
       })
   }

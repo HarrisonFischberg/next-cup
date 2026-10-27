@@ -134,7 +134,7 @@ struct BrewFormView: View {
         title: model.newBest != nil ? "New best cup" : "In your journal",
         message: savedMessage(model),
         rings: [
-          (Double(draft.ratingHalfSteps) / 10, DS.crema),
+          (Double(draft.ratingTenths) / 100, DS.crema),
           (Double(draft.totalTimeS ?? 0) / 300, DS.espresso),
           (((ratio ?? 10) - 10) / 10, DS.sage),
         ],
@@ -168,15 +168,15 @@ struct BrewFormView: View {
   private func savedMessage(_ model: BrewFormModel) -> String {
     if let best = model.newBest {
       return
-        "Best cup of \(best.bean) so far: \(gradeText(best.halfSteps)), up from \(gradeText(best.previous))."
+        "Best cup of \(best.bean) so far: \(gradeText(best.tenths)), up from \(gradeText(best.previous))."
     }
     if editing != nil { return "Your changes are saved." }
     return [model.draft.doseG.map { RecipeFormat.weight($0, units) + " dose" }, model.ratioLabel]
       .compactMap { $0 }.joined(separator: " · ")
   }
 
-  private func gradeText(_ halfSteps: Int) -> String {
-    halfSteps % 2 == 0 ? "\(halfSteps / 2)" : String(format: "%.1f", Double(halfSteps) / 2)
+  private func gradeText(_ tenths: Int) -> String {
+    Rating.text(tenths)
   }
 
   private func form(_ binding: Bindable<BrewFormModel>, _ model: BrewFormModel) -> some View {
@@ -211,8 +211,8 @@ struct BrewFormView: View {
         }
         if fields.contains(.rating) {
           VStack(alignment: .leading, spacing: DS.Space.sm) {
-            Text("GRADE").font(DS.Font.label).foregroundStyle(DS.ink2)
-            GradeScale(halfSteps: binding.draft.ratingHalfSteps)
+            Text("RATING").font(DS.Font.label).foregroundStyle(DS.ink2)
+            GradeScale(tenths: binding.draft.ratingTenths)
           }
         }
         if fields.contains(.notes) { notesField(binding.draft.notes) }

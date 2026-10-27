@@ -24,7 +24,9 @@ final class Brew: Identified {
   var tempC: Double?
   var totalTimeS: Int?
   var tds: Double?
-  var ratingHalfSteps: Int?
+  /// 0 to 100: the rating out of 10 in tenths. Stored under its old name, when it held
+  /// half points out of 5; `RatingMigration` converted those once.
+  @Attribute(originalName: "ratingHalfSteps") var ratingTenths: Int?
   var verdict: Verdict?
   var notes: String = ""
   @Attribute(.externalStorage) var photo: Data?
@@ -85,7 +87,9 @@ final class Bean: Identified {
   var isDecaf: Bool = false
   var frozenOn: Date?
   var thawedOn: Date?
-  var ratingHalfSteps: Int?
+  /// 0 to 100: the rating out of 10 in tenths. Stored under its old name, when it held
+  /// half points out of 5; `RatingMigration` converted those once.
+  @Attribute(originalName: "ratingHalfSteps") var ratingTenths: Int?
   @Attribute(.externalStorage) var photo: Data?
 
   var roaster: Roaster?
