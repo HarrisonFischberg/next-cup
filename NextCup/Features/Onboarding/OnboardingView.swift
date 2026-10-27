@@ -88,6 +88,8 @@ struct OnboardingView: View {
         BeanEditorView(target: .new, start: start) { capture = nil }
       }
     }
+    // A cover does not inherit the tab view's toggle style.
+    .toggleStyle(SwitchToggleStyle(tint: DS.accent))
     .accessibilityIdentifier("onboarding")
   }
 
@@ -247,14 +249,14 @@ struct OnboardingView: View {
         )
         Toggle(isOn: $fillsBeans) {
           VStack(alignment: .leading, spacing: 2) {
-            Text("Fill in my beans").font(.body.weight(.semibold)).foregroundStyle(DS.ink)
+            Text("Bean Machine").font(.body.weight(.semibold)).foregroundStyle(DS.ink)
             Text(
               "When you add a coffee, Apple AI fills in the roast, origin and process it knows of. It works from what it already knows and what's on the bag, not a web search, so check them."
             )
             .font(.footnote).foregroundStyle(DS.ink2)
           }
         }
-        .tint(DS.signal).padding(DS.Space.md).panel(DS.paper)
+        .padding(DS.Space.md).panel(DS.paper)
         .accessibilityIdentifier("onboarding.ai.fill")
         Text("To use Claude or ChatGPT instead, add a key later in Settings on the Journal page.")
           .font(.footnote).foregroundStyle(DS.ink2)
