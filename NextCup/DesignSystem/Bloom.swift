@@ -65,6 +65,7 @@ struct TimerRing: View {
   let fraction: Double
   let stepFractions: [Double]
   var color = DS.crema
+  var track = DS.ringTrack
 
   var body: some View {
     GeometryReader { g in
@@ -76,7 +77,7 @@ struct TimerRing: View {
         return CGPoint(x: center.x + r * cos(a), y: center.y + r * sin(a))
       }
       ZStack {
-        Circle().stroke(DS.ringTrack, lineWidth: 14).frame(width: r * 2, height: r * 2)
+        Circle().stroke(track, lineWidth: 14).frame(width: r * 2, height: r * 2)
         Circle().trim(from: 0, to: min(1, max(0, fraction)))
           .stroke(color, style: StrokeStyle(lineWidth: 14, lineCap: .round))
           .rotationEffect(.degrees(-90)).frame(width: r * 2, height: r * 2)

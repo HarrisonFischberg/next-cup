@@ -43,12 +43,14 @@ struct TimerView: View {
   private var textMotion: Animation? { reduceMotion ? nil : DS.flavor.motion.text }
 
   var body: some View {
+    // The readout stays put and the schedule scrolls under it; at accessibility sizes
+    // the readout alone would fill the screen, so there everything scrolls together.
     VStack(alignment: .leading, spacing: DS.Space.md) {
-      readout
+      if !dts.isAccessibilitySize { readout }
       ScrollView {
         VStack(alignment: .leading, spacing: DS.Space.lg) {
-          if session.outcome != nil { finishedBanner }
-          currentStep
+          if dts.isAccessibilitySize { readout }
+          if session.outcome != nil { finishedBanner } else { currentStep }
           context
           schedule
         }
@@ -61,7 +63,7 @@ struct TimerView: View {
     .accessibilityElement(children: .contain)
     .background(DS.bg)
     .safeAreaInset(edge: .bottom, spacing: 0) { controls }
-    .navigationTitle(session.outcome == nil ? "Brew in progress" : "Brew finished")
+    .navigationTitle("Brew")
     .navigationBarTitleDisplayMode(.inline)
     .toolbarVisibility(.hidden, for: .tabBar)
     .toolbar {
@@ -115,15 +117,18 @@ struct TimerView: View {
         Text(setup.recipeName.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
           .lineLimit(1).minimumScaleFactor(0.8)
           .accessibilityAddTraits(.isHeader)
-        if let method = setup.methodName {
+        if let method = setup.methodName, !dts.isAccessibilitySize {
           Text(method).font(.footnote).foregroundStyle(DS.ink2)
         }
       }
       .padding(.bottom, DS.Space.sm)
       if ring {
         ZStack {
-          TimerRing(fraction: state.progress, stepFractions: stepFractions, color: DS.signal)
-            .animation(reduceMotion ? nil : .linear(duration: 0.25), value: state.progress)
+          TimerRing(
+            fraction: state.progress, stepFractions: stepFractions, color: DS.signal,
+            track: DS.line.opacity(0.35)
+          )
+          .animation(reduceMotion ? nil : .linear(duration: 0.25), value: state.progress)
           VStack(spacing: 0) {
             Kicker("Elapsed")
             elapsed
@@ -139,6 +144,7 @@ struct TimerView: View {
         bar
       }
       Text(statusLine).font(DS.Font.label).tracking(0.8).foregroundStyle(DS.ink2)
+        .fixedSize(horizontal: false, vertical: true)
         .accessibilityIdentifier("timer.status")
     }
     .padding(.top, DS.Space.xs)
@@ -167,6 +173,7 @@ struct TimerView: View {
           : "\(RecipeFormat.clock(Int(state.remainingS.rounded(.up)))) remaining · \(total) total"
       }
     return Text(line).font(.subheadline.weight(.medium))
+      .fixedSize(horizontal: false, vertical: true)
       .foregroundStyle(state.targetReached && running ? DS.signal : DS.ink2)
       .accessibilityIdentifier("timer.remaining")
   }
@@ -194,7 +201,8 @@ struct TimerView: View {
     switch state.phase {
     case .notStarted:
       return "READY · \(count) STEPS · \(RecipeFormat.clock(plan.totalDurationS))"
-    case .finished(let early): return early ? "ENDED EARLY" : "BREW FINISHED"
+    case .finished(let early):
+      return (early ? "ENDED EARLY · " : "DONE · ") + RecipeFormat.clock(Int(state.elapsedS))
     case .running, .paused:
       var parts = ["STEP \((currentGroup ?? -1) + 1) OF \(count)"]
       if state.phase == .paused { parts.append("PAUSED") }
