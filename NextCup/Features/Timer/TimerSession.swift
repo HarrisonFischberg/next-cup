@@ -1,11 +1,13 @@
 import NextCupKit
 import Observation
 import SwiftUI
+import AudioToolbox
 import UIKit
 
 enum TimerHaptic: Equatable {
   case start
   case stepChange
+  case targetReached
   case pauseToggle
   case finish
 }
@@ -16,12 +18,21 @@ protocol TimerHaptics {
 }
 
 /// Haptics only for events that matter: start, a step change, pause or resume, and the end.
+/// A step change or the target time also plays a short sound when the brew's sound is on;
+/// both are reminders of the schedule, never confirmation that anything was done.
 @MainActor
 struct SystemTimerHaptics: TimerHaptics {
+  static let soundKey = "nextcup.timer.sound"
+
   func play(_ haptic: TimerHaptic) {
     switch haptic {
     case .start, .pauseToggle: UIImpactFeedbackGenerator(style: .light).impactOccurred()
-    case .stepChange: UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+    case .stepChange, .targetReached:
+      UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+      // System sound 1057 is a short tick that stays silent with the ringer switch off.
+      if UserDefaults.standard.object(forKey: Self.soundKey) as? Bool ?? true {
+        AudioServicesPlaySystemSound(1057)
+      }
     case .finish: UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
   }
@@ -144,16 +155,27 @@ final class TimerSession {
     tick()
   }
 
-  /// Re-derives the state from the clock. Called on a short timer and on returning to the foreground.
-  func tick() {
+  /// Ends the brew at the time reached, so the journal gets the actual duration.
+  func finish() {
+    engine.finish()
+    tick()
+  }
+
+  /// Re-derives the state from the clock. Called on a short timer and on returning to the
+  /// foreground; `cues: false` catches up without replaying the cues that were missed.
+  func tick(cues: Bool = true) {
     guard outcome == nil else { return }
     let latest = engine.state()
     if case .finished = latest.phase {
       complete(latest)
       return
     }
-    if let index = latest.currentIndex, index != lastIndex {
-      if lastIndex != nil || state.phase != .notStarted { haptics.play(.stepChange) }
+    if cues, state.phase != .notStarted {
+      if let index = latest.currentIndex, index != lastIndex, lastIndex != nil {
+        haptics.play(.stepChange)
+      } else if latest.targetReached, !state.targetReached {
+        haptics.play(.targetReached)
+      }
     }
     lastIndex = latest.currentIndex
     publish(latest)
@@ -169,7 +191,9 @@ final class TimerSession {
   /// Only whole-second, step and phase changes reach the view, so it redraws once a second.
   /// The Live Activity hears only about phase and step changes; its clock runs itself.
   private func publish(_ latest: TimerState) {
-    let moved = latest.phase != state.phase || latest.currentIndex != state.currentIndex
+    let moved =
+      latest.phase != state.phase || latest.currentIndex != state.currentIndex
+      || latest.targetReached != state.targetReached
     if moved || Int(latest.elapsedS) != Int(state.elapsedS) { state = latest }
     if moved { activity.update(setup: setup, state: latest) }
   }

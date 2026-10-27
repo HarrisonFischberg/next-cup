@@ -117,14 +117,32 @@ private func makePlan() throws -> TimerPlan {
     #expect(last.secondsToNextChange == 60)
   }
 
-  @Test func finishesWhenThePlanRunsOut() throws {
+  @Test func keepsRunningPastTheTargetUntilFinished() throws {
     var (engine, clock, _) = try engine()
     engine.start()
-    clock.advance(500)
-    let state = engine.state()
-    #expect(state.phase == .finished(endedEarly: false))
-    #expect(state.elapsedS == 180)
-    #expect(state.current == nil)
+    clock.advance(200)
+    let over = engine.state()
+    #expect(over.phase == .running)
+    #expect(over.targetReached)
+    #expect(over.progress == 1)
+    #expect(over.remainingS == 0)
+    #expect(over.overtimeS == 20)
+    #expect(over.current?.label == "Drawdown")
+    #expect(over.secondsToNextChange == nil)
+
+    engine.finish()
+    clock.advance(100)
+    #expect(engine.state().phase == .finished(endedEarly: false))
+    #expect(engine.state().elapsedS == 200)
+  }
+
+  @Test func finishBeforeTheTargetIsEarly() throws {
+    var (engine, clock, _) = try engine()
+    engine.start()
+    clock.advance(90)
+    engine.finish()
+    #expect(engine.state().phase == .finished(endedEarly: true))
+    #expect(engine.state().elapsedS == 90)
   }
 
   @Test func pauseFreezesElapsedAndResumeContinues() throws {
@@ -225,6 +243,7 @@ private func makePlan() throws -> TimerPlan {
     #expect(state.phase == .finished(endedEarly: true))
     #expect(state.elapsedS == 95)
     engine.pause()
+    engine.finish()
     #expect(engine.state().phase == .finished(endedEarly: true))
   }
 
@@ -320,5 +339,58 @@ private func makePlan() throws -> TimerPlan {
     #expect(store.load() == nil)
     #expect(defaults.data(forKey: "snapshot") == nil)
     defaults.removePersistentDomain(forName: suite)
+  }
+}
+
+/// The handoff's acceptance run, on the bundled "Steep then release" timings.
+@Suite struct SteepThenReleaseRunTests {
+  private func plan() throws -> TimerPlan {
+    try TimerPlan(
+      steps: [
+        TimerStep(order: 0, label: "Close valve", startOffsetS: 0),
+        TimerStep(order: 1, label: "Pour", startOffsetS: 0, targetCumulativeWaterG: 270),
+        TimerStep(order: 2, label: "Stir", startOffsetS: 30),
+        TimerStep(order: 3, label: "Wait", startOffsetS: 40),
+        TimerStep(order: 4, label: "Open valve", startOffsetS: 120),
+        TimerStep(order: 5, label: "Drawdown", startOffsetS: 125),
+      ], totalDurationS: 210)
+  }
+
+  @Test func groupsStepsThatStartTogether() throws {
+    let plan = try plan()
+    #expect(plan.displayGroups == [[0, 1], [2], [3], [4], [5]])
+    #expect(plan.groupIndex(ofStep: 1) == 0)
+    #expect(plan.groupIndex(ofStep: 3) == 2)
+  }
+
+  @Test func walksTheScheduleWithoutTaps() throws {
+    let clock = FakeClock()
+    var engine = TimerEngine(plan: try plan(), clock: clock, store: MemoryStore())
+    engine.start()
+    #expect(engine.state().elapsedS == 0)
+    #expect(engine.state().current?.label == "Pour")
+    clock.advance(30)
+    #expect(engine.state().current?.label == "Stir")
+    clock.advance(10)
+    #expect(engine.state().current?.label == "Wait")
+    #expect(engine.state().secondsToNextChange == 80)
+    clock.advance(2)
+    let at42 = engine.state()
+    #expect(at42.elapsedS == 42)
+    #expect(at42.remainingS == 168)
+    #expect(Int((at42.progress * 100).rounded()) == 20)
+    #expect(at42.secondsToNextChange == 78)
+    #expect(at42.next?.label == "Open valve")
+    clock.advance(78)
+    #expect(engine.state().current?.label == "Open valve")
+    clock.advance(5)
+    #expect(engine.state().current?.label == "Drawdown")
+    clock.advance(85)
+    #expect(engine.state().targetReached)
+    #expect(engine.state().phase == .running)
+    clock.advance(12)
+    engine.finish()
+    #expect(engine.state().phase == .finished(endedEarly: false))
+    #expect(engine.state().elapsedS == 222)
   }
 }
