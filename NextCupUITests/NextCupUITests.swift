@@ -215,9 +215,13 @@ final class NextCupUITests: XCTestCase {
   /// Opens a recipe's detail with a sped-up timer clock and taps Start brew.
   @MainActor
   /// A finished timer waits on its finish screen until Taste and log is tapped.
+  /// Reaching the target offers Finish brew; the brew keeps running until it is tapped.
   private func tasteAndLog(_ app: XCUIApplication, timeout: TimeInterval) {
+    let finish = app.buttons["Finish brew"]
+    XCTAssertTrue(finish.waitForExistence(timeout: timeout), "timer never reached the target")
+    finish.tap()
     let log = app.buttons["Taste and log"]
-    XCTAssertTrue(log.waitForExistence(timeout: timeout), "timer never finished")
+    XCTAssertTrue(log.waitForExistence(timeout: 5), "finish never offered the log")
     log.tap()
   }
 
@@ -258,11 +262,14 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "timer.status").label.contains("PAUSED"))
     app.buttons["Resume"].tap()
 
-    // Sixty times faster, the whole recipe takes a few seconds. The finish waits for a tap.
-    let log = app.buttons["Taste and log"]
-    XCTAssertTrue(log.waitForExistence(timeout: 30), "timer never finished")
-    XCTAssertTrue(element(app, "timer.finished").exists)
-    log.tap()
+    // Sixty times faster, the target comes in a few seconds. The brew runs on until
+    // Finish brew, and the log waits for a tap.
+    let finish = app.buttons["Finish brew"]
+    XCTAssertTrue(finish.waitForExistence(timeout: 30), "timer never reached the target")
+    XCTAssertTrue(element(app, "timer.status").label.contains("TARGET REACHED"))
+    finish.tap()
+    XCTAssertTrue(element(app, "timer.finished").waitForExistence(timeout: 5))
+    app.buttons["Taste and log"].tap()
     let form = element(app, "brewform.prefilled")
     XCTAssertTrue(form.waitForExistence(timeout: 5), "timer never reached the brew form")
     XCTAssertTrue(

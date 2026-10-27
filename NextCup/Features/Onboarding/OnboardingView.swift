@@ -273,7 +273,8 @@ struct OnboardingView: View {
 
   private func title(_ text: String, _ detail: String) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
-      Text(text.dsTitle).font(DS.Font.display).foregroundStyle(DS.ink)
+      Kicker("Next Cup")
+      Text(text.dsTitle).font(DS.Font.instruction).foregroundStyle(DS.ink)
         .dynamicTypeSize(...DS.displayCap)
         .accessibilityAddTraits(.isHeader)
       Text(detail).font(.body).foregroundStyle(DS.ink2)
@@ -347,44 +348,48 @@ struct OnboardingView: View {
   }
 }
 
-/// Wrapping toggle chips that show or hide brew methods. At least one stays shown, so the
-/// brew form always has one to start from.
+/// The brewers as a grid of drawings: tap to show or hide a method. Picked ones get the
+/// accent ring and a check; the rest dim. At least one stays shown, so the brew form
+/// always has one to start from.
 struct MethodChips: View {
   @Environment(\.modelContext) private var context
+  @Environment(\.dynamicTypeSize) private var dts
   @Query(sort: \BrewMethod.sortOrder) private var methods: [BrewMethod]
   @State private var error: String?
+
+  private var columns: [GridItem] {
+    Array(
+      repeating: GridItem(.flexible(), spacing: DS.Space.lg, alignment: .top),
+      count: dts.isAccessibilitySize ? 2 : 3)
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: DS.Space.sm) {
       if let error { StateBanner(kind: .error, message: error) }
-      LazyVGrid(
-        columns: [GridItem(.adaptive(minimum: 130), spacing: DS.Space.sm)], spacing: DS.Space.sm
-      ) {
+      LazyVGrid(columns: columns, spacing: DS.Space.md) {
         ForEach(methods) { method in
           let on = !method.isHidden
           Button {
             toggle(method)
           } label: {
-            Label(method.name, systemImage: on ? "checkmark.circle.fill" : "circle")
-              .font(.subheadline.weight(.semibold))
-              .lineLimit(2).minimumScaleFactor(0.85).multilineTextAlignment(.leading)
-              .foregroundStyle(on ? DS.ink : DS.ink2)
-              // Room around two-line names: a capsule pinches them, a rounded box does not.
-              .padding(.horizontal, DS.Space.md).padding(.vertical, DS.Space.sm)
-              .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-              .glassEffect(
-                .regular.tint(on ? DS.crema.opacity(0.25) : nil).interactive(),
-                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-              )
-              .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                  .strokeBorder(on ? DS.crema : DS.line.opacity(0.4), lineWidth: 1))
+            VStack(spacing: DS.Space.xs) {
+              BrewMedallion(method.glyph, selected: on, dimmed: !on)
+              Text(method.shortName)
+                .font(.footnote.weight(on ? .semibold : .regular))
+                .foregroundStyle(on ? DS.ink : DS.ink2)
+                .multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.85)
+            }
+            .padding(.top, 4)
+            .contentShape(Rectangle())
           }
           .buttonStyle(.plain)
+          .sensoryFeedback(.selection, trigger: on)
           .accessibilityLabel(method.name)
           .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
         }
       }
+      // Room for the picked ring and check, which sit just outside each medallion.
+      .padding(.horizontal, 6)
     }
   }
 

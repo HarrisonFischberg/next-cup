@@ -53,7 +53,7 @@ struct ExploreView: View {
     }
     .background(DS.bg)
     .navigationTitle("Explore")
-    .navigationBarTitleDisplayMode(.inline)
+    .toolbar(.hidden, for: .navigationBar)
     .sheet(isPresented: $addingBean) { BeanEditorView(target: .new) { addingBean = false } }
     .sheet(isPresented: $showsRoasters) { RoasterDiscoveryView { showsRoasters = false } }
     // A marker, not an identifier on the list: that would replace the
@@ -131,6 +131,7 @@ struct ExploreView: View {
     if planned.isEmpty {
       ScrollView {
         VStack(alignment: .leading, spacing: DS.Space.lg) {
+          PageHeader("Explore").padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.lg)
           EmptyState(
             title: "Nothing to plan yet",
             message:
@@ -146,8 +147,8 @@ struct ExploreView: View {
       let history = ExploreModel.history(of: brews, taxonomy: taxonomy, aliases: aliases)
       ScrollView {
         LazyVStack(alignment: .leading, spacing: DS.Space.lg) {
-          Text("NEXT CUP FOR YOUR BEANS").font(DS.Font.label).foregroundStyle(DS.ink2)
-            .accessibilityAddTraits(.isHeader)
+          PageHeader("Explore")
+          Kicker("Next cup for your beans", color: DS.ink2).accessibilityAddTraits(.isHeader)
           ForEach(planned) { bean in
             let refs = ExploreModel.buckets(of: bean, taxonomy: taxonomy, aliases: aliases)
             BeanRecommendationCard(

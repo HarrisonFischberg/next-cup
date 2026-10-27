@@ -48,6 +48,7 @@ struct BeanLibraryView: View {
     Group {
       if library.isEmpty {
         ScrollView {
+          PageHeader("Beans").padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.sm)
           EmptyState(
             title: "No beans yet",
             message: "Add a bag to track its freshness and how much is left.",
@@ -82,6 +83,7 @@ struct BeanLibraryView: View {
       BeanEditorView(target: target) { editor = nil }
     }
     .navigationTitle("Beans")
+    .toolbar(removing: .title)
     .navigationBarTitleDisplayMode(.inline)
     // A marker, not an identifier on the list: that would replace the
     // identifiers of the rows inside it.
@@ -96,6 +98,9 @@ struct BeanLibraryView: View {
 
   private func list(_ shown: [Bean]) -> some View {
     List {
+      PageHeader("Beans")
+        .padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.sm)
+        .listRowInsets(EdgeInsets()).listRowBackground(DS.bg).listRowSeparator(.hidden)
       if let error {
         StateBanner(kind: .error, message: error, actionTitle: "Dismiss") { self.error = nil }
           .accessibilityIdentifier("beans.error")

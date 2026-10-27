@@ -104,9 +104,14 @@ struct TimerSessionTests {
     #expect(session.state.currentIndex == 2)
     clock.advance(30)
     session.tick()
-    #expect(session.outcome == TimerOutcome(elapsedS: 120, endedEarly: false))
-    #expect(session.setup.seed(elapsedS: 120, endedEarly: false).totalTimeS == 120)
-    #expect(haptics.played == [.start, .stepChange, .stepChange, .finish])
+    #expect(session.outcome == nil, "reaching the target keeps the brew running")
+    #expect(session.state.targetReached)
+    clock.advance(15)
+    session.tick()
+    session.finish()
+    #expect(session.outcome == TimerOutcome(elapsedS: 136, endedEarly: false))
+    #expect(session.setup.seed(elapsedS: 136, endedEarly: false).totalTimeS == 136)
+    #expect(haptics.played == [.start, .stepChange, .stepChange, .targetReached, .finish])
     #expect(store.load() == nil, "the saved timer is forgotten once the form has the values")
   }
 
@@ -124,6 +129,16 @@ struct TimerSessionTests {
     session.tick()
     #expect(Int(session.state.elapsedS) == 15)
     #expect(haptics.played == [.start, .pauseToggle, .pauseToggle])
+  }
+
+  @Test func foregroundCatchUpDoesNotReplayMissedCues() throws {
+    let (session, clock, _, haptics) = try makeSession()
+    session.start()
+    clock.advance(200)
+    session.tick(cues: false)
+    #expect(session.state.currentIndex == 2)
+    #expect(session.state.targetReached)
+    #expect(haptics.played == [.start])
   }
 
   @Test func skipJumpsToTheNextStepWithOneHaptic() throws {

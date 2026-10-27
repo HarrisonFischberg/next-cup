@@ -130,6 +130,15 @@ public struct TimerState: Equatable, Sendable {
   /// Seconds until the next step starts, or until the brew ends on the last step.
   public var secondsToNextChange: Double?
   public var totalDurationS: Int
+
+  /// The recipe's target time has passed; the brew keeps running until the user finishes it.
+  public var targetReached: Bool { elapsedS >= Double(totalDurationS) }
+  /// Share of the target time elapsed, clamped to 0...1.
+  public var progress: Double {
+    totalDurationS > 0 ? min(max(elapsedS / Double(totalDurationS), 0), 1) : 0
+  }
+  public var remainingS: Double { max(Double(totalDurationS) - elapsedS, 0) }
+  public var overtimeS: Double { max(elapsedS - Double(totalDurationS), 0) }
 }
 
 /// Runs recipe steps against an injectable clock. All state is derived from persisted dates.
@@ -174,6 +183,19 @@ public struct TimerEngine: Sendable {
     guard var saved = snapshot, case .paused = state().phase, let last = saved.pauses.indices.last
     else { return }
     saved.pauses[last].end = max(clock.now(), saved.pauses[last].start)
+    commit(saved)
+  }
+
+  /// Ends the brew at the time reached, early or not. Past the target this is the normal finish.
+  public mutating func finish() {
+    guard var saved = snapshot else { return }
+    let current = state()
+    switch current.phase {
+    case .notStarted, .finished: return
+    case .running, .paused: break
+    }
+    saved.endedElapsedS = current.elapsedS
+    saved.endedEarly = !current.targetReached
     commit(saved)
   }
 
@@ -227,9 +249,7 @@ public struct TimerEngine: Sendable {
       return total + max(end.timeIntervalSince(pause.start), 0)
     }
     let elapsed = max(reference.timeIntervalSince(saved.startedAt) - pausedS + saved.skippedS, 0)
-    if elapsed >= Double(plan.totalDurationS) {
-      return derive(phase: .finished(endedEarly: false), elapsed: Double(plan.totalDurationS))
-    }
+    // Past the target the brew keeps running (the coffee may still be draining) until finished.
     return derive(phase: paused ? .paused : .running, elapsed: elapsed)
   }
 
@@ -254,12 +274,33 @@ public struct TimerEngine: Sendable {
       next: index == nil ? steps.first : next,
       secondsIntoStep: index.map { elapsed - Double(steps[$0].startOffsetS) } ?? 0,
       secondsToNextChange: index == nil
-        ? Double(steps[0].startOffsetS) - elapsed : boundary - elapsed,
+        ? Double(steps[0].startOffsetS) - elapsed : (boundary > elapsed ? boundary - elapsed : nil),
       totalDurationS: plan.totalDurationS)
   }
 
   private mutating func commit(_ saved: TimerSnapshot) {
     snapshot = saved
     store.save(saved)
+  }
+}
+
+extension TimerPlan {
+  /// Step indices grouped by start time, so steps that begin together (close the valve,
+  /// then pour, both at 0:00) show as one displayed step in their original order.
+  public var displayGroups: [[Int]] {
+    var groups: [[Int]] = []
+    for (index, step) in steps.enumerated() {
+      if let last = groups.last?.last, steps[last].startOffsetS == step.startOffsetS {
+        groups[groups.count - 1].append(index)
+      } else {
+        groups.append([index])
+      }
+    }
+    return groups
+  }
+
+  /// The displayed group holding step `index`.
+  public func groupIndex(ofStep index: Int) -> Int? {
+    displayGroups.firstIndex { $0.contains(index) }
   }
 }
