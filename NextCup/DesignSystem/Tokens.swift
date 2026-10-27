@@ -365,9 +365,9 @@ enum AppStyle: String, CaseIterable, Identifiable {
       Palette(
         bg: P(0xFFFDF3, 0x0E1230), paper: P(0xFFFFFF, 0x171D45), steel: P(0x1B2F7A, 0x2448C8),
         onSteel: P(0xFFFDF3, 0xFFFDF3), ink: P(0x2B1A12, 0xFFFDF3), ink2: P(0x625046, 0xC9CCE6),
-        line: P(0x8A7A6E, 0x7B82B8), signal: P(0x2448C8, 0xF5E8A4),
-        onSignal: P(0xFFFFFF, 0x2B1A12), signalOnSteel: P(0xF5E8A4, 0xF5E8A4),
-        kraft: P(0xF5E8A4, 0x1E3A9E), onKraft: P(0x2B1A12, 0xFFFDF3),
+        line: P(0x8A7A6E, 0x7B82B8), signal: P(0x2448C8, 0x6B8CFF),
+        onSignal: P(0xFFFFFF, 0x0E1230), signalOnSteel: P(0xF5E8A4, 0xF5E8A4),
+        kraft: P(0xF5E8A4, 0x14204F), onKraft: P(0x2B1A12, 0xFFFDF3),
         error: P(0x9A1B0A, 0xFFA08C), ok: P(0x2A6A2A, 0x9FE0A8))
     case .morningEdition:
       Palette(
