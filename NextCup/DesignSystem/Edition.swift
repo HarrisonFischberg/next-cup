@@ -147,12 +147,11 @@ enum HeroRole: String { case card, setup, brew }
 /// sun disc in the accent. Decorative: the name beside it carries the meaning.
 struct BrewHero: View {
   let glyph: BrewGlyph
+  var methodKey: String?
   var role: HeroRole = .card
   var size: CGFloat = 132
 
-  private var photo: UIImage? {
-    UIImage(named: "hero.\(AppStyle.current.rawValue).\(role.rawValue)")
-  }
+  private var photo: UIImage? { heroPhoto(methodKey: methodKey, role: role) }
 
   var body: some View {
     Group {
@@ -177,12 +176,20 @@ struct BrewHero: View {
   }
 }
 
+/// The brew method's photograph (`method.<key>`) when there is one, else the look's
+/// hero for this slot (`hero.<style>.<role>`), else nil.
+func heroPhoto(methodKey: String?, role: HeroRole) -> UIImage? {
+  methodKey.flatMap { UIImage(named: "method.\($0)") }
+    ?? UIImage(named: "hero.\(AppStyle.current.rawValue).\(role.rawValue)")
+}
+
 /// The hero photograph stretched across a card, when the look has one.
 struct HeroBanner: View {
+  var methodKey: String?
   var role: HeroRole = .card
   var height: CGFloat = 230
   var body: some View {
-    if let photo = UIImage(named: "hero.\(AppStyle.current.rawValue).\(role.rawValue)") {
+    if let photo = heroPhoto(methodKey: methodKey, role: role) {
       Image(uiImage: photo).resizable().scaledToFill()
         .frame(maxWidth: .infinity).frame(height: height).clipped()
         .accessibilityHidden(true)

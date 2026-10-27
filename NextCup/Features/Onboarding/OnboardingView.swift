@@ -273,7 +273,8 @@ struct OnboardingView: View {
 
   private func title(_ text: String, _ detail: String) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
-      Text(text.dsTitle).font(DS.Font.display).foregroundStyle(DS.ink)
+      Kicker("Next Cup")
+      Text(text.dsTitle).font(DS.Font.instruction).foregroundStyle(DS.ink)
         .dynamicTypeSize(...DS.displayCap)
         .accessibilityAddTraits(.isHeader)
       Text(detail).font(.body).foregroundStyle(DS.ink2)

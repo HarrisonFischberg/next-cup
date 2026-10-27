@@ -204,8 +204,8 @@ struct RecipeLibraryView: View {
   /// A recipe card: its brewer on a colour block, then the name, method and numbers.
   private func card(_ recipe: Recipe) -> some View {
     VStack(alignment: .leading, spacing: 0) {
-      if UIImage(named: "hero.\(AppStyle.current.rawValue).card") != nil {
-        HeroBanner(role: .card)
+      if heroPhoto(methodKey: recipe.method?.builtInKey, role: .card) != nil {
+        HeroBanner(methodKey: recipe.method?.builtInKey, role: .card)
       } else {
         HStack {
           Spacer(minLength: 0)

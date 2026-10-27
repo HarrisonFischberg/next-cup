@@ -25,18 +25,26 @@
 
 ## Handoff redesign hero photographs (2026-10-27)
 
-Six photographs in `NextCup/Assets.xcassets/Handoff/hero.<look>.<slot>.imageset`, one card and
-one setup hero per look, downloaded through the Unsplash API (downloads recorded). All are under the
+Photographs in `NextCup/Assets.xcassets/Handoff/hero.<look>.<slot>.imageset`, one card and one setup hero per look plus one per built-in brew method (`method.<key>`), downloaded through the Unsplash API (downloads recorded). All are under the
 [Unsplash License](https://unsplash.com/license): free for commercial use, no permission needed,
 attribution appreciated but not required; may not be sold unaltered or used to build a competing service.
 
 | Asset | Photographer | Photo |
 | --- | --- | --- |
-| `hero.sundayStudio.card` | Thomas Murphy | https://unsplash.com/photos/WyD1PTucBZc |
 | `hero.sundayStudio.setup` | Moon Moons | https://unsplash.com/photos/mil1ye4BTmY |
-| `hero.morningEdition.card` | andrew welch | https://unsplash.com/photos/1pZbNwlGzNY |
 | `hero.morningEdition.setup` | Emma Smith | https://unsplash.com/photos/8iEPHGbsp70 |
 | `hero.precisionAtelier.card` | Ryan ODee | https://unsplash.com/photos/yWPs9knfK9o |
 | `hero.precisionAtelier.setup` | Ashkan Forouzani | https://unsplash.com/photos/1SATo8GQBYg |
+
+| `method.cone-dripper` | Szymon Satora | https://unsplash.com/photos/c-wdaPOmtLQ |
+| `method.flat-dripper` | Jamie Long | https://unsplash.com/photos/t2cId7djc0k |
+| `method.switchable-dripper` | Di Bella Coffee | https://unsplash.com/photos/Ko7PFAommGE |
+| `method.press` | Clay Banks | https://unsplash.com/photos/Sv_3PDNZyQ0 |
+| `method.inverted-press` | Elin Melaas | https://unsplash.com/photos/d7-QG58ONm0 |
+| `method.espresso` | Kevin Butz | https://unsplash.com/photos/BBFRIGifYQ8 |
+| `method.iced-pour-over` | Nguyen Tong Hai Van | https://unsplash.com/photos/Q1ImlWMxOIM |
+| `method.cold-brew` | Blake Wisz | https://unsplash.com/photos/X6aY_j6JD_Y |
+| `hero.sundayStudio.card` (replaced) | Szymon Satora | https://unsplash.com/photos/c-wdaPOmtLQ |
+| `hero.morningEdition.card` (replaced) | Jamie Long | https://unsplash.com/photos/sK-pgy8W_Yc |
 
 The brewer drawings on the active brew screen and the method tiles remain original Canvas line art.
