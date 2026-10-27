@@ -149,11 +149,11 @@ final class NextCupUITests: XCTestCase {
       "recipes are grouped by style: \(app.debugDescription)")
 
     // No match shows the empty state with a way out.
-    let search = app.searchFields.firstMatch
+    let search = element(app, "recipes.search")
     search.tap()
     search.typeText("zzzz")
     XCTAssertTrue(app.staticTexts["NO MATCHES"].waitForExistence(timeout: 5))
-    app.buttons["Clear search"].tap()
+    app.buttons["Clear search"].firstMatch.tap()  // the field and the empty state both offer it
 
     search.tap()
     search.typeText("balanced")
@@ -318,10 +318,14 @@ final class NextCupUITests: XCTestCase {
   func testEndEarlyOpensTheFormWithTheTimeReached() {
     let app = openTimer(speed: 20)
     app.buttons["Start"].tap()
-    XCTAssertTrue(app.buttons["End early"].waitForExistence(timeout: 5))
+    let end = app.buttons["End brew"]  // timer.screen's identifier covers the button's own
+    XCTAssertTrue(end.waitForExistence(timeout: 5))
     sleep(2)
-    app.buttons["End early"].tap()
-    tasteAndLog(app, timeout: 10)
+    end.tap()
+    app.buttons["End and log it"].tap()
+    let log = app.buttons["Taste and log"]
+    XCTAssertTrue(log.waitForExistence(timeout: 5), "ending early offers the log")
+    log.tap()
     XCTAssertTrue(element(app, "brewform.prefilled").waitForExistence(timeout: 5))
     XCTAssertFalse(text(app, in: "brewform.time").hasPrefix("0:00"))
     XCTAssertTrue(app.staticTexts["You ended this brew early. The time is what it reached."].exists)
@@ -570,7 +574,7 @@ final class NextCupUITests: XCTestCase {
       .tap()
     let value = element(app, "stepper.dose.value")
     XCTAssertTrue(value.waitForExistence(timeout: 5))
-    value.tap()
+    value.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()  // caret after "15"
     value.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 6) + "30")
     let doubled = NSPredicate(format: "label CONTAINS %@", "500")
     expectation(for: doubled, evaluatedWith: element(app, "recipe.water"))
@@ -862,6 +866,7 @@ final class NextCupUITests: XCTestCase {
 
   private func openMethods(_ app: XCUIApplication) {
     openSettings(app)
+    scrollUntilHittable(element(app, "settings.methods"), in: app)  // below the looks grid
     XCTAssertTrue(element(app, "settings.methods").waitForExistence(timeout: 5))
     element(app, "settings.methods").tap()
     XCTAssertTrue(element(app, "methods.screen").waitForExistence(timeout: 5))
@@ -878,6 +883,7 @@ final class NextCupUITests: XCTestCase {
     app.switches[switchOff].coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
     XCTAssertEqual(app.switches[switchOff].value as? String, "0", "\(switchOff) is switched off")
     app.buttons["methods.editor.save"].tap()
+    scrollUntilHittable(element(app, "methods.row.\(name)"), in: app)  // new rows go last
     XCTAssertTrue(element(app, "methods.row.\(name)").waitForExistence(timeout: 5))
   }
 
@@ -888,14 +894,14 @@ final class NextCupUITests: XCTestCase {
     let app = launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
     openMethods(app)
-    addMethod(app, name: "Moka pot", switchOff: "Temperature")
+    addMethod(app, name: "Siphon", switchOff: "Temperature")
 
     // The new method is last; "Move up" in its editor puts it above the old last.
     let rows = app.descendants(matching: .any).matching(
       NSPredicate(format: "identifier BEGINSWITH 'methods.row.'"))
     let before = rows.count
-    XCTAssertEqual(rows.element(boundBy: before - 1).identifier, "methods.row.Moka pot")
-    element(app, "methods.row.Moka pot").tap()
+    XCTAssertEqual(rows.element(boundBy: before - 1).identifier, "methods.row.Siphon")
+    element(app, "methods.row.Siphon").tap()
     XCTAssertTrue(element(app, "methods.editor.name").waitForExistence(timeout: 5))
     XCTAssertEqual(
       app.switches["Temperature"].value as? String, "0", "the switch stayed off after saving")
@@ -910,10 +916,11 @@ final class NextCupUITests: XCTestCase {
     up.tap()
     app.buttons["methods.editor.cancel"].tap()
     XCTAssertTrue(element(app, "methods.screen").waitForExistence(timeout: 5))
-    XCTAssertEqual(rows.element(boundBy: before - 2).identifier, "methods.row.Moka pot")
+    XCTAssertEqual(rows.element(boundBy: before - 2).identifier, "methods.row.Siphon")
 
     // Hiding keeps the row, marked, and takes it out of the picker.
     let press = element(app, "methods.row.Press pot")
+    for _ in 0..<6 where !press.isHittable { app.swipeDown() }
     press.swipeLeft()
     app.buttons["Hide"].tap()
     XCTAssertTrue(
@@ -926,12 +933,12 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(
       element(app, "brewform.temperature").exists, "the first method tracks temperature")
     element(app, "brewform.method").tap()
-    XCTAssertTrue(app.buttons["Moka pot"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["Siphon"].waitForExistence(timeout: 5))
     XCTAssertFalse(app.buttons["Press pot"].exists, "a hidden method is not offered")
-    app.buttons["Moka pot"].tap()
+    app.buttons["Siphon"].tap()
     XCTAssertTrue(element(app, "brewform.grind").waitForExistence(timeout: 5))
     XCTAssertFalse(
-      element(app, "brewform.temperature").exists, "temperature is off for Moka pot")
+      element(app, "brewform.temperature").exists, "temperature is off for Siphon")
     XCTAssertTrue(element(app, "brewform.dose").exists && element(app, "brewform.water").exists)
   }
 
@@ -1253,7 +1260,8 @@ final class NextCupUITests: XCTestCase {
     let beans = element(app, "brewform.beans")
     XCTAssertTrue(beans.waitForExistence(timeout: 5))
     XCTAssertTrue(
-      app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Washed Ethiopia'")).firstMatch
+      app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'Washed Ethiopia'"))
+        .firstMatch
         .exists, "the form starts with the bean: \(beans.debugDescription)")
   }
 
