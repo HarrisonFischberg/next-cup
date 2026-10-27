@@ -44,7 +44,7 @@ struct PaperImportAppTests {
     #expect(draft.tempC == 94)
     #expect(draft.totalTimeS == 165)
     #expect(draft.grind == "24")
-    #expect(draft.ratingHalfSteps == 8)
+    #expect(draft.ratingTenths == 80)
     #expect(draft.notes.contains("sweet"))
     #expect(try context.fetch(FetchDescriptor<Brew>()).isEmpty, "reading never saves")
   }
@@ -126,7 +126,7 @@ struct PaperImportAppTests {
     #expect(brew.method?.id == method.id)
     #expect(brew.doseG == 18)
     #expect(brew.totalTimeS == 165)
-    #expect(brew.ratingHalfSteps == 8)
+    #expect(brew.ratingTenths == 80)
     #expect(brew.isDraft == false)
     #expect(brew.photo != nil)
     let use = try #require(brew.beans?.first)

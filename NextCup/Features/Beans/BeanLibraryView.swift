@@ -272,7 +272,7 @@ private struct BeanRow: View {
         Text(bean.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
         if bean.isDecaf { Tag(text: "Decaf") }
         Spacer(minLength: DS.Space.sm)
-        if let grade = bean.ratingHalfSteps, grade > 0 { GradeBadge(halfSteps: grade) }
+        if let grade = bean.ratingTenths, grade > 0 { GradeBadge(tenths: grade) }
       }
       if !bean.subtitle.isEmpty {
         Text(bean.subtitle).font(.footnote).foregroundStyle(DS.ink2)

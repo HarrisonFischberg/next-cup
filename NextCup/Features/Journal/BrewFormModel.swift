@@ -39,7 +39,7 @@ final class BrewFormModel {
   private(set) var madeSuggestion: Suggestion?
   private(set) var dialInNote: String?
   /// Set when this brew's grade beats every earlier graded brew of one of its beans.
-  private(set) var newBest: (bean: String, halfSteps: Int, previous: Int)?
+  private(set) var newBest: (bean: String, tenths: Int, previous: Int)?
   private var followedSuggestionID: UUID?
   /// The draft value and suggested value before an answer, kept for Undo.
   private var undoDraftValue: String?
@@ -105,7 +105,7 @@ final class BrewFormModel {
       id: brew.id, date: brew.date, methodID: brew.method?.id, recipeID: brew.recipe?.id,
       doseG: brew.doseG, waterG: brew.waterG, tempC: brew.tempC, totalTimeS: brew.totalTimeS,
       grindSetting: brew.grindSetting ?? "", verdict: brew.verdict?.rawValue,
-      ratingHalfSteps: brew.ratingHalfSteps ?? 0, notes: brew.notes, photo: brew.photo,
+      ratingTenths: brew.ratingTenths ?? 0, notes: brew.notes, photo: brew.photo,
       targets: brew.targetsJSON.flatMap { try? JSONDecoder().decode(BrewTargets.self, from: $0) },
       beans: (brew.beans ?? []).sorted { $0.createdAt < $1.createdAt }.map {
         DraftBean(
@@ -497,13 +497,13 @@ final class BrewFormModel {
   /// A new best needs an earlier graded brew of the same bean to beat.
   private func noteNewBest() {
     guard let brew = try? store.find(Brew.self, id: draft.id),
-      let grade = brew.ratingHalfSteps, grade > 0
+      let grade = brew.ratingTenths, grade > 0
     else { return }
     for use in brew.beans ?? [] {
       guard let bean = use.bean else { continue }
       let earlier = (bean.brewUses ?? []).compactMap(\.brew)
         .filter { !$0.isDraft && $0.id != brew.id }
-        .compactMap(\.ratingHalfSteps).filter { $0 > 0 }
+        .compactMap(\.ratingTenths).filter { $0 > 0 }
       if let previous = earlier.max(), grade > previous {
         newBest = (bean.name, grade, previous)
         return
@@ -546,7 +546,7 @@ final class BrewFormModel {
     let grind = draft.grindSetting.trimmingCharacters(in: .whitespacesAndNewlines)
     brew.grindSetting = grind.isEmpty ? nil : grind
     brew.verdict = draft.verdict.flatMap(Verdict.init(rawValue:))
-    brew.ratingHalfSteps = draft.ratingHalfSteps == 0 ? nil : draft.ratingHalfSteps
+    brew.ratingTenths = draft.ratingTenths == 0 ? nil : draft.ratingTenths
     brew.notes = draft.notes
     brew.photo = draft.photo
     brew.targetsJSON = draft.targets.flatMap { try? JSONEncoder().encode($0) }

@@ -44,7 +44,7 @@ enum ExploreModel {
         buckets(of: $0, taxonomy: taxonomy, aliases: aliases)
       }.filter { seen.insert($0).inserted }
       return RecommenderBrew(
-        date: brew.date, ratingHalfSteps: brew.ratingHalfSteps, methodKey: method.builtInKey,
+        date: brew.date, ratingTenths: brew.ratingTenths, methodKey: method.builtInKey,
         methodName: method.name, recipeName: brew.recipe?.name, doseG: brew.doseG,
         waterG: brew.waterG, tempC: brew.tempC, totalTimeS: brew.totalTimeS,
         grindSetting: brew.grindSetting, buckets: buckets)

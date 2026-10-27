@@ -37,7 +37,7 @@ enum BeanSort: String, CaseIterable, Identifiable {
     case .recent: "Recently added"
     case .name: "Name"
     case .roastDate: "Roast date"
-    case .grade: "Highest grade"
+    case .grade: "Highest rating"
     }
   }
 }
@@ -75,7 +75,7 @@ struct BeanFilter: Equatable {
       }
     case .grade:
       return kept.sorted {
-        let (a, b) = ($0.ratingHalfSteps ?? 0, $1.ratingHalfSteps ?? 0)
+        let (a, b) = ($0.ratingTenths ?? 0, $1.ratingTenths ?? 0)
         return a == b ? $0.createdAt > $1.createdAt : a > b
       }
     }

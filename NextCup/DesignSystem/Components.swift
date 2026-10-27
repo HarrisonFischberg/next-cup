@@ -1,3 +1,4 @@
+import NextCupKit
 import SwiftUI
 
 // Steel & Kraft components. Each is a primitive: no model types, so it can be
@@ -337,67 +338,76 @@ struct ChoiceButton: View {
   }
 }
 
-/// Grade 0.5 to 5 in one tap per whole grade, plus a half-step toggle. Replaces eight taps on a stepper.
+/// The cup's rating out of 10 in steps of 0.1: a slider for speed, minus and plus for the
+/// last tenth. 0 means not rated, so sliding to the left end clears it.
 struct GradeScale: View {
-  @Binding var halfSteps: Int
+  @Binding var tenths: Int
+  @Environment(\.dynamicTypeSize) private var dts
+
+  private var value: Binding<Double> {
+    Binding(
+      get: { Double(tenths) / 10 },
+      set: { tenths = min(Rating.maxTenths, max(0, Int(($0 * 10).rounded()))) })
+  }
+
   var body: some View {
-    let whole = halfSteps / 2
-    let isHalf = halfSteps % 2 == 1
     VStack(alignment: .leading, spacing: DS.Space.sm) {
-      HStack(spacing: 0) {
-        ForEach(1...5, id: \.self) { i in
-          let lit = i <= whole
-          let halfLit = isHalf && i == whole + 1
-          Button {
-            halfSteps = halfSteps == i * 2 ? 0 : i * 2
-          } label: {
-            Text("\(i)").font(DS.Font.mono(.title3, .bold))
-              .frame(maxWidth: .infinity, minHeight: DS.Size.control)
-              .foregroundStyle(lit ? DS.onSignal : DS.ink)
-              .background(
-                lit ? DS.signal : (halfLit ? DS.signal.opacity(0.45) : DS.paper),
-                ignoresSafeAreaEdges: []
-              )
-              .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.hairline))
-          }
-          .accessibilityHidden(true)
-        }
+      HStack(alignment: .firstTextBaseline, spacing: DS.Space.xs) {
+        Text(tenths == 0 ? "Not rated" : Rating.text(tenths))
+          .font(tenths == 0 ? .title3.weight(.semibold) : DS.Font.dataLarge)
+          .foregroundStyle(tenths == 0 ? DS.ink2 : DS.ink)
+          .contentTransition(.numericText())
+        if tenths > 0 { Text("/ 10").font(DS.Font.mono(.callout)).foregroundStyle(DS.ink2) }
       }
-      .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
-      Button {
-        halfSteps = isHalf ? min(10, halfSteps + 1) : max(0, halfSteps - 1)
-      } label: {
-        Text(isHalf ? "MAKE IT A WHOLE" : "TAKE OFF A HALF").font(DS.Font.label)
-          .foregroundStyle(DS.ink).frame(minHeight: DS.Size.minTap)
-      }
-      .disabled(halfSteps == 0)
       .accessibilityHidden(true)
+      HStack(spacing: DS.Space.sm) {
+        nudge("minus", by: -1).disabled(tenths == 0)
+        Slider(value: value, in: 0...10, step: 0.1)
+          .tint(DS.accent)
+          .accessibilityHidden(true)
+        nudge("plus", by: 1).disabled(tenths == Rating.maxTenths)
+      }
+      if tenths == 0 {
+        Text("Slide to rate this cup from 0 to 10.").font(.footnote).foregroundStyle(DS.ink2)
+          .accessibilityHidden(true)
+      }
     }
+    .sensoryFeedback(.selection, trigger: tenths / 10)
     .accessibilityElement()
-    .accessibilityLabel("Grade")
-    .accessibilityValue(halfSteps == 0 ? "Unrated" : "\(Double(halfSteps) / 2) of 5")
+    .accessibilityLabel("Rating")
+    .accessibilityValue(tenths == 0 ? "Not rated" : "\(Rating.text(tenths)) of 10")
     .accessibilityAdjustableAction { dir in
-      halfSteps = dir == .increment ? min(10, halfSteps + 1) : max(0, halfSteps - 1)
+      tenths = dir == .increment ? min(Rating.maxTenths, tenths + 1) : max(0, tenths - 1)
     }
+  }
+
+  private func nudge(_ symbol: String, by step: Int) -> some View {
+    Button {
+      tenths = min(Rating.maxTenths, max(0, tenths + step))
+    } label: {
+      Image(systemName: symbol).font(.body.weight(.bold)).foregroundStyle(DS.accent)
+        .frame(width: DS.Size.minTap, height: DS.Size.minTap)
+        .overlay(Circle().strokeBorder(DS.accent, lineWidth: 1.5))
+    }
+    .buttonRepeatBehavior(.enabled)
+    .accessibilityHidden(true)
   }
 }
 
 /// Square grade chip for lists: signal block with the grade, or a dash.
 struct GradeBadge: View {
-  let halfSteps: Int
+  let tenths: Int
   var body: some View {
-    Text(
-      halfSteps == 0
-        ? "—"
-        : (halfSteps % 2 == 0 ? "\(halfSteps / 2)" : String(format: "%.1f", Double(halfSteps) / 2))
-    )
-    .font(DS.isBloom ? .system(.title2, design: .serif) : DS.Font.mono(.title3, .bold))
-    .foregroundStyle(DS.isBloom ? DS.ink : DS.onSignal)
-    .fixedSize().padding(.horizontal, DS.Space.sm)
-    .frame(minWidth: DS.Size.minTap, minHeight: 32)
-    .background(DS.isBloom ? .clear : DS.signal, ignoresSafeAreaEdges: [])
-    .accessibilityLabel(halfSteps == 0 ? "Unrated" : "Grade \(Double(halfSteps) / 2) of 5")
+    Text(tenths == 0 ? "—" : Self.text(tenths))
+      .font(DS.isBloom ? .system(.title2, design: .serif) : DS.Font.mono(.title3, .bold))
+      .foregroundStyle(DS.isBloom ? DS.ink : DS.onSignal)
+      .fixedSize().padding(.horizontal, DS.Space.sm)
+      .frame(minWidth: DS.Size.minTap, minHeight: 32)
+      .background(DS.isBloom ? .clear : DS.signal, ignoresSafeAreaEdges: [])
+      .accessibilityLabel(tenths == 0 ? "Unrated" : "Rated \(Self.text(tenths)) of 10")
   }
+
+  static func text(_ tenths: Int) -> String { Rating.text(tenths) }
 }
 
 // MARK: Notes

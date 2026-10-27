@@ -1,4 +1,5 @@
 import Foundation
+import NextCupKit
 import SwiftData
 import Testing
 
@@ -269,5 +270,40 @@ import Testing
 
     #expect(first.suggestionsMade?.count == 1)
     #expect(suggestion.appliedTo?.count == 1)
+  }
+}
+
+@Suite @MainActor struct RatingMigrationTests {
+  @Test func oldHalfPointsBecomeTenthsOutOfTenOnce() throws {
+    let container = try NextCupContainer.make(inMemory: true)
+    let context = container.mainContext
+    let brew = Brew()
+    brew.ratingTenths = 7  // 3.5 of 5, stored before the change
+    let unrated = Brew()
+    let bean = Bean(name: "Kenya")
+    bean.ratingTenths = 10
+    context.insert(brew)
+    context.insert(unrated)
+    context.insert(bean)
+    let defaults = try #require(UserDefaults(suiteName: "rating.\(UUID().uuidString)"))
+    let drafts = DraftStore(
+      fileURL: FileManager.default.temporaryDirectory
+        .appendingPathComponent("rating-\(UUID().uuidString)/draft.json"))
+    _ = drafts.save(BrewDraft(ratingTenths: 8))
+
+    #expect(throws: Never.self) {
+      try RatingMigration.run(context, defaults: defaults, drafts: drafts).get()
+    }
+    #expect(brew.ratingTenths == 70)
+    #expect(unrated.ratingTenths == nil)
+    #expect(bean.ratingTenths == 100)
+    guard case .draft(let migrated) = drafts.load() else {
+      Issue.record("draft lost")
+      return
+    }
+    #expect(migrated.ratingTenths == 80)
+
+    _ = RatingMigration.run(context, defaults: defaults, drafts: drafts)
+    #expect(brew.ratingTenths == 70, "a second launch leaves it alone")
   }
 }

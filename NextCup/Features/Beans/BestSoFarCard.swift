@@ -13,7 +13,7 @@ extension Bean {
       .filter { !$0.isDraft && seen.insert($0.id).inserted }
       .map { brew in
         BrewSample(
-          date: brew.date, ratingHalfSteps: brew.ratingHalfSteps, doseG: brew.doseG,
+          date: brew.date, ratingTenths: brew.ratingTenths, doseG: brew.doseG,
           waterG: brew.waterG, tempC: brew.tempC, totalTimeS: brew.totalTimeS,
           grindSetting: brew.grindSetting, grinder: brew.grinder?.name)
       }
@@ -22,8 +22,8 @@ extension Bean {
   var bestSoFar: BestSoFarSummary { BestSoFar.summarize(brewSamples) }
 }
 
-private func gradeText(_ halfSteps: Int) -> String {
-  halfSteps % 2 == 0 ? "\(halfSteps / 2)" : String(format: "%.1f", Double(halfSteps) / 2)
+private func gradeText(_ tenths: Int) -> String {
+  Rating.text(tenths)
 }
 
 /// X3: what has worked so far with one bean. How its grades are spread, the
@@ -49,7 +49,7 @@ struct BestSoFarCard: View {
               spread
             } else {
               Text(
-                "Grade a brew with this bean to see its best settings and how its grades spread."
+                "Rate a brew with this bean to see its best settings and how its ratings spread."
               )
               .font(.callout).foregroundStyle(DS.ink2).padding(DS.Space.md)
               .frame(maxWidth: .infinity, alignment: .leading)
@@ -80,7 +80,7 @@ struct BestSoFarCard: View {
 
     return VStack(alignment: .leading, spacing: DS.Space.sm) {
       HStack(alignment: .center, spacing: DS.Space.sm) {
-        GradeBadge(halfSteps: best.ratingHalfSteps ?? 0)
+        GradeBadge(tenths: best.ratingTenths ?? 0)
         VStack(alignment: .leading, spacing: 2) {
           Text("BEST BREW").font(DS.Font.label).foregroundStyle(DS.ink2)
           Text(best.date.formatted(date: .abbreviated, time: .omitted))
@@ -109,16 +109,16 @@ struct BestSoFarCard: View {
     let most = summary.spread.map(\.brews).max() ?? 1
     return VStack(alignment: .leading, spacing: DS.Space.sm) {
       HStack {
-        Text("GRADES").font(DS.Font.label).foregroundStyle(DS.ink2)
+        Text("RATINGS").font(DS.Font.label).foregroundStyle(DS.ink2)
         Spacer(minLength: DS.Space.sm)
-        if let average = summary.averageHalfSteps {
+        if let average = summary.averageTenths {
           Text("Average \(String(format: "%.1f", average / 2))")
             .font(DS.Font.mono(.footnote)).foregroundStyle(DS.ink2)
         }
       }
-      ForEach(summary.spread.reversed(), id: \.halfSteps) { entry in
+      ForEach(summary.spread.reversed(), id: \.tenths) { entry in
         HStack(spacing: DS.Space.sm) {
-          Text(gradeText(entry.halfSteps)).font(DS.Font.data).foregroundStyle(DS.ink)
+          Text(gradeText(entry.tenths)).font(DS.Font.data).foregroundStyle(DS.ink)
             .frame(minWidth: 36, alignment: .leading)
           GeometryReader { proxy in
             Rectangle().fill(DS.ink2)
@@ -131,7 +131,7 @@ struct BestSoFarCard: View {
         .frame(minHeight: 24)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-          "Grade \(gradeText(entry.halfSteps)), \(entry.brews) \(entry.brews == 1 ? "brew" : "brews")"
+          "Rated \(gradeText(entry.tenths)), \(entry.brews) \(entry.brews == 1 ? "brew" : "brews")"
         )
       }
     }
@@ -167,7 +167,7 @@ struct BestSoFarCard: View {
 
   private func detail(_ entry: GrindEntry) -> String {
     let count = "\(entry.brews) \(entry.brews == 1 ? "brew" : "brews")"
-    guard let average = entry.averageHalfSteps else { return "\(count), not graded" }
-    return "\(count), average grade \(String(format: "%.1f", average / 2))"
+    guard let average = entry.averageTenths else { return "\(count), not rated" }
+    return "\(count), average rating \(Rating.text(average: average))"
   }
 }

@@ -89,7 +89,7 @@ struct BrewFormModelTests {
     brew.totalTimeS = 172
     brew.grindSetting = "21 clicks"
     brew.verdict = .sour
-    brew.ratingHalfSteps = 6
+    brew.ratingTenths = 6
     brew.notes = "Thin and sharp."
     harness.container.mainContext.insert(method)
     harness.container.mainContext.insert(bean)
@@ -238,7 +238,7 @@ struct BrewFormModelTests {
     let model = harness.model(seed: seed())
     model.draft.grindSetting = " 21 clicks "
     model.draft.verdict = Verdict.sour.rawValue
-    model.draft.ratingHalfSteps = 7
+    model.draft.ratingTenths = 7
     #expect(harness.draftStore.load() != .none)
 
     #expect(model.save())
@@ -248,7 +248,7 @@ struct BrewFormModelTests {
     #expect(brews[0].totalTimeS == 187)
     #expect(brews[0].grindSetting == "21 clicks")
     #expect(brews[0].verdict == .sour)
-    #expect(brews[0].ratingHalfSteps == 7)
+    #expect(brews[0].ratingTenths == 7)
     #expect(brews[0].isDraft == false)
     #expect(brews[0].targetsJSON != nil)
     #expect(harness.draftStore.load() == .none)
@@ -317,7 +317,7 @@ struct BrewFormModelTests {
     first.draft.waterG = 250
     first.draft.grindSetting = "21 clicks"
     first.draft.verdict = Verdict.sour.rawValue
-    first.draft.ratingHalfSteps = 7
+    first.draft.ratingTenths = 7
     first.draft.notes = "Sweet, a bit short."
     #expect(first.save())
     return try #require(try harness.brews().first)
@@ -332,7 +332,7 @@ struct BrewFormModelTests {
     #expect(model.draft.doseG == 15)
     #expect(model.draft.grindSetting == "21 clicks")
     #expect(model.draft.verdict == Verdict.sour.rawValue)
-    #expect(model.draft.ratingHalfSteps == 7)
+    #expect(model.draft.ratingTenths == 7)
     #expect(model.notice == nil)
 
     model.draft.doseG = 16
