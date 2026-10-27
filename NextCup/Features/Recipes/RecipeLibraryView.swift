@@ -53,6 +53,7 @@ struct RecipeLibraryView: View {
     ScrollView {
       LazyVStack(alignment: .leading, spacing: DS.Space.xl) {
         PageHeader(title: "Brew") {
+          SettingsGear(id: "recipes.settings", large: true)
           Button {
             editor = .new
           } label: {

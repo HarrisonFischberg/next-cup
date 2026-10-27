@@ -21,6 +21,8 @@ struct BrewFormView: View {
 
   @Environment(\.modelContext) private var context
   @Environment(\.dismiss) private var dismiss
+  /// The app's tabs; with them, a save lands straight on the Journal.
+  @Environment(AppRouter.self) private var router: AppRouter?
   @Environment(\.scenePhase) private var scenePhase
   @Environment(\.dynamicTypeSize) private var dts
   @Query(sort: \BrewMethod.sortOrder) private var methods: [BrewMethod]
@@ -96,13 +98,19 @@ struct BrewFormView: View {
   @ViewBuilder
   private func content(_ model: BrewFormModel) -> some View {
     Group {
-      if model.savedBrewID != nil {
+      if model.savedBrewID != nil, router == nil {
         savedState
       } else {
         form(Bindable(model), model)
       }
     }
     .onChange(of: model.draft) { _, _ in model.draftChanged() }
+    // Once the save completes, back to the Journal, where the new cup sits at the top.
+    .onChange(of: model.savedBrewID) { _, id in
+      guard id != nil, let router else { return }
+      onSaved?()
+      router.showJournal()
+    }
     .onChange(of: scenePhase) { _, phase in if phase != .active { model.flushDraft() } }
     .onDisappear { model.flushDraft() }
     .onChange(of: pickedPhoto) { _, item in
