@@ -277,7 +277,7 @@ struct PaperImportView: View {
       }
       .listRowBackground(DS.paper)
 
-      Section("Grade") {
+      Section("Rating") {
         flagged(.rating) { GradeScale(halfSteps: grade) }
       }
       .listRowBackground(DS.paper)

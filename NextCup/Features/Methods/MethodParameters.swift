@@ -26,7 +26,7 @@ enum MethodParameters {
     case .temperature: "Temperature"
     case .time: "Brew time"
     case .tds: "TDS"
-    case .rating: "Grade"
+    case .rating: "Rating"
     case .notes: "Notes"
     case .photo: "Photo"
     }
