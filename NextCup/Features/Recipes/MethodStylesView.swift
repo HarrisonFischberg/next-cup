@@ -41,7 +41,7 @@ struct MethodStylesView: View {
           VStack(alignment: .leading, spacing: DS.Space.xs) {
             Text("Pick a style").font(DS.Font.display).foregroundStyle(DS.ink)
               .dynamicTypeSize(...DS.displayCap).accessibilityAddTraits(.isHeader)
-            Text("\(styles.count) ways to brew on the \(method.name.lowercased())")
+            Text("\(styles.count) ways to brew on the \(method.name)")
               .font(.subheadline).foregroundStyle(DS.ink2)
           }
           if styles.isEmpty {

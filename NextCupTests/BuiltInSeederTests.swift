@@ -104,6 +104,7 @@ import Testing
     let methods = try context.fetch(FetchDescriptor<BrewMethod>())
     #expect(Set(methods.compactMap(\.builtInKey)) == Set(content.methods.map(\.key)))
     #expect(Set(methods.map(\.sortOrder)).count == methods.count)
+    #expect(methods.allSatisfy { !$0.isHidden }, "a first install shows every method")
 
     let recipes = try context.fetch(FetchDescriptor<Recipe>())
     #expect(recipes.count == content.recipes.count)
@@ -164,6 +165,7 @@ import Testing
     let added = try #require(
       try context.fetch(FetchDescriptor<Recipe>()).first { $0.builtInKey == "new-recipe" })
     #expect(added.method?.builtInKey == "new-method")
+    #expect(added.method?.isHidden == true, "a method added by an update waits under More methods")
   }
 
   @Test func deletedBuiltInStaysDeletedUntilReset() throws {

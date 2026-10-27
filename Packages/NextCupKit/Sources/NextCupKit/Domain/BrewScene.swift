@@ -4,6 +4,8 @@ import Foundation
 /// owner adds map by their brew style.
 public enum BrewSceneKind: String, Sendable, CaseIterable {
   case pourOver, switchable, press, inverted, espresso, cold
+  /// The brewer's drawing as it fills (moka pot, AeroPress, Chemex, drip machine).
+  case still
 
   /// `methodKey` is the built-in key (methods.json); `style` is the BrewStyle raw value.
   public init(methodKey: String?, style: String?) {
@@ -14,6 +16,7 @@ public enum BrewSceneKind: String, Sendable, CaseIterable {
     case "inverted-press": self = .inverted
     case "espresso": self = .espresso
     case "cold-brew": self = .cold
+    case "moka-pot", "aeropress", "chemex", "drip-machine": self = .still
     default:
       switch style {
       case "immersion": self = .press
@@ -148,6 +151,11 @@ public enum BrewScene {
     case .cold:
       f.bed = poured
       f.darkness = clamp(t / totalS)
+
+    case .still:
+      f.pouring = false
+      f.kettleShown = false
+      f.vessel = clamp(t / totalS)
     }
     return f
   }

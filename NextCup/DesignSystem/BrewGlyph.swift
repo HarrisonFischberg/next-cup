@@ -8,6 +8,7 @@ import SwiftUI
 
 enum BrewGlyph: String, CaseIterable, Sendable {
   case cone, flat, switchable, press, inverted, espresso, iced, coldBrew, cup
+  case moka, aeroPress, chemex, dripMachine
 
   /// `key` is the built-in method key from methods.json.
   init(methodKey key: String?) {
@@ -20,6 +21,10 @@ enum BrewGlyph: String, CaseIterable, Sendable {
     case "espresso": self = .espresso
     case "iced-pour-over": self = .iced
     case "cold-brew": self = .coldBrew
+    case "moka-pot": self = .moka
+    case "aeropress": self = .aeroPress
+    case "chemex": self = .chemex
+    case "drip-machine": self = .dripMachine
     default: self = .cup
     }
   }
@@ -220,6 +225,10 @@ enum BrewArt {
     case .iced: icedPourOver(pen)
     case .coldBrew: coldBrewJar(pen)
     case .cup: mug(pen)
+    case .moka: mokaPot(pen)
+    case .aeroPress: aeroPress(pen)
+    case .chemex: chemex(pen)
+    case .dripMachine: dripMachine(pen)
     }
   }
 
@@ -378,6 +387,73 @@ enum BrewArt {
     pen.ice(Art.cube(34, 44, 9, -10))
     pen.ice(Art.cube(57, 47, 8, 12))
     pen.thin(Art.svg("M34 60 H37 M34 67 H37 M34 74 H37"))
+  }
+
+  // `fill` is the coffee level in these four (0 empty, 1 full); the timer moves it.
+
+  static func mokaPot(_ pen: Pen, fill: Double = 1) {
+    pen.trim(Art.rect(46, 12, 8, 4, r: 1.5))
+    pen.glass(Art.svg("M33 16 H67 L64 22 H36 Z"))
+    pen.glass(Art.svg("M36 22 H64 L60 46 H40 Z"))
+    if fill > 0 {
+      let top = 46 - 22 * fill
+      let inset = (46 - top) * 4 / 24
+      pen.coffee(Art.svg("M\(40 - inset) \(top) H\(60 + inset) L60 46 H40 Z"))
+    }
+    pen.line(Art.svg("M36 24 L29 20"))
+    pen.glass(Art.rect(39, 46, 22, 4, r: 1))
+    pen.glass(Art.svg("M40 50 H60 L66 84 H34 Z"))
+    pen.thin(Art.svg("M50 22 V46 M50 50 V84"))
+    pen.trim(Art.circle(57, 66, 2))
+    pen.trimLine(Art.svg("M63 26 H71 Q75 26 74 30 L71 43 H61"), 4)
+  }
+
+  static func aeroPress(_ pen: Pen, fill: Double = 1) {
+    pen.trim(Art.rect(38, 10, 24, 4, r: 1.5))
+    pen.glass(Art.rect(40, 14, 20, 14, r: 1))
+    pen.glass(Art.rect(36, 26, 28, 40, r: 2))
+    if fill > 0 {
+      let h = 30 * fill
+      pen.coffee(Art.rect(37.5, 64.5 - h, 25, h))
+    }
+    pen.thin(Art.svg("M38 36 H42 M38 44 H42 M38 52 H42"))
+    pen.trim(Art.rect(30, 66, 40, 4, r: 1.5))
+    pen.seal(Art.rect(37, 70, 26, 4, r: 1))
+    pen.glass(Art.svg("M34 76 H66 V83 Q66 89 60 89 H40 Q34 89 34 83 Z"))
+  }
+
+  static func chemex(_ pen: Pen, fill: Double = 1) {
+    pen.glass(Art.svg("M26 14 H74 L55 46 H45 Z"))
+    pen.thin(Art.svg("M33 17 L47 43 M50 17 V43 M67 17 L53 43"))
+    pen.glass(Art.svg("M45 52 H55 L73 80 Q75 86 69 86 H31 Q25 86 27 80 Z"))
+    if fill > 0 {
+      let top = 84.5 - 22 * fill
+      let spread = (top - 52) * 18 / 28
+      pen.coffee(
+        Art.svg(
+          "M\(45 - spread) \(top) H\(55 + spread) L72.6 80 Q74 84.5 69 84.5 H31 Q26 84.5 27.4 80 Z")
+      )
+    }
+    pen.trim(Art.svg("M41 40 H59 L57.5 52 H42.5 Z"))
+    pen.trimLine(Art.svg("M58 46 L64 52"), 1.6)
+    pen.trim(Art.circle(65, 53.5, 1.8))
+  }
+
+  static func dripMachine(_ pen: Pen, fill: Double = 1) {
+    pen.glass(Art.rect(20, 14, 60, 14, r: 3))
+    pen.thin(Art.svg("M26 21 H40"))
+    pen.trim(Art.circle(72, 21, 2.5))
+    pen.glass(Art.rect(66, 28, 14, 52, r: 2))
+    pen.trim(Art.rect(30, 28, 30, 8, r: 2))
+    pen.thin(Art.svg("M45 36 V44"))
+    pen.glass(Art.svg("M30 48 H58 L60 76 Q60 79 57 79 H31 Q28 79 28 76 Z"))
+    if fill > 0 {
+      let top = 77.5 - 24 * fill
+      pen.coffee(
+        Art.svg("M\(30 - (top - 48) / 14) \(top) H\(58 + (top - 48) / 14) L59.4 77.5 H28.6 Z"))
+    }
+    pen.line(Art.svg("M58 53 H61 Q64 53 64 57 V66 Q64 70 60 70 H59"))
+    pen.glass(Art.rect(18, 80, 64, 6, r: 2))
   }
 
   private static func mug(_ pen: Pen) {
