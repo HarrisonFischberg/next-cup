@@ -211,7 +211,7 @@ struct BrewFormView: View {
         }
         if fields.contains(.rating) {
           VStack(alignment: .leading, spacing: DS.Space.sm) {
-            Text("GRADE").font(DS.Font.label).foregroundStyle(DS.ink2)
+            Text("RATING").font(DS.Font.label).foregroundStyle(DS.ink2)
             GradeScale(halfSteps: binding.draft.ratingHalfSteps)
           }
         }

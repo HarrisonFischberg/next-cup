@@ -148,7 +148,7 @@ struct BeanDetailView: View {
     let grade = { (h: Int) in h % 2 == 0 ? "\(h / 2)" : String(format: "%.1f", Double(h) / 2) }
     return VStack(alignment: .leading, spacing: 2) {
       Text("DIAL-IN").font(DS.Font.label).foregroundStyle(DS.ink2)
-      Text("Grade \(grade(trend.first)) → \(grade(trend.last)) over \(trend.count) brews")
+      Text("Rating \(grade(trend.first)) → \(grade(trend.last)) over \(trend.count) brews")
         .font(DS.Font.mono(.title3, .bold)).foregroundStyle(DS.ink)
     }
     .accessibilityElement(children: .combine)

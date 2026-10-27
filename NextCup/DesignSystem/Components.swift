@@ -337,7 +337,8 @@ struct ChoiceButton: View {
   }
 }
 
-/// Grade 0.5 to 5 in one tap per whole grade, plus a half-step toggle. Replaces eight taps on a stepper.
+/// The cup's rating out of 5: one tap per whole number, then a button that moves it half a
+/// point and says the result ("Make it 3.5"). Replaces eight taps on a stepper.
 struct GradeScale: View {
   @Binding var halfSteps: Int
   var body: some View {
@@ -364,18 +365,26 @@ struct GradeScale: View {
         }
       }
       .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
-      Button {
-        halfSteps = isHalf ? min(10, halfSteps + 1) : max(0, halfSteps - 1)
-      } label: {
-        Text(isHalf ? "MAKE IT A WHOLE" : "TAKE OFF A HALF").font(DS.Font.label)
-          .foregroundStyle(DS.ink).frame(minHeight: DS.Size.minTap)
+      if halfSteps == 0 {
+        Text("Tap a number to rate this cup out of 5.").font(.footnote).foregroundStyle(DS.ink2)
+          .accessibilityHidden(true)
+      } else {
+        let target = isHalf ? halfSteps + 1 : halfSteps - 1
+        Button {
+          halfSteps = min(10, max(1, target))
+        } label: {
+          Text("Make it \(GradeBadge.text(target))").font(.subheadline.weight(.semibold))
+            .foregroundStyle(DS.ink).padding(.horizontal, DS.Space.md)
+            .frame(minHeight: DS.Size.minTap)
+            .overlay(Capsule().strokeBorder(DS.line, lineWidth: DS.hairline))
+        }
+        .accessibilityHidden(true)
+        .accessibilityIdentifier("grade.half")
       }
-      .disabled(halfSteps == 0)
-      .accessibilityHidden(true)
     }
     .accessibilityElement()
-    .accessibilityLabel("Grade")
-    .accessibilityValue(halfSteps == 0 ? "Unrated" : "\(Double(halfSteps) / 2) of 5")
+    .accessibilityLabel("Rating")
+    .accessibilityValue(halfSteps == 0 ? "Unrated" : "\(GradeBadge.text(halfSteps)) of 5")
     .accessibilityAdjustableAction { dir in
       halfSteps = dir == .increment ? min(10, halfSteps + 1) : max(0, halfSteps - 1)
     }
@@ -386,17 +395,18 @@ struct GradeScale: View {
 struct GradeBadge: View {
   let halfSteps: Int
   var body: some View {
-    Text(
-      halfSteps == 0
-        ? "—"
-        : (halfSteps % 2 == 0 ? "\(halfSteps / 2)" : String(format: "%.1f", Double(halfSteps) / 2))
-    )
-    .font(DS.isBloom ? .system(.title2, design: .serif) : DS.Font.mono(.title3, .bold))
-    .foregroundStyle(DS.isBloom ? DS.ink : DS.onSignal)
-    .fixedSize().padding(.horizontal, DS.Space.sm)
-    .frame(minWidth: DS.Size.minTap, minHeight: 32)
-    .background(DS.isBloom ? .clear : DS.signal, ignoresSafeAreaEdges: [])
-    .accessibilityLabel(halfSteps == 0 ? "Unrated" : "Grade \(Double(halfSteps) / 2) of 5")
+    Text(halfSteps == 0 ? "—" : Self.text(halfSteps))
+      .font(DS.isBloom ? .system(.title2, design: .serif) : DS.Font.mono(.title3, .bold))
+      .foregroundStyle(DS.isBloom ? DS.ink : DS.onSignal)
+      .fixedSize().padding(.horizontal, DS.Space.sm)
+      .frame(minWidth: DS.Size.minTap, minHeight: 32)
+      .background(DS.isBloom ? .clear : DS.signal, ignoresSafeAreaEdges: [])
+      .accessibilityLabel(halfSteps == 0 ? "Unrated" : "Rated \(Self.text(halfSteps)) of 5")
+  }
+
+  /// "4" or "3.5".
+  static func text(_ halfSteps: Int) -> String {
+    halfSteps % 2 == 0 ? "\(halfSteps / 2)" : String(format: "%.1f", Double(halfSteps) / 2)
   }
 }
 

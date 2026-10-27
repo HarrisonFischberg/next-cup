@@ -37,7 +37,7 @@ enum BeanSort: String, CaseIterable, Identifiable {
     case .recent: "Recently added"
     case .name: "Name"
     case .roastDate: "Roast date"
-    case .grade: "Highest grade"
+    case .grade: "Highest rating"
     }
   }
 }

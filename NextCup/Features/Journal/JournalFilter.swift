@@ -10,7 +10,7 @@ enum JournalSort: String, CaseIterable, Identifiable {
     switch self {
     case .newest: "Newest first"
     case .oldest: "Oldest first"
-    case .topGrade: "Highest grade"
+    case .topGrade: "Highest rating"
     }
   }
 }

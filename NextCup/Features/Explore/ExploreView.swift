@@ -249,9 +249,9 @@ private struct BeanRecommendationCard: View {
   private var subtitle: String {
     if result.isDefault {
       return
-        "DEFAULT  ·  \(result.similarRatedCount) of \(Recommender.minimumSimilarBrews) graded similar brews"
+        "DEFAULT  ·  \(result.similarRatedCount) of \(Recommender.minimumSimilarBrews) rated similar brews"
     }
-    return "FROM YOUR BREWS  ·  \(result.similarRatedCount) graded similar brews"
+    return "FROM YOUR BREWS  ·  \(result.similarRatedCount) rated similar brews"
   }
 }
 

@@ -49,7 +49,7 @@ struct BestSoFarCard: View {
               spread
             } else {
               Text(
-                "Grade a brew with this bean to see its best settings and how its grades spread."
+                "Rate a brew with this bean to see its best settings and how its ratings spread."
               )
               .font(.callout).foregroundStyle(DS.ink2).padding(DS.Space.md)
               .frame(maxWidth: .infinity, alignment: .leading)
@@ -109,7 +109,7 @@ struct BestSoFarCard: View {
     let most = summary.spread.map(\.brews).max() ?? 1
     return VStack(alignment: .leading, spacing: DS.Space.sm) {
       HStack {
-        Text("GRADES").font(DS.Font.label).foregroundStyle(DS.ink2)
+        Text("RATINGS").font(DS.Font.label).foregroundStyle(DS.ink2)
         Spacer(minLength: DS.Space.sm)
         if let average = summary.averageHalfSteps {
           Text("Average \(String(format: "%.1f", average / 2))")
@@ -131,7 +131,7 @@ struct BestSoFarCard: View {
         .frame(minHeight: 24)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-          "Grade \(gradeText(entry.halfSteps)), \(entry.brews) \(entry.brews == 1 ? "brew" : "brews")"
+          "Rated \(gradeText(entry.halfSteps)), \(entry.brews) \(entry.brews == 1 ? "brew" : "brews")"
         )
       }
     }
@@ -167,7 +167,7 @@ struct BestSoFarCard: View {
 
   private func detail(_ entry: GrindEntry) -> String {
     let count = "\(entry.brews) \(entry.brews == 1 ? "brew" : "brews")"
-    guard let average = entry.averageHalfSteps else { return "\(count), not graded" }
-    return "\(count), average grade \(String(format: "%.1f", average / 2))"
+    guard let average = entry.averageHalfSteps else { return "\(count), not rated" }
+    return "\(count), average rating \(String(format: "%.1f", average / 2))"
   }
 }
