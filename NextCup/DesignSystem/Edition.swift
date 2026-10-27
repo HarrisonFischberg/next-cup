@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // The redesign's page furniture (docs/design/handoff): a kicker over a big title, a
 // labelled section rule, a colour block, and a labelled row. One layout for every
@@ -138,16 +139,53 @@ struct Figure: View {
   }
 }
 
-/// A method's drawing on a disc of the flavor's second colour: the hero of a recipe.
+/// Where a hero sits, which picks its photograph when the look has one.
+enum HeroRole: String { case card, setup, brew }
+
+/// A recipe's hero: the look's coffee photograph when the asset catalog has one
+/// (`hero.<style>.<role>`), otherwise the method's drawing as a small still life with a
+/// sun disc in the accent. Decorative: the name beside it carries the meaning.
 struct BrewHero: View {
   let glyph: BrewGlyph
+  var role: HeroRole = .card
   var size: CGFloat = 132
+
+  private var photo: UIImage? {
+    UIImage(named: "hero.\(AppStyle.current.rawValue).\(role.rawValue)")
+  }
+
   var body: some View {
-    ZStack {
-      Circle().fill(DS.kraft)
-      BrewGlyphView(glyph: glyph).padding(size * 0.14)
+    Group {
+      if let photo {
+        Image(uiImage: photo).resizable().scaledToFill()
+          .frame(width: size, height: size).clipped()
+          .clipShape(RoundedRectangle(cornerRadius: DS.radius, style: .continuous))
+      } else {
+        ZStack {
+          Circle().fill(DS.signal.opacity(0.9)).frame(width: size * 0.78, height: size * 0.78)
+            .offset(x: -size * 0.18, y: -size * 0.1)
+          RoundedRectangle(cornerRadius: size * 0.06, style: .continuous).fill(DS.paper)
+            .frame(width: size * 0.3, height: size * 0.3)
+            .offset(x: size * 0.36, y: size * 0.22)
+          BrewGlyphView(glyph: glyph).frame(width: size * 0.82, height: size * 0.82)
+            .offset(y: size * 0.04)
+        }
+        .frame(width: size, height: size)
+      }
     }
-    .frame(width: size, height: size)
     .accessibilityHidden(true)
+  }
+}
+
+/// The hero photograph stretched across a card, when the look has one.
+struct HeroBanner: View {
+  var role: HeroRole = .card
+  var height: CGFloat = 230
+  var body: some View {
+    if let photo = UIImage(named: "hero.\(AppStyle.current.rawValue).\(role.rawValue)") {
+      Image(uiImage: photo).resizable().scaledToFill()
+        .frame(maxWidth: .infinity).frame(height: height).clipped()
+        .accessibilityHidden(true)
+    }
   }
 }

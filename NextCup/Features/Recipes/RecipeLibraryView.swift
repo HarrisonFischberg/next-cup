@@ -1,6 +1,7 @@
 import NextCupKit
 import SwiftData
 import SwiftUI
+import UIKit
 
 /// S06, the Brew tab: a big title, search, the brew methods as drawings (tap one for its
 /// styles), More methods for the ones left out in onboarding, then Your recipes as cards.
@@ -61,6 +62,7 @@ struct RecipeLibraryView: View {
           .accessibilityLabel("New recipe")
           .accessibilityIdentifier("recipes.add")
         }
+        searchField
         if recipes.isEmpty {
           EmptyState(
             title: "No recipes yet",
@@ -81,43 +83,74 @@ struct RecipeLibraryView: View {
       .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.lg)
     }
     .background(DS.bg)
-    .searchable(text: $search, prompt: "Search recipes")
+    .scrollDismissesKeyboard(.immediately)
+    // The page draws its own title and search, so the bar would only be an empty strip.
     .navigationTitle("Brew")
-    .toolbar(removing: .title)
-    .navigationBarTitleDisplayMode(.inline)
+    .toolbar(.hidden, for: .navigationBar)
     .sheet(item: $editor) { target in
       RecipeEditorView(target: target) { _ in editor = nil }
     }
     .accessibilityIdentifier("tab.root.recipes")
   }
 
-  /// The brewers in use, drawn, each opening its styles; then the pull-down for the rest.
+  /// Search, drawn on the page under the title rather than in the bar.
+  private var searchField: some View {
+    HStack(spacing: DS.Space.sm) {
+      Image(systemName: "magnifyingglass").font(.body.weight(.semibold)).foregroundStyle(DS.ink2)
+        .accessibilityHidden(true)
+      TextField("Search recipes", text: $search).font(.body).foregroundStyle(DS.ink)
+        .submitLabel(.search).autocorrectionDisabled()
+        .accessibilityIdentifier("recipes.search")
+      if !search.isEmpty {
+        Button {
+          search = ""
+        } label: {
+          Image(systemName: "xmark.circle.fill").foregroundStyle(DS.ink2)
+            .frame(width: DS.Size.minTap, height: DS.Size.minTap)
+        }
+        .accessibilityLabel("Clear search")
+      }
+    }
+    .padding(.horizontal, DS.Space.md)
+    .frame(minHeight: DS.Size.control)
+    .background(DS.ink.opacity(0.06), in: Capsule())
+  }
+
+  /// The brewers in use on a colour block, each opening its styles, with the pull-down
+  /// for the rest in its corner.
   private var methods: some View {
-    VStack(alignment: .leading, spacing: DS.Space.md) {
-      SectionRule(title: "Explore by method") { moreMethods }
+    VStack(alignment: .leading, spacing: DS.Space.sm) {
+      HStack(alignment: .firstTextBaseline) {
+        Text("Explore by method").font(DS.Font.headline).foregroundStyle(DS.ink)
+          .accessibilityAddTraits(.isHeader)
+        Spacer(minLength: DS.Space.sm)
+        moreMethods
+      }
+      .padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.md)
       ScrollView(.horizontal, showsIndicators: false) {
-        HStack(alignment: .top, spacing: DS.Space.md) {
+        HStack(alignment: .top, spacing: DS.Space.lg) {
           ForEach(shownMethods) { method in
             NavigationLink(value: DeepLink.method(method.id)) { methodTile(method) }
               .buttonStyle(.plain)
               .accessibilityIdentifier("brew.method.\(method.name)")
           }
         }
-        .padding(.vertical, DS.Space.xs)
+        .padding(.horizontal, DS.Space.lg).padding(.bottom, DS.Space.lg)
       }
-      .scrollClipDisabled()
     }
+    .colorBlock()
   }
 
   private func methodTile(_ method: BrewMethod) -> some View {
     let count = method.recipes?.count ?? 0
+    let side: CGFloat = dts.isAccessibilitySize ? 120 : 88
     return VStack(spacing: DS.Space.xs) {
-      BrewMedallion(method.glyph).frame(width: dts.isAccessibilitySize ? 120 : 92)
+      BrewGlyphView(glyph: method.glyph).frame(width: side, height: side)
       Text(method.shortName).font(.footnote.weight(.semibold)).foregroundStyle(DS.ink)
         .multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.85)
       Text(count == 1 ? "1 style" : "\(count) styles").font(.caption).foregroundStyle(DS.ink2)
     }
-    .frame(width: dts.isAccessibilitySize ? 132 : 104)
+    .frame(width: dts.isAccessibilitySize ? 132 : 100)
     .contentShape(Rectangle())
     .accessibilityElement(children: .combine)
   }
@@ -171,14 +204,18 @@ struct RecipeLibraryView: View {
   /// A recipe card: its brewer on a colour block, then the name, method and numbers.
   private func card(_ recipe: Recipe) -> some View {
     VStack(alignment: .leading, spacing: 0) {
-      HStack {
-        Spacer(minLength: 0)
-        BrewHero(glyph: recipe.method?.glyph ?? .cup, size: 120)
-        Spacer(minLength: 0)
+      if UIImage(named: "hero.\(AppStyle.current.rawValue).card") != nil {
+        HeroBanner(role: .card)
+      } else {
+        HStack {
+          Spacer(minLength: 0)
+          BrewHero(glyph: recipe.method?.glyph ?? .cup, size: 170)
+          Spacer(minLength: 0)
+        }
+        .padding(.vertical, DS.Space.xl)
+        .frame(maxWidth: .infinity)
+        .background(DS.kraft)
       }
-      .padding(.vertical, DS.Space.lg)
-      .frame(maxWidth: .infinity)
-      .background(DS.kraft.opacity(0.55))
       VStack(alignment: .leading, spacing: DS.Space.xs) {
         HStack(alignment: .firstTextBaseline) {
           Text(recipe.name.dsTitle).font(DS.Font.din(28, relativeTo: .title2))

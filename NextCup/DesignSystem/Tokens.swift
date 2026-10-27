@@ -86,11 +86,11 @@ enum DS {
     }
     /// Page title: recipe name, screen heading.
     static var display: SwiftUI.Font {
-      DS.flavor.caps ? din(34, relativeTo: .title) : .system(.largeTitle, design: .serif)
+      DS.flavor.caps ? din(34, relativeTo: .title) : DS.flavor.display(34, relativeTo: .title)
     }
     /// Row and button names.
     static var headline: SwiftUI.Font {
-      DS.flavor.caps ? din(21, relativeTo: .headline) : .system(.title3, design: .serif)
+      DS.flavor.caps ? din(21, relativeTo: .headline) : DS.flavor.display(21, relativeTo: .headline)
     }
     /// Column headers, tile labels. Always set uppercase.
     static var label: SwiftUI.Font {
@@ -272,7 +272,8 @@ enum AppStyle: String, CaseIterable, Identifiable {
     case .sundayStudio:
       Flavor(
         bodyDesign: .rounded, displayDesign: .rounded, displayWeight: .heavy, radius: 22,
-        density: .airy, control: .pill, numbers: .rounded, caps: false, motion: .playful)
+        density: .airy, control: .pill, numbers: .rounded, caps: false, motion: .playful,
+        accentReadout: true)
     case .morningEdition:
       Flavor(
         displayDesign: .serif, displayWeight: .medium, radius: 8, density: .airy,
@@ -450,6 +451,8 @@ struct Flavor {
   /// Display text in capitals (spec-sheet flavors) or as written (Bloom).
   var caps = true
   var motion: MotionStyle = .quiet
+  /// The brew timer's digits in the accent (Sunday Studio) rather than ink.
+  var accentReadout = false
 
   /// Display text. A named face scales from `size`; the system face uses the text style.
   func display(_ size: CGFloat, relativeTo style: SwiftUI.Font.TextStyle) -> SwiftUI.Font {
