@@ -377,10 +377,11 @@ enum AppStyle: String, CaseIterable, Identifiable {
       Palette(
         bg: P(0xF4EFE4, 0x1C1713), paper: P(0xFBF8F1, 0x27201A), steel: P(0x302820, 0x302820),
         onSteel: P(0xF4EFE4, 0xF4EFE4), ink: P(0x302820, 0xF4EFE4), ink2: P(0x675A4D, 0xBFB2A4),
-        line: P(0x8E7E6E, 0x7E7064), signal: P(0xA9472F, 0xE08A6E),
+        line: P(0x8E7E6E, 0x7E7064), signal: P(0xA9472F, 0xF4EFE4),
         onSignal: P(0xFFFFFF, 0x1C1713), signalOnSteel: P(0xE8A085, 0xE8A085),
         kraft: P(0xEADFCB, 0x332A22), onKraft: P(0x302820, 0xF4EFE4),
-        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x55684A, 0xA9BC97))
+        error: P(0x9A1B0A, 0xFF9C85), ok: P(0x55684A, 0xA9BC97),
+        accent: P(0xA9472F, 0xE08A6E))
     case .precisionAtelier:
       Palette(
         bg: P(0xF5EBD7, 0x101B24), paper: P(0xFBF4E6, 0x18242E), steel: P(0x101B24, 0x1F2D38),
