@@ -26,6 +26,8 @@ enum BrewParameter: String, Codable, CaseIterable, Sendable {
 enum StepKind: String, Codable, CaseIterable, Sendable {
   case bloom, pour, wait, stir, swirl, invert, press, plug, bypass
   case openValve, closeValve, drawdown
+  /// Stovetop and machine steps (moka pot, drip machine).
+  case heat, offHeat, brew
 }
 
 enum SuggestionSource: String, Codable, CaseIterable, Sendable {

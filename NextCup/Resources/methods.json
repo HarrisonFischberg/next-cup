@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "methods": [
     {
       "key": "cone-dripper",
@@ -64,6 +64,38 @@
       "symbol": "thermometer.snowflake",
       "trackedParameters": ["dose", "water", "grind", "time", "rating", "notes", "photo"],
       "defaultStepKinds": ["pour", "stir", "wait"]
+    },
+    {
+      "key": "moka-pot",
+      "name": "Moka pot",
+      "style": "espresso",
+      "symbol": "flame",
+      "trackedParameters": ["dose", "water", "grind", "time", "rating", "notes", "photo"],
+      "defaultStepKinds": ["pour", "heat", "offHeat"]
+    },
+    {
+      "key": "aeropress",
+      "name": "AeroPress",
+      "style": "immersion",
+      "symbol": "arrow.down.to.line",
+      "trackedParameters": ["dose", "water", "grind", "temperature", "time", "rating", "notes", "photo"],
+      "defaultStepKinds": ["pour", "stir", "plug", "press"]
+    },
+    {
+      "key": "chemex",
+      "name": "Chemex",
+      "style": "pourOver",
+      "symbol": "hourglass",
+      "trackedParameters": ["dose", "water", "grind", "temperature", "time", "rating", "notes", "photo"],
+      "defaultStepKinds": ["bloom", "pour", "drawdown"]
+    },
+    {
+      "key": "drip-machine",
+      "name": "Drip machine",
+      "style": "pourOver",
+      "symbol": "cup.and.saucer",
+      "trackedParameters": ["dose", "water", "grind", "time", "rating", "notes", "photo"],
+      "defaultStepKinds": ["pour", "brew", "wait"]
     }
   ]
 }

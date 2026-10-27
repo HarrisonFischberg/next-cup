@@ -46,5 +46,9 @@ attribution appreciated but not required; may not be sold unaltered or used to b
 | `method.cold-brew` | Blake Wisz | https://unsplash.com/photos/X6aY_j6JD_Y |
 | `hero.sundayStudio.card` (replaced) | Szymon Satora | https://unsplash.com/photos/c-wdaPOmtLQ |
 | `hero.morningEdition.card` (replaced) | Jamie Long | https://unsplash.com/photos/sK-pgy8W_Yc |
+| `method.moka-pot` | Thanos Amoutzias | https://unsplash.com/photos/Kc_OvVVpnUo |
+| `method.aeropress` | Monaz Nazary | https://unsplash.com/photos/tYtkd20J3iA |
+| `method.chemex` | Jamie Long | https://unsplash.com/photos/sK-pgy8W_Yc |
+| `method.drip-machine` | earlybird coffee | https://unsplash.com/photos/JE-MOId38SU |
 
 The brewer drawings on the active brew screen and the method tiles remain original Canvas line art.
