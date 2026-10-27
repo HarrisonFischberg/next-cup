@@ -18,6 +18,7 @@ final class Brew: Identified {
   var date: Date = Date()
   var doseG: Double?
   var waterG: Double?
+  /// Unused: espresso output weight is kept in `waterG`. Kept so the schema stays valid.
   var yieldG: Double?
   var grindSetting: String?
   var grindValue: Double?
@@ -31,6 +32,7 @@ final class Brew: Identified {
   var notes: String = ""
   @Attribute(.externalStorage) var photo: Data?
   var targetsJSON: Data?
+  /// Unused: drafts live in files (`DraftStore`). Kept so the schema and old archives stay valid.
   var isDraft: Bool = false
 
   var method: BrewMethod?

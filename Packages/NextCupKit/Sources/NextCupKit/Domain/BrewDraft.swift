@@ -120,3 +120,38 @@ public struct BrewDraft: Codable, Equatable, Sendable {
     return doseG > 0 && waterG > 0
   }
 }
+
+extension BrewDraft {
+  /// Drafts written before ratings moved to tenths out of 10 carry `ratingHalfSteps`
+  /// (half points out of 5); they still open, converted.
+  private enum LegacyKeys: String, CodingKey { case ratingHalfSteps }
+
+  public init(from decoder: any Decoder) throws {
+    let c = try decoder.container(keyedBy: CodingKeys.self)
+    let legacy = try decoder.container(keyedBy: LegacyKeys.self)
+    let rating =
+      try c.decodeIfPresent(Int.self, forKey: .ratingTenths)
+      ?? legacy.decode(Int.self, forKey: .ratingHalfSteps) * 10
+    self.init(
+      id: try c.decode(UUID.self, forKey: .id),
+      sourceKey: try c.decodeIfPresent(String.self, forKey: .sourceKey),
+      date: try c.decode(Date.self, forKey: .date),
+      methodID: try c.decodeIfPresent(UUID.self, forKey: .methodID),
+      recipeID: try c.decodeIfPresent(UUID.self, forKey: .recipeID),
+      doseG: try c.decodeIfPresent(Double.self, forKey: .doseG),
+      waterG: try c.decodeIfPresent(Double.self, forKey: .waterG),
+      tempC: try c.decodeIfPresent(Double.self, forKey: .tempC),
+      totalTimeS: try c.decodeIfPresent(Int.self, forKey: .totalTimeS),
+      grindSetting: try c.decode(String.self, forKey: .grindSetting),
+      verdict: try c.decodeIfPresent(String.self, forKey: .verdict),
+      ratingTenths: rating,
+      notes: try c.decode(String.self, forKey: .notes),
+      photo: try c.decodeIfPresent(Data.self, forKey: .photo),
+      targets: try c.decodeIfPresent(BrewTargets.self, forKey: .targets),
+      endedEarly: try c.decode(Bool.self, forKey: .endedEarly),
+      beans: try c.decodeIfPresent([DraftBean].self, forKey: .beans),
+      grinderID: try c.decodeIfPresent(UUID.self, forKey: .grinderID),
+      tds: try c.decodeIfPresent(Double.self, forKey: .tds),
+      waterProfileID: try c.decodeIfPresent(UUID.self, forKey: .waterProfileID))
+  }
+}

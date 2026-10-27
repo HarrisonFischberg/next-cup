@@ -8,7 +8,7 @@ import SwiftUI
 struct ExploreView: View {
   @Environment(\.dynamicTypeSize) private var dts
   @Query(sort: \Bean.createdAt, order: .reverse) private var beans: [Bean]
-  @Query(filter: #Predicate<Brew> { !$0.isDraft }, sort: \Brew.date, order: .reverse)
+  @Query(sort: \Brew.date, order: .reverse)
   private var brews: [Brew]
   @Query private var storedAliases: [TaxonomyAlias]
   @Environment(\.modelContext) private var context

@@ -59,15 +59,3 @@ extension Brew {
     (beans ?? []).map(\.beanNameSnapshot).filter { !$0.isEmpty }
   }
 }
-
-extension DraftStore {
-  /// A saved brew's edit draft, kept apart from the new-brew draft.
-  static func editing(_ id: UUID) -> DraftStore {
-    let base =
-      FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-      ?? FileManager.default.temporaryDirectory
-    return DraftStore(
-      fileURL: base.appendingPathComponent("Drafts", isDirectory: true)
-        .appendingPathComponent("brew-edit-\(id.uuidString).json"))
-  }
-}

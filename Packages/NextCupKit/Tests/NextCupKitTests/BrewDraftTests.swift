@@ -33,6 +33,23 @@ private func succeeded<F: Error>(_ result: Result<Void, F>) -> Bool {
     #expect(store.load() == .draft(draft))
   }
 
+  @Test func draftFromBeforeTenthsOpensConverted() throws {
+    let url = makeURL()
+    let store = DraftStore(fileURL: url)
+    _ = store.save(BrewDraft(doseG: 15, ratingTenths: 7, notes: "kept"))
+    var object = try #require(
+      try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+    object["ratingHalfSteps"] = object.removeValue(forKey: "ratingTenths")
+    try JSONSerialization.data(withJSONObject: object).write(to: url)
+
+    guard case .draft(let draft) = store.load() else {
+      Issue.record("old draft was discarded")
+      return
+    }
+    #expect(draft.ratingTenths == 70)
+    #expect(draft.notes == "kept")
+  }
+
   @Test func laterSaveReplacesEarlier() {
     let store = DraftStore(fileURL: makeURL())
     var draft = BrewDraft(doseG: 15)
