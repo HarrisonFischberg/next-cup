@@ -219,7 +219,7 @@ struct BlendAndFreezerTests {
     let grinder = Grinder(name: "Hand mill")
     harness.context.insert(grinder)
 
-    func log(rating: Int?, dose: Double, grind: String, daysAgo: Int, draft: Bool = false) {
+    func log(rating: Int?, dose: Double, grind: String, daysAgo: Int) {
       let brew = Brew(date: day(-daysAgo))
       brew.doseG = dose
       brew.waterG = dose * 16
@@ -227,7 +227,6 @@ struct BlendAndFreezerTests {
       brew.totalTimeS = 180
       brew.grindSetting = grind
       brew.ratingTenths = rating
-      brew.isDraft = draft
       brew.grinder = grinder
       harness.context.insert(brew)
       let use = BrewBean(grams: dose, beanNameSnapshot: bean.name)
@@ -238,11 +237,10 @@ struct BlendAndFreezerTests {
     log(rating: 6, dose: 15, grind: "21", daysAgo: 6)
     log(rating: 9, dose: 15, grind: "23", daysAgo: 3)
     log(rating: 7, dose: 18, grind: "24", daysAgo: 1)
-    log(rating: 10, dose: 15, grind: "99", daysAgo: 0, draft: true)
     try harness.context.save()
 
     let summary = bean.bestSoFar
-    #expect(summary.brewCount == 3)  // the draft is not a brew yet
+    #expect(summary.brewCount == 3)
     #expect(summary.spread.map(\.tenths) == [6, 7, 9])
     #expect(summary.best?.grindSetting == "23")
     #expect(summary.best?.grinder == "Hand mill")

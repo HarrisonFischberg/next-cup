@@ -249,7 +249,6 @@ struct BrewFormModelTests {
     #expect(brews[0].grindSetting == "21 clicks")
     #expect(brews[0].verdict == .sour)
     #expect(brews[0].ratingTenths == 7)
-    #expect(brews[0].isDraft == false)
     #expect(brews[0].targetsJSON != nil)
     #expect(harness.draftStore.load() == .none)
     #expect(model.savedBrewID == brews[0].id)

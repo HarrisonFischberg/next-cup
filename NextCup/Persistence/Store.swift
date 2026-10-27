@@ -16,6 +16,14 @@ struct Store {
     try context.fetch(FetchDescriptor<T>()).first { $0.id == id }
   }
 
+  /// Brews are the one table that keeps growing, so this lookup asks the store for
+  /// the one row instead of loading every brew.
+  func find(_ type: Brew.Type, id: UUID) throws -> Brew? {
+    var descriptor = FetchDescriptor<Brew>(predicate: #Predicate { $0.id == id })
+    descriptor.fetchLimit = 1
+    return try context.fetch(descriptor).first
+  }
+
   /// Updates the row with this `id`, or inserts a new one. `update` runs in both
   /// cases and `updatedAt` is stamped, so importing the same data twice is a no-op
   /// on row count.

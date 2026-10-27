@@ -47,6 +47,14 @@ public struct DraftStore: Sendable {
         .appendingPathComponent("brew-again-\(sourceID.uuidString).json"))
   }
 
+  /// A saved brew's edit draft, kept apart from the new-brew draft.
+  public static func editing(_ id: UUID) -> DraftStore {
+    let standard = DraftStore.standard().fileURL
+    return DraftStore(
+      fileURL: standard.deletingLastPathComponent()
+        .appendingPathComponent("brew-edit-\(id.uuidString).json"))
+  }
+
   public static let atomicWrite: Writer = { data, url in
     try FileManager.default.createDirectory(
       at: url.deletingLastPathComponent(), withIntermediateDirectories: true)

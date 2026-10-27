@@ -10,7 +10,6 @@ struct NextCupApp: App {
   @AppStorage(AppStyle.storageKey) private var style = AppStyle.sundayStudio.rawValue
 
   init() {
-    AppStyle.adoptNightMintOnce()
     AppStyle.adoptSundayStudioOnce()
     UNUserNotificationCenter.current().delegate = TasteReminder.delegate
     // UI tests start from a known tab; relaunches in the same test omit this.

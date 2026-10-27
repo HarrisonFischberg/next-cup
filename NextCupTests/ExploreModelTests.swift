@@ -38,11 +38,10 @@ struct ExploreModelTests {
 
     @discardableResult
     func brew(
-      _ beans: [Bean], method: BrewMethod?, grade: Int?, draft: Bool = false, day: Int = 0
+      _ beans: [Bean], method: BrewMethod?, grade: Int?, day: Int = 0
     ) -> Brew {
       let brew = Brew(date: Date(timeIntervalSince1970: 1_700_000_000 + Double(day) * 86_400))
       brew.ratingTenths = grade
-      brew.isDraft = draft
       brew.method = method
       brew.doseG = 15
       brew.waterG = 250
@@ -83,12 +82,11 @@ struct ExploreModelTests {
     #expect(after.contains { $0.dimension == .origin && $0.key == "caribbean" })
   }
 
-  @Test func historySkipsDraftsAndBrewsWithoutAMethod() throws {
+  @Test func historySkipsBrewsWithoutAMethod() throws {
     let harness = try Harness()
     let bean = harness.bean("Washed Ethiopia")
     let cone = harness.method("Cone dripper", key: "cone-dripper")
     harness.brew([bean], method: cone, grade: 8)
-    harness.brew([bean], method: cone, grade: 8, draft: true)
     harness.brew([bean], method: nil, grade: 8)
     let history = ExploreModel.history(
       of: try harness.context.fetch(FetchDescriptor<Brew>()), taxonomy: try taxonomy(), aliases: [])

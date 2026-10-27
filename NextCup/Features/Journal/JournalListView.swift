@@ -37,7 +37,7 @@ struct JournalListView: View {
   }
 
   /// Every saved brew except the one waiting out its Undo window.
-  private var logged: [Brew] { brews.filter { !$0.isDraft && $0.id != pendingDelete } }
+  private var logged: [Brew] { brews.filter { $0.id != pendingDelete } }
 
   private var beanNames: [String] { Set(logged.flatMap(\.beanNames)).sorted() }
 

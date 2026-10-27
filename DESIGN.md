@@ -93,7 +93,7 @@ components:
 
 Light-mode hexes are the defaults above; the `-dark` entries are the gunmetal
 appearance. Source of truth: `docs/design/tokens/*.json` and
-`design/DesignSystem/Tokens.swift` (kept in sync by `design/check_tokens.py`).
+`NextCup/DesignSystem/Tokens.swift` (kept in sync by `design/check_tokens.py`).
 Values the format cannot hold (focus, motion, depth) are in the sections below.
 
 ## Overview
@@ -176,7 +176,7 @@ Square. Panels, tables, tiles and chips have 0 radius; buttons have a 3 pt radiu
 
 ## Components
 
-All components live in `design/DesignSystem/Components.swift`; `Gallery.swift` shows each state (run the app with `-gallery`).
+All components live in `NextCup/DesignSystem/Components.swift`.
 
 ### Buttons
 - **Primary** (`SteelButton`): signal orange, uppercase DIN, 60 pt tall, full width. Pressed: down 2 pt (brightness dip under Reduce Motion). Disabled: 40% opacity. Loading: spinner beside the label, taps blocked, label kept for VoiceOver.
