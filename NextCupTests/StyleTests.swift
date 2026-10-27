@@ -50,9 +50,9 @@ struct StyleTests {
     }
   }
 
-  @Test func twelveFlavorsWithoutTheRemovedOnes() {
-    #expect(AppStyle.allCases.count == 12)
-    #expect(Set(AppStyle.allCases.map(\.title)).count == 12)
+  @Test func thirteenFlavorsWithoutTheRemovedOnes() {
+    #expect(AppStyle.allCases.count == 13)
+    #expect(Set(AppStyle.allCases.map(\.title)).count == 13)
     for removed in ["terracotta", "lateNightCafe", "makeItYours"] {
       #expect(AppStyle(rawValue: removed) == nil)
     }
@@ -83,6 +83,9 @@ struct StyleTests {
     #expect(AppStyle.sundayStudio.flavor.control == .pill && !AppStyle.sundayStudio.flavor.caps)
     #expect(AppStyle.morningEdition.flavor.motion == .quiet)
     #expect(AppStyle.morningEdition.flavor.displayDesign == .serif)
+    #expect(AppStyle.steelBlue.flavor.displayDesign == .serif)
+    #expect(AppStyle.steelBlue.palette.bg.dark == AppStyle.morningEdition.palette.bg.dark)
+    #expect(AppStyle.steelBlue.palette.accent?.dark != AppStyle.morningEdition.palette.accent?.dark)
     #expect(AppStyle.precisionAtelier.flavor.motion == .crisp)
     #expect(AppStyle.precisionAtelier.flavor.control == .square)
   }

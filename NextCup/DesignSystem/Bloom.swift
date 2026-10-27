@@ -9,7 +9,7 @@ extension DS {
   /// The ring and progress colour. The handoff looks use their own accent, so no terracotta
   /// shows up where the owner asked for none.
   static var crema: Color {
-    [.sundayStudio, .morningEdition, .precisionAtelier].contains(AppStyle.current)
+    [.sundayStudio, .morningEdition, .steelBlue, .precisionAtelier].contains(AppStyle.current)
       ? accent : Color(P(0xB8652A, 0xE0A06A))
   }
   static let espresso = Color(P(0x4A2C1D, 0xD9C2AE))
