@@ -1,4 +1,5 @@
 import Foundation
+import NextCupKit
 import SwiftData
 
 /// Opens the store and seeds the bundled methods and recipes at launch.
@@ -29,6 +30,9 @@ enum AppBootstrap {
       if case .failure(let error) = seeder.seed(content) {
         return .failure(.init(message: describe(error)))
       }
+      if !inMemory, case .failure(let error) = RatingMigration.run(container.mainContext) {
+        return .failure(.init(message: describe(error)))
+      }
       #if DEBUG
         // Screenshots only: a few sample brews in the throwaway in-memory store.
         if inMemory, ProcessInfo.processInfo.arguments.contains("-demoBrews") {
@@ -48,6 +52,33 @@ enum AppBootstrap {
   }
 }
 
+/// Ratings moved from half points out of 5 to tenths out of 10: 4 of 5 (8) becomes 8.0 of 10
+/// (80). Runs once, before anything can save a rating on the new scale, then remembers it ran.
+@MainActor
+enum RatingMigration {
+  static let doneKey = "rating.tenthsMigrated"
+
+  static func run(
+    _ context: ModelContext, defaults: UserDefaults = .standard,
+    drafts: DraftStore = .standard()
+  ) -> Result<Void, StoreError> {
+    guard !defaults.bool(forKey: doneKey) else { return .success(()) }
+    for brew in (try? context.fetch(FetchDescriptor<Brew>())) ?? [] {
+      brew.ratingTenths = brew.ratingTenths.map { $0 * 10 }
+    }
+    for bean in (try? context.fetch(FetchDescriptor<Bean>())) ?? [] {
+      bean.ratingTenths = bean.ratingTenths.map { $0 * 10 }
+    }
+    if case .failure(let error) = Store(context: context).save() { return .failure(error) }
+    if case .draft(var draft) = drafts.load() {
+      draft.ratingTenths *= 10
+      _ = drafts.save(draft)
+    }
+    defaults.set(true, forKey: doneKey)
+    return .success(())
+  }
+}
+
 struct StartupError: Error, Equatable {
   let message: String
 }
@@ -57,11 +88,11 @@ struct StartupError: Error, Equatable {
     static func insert(into context: ModelContext) {
       let methods = (try? context.fetch(FetchDescriptor<BrewMethod>())) ?? []
       let samples: [(String, Int, Double, Double, Int, Int, Verdict)] = [
-        ("Geometry", 0, 15, 250, 185, 9, .balanced),
-        ("Kenya Rukira", 1, 18, 300, 240, 8, .sour),
-        ("Monarch", 1, 18, 290, 200, 7, .bitter),
-        ("Geometry", 3, 15, 250, 200, 8, .balanced),
-        ("Southern Weather", 4, 20, 320, 210, 7, .weak),
+        ("Geometry", 0, 15, 250, 185, 88, .balanced),
+        ("Kenya Rukira", 1, 18, 300, 240, 79, .sour),
+        ("Monarch", 1, 18, 290, 200, 68, .bitter),
+        ("Geometry", 3, 15, 250, 200, 81, .balanced),
+        ("Southern Weather", 4, 20, 320, 210, 72, .weak),
       ]
       for (name, daysAgo, dose, water, time, grade, verdict) in samples {
         let brew = Brew(
@@ -70,7 +101,7 @@ struct StartupError: Error, Equatable {
         brew.doseG = dose
         brew.waterG = water
         brew.totalTimeS = time
-        brew.ratingHalfSteps = grade
+        brew.ratingTenths = grade
         brew.verdict = verdict
         brew.method = methods.first
         let part = BrewBean(grams: dose, beanNameSnapshot: name)

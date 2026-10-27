@@ -201,7 +201,7 @@ struct TasteView: View {
   @Environment(\.modelContext) private var context
   @Environment(\.dismiss) private var dismiss
   @State private var verdict: Verdict?
-  @State private var halfSteps = 0
+  @State private var tenths = 0
   @State private var notes = ""
   @State private var outcome: DialInOutcome?
   @State private var error: String?
@@ -233,7 +233,7 @@ struct TasteView: View {
     .safeAreaInset(edge: .bottom, spacing: 0) { actions }
     .onAppear {
       verdict = brew.verdict
-      halfSteps = brew.ratingHalfSteps ?? 0
+      tenths = brew.ratingTenths ?? 0
       notes = brew.notes
     }
     .accessibilityIdentifier("taste.screen")
@@ -277,7 +277,7 @@ struct TasteView: View {
       .panel(DS.paper)
       VStack(alignment: .leading, spacing: DS.Space.sm) {
         Text("Overall").font(DS.Font.headline).foregroundStyle(DS.ink)
-        GradeScale(halfSteps: $halfSteps)
+        GradeScale(tenths: $tenths)
       }
       TextField("Anything else you notice? (optional)", text: $notes, axis: .vertical)
         .lineLimit(1...4).padding(DS.Space.lg)
@@ -289,7 +289,7 @@ struct TasteView: View {
     LoopStrip(
       at: .next,
       detail: "You said \(verdict?.rawValue ?? "–")"
-        + (halfSteps > 0 ? ", \(Double(halfSteps) / 2) of 5." : "."))
+        + (tenths > 0 ? ", \(Rating.text(tenths)) of 10." : "."))
     VStack(alignment: .leading, spacing: DS.Space.lg) {
       switch outcome {
       case .change:
@@ -342,7 +342,7 @@ struct TasteView: View {
   private func save() {
     let store = Store(context: context)
     brew.verdict = verdict
-    brew.ratingHalfSteps = halfSteps > 0 ? halfSteps : nil
+    brew.ratingTenths = tenths > 0 ? tenths : nil
     brew.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
     brew.updatedAt = Date()
     if case .failure(let failure) = store.save() {

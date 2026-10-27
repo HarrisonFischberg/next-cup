@@ -14,7 +14,7 @@ struct BrewAgainTests {
     BrewDraft(
       id: sourceID, date: Date(timeIntervalSince1970: 1_000), methodID: methodID,
       recipeID: recipeID, doseG: 18, waterG: 288, tempC: 93, totalTimeS: 172,
-      grindSetting: "21 clicks", verdict: "sour", ratingHalfSteps: 6, notes: "Thin and sharp.",
+      grindSetting: "21 clicks", verdict: "sour", ratingTenths: 6, notes: "Thin and sharp.",
       photo: Data([1, 2, 3]),
       targets: BrewTargets(doseG: 15, waterG: 250, tempC: 94, totalTimeS: 180),
       endedEarly: true)
@@ -40,7 +40,7 @@ struct BrewAgainTests {
     #expect(repeated.endedEarly == false)
     #expect(repeated.date == now)
     #expect(repeated.verdict == nil)
-    #expect(repeated.ratingHalfSteps == 0)
+    #expect(repeated.ratingTenths == 0)
     #expect(repeated.notes.isEmpty)
     #expect(repeated.photo == nil)
   }

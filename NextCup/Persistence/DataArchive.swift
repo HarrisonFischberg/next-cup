@@ -45,7 +45,8 @@ final class ModelLookup {
 /// The whole export. `version` is bumped when the shape changes; an archive from
 /// a newer app is refused instead of half-read.
 struct DataArchive: Codable, Equatable, Sendable {
-  static let currentVersion = 1
+  /// 2: ratings are tenths out of 10 (`ratingTenths`); version 1 had half points out of 5.
+  static let currentVersion = 2
 
   var version = DataArchive.currentVersion
   var exportedAt = Date()
@@ -292,6 +293,8 @@ struct BeanRecord: ArchiveRecord {
   var isDecaf: Bool
   var frozenOn: Date?
   var thawedOn: Date?
+  var ratingTenths: Int?
+  /// Version 1 archives: half points out of 5, read once on import.
   var ratingHalfSteps: Int?
   var photo: Data?
   var roasterID: UUID?
@@ -303,7 +306,7 @@ struct BeanRecord: ArchiveRecord {
     (process, varietal, roastLevel, roastDate) = (b.process, b.varietal, b.roastLevel, b.roastDate)
     (bagFlavorNotes, bagWeightG) = (b.bagFlavorNotes, b.bagWeightG)
     (remainingAdjustmentG, status, isDecaf) = (b.remainingAdjustmentG, b.status, b.isDecaf)
-    (frozenOn, thawedOn, ratingHalfSteps) = (b.frozenOn, b.thawedOn, b.ratingHalfSteps)
+    (frozenOn, thawedOn, ratingTenths) = (b.frozenOn, b.thawedOn, b.ratingTenths)
     (photo, roasterID) = (b.photo, b.roaster?.id)
   }
 
@@ -314,8 +317,8 @@ struct BeanRecord: ArchiveRecord {
     (b.process, b.varietal, b.roastLevel, b.roastDate) = (process, varietal, roastLevel, roastDate)
     (b.bagFlavorNotes, b.bagWeightG) = (bagFlavorNotes, bagWeightG)
     (b.remainingAdjustmentG, b.status, b.isDecaf) = (remainingAdjustmentG, status, isDecaf)
-    (b.frozenOn, b.thawedOn, b.ratingHalfSteps, b.photo) = (
-      frozenOn, thawedOn, ratingHalfSteps, photo
+    (b.frozenOn, b.thawedOn, b.ratingTenths, b.photo) = (
+      frozenOn, thawedOn, ratingTenths ?? ratingHalfSteps.map { $0 * 10 }, photo
     )
   }
 
@@ -336,6 +339,8 @@ struct BrewRecord: ArchiveRecord {
   var tempC: Double?
   var totalTimeS: Int?
   var tds: Double?
+  var ratingTenths: Int?
+  /// Version 1 archives: half points out of 5, read once on import.
   var ratingHalfSteps: Int?
   var verdict: Verdict?
   var notes: String
@@ -355,7 +360,7 @@ struct BrewRecord: ArchiveRecord {
     (grindSetting, grindValue, tempC, totalTimeS) = (
       b.grindSetting, b.grindValue, b.tempC, b.totalTimeS
     )
-    (tds, ratingHalfSteps, verdict, notes) = (b.tds, b.ratingHalfSteps, b.verdict, b.notes)
+    (tds, ratingTenths, verdict, notes) = (b.tds, b.ratingTenths, b.verdict, b.notes)
     (photo, targetsJSON, isDraft) = (b.photo, b.targetsJSON, b.isDraft)
     (methodID, recipeID, grinderID) = (b.method?.id, b.recipe?.id, b.grinder?.id)
     (waterProfileID, suggestionFollowedID) = (b.waterProfile?.id, b.suggestionFollowed?.id)
@@ -368,7 +373,9 @@ struct BrewRecord: ArchiveRecord {
     (b.grindSetting, b.grindValue, b.tempC, b.totalTimeS) = (
       grindSetting, grindValue, tempC, totalTimeS
     )
-    (b.tds, b.ratingHalfSteps, b.verdict, b.notes) = (tds, ratingHalfSteps, verdict, notes)
+    (b.tds, b.ratingTenths, b.verdict, b.notes) = (
+      tds, ratingTenths ?? ratingHalfSteps.map { $0 * 10 }, verdict, notes
+    )
     (b.photo, b.targetsJSON, b.isDraft) = (photo, targetsJSON, isDraft)
   }
 

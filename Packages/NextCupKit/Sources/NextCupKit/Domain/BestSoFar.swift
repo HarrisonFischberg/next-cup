@@ -4,7 +4,7 @@ import Foundation
 /// Canonical units (grams, °C, seconds); `grinder` is the grinder's name.
 public struct BrewSample: Equatable, Sendable {
   public var date: Date
-  public var ratingHalfSteps: Int?
+  public var ratingTenths: Int?
   public var doseG: Double?
   public var waterG: Double?
   public var tempC: Double?
@@ -13,12 +13,12 @@ public struct BrewSample: Equatable, Sendable {
   public var grinder: String?
 
   public init(
-    date: Date, ratingHalfSteps: Int? = nil, doseG: Double? = nil, waterG: Double? = nil,
+    date: Date, ratingTenths: Int? = nil, doseG: Double? = nil, waterG: Double? = nil,
     tempC: Double? = nil, totalTimeS: Int? = nil, grindSetting: String? = nil,
     grinder: String? = nil
   ) {
     self.date = date
-    self.ratingHalfSteps = ratingHalfSteps
+    self.ratingTenths = ratingTenths
     self.doseG = doseG
     self.waterG = waterG
     self.tempC = tempC
@@ -27,12 +27,12 @@ public struct BrewSample: Equatable, Sendable {
     self.grinder = grinder
   }
 
-  var isRated: Bool { (ratingHalfSteps ?? 0) > 0 }
+  var isRated: Bool { (ratingTenths ?? 0) > 0 }
 }
 
 /// How many brews got one grade (in half-stars, 1 to 10).
 public struct RatingCount: Equatable, Sendable {
-  public var halfSteps: Int
+  public var tenths: Int
   public var brews: Int
 }
 
@@ -44,7 +44,7 @@ public struct GrindEntry: Equatable, Sendable {
   public var setting: String
   public var brews: Int
   /// Mean grade in half-stars over the rated brews, `nil` if none were rated.
-  public var averageHalfSteps: Double?
+  public var averageTenths: Double?
   public var lastUsed: Date
 }
 
@@ -53,7 +53,7 @@ public struct BestSoFarSummary: Equatable, Sendable {
   public var ratedCount: Int
   /// Grades from lowest to highest, only the ones that occur.
   public var spread: [RatingCount]
-  public var averageHalfSteps: Double?
+  public var averageTenths: Double?
   /// The highest-graded brew (the newest of any tie): its settings are the
   /// bean's best so far. `nil` until a brew is graded.
   public var best: BrewSample?
@@ -64,19 +64,19 @@ public struct BestSoFarSummary: Equatable, Sendable {
 public enum BestSoFar {
   public static func summarize(_ samples: [BrewSample]) -> BestSoFarSummary {
     let rated = samples.filter(\.isRated)
-    let counts = Dictionary(grouping: rated, by: { $0.ratingHalfSteps ?? 0 })
-      .map { RatingCount(halfSteps: $0.key, brews: $0.value.count) }
-      .sorted { $0.halfSteps < $1.halfSteps }
+    let counts = Dictionary(grouping: rated, by: { $0.ratingTenths ?? 0 })
+      .map { RatingCount(tenths: $0.key, brews: $0.value.count) }
+      .sorted { $0.tenths < $1.tenths }
     let average =
       rated.isEmpty
-      ? nil : Double(rated.reduce(0) { $0 + ($1.ratingHalfSteps ?? 0) }) / Double(rated.count)
+      ? nil : Double(rated.reduce(0) { $0 + ($1.ratingTenths ?? 0) }) / Double(rated.count)
     let best = rated.max {
-      let (a, b) = ($0.ratingHalfSteps ?? 0, $1.ratingHalfSteps ?? 0)
+      let (a, b) = ($0.ratingTenths ?? 0, $1.ratingTenths ?? 0)
       return a == b ? $0.date < $1.date : a < b
     }
     return BestSoFarSummary(
       brewCount: samples.count, ratedCount: rated.count, spread: counts,
-      averageHalfSteps: average, best: best, grindHistory: grindHistory(samples))
+      averageTenths: average, best: best, grindHistory: grindHistory(samples))
   }
 
   private struct Key: Hashable {
@@ -97,11 +97,11 @@ public enum BestSoFar {
       groups[key, default: []].append(sample)
     }
     let entries = groups.map { key, group -> GrindEntry in
-      let grades = group.compactMap { $0.isRated ? $0.ratingHalfSteps : nil }
+      let grades = group.compactMap { $0.isRated ? $0.ratingTenths : nil }
       return GrindEntry(
         grinder: key.grinder, doseG: key.dose.map { Double($0) / 10 }, setting: key.setting,
         brews: group.count,
-        averageHalfSteps: grades.isEmpty
+        averageTenths: grades.isEmpty
           ? nil : Double(grades.reduce(0, +)) / Double(grades.count),
         lastUsed: group.map(\.date).max() ?? .distantPast)
     }

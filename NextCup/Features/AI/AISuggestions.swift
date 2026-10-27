@@ -59,7 +59,7 @@ enum AISuggestions {
     }
     if let value = brew.totalTimeS { parts.append("time \(value) s") }
     if let value = brew.verdict { parts.append("tasted \(value.rawValue)") }
-    if let value = brew.ratingHalfSteps { parts.append("rating \(Double(value) / 2) of 5") }
+    if let value = brew.ratingTenths { parts.append("rating \(Rating.text(value)) of 10") }
     if !brew.notes.isEmpty { parts.append("notes: \(brew.notes)") }
     return "- " + parts.joined(separator: "; ")
   }

@@ -84,35 +84,35 @@ struct BestSoFarTests {
     #expect(summary.brewCount == 0)
     #expect(summary.ratedCount == 0)
     #expect(summary.spread.isEmpty)
-    #expect(summary.averageHalfSteps == nil)
+    #expect(summary.averageTenths == nil)
     #expect(summary.best == nil)
     #expect(summary.grindHistory.isEmpty)
   }
 
   @Test func spreadCountsEachGradeAndIgnoresUnrated() throws {
     let summary = BestSoFar.summarize([
-      BrewSample(date: day(0), ratingHalfSteps: 6),
-      BrewSample(date: day(1), ratingHalfSteps: 8),
-      BrewSample(date: day(2), ratingHalfSteps: 6),
-      BrewSample(date: day(3), ratingHalfSteps: nil),
-      BrewSample(date: day(4), ratingHalfSteps: 0),
+      BrewSample(date: day(0), ratingTenths: 6),
+      BrewSample(date: day(1), ratingTenths: 8),
+      BrewSample(date: day(2), ratingTenths: 6),
+      BrewSample(date: day(3), ratingTenths: nil),
+      BrewSample(date: day(4), ratingTenths: 0),
     ])
     #expect(summary.brewCount == 5)
     #expect(summary.ratedCount == 3)
     #expect(
-      summary.spread == [RatingCount(halfSteps: 6, brews: 2), RatingCount(halfSteps: 8, brews: 1)])
-    let average = try #require(summary.averageHalfSteps)
+      summary.spread == [RatingCount(tenths: 6, brews: 2), RatingCount(tenths: 8, brews: 1)])
+    let average = try #require(summary.averageTenths)
     #expect(abs(average - 20.0 / 3.0) < 0.0001)
   }
 
   @Test func bestIsTheHighestGradeAndTheNewestOfATie() {
     let older = BrewSample(
-      date: day(0), ratingHalfSteps: 9, doseG: 15, waterG: 250, tempC: 94, totalTimeS: 170,
+      date: day(0), ratingTenths: 9, doseG: 15, waterG: 250, tempC: 94, totalTimeS: 170,
       grindSetting: "21")
     let newer = BrewSample(
-      date: day(5), ratingHalfSteps: 9, doseG: 16, waterG: 260, tempC: 93, totalTimeS: 180,
+      date: day(5), ratingTenths: 9, doseG: 16, waterG: 260, tempC: 93, totalTimeS: 180,
       grindSetting: "22")
-    let lower = BrewSample(date: day(9), ratingHalfSteps: 7, doseG: 15)
+    let lower = BrewSample(date: day(9), ratingTenths: 7, doseG: 15)
     let summary = BestSoFar.summarize([older, lower, newer])
     #expect(summary.best == newer)
   }
@@ -125,13 +125,13 @@ struct BestSoFarTests {
 
   @Test func grindHistoryGroupsByGrinderDoseAndSetting() {
     let summary = BestSoFar.summarize([
-      BrewSample(date: day(0), ratingHalfSteps: 6, doseG: 15, grindSetting: "21", grinder: "Zed"),
+      BrewSample(date: day(0), ratingTenths: 6, doseG: 15, grindSetting: "21", grinder: "Zed"),
       BrewSample(
-        date: day(1), ratingHalfSteps: 8, doseG: 15.04, grindSetting: "21", grinder: "Zed"),
-      BrewSample(date: day(2), ratingHalfSteps: 9, doseG: 18, grindSetting: "23", grinder: "Zed"),
-      BrewSample(date: day(3), ratingHalfSteps: 5, doseG: 15, grindSetting: "30", grinder: "Alma"),
+        date: day(1), ratingTenths: 8, doseG: 15.04, grindSetting: "21", grinder: "Zed"),
+      BrewSample(date: day(2), ratingTenths: 9, doseG: 18, grindSetting: "23", grinder: "Zed"),
+      BrewSample(date: day(3), ratingTenths: 5, doseG: 15, grindSetting: "30", grinder: "Alma"),
       BrewSample(date: day(4), doseG: 15, grindSetting: "25"),
-      BrewSample(date: day(5), ratingHalfSteps: 10, doseG: 15, grindSetting: "   "),
+      BrewSample(date: day(5), ratingTenths: 10, doseG: 15, grindSetting: "   "),
     ])
     let history = summary.grindHistory
     // Alma first, then Zed by dose, then the brew with no grinder recorded.
@@ -140,8 +140,8 @@ struct BestSoFarTests {
     let zed = history[1]
     #expect(zed.doseG == 15)
     #expect(zed.brews == 2)
-    #expect(zed.averageHalfSteps == 7)
+    #expect(zed.averageTenths == 7)
     #expect(zed.lastUsed == day(1))
-    #expect(history[3].averageHalfSteps == nil)
+    #expect(history[3].averageTenths == nil)
   }
 }

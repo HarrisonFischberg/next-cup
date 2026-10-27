@@ -35,7 +35,7 @@ struct JournalFilter: Equatable {
     case .oldest: return kept.sorted { $0.date < $1.date }
     case .topGrade:
       return kept.sorted {
-        let (a, b) = ($0.ratingHalfSteps ?? 0, $1.ratingHalfSteps ?? 0)
+        let (a, b) = ($0.ratingTenths ?? 0, $1.ratingTenths ?? 0)
         return a == b ? $0.date > $1.date : a > b
       }
     }
