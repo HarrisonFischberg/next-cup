@@ -1,0 +1,37 @@
+{
+  "_about": "Steel Blue. Morning Edition's layout and type on ink: cool white paper, blue-black ink, steel-blue accent. Source of truth for NextCup/DesignSystem/Tokens.swift (design/check_tokens.py).",
+  "light": {
+    "bg": "#F7F7F4",
+    "paper": "#FFFFFF",
+    "steel": "#1A2129",
+    "on-steel": "#F7F7F4",
+    "ink": "#1A2129",
+    "ink-2": "#55606B",
+    "line": "#85909B",
+    "signal": "#1A2129",
+    "on-signal": "#F7F7F4",
+    "signal-on-steel": "#C9D3DE",
+    "kraft": "#E9ECEF",
+    "on-kraft": "#1A2129",
+    "error": "#9A1B0A",
+    "ok": "#2A6A2A",
+    "accent": "#2F5E9E"
+  },
+  "dark": {
+    "bg": "#10151B",
+    "paper": "#18202A",
+    "steel": "#1F2935",
+    "on-steel": "#F2F0EA",
+    "ink": "#F2F0EA",
+    "ink-2": "#B4BCC6",
+    "line": "#6E7A87",
+    "signal": "#F2F0EA",
+    "on-signal": "#10151B",
+    "signal-on-steel": "#C9D3DE",
+    "kraft": "#1F2935",
+    "on-kraft": "#F2F0EA",
+    "error": "#FF9C85",
+    "ok": "#9FE0A8",
+    "accent": "#8FB3E8"
+  }
+}

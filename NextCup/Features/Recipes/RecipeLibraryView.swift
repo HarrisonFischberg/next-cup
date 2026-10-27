@@ -175,7 +175,7 @@ struct RecipeLibraryView: View {
           .font(.subheadline.weight(.semibold))
         Image(systemName: "chevron.right").font(.caption.weight(.bold))
       }
-      .foregroundStyle(DS.signal).frame(minHeight: DS.Size.minTap)
+      .foregroundStyle(DS.accent).frame(minHeight: DS.Size.minTap)
     }
     .accessibilityIdentifier("recipes.moreMethods")
   }

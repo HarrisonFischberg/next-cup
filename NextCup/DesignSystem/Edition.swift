@@ -47,8 +47,8 @@ extension PageHeader where Trailing == EmptyView {
 /// Small tracked label in the accent: a kicker over a title, "03 / WAIT" over a step.
 struct Kicker: View {
   let text: String
-  var color = DS.signal
-  init(_ text: String, color: Color = DS.signal) {
+  var color = DS.accent
+  init(_ text: String, color: Color = DS.accent) {
     self.text = text
     self.color = color
   }
@@ -103,7 +103,7 @@ struct LabeledRow<Trailing: View>: View {
 
   var body: some View {
     HStack(spacing: DS.Space.md) {
-      Image(systemName: symbol).font(.body.weight(.semibold)).foregroundStyle(DS.signal)
+      Image(systemName: symbol).font(.body.weight(.semibold)).foregroundStyle(DS.accent)
         .frame(width: 28).accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 2) {
         Text(label).font(.footnote).foregroundStyle(DS.ink2)
@@ -125,7 +125,7 @@ struct Figure: View {
   let value: String
   var body: some View {
     HStack(alignment: .top, spacing: DS.Space.sm) {
-      Image(systemName: symbol).font(.footnote.weight(.semibold)).foregroundStyle(DS.signal)
+      Image(systemName: symbol).font(.footnote.weight(.semibold)).foregroundStyle(DS.accent)
         .frame(width: 20).padding(.top, 3).accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 0) {
         Text(label).font(.footnote).foregroundStyle(DS.ink2)
