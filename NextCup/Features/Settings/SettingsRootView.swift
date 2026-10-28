@@ -7,7 +7,7 @@ struct SettingsRootView: View {
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
 
-  @AppStorage(SystemTimerHaptics.soundKey) private var sound = false
+  @AppStorage(SystemTimerHaptics.soundKey) private var sound = true
   @AppStorage(BrewAudio.tickKey) private var tick = true
   @AppStorage(BrewAudio.musicKey) private var music = true
   @AppStorage(AppearanceMode.storageKey) private var appearance = AppearanceMode.system.rawValue

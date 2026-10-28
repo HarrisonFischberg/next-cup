@@ -27,12 +27,12 @@ final class BrewAudio: NSObject, AVAudioPlayerDelegate {
     engine.connect(node, to: engine.mainMixerNode, format: tickBuffer?.format)
   }
 
-  /// Sound waits for the timer's "Tap for sound and music"; the tick and music switches
-  /// under it start on. UI tests run silent.
+  /// Brew sounds, the tick and the music all start on; the timer offers "Tap for sound
+  /// and music" to anyone who turned them off. UI tests run silent.
   private static func on(_ key: String) -> Bool {
     let defaults = UserDefaults.standard
     return !AppBootstrap.usesInMemoryStore
-      && defaults.bool(forKey: SystemTimerHaptics.soundKey)
+      && defaults.object(forKey: SystemTimerHaptics.soundKey) as? Bool ?? true
       && defaults.object(forKey: key) as? Bool ?? true
   }
 

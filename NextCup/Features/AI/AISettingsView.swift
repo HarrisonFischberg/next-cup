@@ -1,9 +1,9 @@
 import NextCupKit
 import SwiftUI
 
-/// Settings → AI: one provider, model and effort for every feature, then the keys. A key is
-/// checked by listing its models before it is saved, and that list is what the model picker
-/// offers. Apple's on-device model needs no key.
+/// Settings → AI: a card per provider. A key is checked by listing its models before it is
+/// saved, and that list is what the card's model picker offers. The checked provider, with
+/// its model and effort, serves every feature. Apple's on-device model needs no key.
 struct AISettingsView: View {
   private let keychain = KeychainStore()
   private let preferences = AIPreferences()
@@ -13,6 +13,7 @@ struct AISettingsView: View {
   @State private var checking: AIProvider?
   @State private var pending: AIProvider?
   @State private var errorMessage: String?
+  @State private var removing: AIProvider?
   @State private var provider: AIProvider
   @State private var model: String
   @State private var effort: String
@@ -38,34 +39,8 @@ struct AISettingsView: View {
         .listRowInsets(EdgeInsets())
         .listRowBackground(DS.bg)
       }
-      Section {
-        if choices.isEmpty {
-          Text("Add a key below to choose a model.").font(.footnote).foregroundStyle(DS.ink2)
-            .listRowBackground(DS.paper)
-        } else {
-          Picker("Provider", selection: $provider) {
-            ForEach(choices) { Text($0.title).tag($0) }
-          }
-          .listRowBackground(DS.paper)
-          .accessibilityIdentifier("ai.provider")
-          modelRow.listRowBackground(DS.paper)
-          if provider != .apple {
-            Picker("Effort", selection: $effort) {
-              Text("Default").tag("")
-              Text("Low").tag("low")
-              Text("Medium").tag("medium")
-              Text("High").tag("high")
-            }
-            .listRowBackground(DS.paper)
-            .accessibilityIdentifier("ai.effort")
-          }
-        }
-      } header: {
-        Text("Model")
-      } footer: {
-        Text("Used for every AI feature.")
-      }
-      ForEach(AIProvider.keyed) { keySection($0) }
+      ForEach(AIProvider.keyed) { card($0) }
+      if preferences.appleAvailable { appleCard }
     }
     .listStyle(.insetGrouped)
     .scrollContentBackground(.hidden)
@@ -93,13 +68,115 @@ struct AISettingsView: View {
         pending = nil
       }
     }
+    .confirmationDialog(
+      "Remove the \(removing?.title ?? "") key?", isPresented: removingShown,
+      titleVisibility: .visible
+    ) {
+      Button("Remove key", role: .destructive) {
+        if let removing { remove(removing) }
+      }
+    } message: {
+      Text("AI features stop using it until you add a key again.")
+    }
     .accessibilityIdentifier("settings.ai.root")
   }
 
+  private var removingShown: Binding<Bool> {
+    Binding(get: { removing != nil }, set: { if !$0 { removing = nil } })
+  }
+
+  /// One card per provider: a key field until a key is saved, then the key's status with
+  /// that provider's model and effort, all in the one card.
+  private func card(_ provider: AIProvider) -> some View {
+    Section {
+      if saved.contains(provider) {
+        HStack {
+          VStack(alignment: .leading, spacing: 2) {
+            Text(provider.title).font(.headline).foregroundStyle(DS.ink)
+            Text(models[provider].map { "Key works · \($0.count) models" } ?? "Key saved")
+              .font(.footnote).foregroundStyle(DS.ink2)
+          }
+          Spacer()
+          useControl(provider)
+        }
+        .frame(minHeight: DS.Size.control)
+        if self.provider == provider {
+          modelRow
+          Picker("Effort", selection: $effort) {
+            Text("Default").tag("")
+            Text("Low").tag("low")
+            Text("Medium").tag("medium")
+            Text("High").tag("high")
+          }
+          .accessibilityIdentifier("ai.effort")
+        }
+        Button("Remove key", role: .destructive) { removing = provider }
+          .frame(minHeight: DS.Size.minTap)
+          .accessibilityIdentifier("ai.remove.\(provider.rawValue)")
+      } else {
+        Text(provider.title).font(.headline).foregroundStyle(DS.ink)
+        HStack {
+          SecureField(
+            "API key",
+            text: Binding(get: { drafts[provider] ?? "" }, set: { drafts[provider] = $0 })
+          )
+          .textContentType(nil).textInputAutocapitalization(.never).autocorrectionDisabled()
+          .submitLabel(.done)
+          .onSubmit { requestSave(provider) }
+          .accessibilityIdentifier("ai.key.\(provider.rawValue)")
+          if checking == provider {
+            ProgressView()
+          } else {
+            Button("Save") { requestSave(provider) }
+              .buttonStyle(.borderless)
+              .disabled((drafts[provider] ?? "").trimmingCharacters(in: .whitespaces).isEmpty)
+              .accessibilityIdentifier("ai.save.\(provider.rawValue)")
+          }
+        }
+        .frame(minHeight: DS.Size.control)
+      }
+    } footer: {
+      if provider == AIProvider.keyed.last {
+        Text(
+          "Every AI feature uses the checked provider. Keys stay in this iPhone's Keychain, not backed up or exported."
+        )
+      }
+    }
+    .listRowBackground(DS.paper)
+  }
+
+  /// A check on the provider in use; a borderless Use button on the others, so a tap
+  /// anywhere else in the row does nothing.
+  @ViewBuilder private func useControl(_ provider: AIProvider) -> some View {
+    if self.provider == provider {
+      Image(systemName: "checkmark.circle.fill").foregroundStyle(DS.signal)
+        .accessibilityLabel("In use")
+    } else {
+      Button("Use") { self.provider = provider }
+        .buttonStyle(.borderless)
+        .frame(minWidth: DS.Size.minTap, minHeight: DS.Size.minTap)
+        .accessibilityIdentifier("ai.use.\(provider.rawValue)")
+    }
+  }
+
+  private var appleCard: some View {
+    Section {
+      HStack {
+        VStack(alignment: .leading, spacing: 2) {
+          Text("On this iPhone").font(.headline).foregroundStyle(DS.ink)
+          Text("Apple's model · no key, nothing leaves the phone")
+            .font(.footnote).foregroundStyle(DS.ink2)
+        }
+        Spacer()
+        useControl(.apple)
+      }
+      .frame(minHeight: DS.Size.control)
+    }
+    .listRowBackground(DS.paper)
+  }
+
   @ViewBuilder private var modelRow: some View {
-    if provider == .apple {
-      LabeledContent("Model", value: "On this iPhone")
-    } else if let list = models[provider] {
+    if let list = models[provider] {
       Picker("Model", selection: $model) {
         if !list.contains(model) { Text("Choose…").tag(model) }
         ForEach(list, id: \.self) { Text($0).tag($0) }
@@ -107,47 +184,6 @@ struct AISettingsView: View {
       .accessibilityIdentifier("ai.model")
     } else {
       LabeledContent("Model") { ProgressView() }
-    }
-  }
-
-  private func keySection(_ provider: AIProvider) -> some View {
-    Section {
-      if saved.contains(provider) {
-        HStack {
-          Text(models[provider].map { "Key works · \($0.count) models" } ?? "Key saved")
-            .foregroundStyle(DS.ink)
-          Spacer()
-          Button("Remove", role: .destructive) { remove(provider) }
-            .accessibilityIdentifier("ai.remove.\(provider.rawValue)")
-        }
-        .frame(minHeight: DS.Size.control)
-        .listRowBackground(DS.paper)
-      } else {
-        HStack {
-          SecureField(
-            "\(provider.title) API key",
-            text: Binding(get: { drafts[provider] ?? "" }, set: { drafts[provider] = $0 })
-          )
-          .textContentType(nil).textInputAutocapitalization(.never).autocorrectionDisabled()
-          .submitLabel(.done)
-          .accessibilityIdentifier("ai.key.\(provider.rawValue)")
-          if checking == provider {
-            ProgressView()
-          } else {
-            Button("Save") { requestSave(provider) }
-              .disabled((drafts[provider] ?? "").trimmingCharacters(in: .whitespaces).isEmpty)
-              .accessibilityIdentifier("ai.save.\(provider.rawValue)")
-          }
-        }
-        .frame(minHeight: DS.Size.control)
-        .listRowBackground(DS.paper)
-      }
-    } header: {
-      Text(provider.title)
-    } footer: {
-      if provider == AIProvider.keyed.last {
-        Text("Keys stay in this iPhone's Keychain. Not backed up, not exported.")
-      }
     }
   }
 
