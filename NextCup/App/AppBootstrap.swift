@@ -40,7 +40,8 @@ enum AppBootstrap {
         }
         // Performance runs only: `-perfBrews N` logs a heavy user's year of brews.
         let arguments = ProcessInfo.processInfo.arguments
-        if inMemory, let index = arguments.firstIndex(of: "-perfBrews"), index + 1 < arguments.count,
+        if inMemory, let index = arguments.firstIndex(of: "-perfBrews"),
+          index + 1 < arguments.count,
           let count = Int(arguments[index + 1])
         {
           DemoBrews.insertMany(count, into: container.mainContext)
