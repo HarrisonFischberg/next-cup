@@ -207,15 +207,16 @@ private struct BeanRecommendationCard: View {
   let onAsk: () -> Void
 
   var body: some View {
-    PaperBox {
-      VStack(alignment: .leading, spacing: 0) {
-        header
-        ForEach(
-          Array(result.items.prefix(featured ? result.items.count : 1).enumerated()), id: \.offset
-        ) { index, item in
-          Hairline()
-          let rank = result.items.count > 1 ? index + 1 : nil
-          // A tap on a suggestion opens its Start brew page.
+    // Like the Journal's Past Brews: the bean is a heading and each suggestion is its own
+    // card, spaced from the next, instead of one box split by rules.
+    VStack(alignment: .leading, spacing: DS.Space.sm) {
+      header
+      ForEach(
+        Array(result.items.prefix(featured ? result.items.count : 1).enumerated()), id: \.offset
+      ) { index, item in
+        let rank = result.items.count > 1 ? index + 1 : nil
+        // A tap on a suggestion opens its Start brew page.
+        PaperBox {
           if let link = link(item) {
             NavigationLink(value: link) {
               RecommendationRow(item: item, rank: rank, units: units, opens: true)
@@ -226,31 +227,38 @@ private struct BeanRecommendationCard: View {
             RecommendationRow(item: item, rank: rank, units: units)
           }
         }
-        Hairline()
-        if featured {
-          NavigationLink(value: DeepLink.newBrew) {
-            Text("Log a brew".dsTitle).font(DS.Font.din(24, relativeTo: .title2)).tracking(1)
-              .frame(maxWidth: .infinity, minHeight: DS.Size.primary)
-          }
-          .buttonStyle(SteelButtonStyle())
-          .padding(DS.Space.md)
-          .accessibilityIdentifier("explore.brew.\(bean.name)")
-        } else {
-          NavigationLink(value: DeepLink.newBrew) {
-            Text("Log a brew".dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
-              .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
-              .padding(.horizontal, DS.Space.md)
-          }
-          .accessibilityIdentifier("explore.brew.\(bean.name)")
+      }
+      if featured {
+        NavigationLink(value: DeepLink.newBrew) {
+          Text("Log a brew".dsTitle).font(DS.Font.din(24, relativeTo: .title2)).tracking(1)
+            .frame(maxWidth: .infinity, minHeight: DS.Size.primary)
         }
-        if canAsk {
-          Hairline()
-          Button(action: onAsk) {
-            Text("Ask AI about this coffee".dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
-              .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
-              .padding(.horizontal, DS.Space.md)
+        .buttonStyle(SteelButtonStyle())
+        .padding(.top, DS.Space.xs)
+        .accessibilityIdentifier("explore.brew.\(bean.name)")
+      }
+      if !featured || canAsk {
+        PaperBox {
+          VStack(alignment: .leading, spacing: 0) {
+            if !featured {
+              NavigationLink(value: DeepLink.newBrew) {
+                Text("Log a brew".dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
+                  .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
+                  .padding(.horizontal, DS.Space.md)
+              }
+              .accessibilityIdentifier("explore.brew.\(bean.name)")
+            }
+            if !featured && canAsk { Hairline() }
+            if canAsk {
+              Button(action: onAsk) {
+                Text("Ask AI about this coffee".dsTitle).font(DS.Font.headline)
+                  .foregroundStyle(DS.ink)
+                  .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
+                  .padding(.horizontal, DS.Space.md)
+              }
+              .accessibilityIdentifier("explore.insights.\(bean.name)")
+            }
           }
-          .accessibilityIdentifier("explore.insights.\(bean.name)")
         }
       }
     }
@@ -261,7 +269,8 @@ private struct BeanRecommendationCard: View {
   private var header: some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
       NavigationLink(value: DeepLink.bean(bean.id)) {
-        Text(bean.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
+        Text(bean.name).font(.system(.title2, design: .serif, weight: .medium))
+          .foregroundStyle(DS.ink)
           .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
       }
       .accessibilityAddTraits(.isHeader)
@@ -272,7 +281,7 @@ private struct BeanRecommendationCard: View {
       Text(subtitle).font(DS.Font.mono(.footnote)).foregroundStyle(DS.ink2)
         .accessibilityIdentifier("explore.basis.\(bean.name)")
     }
-    .padding(DS.Space.md)
+    .padding(.top, DS.Space.sm)
     .frame(maxWidth: .infinity, alignment: .leading)
   }
 
