@@ -27,11 +27,13 @@ final class BrewAudio: NSObject, AVAudioPlayerDelegate {
     engine.connect(node, to: engine.mainMixerNode, format: tickBuffer?.format)
   }
 
+  /// Sound waits for the timer's "Tap for sound and music"; the tick and music switches
+  /// under it start on. UI tests run silent.
   private static func on(_ key: String) -> Bool {
-    // UI tests run silent; every switch starts on.
-    !AppBootstrap.usesInMemoryStore
-      && UserDefaults.standard.object(forKey: SystemTimerHaptics.soundKey) as? Bool ?? true
-      && UserDefaults.standard.object(forKey: key) as? Bool ?? true
+    let defaults = UserDefaults.standard
+    return !AppBootstrap.usesInMemoryStore
+      && defaults.bool(forKey: SystemTimerHaptics.soundKey)
+      && defaults.object(forKey: key) as? Bool ?? true
   }
 
   /// True when the phone's volume is all the way down, so the screen can ask for it up.
