@@ -52,3 +52,24 @@ attribution appreciated but not required; may not be sold unaltered or used to b
 | `method.drip-machine` | earlybird coffee | https://unsplash.com/photos/JE-MOId38SU |
 
 The brewer drawings on the active brew screen and the method tiles remain original Canvas line art.
+
+## Brew music
+
+Tracks in `NextCup/Resources/Music/`, played at 20% volume during a brew (Settings > Brewing >
+Music while brewing). Downloaded 2026-10-27 from Wikimedia Commons as its MP3 transcodes and
+re-encoded to 64 kbps AAC. Only public domain or CC0 recordings are bundled; nothing needs credit,
+but each is listed here.
+
+| File | Recording | License | Source |
+| --- | --- | --- | --- |
+| `brew-music-jazz-at-the-park.m4a` | "Jazz at the park", flute and tenor sax duo, by Commons user Manwithmetalpig (own work) | CC0 | https://commons.wikimedia.org/wiki/File:Jazz_at_the_park.ogg |
+| `brew-music-army-blues-kellis-number.m4a` | "Kelli's Number", U.S. Army Blues jazz ensemble | CC0 (U.S. government work) | https://commons.wikimedia.org/wiki/File:US_Army_Blues_-_08_-_Kellis_Number.ogg |
+| `brew-music-army-blues-not-on-the-bus.m4a` | "Not On The Bus", U.S. Army Blues jazz ensemble | CC0 (U.S. government work) | https://commons.wikimedia.org/wiki/File:US_Army_Blues_-_04_-_Not_On_The_Bus.ogg |
+| `brew-music-satie-gymnopedie-1.m4a` | Satie, Gymnopédie No. 1, Robin Alciatore for Musopen | Public domain | https://commons.wikimedia.org/wiki/File:Erik_Satie_-_gymnopedies_-_la_1_ere._lent_et_douloureux.ogg |
+| `brew-music-chopin-nocturne-op55-1.m4a` | Chopin, Nocturne Op. 55 No. 1 | CC0 | https://commons.wikimedia.org/wiki/File:Chopin_-_Nocturne-op-55-no-1.ogg |
+
+The two Army Blues pieces were picked over the band's standards ("Main Stem", "Stardust") because
+those compositions are still under copyright even though the recordings are not. Commons does not
+name their composers; they are taken to be the band's own pieces, written as government work.
+
+The timer's tick and chime are generated in code (`BrewAudio.tone`), so there is no sound file.
