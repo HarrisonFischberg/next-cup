@@ -4,9 +4,7 @@ import XCTest
 /// Runs only while `docs/design/looks/.capture` exists.
 final class LooksCaptureUITests: XCTestCase {
   static let styles = [
-    "sundayStudio", "morningEdition", "steelBlue", "precisionAtelier", "daily", "bloom",
-    "steelKraft", "charcoalCrema", "quietCeramic", "nightMint", "espressoBlack", "cafePage",
-    "roasterPoster",
+    "sundayStudio", "morningEdition", "steelBlue", "daily", "cafePage", "roasterPoster",
   ]
 
   @MainActor

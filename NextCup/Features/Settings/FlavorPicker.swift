@@ -9,12 +9,12 @@ struct FlavorPicker: View {
   @Environment(\.dynamicTypeSize) private var dts
   @State private var showsAll = false
 
-  /// The three directions, plus the chosen look when it is another; the rest wait behind More looks.
-  /// The owner's three; Precision Atelier and the older looks wait behind More looks.
+  /// The owner's three, plus the chosen look when it is another; the rest of the offered
+  /// looks wait behind More looks.
   private static let featured: [AppStyle] = [.sundayStudio, .morningEdition, .steelBlue]
   private var shown: [AppStyle] {
     showsAll
-      ? AppStyle.allCases
+      ? AppStyle.offered
       : Self.featured + (Self.featured.contains(AppStyle.current) ? [] : [AppStyle.current])
   }
 
@@ -45,7 +45,7 @@ struct FlavorPicker: View {
         }
       }
       if !showsAll {
-        Button("More looks (\(AppStyle.allCases.count - shown.count))") { showsAll = true }
+        Button("More looks (\(AppStyle.offered.count - shown.count))") { showsAll = true }
           .font(.body.weight(.semibold)).foregroundStyle(DS.ink)
           .frame(maxWidth: .infinity, minHeight: DS.Size.minTap)
           .accessibilityIdentifier("settings.flavors.more")
