@@ -19,6 +19,17 @@ public enum BrewMath {
     return tds * beverageG / doseG
   }
 
+  /// Grams of water each gram of grounds keeps.
+  public static let absorption = 2.0
+
+  /// The dose that makes `yieldG` of finished coffee at this recipe's ratio: the grounds
+  /// keep about 2 g of water per gram, so a cup is the water (and ice) less that. At an
+  /// espresso-like ratio (4 or under) the recipe's water already is the drink.
+  public static func dose(forYieldG yieldG: Double, ratio: Double?) -> Double? {
+    guard let ratio, ratio > 0, yieldG > 0 else { return nil }
+    return yieldG / (ratio > 4 ? ratio - absorption : ratio)
+  }
+
   /// "1:16.7" style label, one decimal place; `nil` when the ratio is unknown.
   public static func ratioLabel(_ ratio: Double?) -> String? {
     guard let ratio else { return nil }

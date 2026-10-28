@@ -4,6 +4,14 @@ import Testing
 @testable import NextCupKit
 
 @Suite struct BrewMathTests {
+  @Test func doseForYieldAllowsForWaterTheGroundsKeep() {
+    // 18 g at 1:15 is 270 g of water, less 36 g held in the grounds: 234 g in the cup.
+    #expect(abs(BrewMath.dose(forYieldG: 234, ratio: 15)! - 18) < 0.0001)
+    #expect(BrewMath.dose(forYieldG: 36, ratio: 2) == 18)
+    #expect(BrewMath.dose(forYieldG: 0, ratio: 15) == nil)
+    #expect(BrewMath.dose(forYieldG: 200, ratio: nil) == nil)
+  }
+
   @Test func ratioDividesWaterByDose() {
     #expect(BrewMath.ratio(doseG: 15, waterG: 250) == 250.0 / 15.0)
     #expect(BrewMath.ratioLabel(BrewMath.ratio(doseG: 15, waterG: 250)) == "1:16.7")
