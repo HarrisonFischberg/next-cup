@@ -267,7 +267,8 @@ struct TimerView: View {
 
   /// Each step as a plain command, with how long your hands are busy and the valve after it.
   private var cues: [StepCue] {
-    StepCue.cues(plan: plan, kinds: setup.stepKinds, units: units)
+    StepCue.cues(
+      plan: plan, kinds: setup.stepKinds, method: setup.methodKey, units: units)
   }
 
   private var cue: StepCue? {
@@ -281,8 +282,6 @@ struct TimerView: View {
     guard let doS = cue.doS else { return true }
     return state.elapsedS - span.start < min(doS, span.end - span.start)
   }
-
-  private var pouring: Bool { handsOn && cue?.pours == true }
 
   /// The last five seconds before a step change or the target, once your hands are free:
   /// a short step (open the valve) says what to do before it says what comes next.
@@ -350,7 +349,7 @@ struct TimerView: View {
       var line =
         state.targetReached
         ? "Target reached · \(RecipeFormat.clock(Int(state.overtimeS))) over"
-        : "Step \((currentGroup ?? 0) + 1) of \(count) · \(currentGroup.map { stepNames(groups[$0]) } ?? "")"
+        : "Step \((currentGroup ?? 0) + 1) of \(count)"
       if state.phase == .paused { line += " · Paused" }
       return line
     }
@@ -369,7 +368,7 @@ struct TimerView: View {
         state.targetReached
           ? "Target reached"
           : soon
-            ? "Get ready" : pouring ? "Pour now" : handsOn ? "Do it now" : "Hands off"
+            ? "Get ready" : handsOn ? cue?.nowChip ?? "Do it now" : "Hands off"
       }
     let number =
       state.phase == .notStarted
@@ -496,10 +495,6 @@ struct TimerView: View {
         .joined(separator: ", ")
     )
     .accessibilityIdentifier("timer.next")
-  }
-
-  private func stepNames(_ group: [Int]) -> String {
-    group.map { plan.steps[$0].label }.joined(separator: " & ")
   }
 
   /// The finish is its own moment: the time reached, then one next step. Nothing moves
