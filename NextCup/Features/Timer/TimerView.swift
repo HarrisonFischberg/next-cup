@@ -110,7 +110,7 @@ struct TimerView: View {
       while !Task.isCancelled {
         session.tick()
         muted = BrewAudio.isMuted
-        try? await Task.sleep(for: .milliseconds(250))
+        try? await Task.sleep(for: .seconds(session.nextTickDelay()), tolerance: .milliseconds(5))
       }
     }
     // Coming back catches up without replaying the cues that were missed.

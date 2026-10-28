@@ -177,6 +177,19 @@ final class TimerSession {
     publish(latest)
   }
 
+  /// How long the screen waits before its next `tick()`: a quarter second at most, but never
+  /// past the start of the brew's next whole second, so each second shows the moment it
+  /// begins and stays up a full second.
+  func nextTickDelay() -> Double {
+    let latest = engine.state()
+    return latest.phase == .running ? Self.delay(toNextSecondFrom: latest.elapsedS) : 0.25
+  }
+
+  /// A few milliseconds past the boundary, so the tick lands on the new second, not just before it.
+  nonisolated static func delay(toNextSecondFrom elapsedS: Double) -> Double {
+    min(elapsedS.rounded(.down) + 1 - elapsedS + 0.005, 0.25)
+  }
+
   // MARK: Private
 
   private func refresh() {
