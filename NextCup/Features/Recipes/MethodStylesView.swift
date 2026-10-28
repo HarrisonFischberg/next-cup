@@ -9,6 +9,8 @@ struct MethodStylesView: View {
   let methodID: UUID
   @Query private var methods: [BrewMethod]
   @State private var buildingOwn = false
+  @State private var joking = false
+  @Environment(\.dismiss) private var dismiss
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -35,7 +37,9 @@ struct MethodStylesView: View {
 
   var body: some View {
     ScrollView {
-      if let method = methods.first {
+      if let method = methods.first, method.builtInKey == NespressoJokeView.methodKey {
+        nespresso(method)
+      } else if let method = methods.first {
         let styles = Self.styles(of: method)
         VStack(alignment: .leading, spacing: DS.Space.lg) {
           VStack(alignment: .leading, spacing: DS.Space.xs) {
@@ -66,6 +70,42 @@ struct MethodStylesView: View {
     .accessibilityIdentifier(link.identifier)
     .sheet(isPresented: $buildingOwn) {
       RecipeEditorView(target: .new, methodID: methodID) { _ in buildingOwn = false }
+    }
+  }
+
+  /// Nespresso's only style; it opens the joke, and Back leaves this page too.
+  private func nespresso(_ method: BrewMethod) -> some View {
+    VStack(alignment: .leading, spacing: DS.Space.lg) {
+      Text("Pick a style").font(DS.Font.display).foregroundStyle(DS.ink)
+        .dynamicTypeSize(...DS.displayCap).accessibilityAddTraits(.isHeader)
+      Button {
+        joking = true
+      } label: {
+        HStack(alignment: .top, spacing: DS.Space.md) {
+          Text("1").font(DS.Font.mono(.headline, .bold)).foregroundStyle(DS.onSignal)
+            .frame(width: DS.Size.minTap, height: DS.Size.minTap)
+            .background(DS.signal, in: Circle())
+          VStack(alignment: .leading, spacing: DS.Space.sm) {
+            Text("Brew".dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
+            Text("Pop in a pod. Press the button.").font(.subheadline).foregroundStyle(DS.ink2)
+          }
+          Spacer(minLength: 0)
+        }
+        .padding(DS.Space.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .panel(DS.paper)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+      }
+      .buttonStyle(.plain)
+      .accessibilityIdentifier("style.1")
+    }
+    .padding(DS.Space.lg)
+    .fullScreenCover(isPresented: $joking) {
+      NespressoJokeView(method: method) {
+        joking = false
+        dismiss()
+      }
     }
   }
 
