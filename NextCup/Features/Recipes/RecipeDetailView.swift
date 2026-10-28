@@ -8,17 +8,25 @@ import UIKit
 /// Scaling is a view of the recipe; nothing is saved by it.
 struct RecipeDetailView: View {
   let link: DeepLink
-  @Query private var matches: [Recipe]
+  /// The style on screen: the linked recipe until a numbered style is picked.
+  @State private var shownID: UUID
+  @Query private var recipes: [Recipe]
 
   init(link: DeepLink, recipeID: UUID) {
     self.link = link
-    _matches = Query(filter: #Predicate<Recipe> { $0.id == recipeID })
+    _shownID = State(initialValue: recipeID)
   }
+
+  private var shown: Recipe? { recipes.first { $0.id == shownID } }
 
   var body: some View {
     Group {
-      if let recipe = matches.first {
-        RecipeDetailContent(recipe: recipe)
+      if let recipe = shown {
+        RecipeDetailContent(
+          recipe: recipe,
+          styles: recipe.method.map(MethodStylesView.styles(of:)) ?? [recipe]
+        ) { shownID = $0 }
+        .id(recipe.id)
       } else {
         ScrollView {
           EmptyState(
@@ -28,7 +36,7 @@ struct RecipeDetailView: View {
       }
     }
     .background(DS.bg)
-    .navigationTitle(matches.first?.name ?? "Recipe")
+    .navigationTitle(shown?.name ?? "Recipe")
     .toolbar(removing: .title)
     .navigationBarTitleDisplayMode(.inline)
     .accessibilityIdentifier(link.identifier)
@@ -37,6 +45,9 @@ struct RecipeDetailView: View {
 
 private struct RecipeDetailContent: View {
   let recipe: Recipe
+  /// Every style on this recipe's brewer, numbered 1, 2, 3 in the hero.
+  let styles: [Recipe]
+  let onStyle: (UUID) -> Void
   @State private var scaledDoseG: Double?
   @State private var timerSetup: TimerSetup?
   @State private var startFailed = false
@@ -53,6 +64,13 @@ private struct RecipeDetailContent: View {
   @State private var doseText = ""
   @FocusState private var typingDose: Bool
   @AppStorage(BrewFormModel.lastGrinderKey) private var lastGrinderID = ""
+  @AppStorage(BrewYield.unitKey) private var yieldUnit = BrewYield.defaultUnit.rawValue
+  @State private var yieldText = ""
+  /// The dose the amount set; typing another dose lets the amount go.
+  @State private var yieldDoseG: Double?
+  @State private var tuning: BrewSizeAI.Tuning?
+  @State private var tuningFailed = false
+  @FocusState private var typingYield: Bool
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -61,6 +79,12 @@ private struct RecipeDetailContent: View {
   }
 
   private var doseG: Double { scaledDoseG ?? recipe.doseG }
+
+  /// The finished coffee asked for, in grams (1 ml of coffee weighs about 1 g).
+  private var yieldG: Double? {
+    Double(yieldText.replacingOccurrences(of: ",", with: "."))
+      .flatMap { $0 > 0 ? $0 * (BrewYield(rawValue: yieldUnit) ?? .ml).millilitres : nil }
+  }
 
   /// One tap on the dose stepper: 0.5 g, or 0.05 oz when the units are ounces.
   private var stepG: Double { units.grams(fromDisplayWeight: units.weight == .grams ? 0.5 : 0.05) }
@@ -83,6 +107,7 @@ private struct RecipeDetailContent: View {
           grinderRow
         }
         .panel(DS.paper)
+        yieldControls
         doseControls
         calculated
         if let notes = scaled?.notes, scaledDoseG != nil, !notes.isEmpty {
@@ -111,7 +136,10 @@ private struct RecipeDetailContent: View {
       // The number pad has no return key; Done puts it away.
       ToolbarItemGroup(placement: .keyboard) {
         Spacer()
-        Button("Done") { typingDose = false }
+        Button("Done") {
+          typingDose = false
+          typingYield = false
+        }
       }
       ToolbarItem(placement: .topBarTrailing) {
         Menu {
@@ -142,25 +170,60 @@ private struct RecipeDetailContent: View {
       stacked
       ? AnyLayout(VStackLayout(alignment: .leading, spacing: DS.Space.md))
       : AnyLayout(HStackLayout(alignment: .center, spacing: DS.Space.md))
-    return layout {
-      VStack(alignment: .leading, spacing: DS.Space.xs) {
-        Text(recipe.name.dsTitle).font(DS.Font.instruction).foregroundStyle(DS.ink)
-          .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.7)
-          .accessibilityAddTraits(.isHeader)
-        if let method = recipe.method?.name {
-          Text(method).font(.subheadline.weight(.medium)).foregroundStyle(DS.ink2)
+    return VStack(alignment: .leading, spacing: 0) {
+      layout {
+        VStack(alignment: .leading, spacing: DS.Space.xs) {
+          Text(recipe.name.dsTitle).font(DS.Font.instruction).foregroundStyle(DS.ink)
+            .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.7)
+            .accessibilityAddTraits(.isHeader)
+          if let method = recipe.method?.name {
+            Text(method).font(.subheadline.weight(.medium)).foregroundStyle(DS.ink2)
+          }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        if !stacked {
+          BrewHero(
+            glyph: recipe.method?.glyph ?? .cup, methodKey: recipe.method?.builtInKey, role: .setup,
+            size: 132)
         }
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      if !stacked {
-        BrewHero(
-          glyph: recipe.method?.glyph ?? .cup, methodKey: recipe.method?.builtInKey, role: .setup,
-          size: 132)
-      }
+      .padding(DS.Space.lg)
+      stylePicker
     }
-    .padding(DS.Space.lg)
     .frame(maxWidth: .infinity, alignment: .leading)
     .colorBlock()
+  }
+
+  /// 1, 2, 3…: each style on this brewer; a tap shows that style's numbers and steps.
+  @ViewBuilder private var stylePicker: some View {
+    if styles.count > 1 {
+      VStack(alignment: .leading, spacing: DS.Space.xs) {
+        Text("\(styles.count) styles on this brewer").font(.footnote).foregroundStyle(DS.ink2)
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(spacing: DS.Space.sm) {
+            ForEach(Array(styles.enumerated()), id: \.element.id) { index, style in
+              let isShown = style.id == recipe.id
+              Button {
+                onStyle(style.id)
+              } label: {
+                Text("\(index + 1)").font(DS.Font.mono(.headline, .bold))
+                  .foregroundStyle(isShown ? DS.onSignal : DS.ink)
+                  .frame(width: DS.Size.minTap, height: DS.Size.minTap)
+                  .background(Circle().fill(isShown ? DS.signal : DS.paper))
+                  .overlay(Circle().strokeBorder(isShown ? DS.signal : DS.line, lineWidth: 1))
+              }
+              .buttonStyle(.plain)
+              .accessibilityLabel("Style \(index + 1), \(style.name)")
+              .accessibilityAddTraits(isShown ? .isSelected : [])
+              .accessibilityIdentifier("recipe.style.\(index + 1)")
+            }
+          }
+        }
+        .scrollClipDisabled()
+      }
+      .padding(.horizontal, DS.Space.lg).padding(.bottom, DS.Space.lg)
+      .sensoryFeedback(.selection, trigger: recipe.id)
+    }
   }
 
   private var beans: [Bean] { allBeans.filter { $0.status == .inUse } }
@@ -226,6 +289,110 @@ private struct RecipeDetailContent: View {
       LabeledRow(symbol: "dial.low.fill", label: "Grinder", value: "Set in Settings") {
         EmptyView()
       }
+    }
+  }
+
+  /// "How much coffee?": an amount in oz, cups or ml sets the dose at the recipe's ratio,
+  /// then the AI in Settings tunes temperature, time and grind for that batch.
+  private var yieldControls: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      HStack(spacing: DS.Space.sm) {
+        Image(systemName: "cup.and.saucer.fill").font(.body.weight(.semibold))
+          .foregroundStyle(DS.accent).frame(width: 28).accessibilityHidden(true)
+        Text("How much coffee?").font(.footnote).foregroundStyle(DS.ink2).fixedSize()
+        Spacer(minLength: DS.Space.sm)
+        TextField("—", text: $yieldText).font(DS.Font.dataLarge).keyboardType(.decimalPad)
+          .multilineTextAlignment(.trailing).frame(maxWidth: 96).focused($typingYield)
+          .foregroundStyle(DS.ink)
+          .accessibilityLabel("How much coffee")
+          .accessibilityIdentifier("recipe.yield")
+        Picker("Unit", selection: $yieldUnit) {
+          ForEach(BrewYield.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
+        }
+        .labelsHidden().tint(DS.accent).fixedSize()
+        .accessibilityIdentifier("recipe.yield.unit")
+      }
+      .padding(DS.Space.md)
+      if yieldG != nil { tuningRow }
+    }
+    .panel(DS.paper)
+    .onChange(of: yieldText) { applyYield() }
+    .onChange(of: yieldUnit) { applyYield() }
+    .onChange(of: doseG) { _, dose in
+      // A dose typed or stepped by hand lets the amount (and its tuning) go.
+      if let yieldDoseG, abs(dose - yieldDoseG) > 0.01 {
+        self.yieldDoseG = nil
+        yieldText = ""
+      }
+    }
+    .task(id: yieldDoseG) { await tune() }
+  }
+
+  @ViewBuilder private var tuningRow: some View {
+    let symbol =
+      tuning == nil ? (tuningFailed ? "info.circle" : "sparkles") : "checkmark.seal.fill"
+    HStack(alignment: .firstTextBaseline, spacing: DS.Space.sm) {
+      Image(systemName: symbol).foregroundStyle(DS.accent).frame(width: 28)
+        .accessibilityHidden(true)
+      VStack(alignment: .leading, spacing: 2) {
+        if let tuning {
+          Text(
+            "\(tuning.source) tuned it: \(RecipeFormat.temperature(tuning.tempC, units))  ·  "
+              + "\(RecipeFormat.clock(tuning.totalTimeS))  ·  grind \(tuning.grind)"
+          )
+          .font(.footnote.weight(.semibold)).foregroundStyle(DS.ink)
+          if !tuning.note.isEmpty {
+            Text(tuning.note).font(.footnote).foregroundStyle(DS.ink2)
+          }
+        } else if tuningFailed || !BrewSizeAI.isAvailable {
+          Text(
+            "Dose and water follow the recipe's ratio. Add a key in Settings > AI to tune time, "
+              + "temperature and grind too."
+          )
+          .font(.footnote).foregroundStyle(DS.ink2)
+        } else {
+          Text("Tuning time, temperature and grind…").font(.footnote).foregroundStyle(DS.ink2)
+        }
+      }
+      Spacer(minLength: 0)
+      if tuning == nil, !tuningFailed, BrewSizeAI.isAvailable { ProgressView() }
+    }
+    .padding(.horizontal, DS.Space.md).padding(.bottom, DS.Space.md)
+    .accessibilityElement(children: .combine)
+    .accessibilityIdentifier("recipe.yield.tuning")
+  }
+
+  /// Sets the dose that makes the amount asked for; water and steps follow it.
+  private func applyYield() {
+    tuning = nil
+    tuningFailed = false
+    let ratio = BrewMath.ratio(
+      doseG: recipe.doseG, waterG: recipe.waterG,
+      iceG: recipe.includesIce ? recipe.iceG : nil)
+    guard let yieldG, let dose = BrewMath.dose(forYieldG: yieldG, ratio: ratio) else {
+      yieldDoseG = nil
+      return
+    }
+    let rounded = (dose * 10).rounded() / 10
+    yieldDoseG = rounded
+    scaledDoseG = abs(rounded - recipe.doseG) < 0.0001 ? nil : rounded
+  }
+
+  /// Waits for typing to settle, then asks the AI; a failure keeps the ratio's numbers.
+  private func tune() async {
+    guard let yieldDoseG, let yieldG, BrewSizeAI.isAvailable else { return }
+    try? await Task.sleep(for: .milliseconds(800))
+    guard !Task.isCancelled, let scaled else { return }
+    let payload = BrewSizeAI.payload(
+      recipe: recipe.name, method: recipe.method?.name, recipeDoseG: recipe.doseG,
+      doseG: yieldDoseG, waterG: scaled.recipe.totalWaterG, yieldG: yieldG,
+      tempC: recipe.tempC, totalTimeS: recipe.totalTimeS)
+    do {
+      let answer = try await BrewSizeAI.tune(payload)
+      guard !Task.isCancelled else { return }
+      tuning = answer
+    } catch {
+      if !Task.isCancelled { tuningFailed = true }
     }
   }
 
@@ -310,7 +477,7 @@ private struct RecipeDetailContent: View {
       figures.append(("recipe.ice", "snowflake", "Ice", RecipeFormat.weight(ice, units)))
     }
     if let ratio { figures.append(("recipe.ratio", "circle.grid.2x1.fill", "Ratio", ratio)) }
-    if let tempC = recipe.tempC {
+    if let tempC = tuning?.tempC ?? recipe.tempC {
       figures.append(
         (
           "recipe.temperature", "thermometer.medium", "Temperature",
@@ -321,7 +488,8 @@ private struct RecipeDetailContent: View {
       figures.append(
         (
           "recipe.time", "clock", "Time",
-          RecipeFormat.clock(RecipeTiming.scaled(seconds, by: recipe.timingFactor(doseG: doseG)))
+          RecipeFormat.clock(
+            RecipeTiming.scaled(seconds, by: recipe.timingFactor(doseG: doseG, tuning: tuning)))
         ))
     }
     let columns =
@@ -345,7 +513,7 @@ private struct RecipeDetailContent: View {
   /// The steps as a timeline: time and name, and the full instructions on request.
   private func stepPreview(_ steps: [RecipeStep]) -> some View {
     let scaledSteps = scaled?.recipe.steps ?? recipe.scalable.steps
-    let factor = recipe.timingFactor(doseG: doseG)
+    let factor = recipe.timingFactor(doseG: doseG, tuning: tuning)
     return VStack(alignment: .leading, spacing: DS.Space.md) {
       SectionRule(title: "Brew steps") {
         if steps.contains(where: { !$0.instruction.isEmpty }) {
@@ -417,7 +585,7 @@ private struct RecipeDetailContent: View {
 
   private func startBrew() {
     do {
-      var setup = try TimerPlanBuilder.setup(for: recipe, doseG: doseG)
+      var setup = try TimerPlanBuilder.setup(for: recipe, doseG: doseG, tuning: tuning)
       if let bean = beans.first(where: { $0.id == beanID }) {
         setup.beanID = bean.id
         setup.beanName = bean.name
