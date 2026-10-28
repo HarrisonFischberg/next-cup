@@ -60,6 +60,7 @@ struct TimerView: View {
             )
             .accessibilityIdentifier("timer.muted")
           }
+          if let song = BrewAudio.shared.nowPlaying, session.outcome == nil { nowPlaying(song) }
           if session.outcome != nil { finishedBanner } else { currentStep }
           context
           schedule
@@ -138,6 +139,37 @@ struct TimerView: View {
       UIApplication.shared.isIdleTimerDisabled = false
       BrewAudio.shared.stop()
     }
+  }
+
+  /// The song playing, with previous, pause and next.
+  private func nowPlaying(_ song: String) -> some View {
+    let audio = BrewAudio.shared
+    let paused = audio.musicPaused || state.phase == .paused
+    return HStack(spacing: DS.Space.sm) {
+      Image(systemName: "music.note").foregroundStyle(DS.accent).accessibilityHidden(true)
+      Text(song).font(.subheadline.weight(.medium)).foregroundStyle(DS.ink).lineLimit(1)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityLabel("Now playing: \(song)")
+        .accessibilityIdentifier("timer.music.title")
+      Group {
+        Button("Previous song", systemImage: "backward.fill") { audio.skip(by: -1) }
+          .accessibilityIdentifier("timer.music.previous")
+        Button(
+          paused ? "Play music" : "Pause music", systemImage: paused ? "play.fill" : "pause.fill"
+        ) {
+          audio.toggleMusic()
+        }
+        .accessibilityIdentifier("timer.music.pause")
+        Button("Next song", systemImage: "forward.fill") { audio.skip(by: 1) }
+          .accessibilityIdentifier("timer.music.next")
+      }
+      .labelStyle(.iconOnly).font(.body).foregroundStyle(DS.ink)
+      .frame(width: DS.Size.minTap, height: DS.Size.minTap).contentShape(Rectangle())
+      .buttonStyle(.borderless)
+    }
+    .padding(.leading, DS.Space.md).padding(.trailing, DS.Space.xs)
+    .panel(DS.paper)
+    .sensoryFeedback(.selection, trigger: song)
   }
 
   /// One press turns on the ticks, the step chimes and the music, even on silent.
@@ -315,9 +347,6 @@ struct TimerView: View {
             .fixedSize(horizontal: false, vertical: true)
             .contentTransition(.opacity)
         }
-        Text(nextLine).font(.subheadline.weight(.semibold)).foregroundStyle(DS.accent)
-          .fixedSize(horizontal: false, vertical: true)
-          .accessibilityIdentifier("timer.next")
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       if !stacked { scene.frame(width: 104, height: 104) }
@@ -389,22 +418,61 @@ struct TimerView: View {
     return lines.isEmpty ? nil : lines.joined(separator: " ")
   }
 
-  /// "Open valve in 1:18 · at 2:00", or the target when this is the last step.
-  private var nextLine: String {
+  /// What comes next, what to do, and the countdown to it.
+  private var upcoming: (kicker: String, action: String, countdown: String?) {
     switch state.phase {
-    case .notStarted: return "First: \(groups.first.map { stepNames($0) } ?? "")"
-    case .finished: return "Reached \(RecipeFormat.clock(Int(state.elapsedS)))."
+    case .notStarted: return ("First", groups.first.map { stepNames($0) } ?? "", nil)
+    case .finished: return ("Done", "Reached \(RecipeFormat.clock(Int(state.elapsedS))).", nil)
     case .running, .paused:
-      if state.targetReached { return "Target time passed. Finish when it has drained." }
-      guard let seconds = state.secondsToNextChange else { return "" }
-      let countdown = RecipeFormat.clock(Int(seconds.rounded(.up)))
+      if state.targetReached { return ("Now", "Finish when it has drained.", nil) }
+      let countdown = state.secondsToNextChange.map { RecipeFormat.clock(Int($0.rounded(.up))) }
       if let group = currentGroup, group + 1 < groups.count {
         let next = groups[group + 1]
         let at = RecipeFormat.clock(plan.steps[next[0]].startOffsetS)
-        return "\(stepNames(next)) in \(countdown) · at \(at)"
+        return ("Next · at \(at)", stepNames(next), countdown)
       }
-      return "Target in \(countdown) · at \(RecipeFormat.clock(plan.totalDurationS))"
+      return ("Next", "Target time · \(RecipeFormat.clock(plan.totalDurationS))", countdown)
     }
+  }
+
+  /// The next step in advance, big enough to read from the kettle; it fills in the last
+  /// five seconds so the change never arrives unannounced.
+  private var nextUp: some View {
+    let next = upcoming
+    let soon =
+      state.phase == .running && !state.targetReached
+      && (state.secondsToNextChange ?? .infinity) <= 5
+    let fg = soon ? DS.onSignal : DS.ink
+    return HStack(alignment: .center, spacing: DS.Space.md) {
+      VStack(alignment: .leading, spacing: 2) {
+        Text(next.kicker.uppercased()).font(.caption.weight(.bold)).tracking(1.2)
+          .foregroundStyle(soon ? DS.onSignal : DS.accent)
+        Text(next.action).font(DS.Font.headline).foregroundStyle(fg)
+          .fixedSize(horizontal: false, vertical: true)
+          .contentTransition(.opacity)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      if let countdown = next.countdown {
+        Text(countdown).font(DS.Font.dataLarge).monospacedDigit().foregroundStyle(fg)
+          .contentTransition(.numericText(countsDown: true))
+      }
+    }
+    .padding(DS.Space.md)
+    .background(
+      soon ? DS.signal : DS.paper,
+      in: RoundedRectangle(cornerRadius: max(DS.radius, 18), style: .continuous)
+    )
+    .overlay(
+      RoundedRectangle(cornerRadius: max(DS.radius, 18), style: .continuous)
+        .strokeBorder(DS.signal, lineWidth: 2)
+    )
+    .animation(motion, value: soon)
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel(
+      [next.kicker, next.action, next.countdown.map { "in \($0)" }].compactMap { $0 }
+        .joined(separator: ", ")
+    )
+    .accessibilityIdentifier("timer.next")
   }
 
   private func stepNames(_ group: [Int]) -> String {
@@ -513,6 +581,8 @@ struct TimerView: View {
 
   private var controls: some View {
     VStack(spacing: DS.Space.sm) {
+      // Pinned above the controls, so the next step is always in view ahead of time.
+      if session.outcome == nil { nextUp }
       SteelButton(title: primaryTitle, action: primaryAction)
         .disabled(logged)
         .accessibilityIdentifier("timer.primary")
