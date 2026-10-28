@@ -458,13 +458,10 @@ struct StateBanner: View {
   let message: String
   var actionTitle: String?
   var action: (() -> Void)?
-  /// A second choice, shown with the first in a row under the message.
-  var secondaryTitle: String?
-  var secondaryAction: (() -> Void)?
   @Environment(\.dynamicTypeSize) private var dts
 
   var body: some View {
-    let stacked = dts.isAccessibilitySize || secondaryTitle != nil
+    let stacked = dts.isAccessibilitySize
     VStack(alignment: .leading, spacing: DS.Space.xs) {
       HStack(alignment: .top, spacing: DS.Space.md) {
         Image(
@@ -479,22 +476,12 @@ struct StateBanner: View {
           actionButton
         }
       }
-      if stacked {
-        HStack(spacing: DS.Space.lg) {
-          actionButton
-          if let secondaryTitle, let secondaryAction {
-            Button(secondaryTitle.dsTitle, action: secondaryAction)
-              .font(DS.Font.din(18, relativeTo: .headline)).foregroundStyle(DS.ink2)
-              .frame(minWidth: DS.Size.minTap, minHeight: DS.Size.minTap)
-          }
-        }
-      }
+      if stacked { actionButton }
     }
     .padding(DS.Space.md)
     .frame(maxWidth: .infinity, alignment: .leading)
     .panel(DS.paper, border: kind == .error ? DS.error : DS.line)
-    // Two choices stay separate so each can be reached and tapped on its own.
-    .accessibilityElement(children: secondaryTitle == nil ? .combine : .contain)
+    .accessibilityElement(children: .combine)
   }
 
   @ViewBuilder private var actionButton: some View {

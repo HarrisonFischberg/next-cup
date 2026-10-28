@@ -30,11 +30,12 @@ struct BrewFormModelTests {
 
     func model(
       seed: BrewFormSeed? = nil, editing: Brew? = nil, repeating: Brew? = nil,
-      failSave: Bool = false
+      resuming: Bool = false, failSave: Bool = false
     ) -> BrewFormModel {
       BrewFormModel(
         seed: seed, editing: editing, repeating: repeating, store: store,
-        draftStore: draftStore, defaults: defaults, simulatesSaveFailure: failSave)
+        draftStore: draftStore, resuming: resuming, defaults: defaults,
+        simulatesSaveFailure: failSave)
     }
 
     func brews() throws -> [Brew] { try container.mainContext.fetch(FetchDescriptor<Brew>()) }
@@ -145,19 +146,20 @@ struct BrewFormModelTests {
     blank.draft.notes = "half typed"
     blank.flushDraft()
 
+    let file = DraftStore.repeating(source.id)
     let repeated = BrewFormModel(
-      seed: nil, repeating: source, store: harness.store,
-      draftStore: .repeating(source.id), defaults: harness.defaults)
+      seed: nil, repeating: source, store: harness.store, draftStore: file,
+      defaults: harness.defaults)
     repeated.draft.grindSetting = "23 clicks"
     repeated.flushDraft()
-    defer { _ = DraftStore.repeating(source.id).clear() }
+    defer { _ = file.clear() }
 
     let reopened = BrewFormModel(
-      seed: nil, repeating: source, store: harness.store,
-      draftStore: .repeating(source.id), defaults: harness.defaults)
+      seed: nil, repeating: source, store: harness.store, draftStore: file, resuming: true,
+      defaults: harness.defaults)
     #expect(reopened.draft.grindSetting == "23 clicks")
     #expect(reopened.draft.id == repeated.draft.id)
-    #expect(harness.model().draft.notes == "half typed")
+    #expect(harness.model(resuming: true).draft.notes == "half typed")
   }
 
   @Test func editingASavedBrewStillLeavesItsBeansAlone() throws {
@@ -173,7 +175,7 @@ struct BrewFormModelTests {
 
   // MARK: Autosave and restore
 
-  @Test func flushedDraftIsRestoredByTheNextOpen() throws {
+  @Test func flushedDraftReopensFromTheJournalWithoutANotice() throws {
     let harness = try Harness()
     let first = harness.model()
     first.draft.doseG = 16
@@ -181,9 +183,31 @@ struct BrewFormModelTests {
     first.draft.notes = "Sweet, a bit short."
     first.flushDraft()
 
-    let reopened = harness.model()
+    let reopened = harness.model(resuming: true)
     #expect(reopened.draft == first.draft)
-    #expect(reopened.notice == .restored(editing: false))
+    #expect(reopened.notice == nil)
+  }
+
+  @Test func aNewOpeningStartsCleanAndLeavesTheUnsavedBrewAlone() throws {
+    let harness = try Harness()
+    let brew = try savedBrew(harness)
+    let first = harness.model(editing: brew)
+    first.draft.notes = "unsaved edit"
+    first.flushDraft()
+
+    let again = BrewFormModel(
+      seed: nil, editing: brew, store: harness.store,
+      draftStore: DraftStore(
+        fileURL: harness.draftStore.fileURL.deletingLastPathComponent()
+          .appendingPathComponent("brew-edit-again.json")), defaults: harness.defaults)
+    #expect(again.draft.notes == brew.notes)
+    #expect(again.notice == nil)
+    again.flushDraft()
+    guard case .draft(let kept) = harness.draftStore.load() else {
+      Issue.record("the unsaved edit was removed by another opening")
+      return
+    }
+    #expect(kept.notes == "unsaved edit")
   }
 
   @Test func leavingAnUntouchedFormLeavesNoDraftAndNoNotice() throws {
@@ -196,32 +220,6 @@ struct BrewFormModelTests {
     harness.model(editing: brew).flushDraft()
     #expect(harness.draftStore.load() == .none)
     #expect(harness.model(editing: brew).notice == nil)
-  }
-
-  @Test func anOldDraftThatMatchesTheSavedBrewOpensWithoutANotice() throws {
-    let harness = try Harness()
-    let brew = try savedBrew(harness)
-    let untouched = harness.model(editing: brew).draft
-    _ = harness.draftStore.save(untouched)
-    let reopened = harness.model(editing: brew)
-    #expect(reopened.notice == nil)
-    #expect(reopened.draft == untouched)
-  }
-
-  @Test func undoChangesGoesBackToTheSavedBrewAndDropsTheDraft() throws {
-    let harness = try Harness()
-    let brew = try savedBrew(harness)
-    let first = harness.model(editing: brew)
-    first.draft.notes = "unsaved edit"
-    first.flushDraft()
-
-    let reopened = harness.model(editing: brew)
-    #expect(reopened.notice == .restored(editing: true))
-    reopened.startOver()
-    #expect(reopened.notice == nil)
-    #expect(reopened.draft.notes == brew.notes)
-    #expect(reopened.draft.doseG == 15)
-    #expect(harness.draftStore.load() == .none)
   }
 
   @Test func seededFormRestoresItsOwnDraftButNotAnotherRuns() throws {
@@ -251,7 +249,7 @@ struct BrewFormModelTests {
     try FileManager.default.createDirectory(
       at: harness.draftStore.fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
     try Data("garbage".utf8).write(to: harness.draftStore.fileURL)
-    let model = harness.model()
+    let model = harness.model(resuming: true)
     #expect(model.draft.doseG == nil)
     #expect(model.notice?.message.contains("discarded") == true)
   }
@@ -382,18 +380,18 @@ struct BrewFormModelTests {
     #expect(brews[0].grindSetting == "21 clicks")
   }
 
-  @Test func editDraftRestoresForTheSameBrewOnly() throws {
+  @Test func editDraftResumesForTheSameBrewOnly() throws {
     let harness = try Harness()
     let brew = try savedBrew(harness)
     let first = harness.model(editing: brew)
     first.draft.notes = "unsaved edit"
     first.flushDraft()
 
-    #expect(harness.model(editing: brew).draft.notes == "unsaved edit")
+    #expect(harness.model(editing: brew, resuming: true).draft.notes == "unsaved edit")
     let other = Brew()
     harness.container.mainContext.insert(other)
-    #expect(harness.model(editing: other).draft.id == other.id)
-    #expect(harness.model(editing: other).draft.notes.isEmpty)
+    #expect(harness.model(editing: other, resuming: true).draft.id == other.id)
+    #expect(harness.model(editing: other, resuming: true).draft.notes.isEmpty)
   }
 
   @Test func failedEditSaveKeepsTheSavedBrewAndTheEditedDraft() throws {

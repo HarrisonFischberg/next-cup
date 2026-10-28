@@ -65,21 +65,24 @@ public struct DraftStore: Sendable {
         .appendingPathComponent("brew-draft.json"))
   }
 
-  /// The draft file for a repeat of the saved brew `sourceID`, kept apart from
-  /// the new-brew draft so starting a repeat never overwrites unsaved typing.
+  /// A fresh draft file for one opening of the form, so a new opening never
+  /// overwrites an unsaved brew already listed in the Journal.
+  public static func newBrew() -> DraftStore { named("brew-draft-\(UUID().uuidString)") }
+
+  /// A fresh draft file for a repeat of the saved brew `sourceID`.
   public static func repeating(_ sourceID: UUID) -> DraftStore {
-    let standard = DraftStore.standard().fileURL
-    return DraftStore(
-      fileURL: standard.deletingLastPathComponent()
-        .appendingPathComponent("brew-again-\(sourceID.uuidString).json"))
+    named("brew-again-\(sourceID.uuidString)-\(UUID().uuidString)")
   }
 
-  /// A saved brew's edit draft, kept apart from the new-brew draft.
+  /// A fresh draft file for changes to the saved brew `id`.
   public static func editing(_ id: UUID) -> DraftStore {
-    let standard = DraftStore.standard().fileURL
-    return DraftStore(
-      fileURL: standard.deletingLastPathComponent()
-        .appendingPathComponent("brew-edit-\(id.uuidString).json"))
+    named("brew-edit-\(id.uuidString)-\(UUID().uuidString)")
+  }
+
+  private static func named(_ name: String) -> DraftStore {
+    DraftStore(
+      fileURL: standard().fileURL.deletingLastPathComponent()
+        .appendingPathComponent("\(name).json"))
   }
 
   /// Every readable draft in `directory` (the standard drafts folder by default),
@@ -93,11 +96,17 @@ public struct DraftStore: Sendable {
     return files.compactMap { url -> SavedDraft? in
       let name = url.deletingPathExtension().lastPathComponent
       let kind: SavedDraft.Kind
-      if url.lastPathComponent == standardName {
+      // An edit or repeat file names its brew first, then (since each opening got
+      // its own file) a second id.
+      func brewID(after prefix: String) -> UUID? {
+        guard name.hasPrefix(prefix) else { return nil }
+        return UUID(uuidString: String(name.dropFirst(prefix.count).prefix(36)))
+      }
+      if url.lastPathComponent == standardName || name.hasPrefix("brew-draft-") {
         kind = .newBrew
-      } else if name.hasPrefix("brew-edit-"), let id = UUID(uuidString: String(name.dropFirst(10))) {
+      } else if let id = brewID(after: "brew-edit-") {
         kind = .editing(id)
-      } else if name.hasPrefix("brew-again-"), let id = UUID(uuidString: String(name.dropFirst(11))) {
+      } else if let id = brewID(after: "brew-again-") {
         kind = .repeating(id)
       } else {
         return nil

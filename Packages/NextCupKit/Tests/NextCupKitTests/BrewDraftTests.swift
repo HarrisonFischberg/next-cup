@@ -24,15 +24,21 @@ private func succeeded<F: Error>(_ result: Result<Void, F>) -> Bool {
     let repeated = UUID()
     _ = DraftStore(fileURL: folder.appendingPathComponent("brew-draft.json"))
       .save(BrewDraft(notes: "new"))
-    _ = DraftStore(fileURL: folder.appendingPathComponent("brew-edit-\(edited.uuidString).json"))
-      .save(BrewDraft(id: edited, notes: "edit"))
+    _ = DraftStore(fileURL: folder.appendingPathComponent("brew-draft-\(UUID().uuidString).json"))
+      .save(BrewDraft(notes: "another new"))
+    // Each opening of the form gets its own file: the brew's id, then the file's.
+    _ = DraftStore(
+      fileURL: folder.appendingPathComponent(
+        "brew-edit-\(edited.uuidString)-\(UUID().uuidString).json")
+    ).save(BrewDraft(id: edited, notes: "edit"))
     _ = DraftStore(fileURL: folder.appendingPathComponent("brew-again-\(repeated.uuidString).json"))
       .save(BrewDraft(notes: "again"))
     try Data("not a draft".utf8).write(to: folder.appendingPathComponent("notes.txt"))
 
     let found = DraftStore.all(in: folder)
-    #expect(found.count == 3)
-    #expect(found.first { $0.kind == .newBrew }?.draft.notes == "new")
+    #expect(found.count == 4)
+    #expect(
+      Set(found.filter { $0.kind == .newBrew }.map(\.draft.notes)) == ["new", "another new"])
     #expect(found.first { $0.kind == .editing(edited) }?.draft.notes == "edit")
     #expect(found.first { $0.kind == .repeating(repeated) }?.draft.notes == "again")
   }
