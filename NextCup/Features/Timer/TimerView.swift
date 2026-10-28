@@ -2,9 +2,9 @@ import NextCupKit
 import SwiftUI
 import UIKit
 
-/// S05, the active brew: one screen that walks the schedule by itself. The time and
-/// progress stay put at the top; the current instruction, the countdown to the next
-/// action, the brewer picture and the schedule sit below; Pause stays in reach.
+/// S05, the active brew: one screen that walks the schedule by itself. A slim music bar
+/// and the step progress sit at the top; the ring counts down to the next step, the
+/// instruction says what to do now, and the next step waits above Pause.
 /// Time is always derived from saved dates, so the screen catches up the moment the
 /// app returns to the foreground. Past the target the brew keeps running until
 /// Finish brew, which records the time actually reached.
@@ -17,6 +17,8 @@ struct TimerView: View {
   @State private var finishedShown = false
   /// The phone's volume is all the way down while the brew's sound is on.
   @State private var muted = false
+  /// Bumped five seconds before each step change, for the get-ready haptic.
+  @State private var readyCue = 0
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -45,13 +47,13 @@ struct TimerView: View {
   private var textMotion: Animation? { reduceMotion ? nil : DS.flavor.motion.text }
 
   var body: some View {
-    // The readout stays put and the schedule scrolls under it; at accessibility sizes
-    // the readout alone would fill the screen, so there everything scrolls together.
+    // The music and progress stay put and the rest scrolls under them; at accessibility
+    // sizes they would fill the screen, so there everything scrolls together.
     VStack(alignment: .leading, spacing: DS.Space.md) {
-      if !dts.isAccessibilitySize { readout }
+      if !dts.isAccessibilitySize { header }
       ScrollView {
-        VStack(alignment: .leading, spacing: DS.Space.lg) {
-          if dts.isAccessibilitySize { readout }
+        VStack(spacing: DS.Space.lg) {
+          if dts.isAccessibilitySize { header }
           if !sound, session.outcome == nil { soundPrompt }
           if muted, sound, session.outcome == nil {
             StateBanner(
@@ -60,16 +62,18 @@ struct TimerView: View {
             )
             .accessibilityIdentifier("timer.muted")
           }
-          if let song = BrewAudio.shared.nowPlaying, session.outcome == nil { nowPlaying(song) }
-          if session.outcome != nil { finishedBanner } else { currentStep }
-          context
-          schedule
+          if session.outcome != nil {
+            finishedBanner
+          } else {
+            dial
+            instruction
+          }
         }
-        .padding(.bottom, DS.Space.lg)
+        .padding(.vertical, DS.Space.sm)
       }
       .scrollBounceBehavior(.basedOnSize)
     }
-    .padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.sm)
+    .padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.xs)
     // A container, so the screen's identifier does not replace its children's.
     .accessibilityElement(children: .contain)
     .background(DS.bg)
@@ -115,6 +119,14 @@ struct TimerView: View {
     .onChange(of: state.targetReached) { _, reached in
       if reached, running { AccessibilityNotification.Announcement("Target time reached").post() }
     }
+    // Five seconds out: a chime, a tap and a spoken heads-up, so no step arrives unannounced.
+    .onChange(of: soon) { _, now in
+      guard now, scenePhase == .active else { return }
+      readyCue += 1
+      BrewAudio.shared.chime()
+      AccessibilityNotification.Announcement("Get ready: \(upcoming.action)").post()
+    }
+    .sensoryFeedback(.warning, trigger: readyCue)
     // A tick each running second; the music follows the brew: playing, paused, over.
     .onChange(of: Int(state.elapsedS)) { _, _ in
       if state.phase == .running { BrewAudio.shared.tick() }
@@ -141,34 +153,61 @@ struct TimerView: View {
     }
   }
 
-  /// The song playing, with previous, pause and next.
-  private func nowPlaying(_ song: String) -> some View {
+  private var header: some View {
+    VStack(spacing: DS.Space.md) {
+      if let song = BrewAudio.shared.nowPlaying, session.outcome == nil { musicBar(song) }
+      progress
+    }
+  }
+
+  /// The song playing in one slim row: title and artist, previous, play or pause, next,
+  /// and how far into the song along the bottom edge.
+  private func musicBar(_ song: String) -> some View {
     let audio = BrewAudio.shared
     let paused = audio.musicPaused || state.phase == .paused
-    return HStack(spacing: DS.Space.sm) {
-      Image(systemName: "music.note").foregroundStyle(DS.accent).accessibilityHidden(true)
-      Text(song).font(.subheadline.weight(.medium)).foregroundStyle(DS.ink).lineLimit(1)
+    let parts = song.components(separatedBy: " · ")
+    let artist = parts.dropFirst().joined(separator: " · ")
+    return VStack(spacing: 0) {
+      HStack(spacing: DS.Space.sm) {
+        Equalizer(playing: !paused && !reduceMotion)
+        Text(
+          "\(Text(parts[0]).font(.footnote.weight(.semibold)).foregroundStyle(DS.ink))\(Text(artist.isEmpty ? "" : " · " + artist).font(.caption).foregroundStyle(DS.ink2))"
+        )
+        .lineLimit(1).truncationMode(.tail)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityLabel("Now playing: \(song)")
         .accessibilityIdentifier("timer.music.title")
-      Group {
-        Button("Previous song", systemImage: "backward.fill") { audio.skip(by: -1) }
-          .accessibilityIdentifier("timer.music.previous")
-        Button(
-          paused ? "Play music" : "Pause music", systemImage: paused ? "play.fill" : "pause.fill"
-        ) {
-          audio.toggleMusic()
+        Group {
+          Button("Previous song", systemImage: "backward.fill") { audio.skip(by: -1) }
+            .accessibilityIdentifier("timer.music.previous")
+          Button(
+            paused ? "Play music" : "Pause music", systemImage: paused ? "play.fill" : "pause.fill"
+          ) {
+            audio.toggleMusic()
+          }
+          .foregroundStyle(DS.bg)
+          .frame(width: 30, height: 30)
+          .background(DS.accent, in: Circle())
+          .accessibilityIdentifier("timer.music.pause")
+          Button("Next song", systemImage: "forward.fill") { audio.skip(by: 1) }
+            .accessibilityIdentifier("timer.music.next")
         }
-        .accessibilityIdentifier("timer.music.pause")
-        Button("Next song", systemImage: "forward.fill") { audio.skip(by: 1) }
-          .accessibilityIdentifier("timer.music.next")
+        .labelStyle(.iconOnly).font(.footnote).foregroundStyle(DS.ink)
+        .frame(width: DS.Size.minTap - 6, height: DS.Size.minTap).contentShape(Rectangle())
+        .buttonStyle(.borderless)
       }
-      .labelStyle(.iconOnly).font(.body).foregroundStyle(DS.ink)
-      .frame(width: DS.Size.minTap, height: DS.Size.minTap).contentShape(Rectangle())
-      .buttonStyle(.borderless)
+      .padding(.leading, DS.Space.md).padding(.trailing, DS.Space.xs)
+      GeometryReader { g in
+        ZStack(alignment: .leading) {
+          Rectangle().fill(DS.line.opacity(0.35))
+          Rectangle().fill(DS.accent).frame(width: g.size.width * audio.songProgress)
+        }
+      }
+      .frame(height: 3)
+      .accessibilityHidden(true)
     }
-    .padding(.leading, DS.Space.md).padding(.trailing, DS.Space.xs)
-    .panel(DS.paper)
+    .background(DS.paper)
+    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     .sensoryFeedback(.selection, trigger: song)
   }
 
@@ -206,265 +245,235 @@ struct TimerView: View {
     .accessibilityIdentifier("timer.sound.prompt")
   }
 
-  // MARK: Readout
+  // MARK: Step timing
 
-  /// Elapsed time, remaining against the target, and progress. The digits never move.
-  private var readout: some View {
-    let ring = DS.flavor.control == .square && !dts.isAccessibilitySize
-    return VStack(alignment: .leading, spacing: DS.Space.xs) {
-      VStack(alignment: .leading, spacing: 2) {
-        Text(setup.recipeName.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
-          .lineLimit(1).minimumScaleFactor(0.8)
-          .accessibilityAddTraits(.isHeader)
-        if let method = setup.methodName, !dts.isAccessibilitySize {
-          Text(method).font(.footnote).foregroundStyle(DS.ink2)
-        }
-      }
-      .padding(.bottom, DS.Space.sm)
-      if ring {
-        ZStack {
-          TimerRing(
-            fraction: state.progress, stepFractions: stepFractions, color: DS.accent,
-            track: DS.line.opacity(0.35)
-          )
-          .animation(reduceMotion ? nil : .linear(duration: 0.25), value: state.progress)
-          VStack(spacing: 0) {
-            Kicker("Elapsed")
-            elapsed
-            remaining
-          }
-          .padding(DS.Space.xl)
-        }
-        .frame(width: 250, height: 250).frame(maxWidth: .infinity)
-      } else {
-        Kicker("Elapsed")
-        elapsed
-        remaining
-        bar
-      }
-      Text(statusLine).font(DS.Font.label).tracking(0.8).foregroundStyle(DS.ink2)
-        .fixedSize(horizontal: false, vertical: true)
-        .accessibilityIdentifier("timer.status")
-    }
-    .padding(.top, DS.Space.xs)
+  /// When the current step group starts and when the next one does (or the target).
+  private var span: (start: Double, end: Double)? {
+    guard running, let group = currentGroup else { return nil }
+    let start = Double(plan.steps[groups[group][0]].startOffsetS)
+    let end =
+      group + 1 < groups.count
+      ? Double(plan.steps[groups[group + 1][0]].startOffsetS) : Double(plan.totalDurationS)
+    return (start, end)
   }
 
-  private var elapsed: some View {
-    Text(RecipeFormat.clock(Int(state.elapsedS)))
-      .font(DS.flavor.timerReadout)
-      .foregroundStyle(DS.flavor.accentReadout ? DS.accent : DS.ink)
-      .minimumScaleFactor(0.5).lineLimit(1)
-      .dynamicTypeSize(...DS.readoutCap)
-      .accessibilityLabel("Elapsed time")
-      .accessibilityValue(RecipeFormat.spokenTime(Int(state.elapsedS)))
-      .accessibilityAddTraits(.updatesFrequently)
-      .accessibilityIdentifier("timer.elapsed")
+  private var toNext: Double { span.map { max($0.end - state.elapsedS, 0) } ?? 0 }
+
+  /// How far through the current step, 0...1.
+  private var stepFraction: Double {
+    guard let span, span.end > span.start else { return state.targetReached ? 1 : 0 }
+    return min(max((state.elapsedS - span.start) / (span.end - span.start), 0), 1)
   }
 
-  private var remaining: some View {
-    let total = RecipeFormat.clock(plan.totalDurationS)
-    let line: String =
-      switch state.phase {
-      case .notStarted: "Ready · \(total) target"
-      case .finished: "Finished · \(total) target"
-      case .running, .paused:
-        state.targetReached
-          ? "Target reached · \(RecipeFormat.clock(Int(state.overtimeS))) over"
-          : "\(RecipeFormat.clock(Int(state.remainingS.rounded(.up)))) remaining · \(total) total"
-      }
-    return Text(line).font(.subheadline.weight(.medium))
-      .fixedSize(horizontal: false, vertical: true)
-      .foregroundStyle(state.targetReached && running ? DS.accent : DS.ink2)
-      .accessibilityIdentifier("timer.remaining")
+  /// The first part of a water step is the pour; the rest is hands off. Recipes carry no
+  /// pour length yet, so the bloom gets 10 s and other pours 15 s.
+  private var pouring: Bool {
+    guard let span, let group = currentGroup, !state.targetReached else { return false }
+    let steps = groups[group].map { plan.steps[$0] }
+    guard steps.contains(where: { $0.targetCumulativeWaterG != nil }) else { return false }
+    let pourS = steps.contains { $0.label.localizedCaseInsensitiveContains("bloom") } ? 10.0 : 15
+    return state.elapsedS - span.start < min(pourS, span.end - span.start)
   }
 
-  private var bar: some View {
-    GeometryReader { g in
-      ZStack(alignment: .leading) {
-        Capsule().fill(DS.line.opacity(0.3))
-        Capsule().fill(DS.accent).frame(width: g.size.width * state.progress)
-          .animation(reduceMotion ? nil : .linear(duration: 0.25), value: state.progress)
-      }
-    }
-    .frame(height: 8).padding(.vertical, DS.Space.xs)
-    .accessibilityHidden(true)
+  /// The last five seconds before a step change or the target.
+  private var soon: Bool {
+    state.phase == .running && !state.targetReached && span != nil && toNext <= 5
   }
 
-  private var stepFractions: [Double] {
+  private var countdown: String { RecipeFormat.clock(Int(toNext.rounded(.up))) }
+
+  // MARK: Progress
+
+  /// One segment per step, as wide as the step is long; the step and the time below.
+  private var progress: some View {
     let total = Double(plan.totalDurationS)
-    return total > 0 ? plan.steps.dropFirst().map { Double($0.startOffsetS) / total } : []
+    let starts = groups.map { Double(plan.steps[$0[0]].startOffsetS) }
+    let lengths = starts.indices.map {
+      (starts.indices.contains($0 + 1) ? starts[$0 + 1] : total) - starts[$0]
+    }
+    let current = currentGroup ?? (state.phase == .notStarted ? -1 : groups.count)
+    return VStack(spacing: DS.Space.xs) {
+      GeometryReader { g in
+        let gap: CGFloat = 4
+        let width = max(g.size.width - gap * CGFloat(groups.count - 1), 0)
+        HStack(spacing: gap) {
+          ForEach(groups.indices, id: \.self) { group in
+            let fill =
+              session.outcome != nil || group < current
+              ? 1 : group == current ? stepFraction : 0
+            ZStack(alignment: .leading) {
+              Capsule().fill(DS.line.opacity(0.35))
+              Capsule().fill(DS.accent).frame(width: width * lengths[group] / total * fill)
+            }
+            .frame(width: width * lengths[group] / total)
+          }
+        }
+      }
+      .frame(height: 6)
+      .animation(reduceMotion ? nil : .linear(duration: 0.25), value: state.elapsedS)
+      .accessibilityHidden(true)
+      HStack(alignment: .firstTextBaseline) {
+        Text(statusLine).foregroundStyle(DS.ink2)
+          .fixedSize(horizontal: false, vertical: true)
+          .accessibilityIdentifier("timer.status")
+        Spacer(minLength: DS.Space.sm)
+        Text(
+          "\(RecipeFormat.clock(Int(state.elapsedS))) / \(RecipeFormat.clock(plan.totalDurationS))"
+        )
+        .monospacedDigit().foregroundStyle(DS.ink2)
+        .accessibilityLabel("Elapsed time")
+        .accessibilityValue(RecipeFormat.spokenTime(Int(state.elapsedS)))
+        .accessibilityAddTraits(.updatesFrequently)
+        .accessibilityIdentifier("timer.elapsed")
+      }
+      .font(.footnote.weight(.medium))
+    }
   }
 
-  /// Short and machine-readable: the UI tests read it.
+  /// Where the brew is, in words; the UI tests read it.
   private var statusLine: String {
     let count = groups.count
     switch state.phase {
-    case .notStarted:
-      return "READY · \(count) STEPS · \(RecipeFormat.clock(plan.totalDurationS))"
-    case .finished(let early):
-      return (early ? "ENDED EARLY · " : "DONE · ") + RecipeFormat.clock(Int(state.elapsedS))
+    case .notStarted: return "Ready · \(count) steps"
+    case .finished(let early): return early ? "Ended early" : "All \(count) steps done"
     case .running, .paused:
-      var parts = ["STEP \((currentGroup ?? -1) + 1) OF \(count)"]
-      if state.phase == .paused { parts.append("PAUSED") }
-      if state.targetReached {
-        parts.append("TARGET REACHED")
-      } else if let seconds = state.secondsToNextChange {
-        parts.append(
-          (state.next == nil ? "TARGET IN " : "NEXT IN ")
-            + RecipeFormat.clock(Int(seconds.rounded(.up))))
-      }
-      return parts.joined(separator: " · ")
+      var line =
+        state.targetReached
+        ? "Target reached · \(RecipeFormat.clock(Int(state.overtimeS))) over"
+        : "Step \((currentGroup ?? 0) + 1) of \(count) · \(currentGroup.map { stepNames(groups[$0]) } ?? "")"
+      if state.phase == .paused { line += " · Paused" }
+      return line
     }
   }
 
-  // MARK: Current step
+  // MARK: Ring and instruction
 
-  /// The step the schedule is on, the next action and its countdown, and the brewer doing it.
-  private var currentStep: some View {
-    let stacked = dts.isAccessibilitySize
-    let layout =
-      stacked
-      ? AnyLayout(VStackLayout(alignment: .leading, spacing: DS.Space.md))
-      : AnyLayout(HStackLayout(alignment: .top, spacing: DS.Space.md))
-    return layout {
-      VStack(alignment: .leading, spacing: DS.Space.sm) {
-        HStack(spacing: DS.Space.sm) {
-          Kicker(stepKicker)
-          if state.phase == .paused {
-            Text("Paused").font(.caption.weight(.bold)).foregroundStyle(DS.onSignal)
-              .padding(.horizontal, DS.Space.sm).padding(.vertical, 3)
-              .background(DS.ink, in: Capsule())
-              .transition(.opacity)
-          }
-        }
-        Text(headline).font(DS.Font.instruction).foregroundStyle(DS.ink)
-          .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.7).lineLimit(3)
-          .fixedSize(horizontal: false, vertical: true)
-          .contentTransition(.opacity)
-          .accessibilityAddTraits(.isHeader)
-        if let detail {
-          Text(detail).font(.body).foregroundStyle(DS.ink2)
-            .fixedSize(horizontal: false, vertical: true)
-            .contentTransition(.opacity)
-        }
+  /// The countdown to the next step on a ring that fills clockwise over the step.
+  private var dial: some View {
+    let active = pouring || soon
+    let chip: String =
+      switch state.phase {
+      case .notStarted: "Ready"
+      case .paused: "Paused"
+      default:
+        state.targetReached
+          ? "Target reached" : soon ? "Get ready" : pouring ? "Pour now" : "Hands off"
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      if !stacked { scene.frame(width: 104, height: 104) }
+    let number =
+      state.phase == .notStarted
+      ? RecipeFormat.clock(plan.totalDurationS)
+      : state.targetReached ? "+" + RecipeFormat.clock(Int(state.overtimeS)) : countdown
+    let caption =
+      state.phase == .notStarted
+      ? "total brew time"
+      : state.targetReached
+        ? "past the target"
+        : (currentGroup ?? 0) + 1 < groups.count ? "until next step" : "until done"
+    return ZStack {
+      StepRing(fraction: stepFraction, color: active ? DS.accent : DS.ink2)
+        .animation(reduceMotion ? nil : .linear(duration: 0.25), value: stepFraction)
+      VStack(spacing: 2) {
+        Text(chip).font(.caption.weight(.bold))
+          .foregroundStyle(active ? DS.bg : DS.ink2)
+          .padding(.horizontal, DS.Space.sm).padding(.vertical, 3)
+          .background(active ? DS.accent : DS.paper, in: Capsule())
+          .contentTransition(.opacity)
+        Text(number)
+          .font(DS.flavor.timerReadout).monospacedDigit()
+          .foregroundStyle(soon ? DS.accent : DS.ink)
+          .minimumScaleFactor(0.5).lineLimit(1)
+          .dynamicTypeSize(...DS.readoutCap)
+          .contentTransition(.numericText(countsDown: true))
+        Text(caption).font(.footnote).foregroundStyle(DS.ink2)
+      }
+      .padding(DS.Space.xl)
     }
-    .padding(DS.Space.lg)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .colorBlock()
+    .frame(width: 230, height: 230)
+    .frame(maxWidth: .infinity)
+    .animation(motion, value: active)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("\(chip), \(caption)")
+    .accessibilityValue(number)
+    .accessibilityIdentifier("timer.countdown")
+  }
+
+  /// The step as a command, with what to add and how; steps that start together read as one.
+  private func command(_ group: Int) -> (title: String, detail: String?) {
+    let steps = groups[group].map { plan.steps[$0] }
+    let words = steps.map(\.instruction).filter { !$0.isEmpty }.joined(separator: " ")
+    guard let target = steps.compactMap(\.targetCumulativeWaterG).last else {
+      return (stepNames(groups[group]), words.isEmpty ? nil : words)
+    }
+    let before =
+      groups[..<group].reversed().lazy
+      .compactMap { $0.compactMap { plan.steps[$0].targetCumulativeWaterG }.last }.first ?? 0
+    let add = "Add \(RecipeFormat.weight(target - before, units))."
+    return (
+      "Pour to \(RecipeFormat.weight(target, units))", words.isEmpty ? add : add + " " + words
+    )
+  }
+
+  private var instruction: some View {
+    let group = currentGroup ?? 0
+    let step = command(group)
+    return VStack(spacing: DS.Space.xs) {
+      Text(state.targetReached ? "Let it finish draining" : step.title)
+        .font(DS.Font.instruction).foregroundStyle(pouring ? DS.accent : DS.ink)
+        .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.7).lineLimit(3)
+        .accessibilityAddTraits(.isHeader)
+      if let detail = state.targetReached
+        ? "Finish brew when the last drops are through." : step.detail
+      {
+        Text(detail).font(.body).foregroundStyle(DS.ink2)
+      }
+    }
+    .multilineTextAlignment(.center)
+    .fixedSize(horizontal: false, vertical: true)
+    .frame(maxWidth: .infinity)
+    .contentTransition(.opacity)
     .animation(textMotion, value: state.currentIndex)
-    .animation(motion, value: state.phase)
     .accessibilityElement(children: .contain)
     .accessibilityIdentifier("timer.current")
-  }
-
-  /// The brewer at this stage of the brew. Stage-based and illustrative; it shows the
-  /// schedule, not what is in the cup.
-  private var scene: some View {
-    let frame = BrewScene.frame(
-      setup.sceneKind, steps: setup.sceneSteps, totalS: Double(plan.totalDurationS),
-      elapsedS: state.elapsedS)
-    return BrewMedallion {
-      BrewSceneView(
-        kind: setup.sceneKind, glyph: setup.glyph, frame: frame, running: state.phase == .running)
-    }
-  }
-
-  private var stepKicker: String {
-    switch state.phase {
-    case .notStarted: return "Ready"
-    case .finished(let early): return early ? "Ended early" : "Finished"
-    case .running, .paused:
-      guard let group = currentGroup else { return "Starting" }
-      let names = groups[group].map { plan.steps[$0].label }.joined(separator: " & ")
-      return String(format: "%02d / ", group + 1) + names
-    }
-  }
-
-  /// The instruction, large. Steps that start together read as one line.
-  private var headline: String {
-    switch state.phase {
-    case .notStarted: return "Ready when you are."
-    case .finished(let early): return early ? "Brew ended." : "Brew finished."
-    case .running, .paused:
-      guard let group = currentGroup else { return "Starting…" }
-      let steps = groups[group].map { plan.steps[$0] }
-      if steps.count == 1 {
-        let step = steps[0]
-        return step.instruction.isEmpty ? step.label + "." : step.instruction
-      }
-      return steps.map { $0.label.lowercased() }.joined(separator: ", then ")
-        .prefix(1).uppercased()
-        + steps.map { $0.label.lowercased() }
-        .joined(separator: ", then ").dropFirst() + "."
-    }
-  }
-
-  /// Instructions that did not fit the headline: the water target, or each grouped step's words.
-  private var detail: String? {
-    guard running, let group = currentGroup else {
-      return state.phase == .notStarted
-        ? "Start runs the \(groups.count) steps on their own schedule. No tapping between steps."
-        : nil
-    }
-    let steps = groups[group].map { plan.steps[$0] }
-    var lines: [String] = []
-    if steps.count > 1 { lines = steps.map(\.instruction).filter { !$0.isEmpty } }
-    if let target = steps.compactMap(\.targetCumulativeWaterG).last {
-      lines.append("Recipe water to here: \(RecipeFormat.weight(target, units)).")
-    }
-    return lines.isEmpty ? nil : lines.joined(separator: " ")
   }
 
   /// What comes next, what to do, and the countdown to it.
   private var upcoming: (kicker: String, action: String, countdown: String?) {
     switch state.phase {
-    case .notStarted: return ("First", groups.first.map { stepNames($0) } ?? "", nil)
+    case .notStarted: return ("First", groups.indices.first.map { command($0).title } ?? "", nil)
     case .finished: return ("Done", "Reached \(RecipeFormat.clock(Int(state.elapsedS))).", nil)
     case .running, .paused:
       if state.targetReached { return ("Now", "Finish when it has drained.", nil) }
-      let countdown = state.secondsToNextChange.map { RecipeFormat.clock(Int($0.rounded(.up))) }
       if let group = currentGroup, group + 1 < groups.count {
-        let next = groups[group + 1]
-        let at = RecipeFormat.clock(plan.steps[next[0]].startOffsetS)
-        return ("Next · at \(at)", stepNames(next), countdown)
+        return (soon ? "Get ready" : "Next", command(group + 1).title, countdown)
       }
-      return ("Next", "Target time · \(RecipeFormat.clock(plan.totalDurationS))", countdown)
+      return ("Last step", "Finish at \(RecipeFormat.clock(plan.totalDurationS))", nil)
     }
   }
 
-  /// The next step in advance, big enough to read from the kettle; it fills in the last
-  /// five seconds so the change never arrives unannounced.
+  /// The next step in advance; it turns accent in the last five seconds so the change
+  /// never arrives unannounced.
   private var nextUp: some View {
     let next = upcoming
-    let soon =
-      state.phase == .running && !state.targetReached
-      && (state.secondsToNextChange ?? .infinity) <= 5
-    let fg = soon ? DS.onSignal : DS.ink
+    let fg = soon ? DS.bg : DS.ink
     return HStack(alignment: .center, spacing: DS.Space.md) {
       VStack(alignment: .leading, spacing: 2) {
         Text(next.kicker.uppercased()).font(.caption.weight(.bold)).tracking(1.2)
-          .foregroundStyle(soon ? DS.onSignal : DS.accent)
+          .foregroundStyle(soon ? DS.bg : DS.ink2)
         Text(next.action).font(DS.Font.headline).foregroundStyle(fg)
           .fixedSize(horizontal: false, vertical: true)
           .contentTransition(.opacity)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       if let countdown = next.countdown {
-        Text(countdown).font(DS.Font.dataLarge).monospacedDigit().foregroundStyle(fg)
+        Text(soon ? countdown : "in \(countdown)")
+          .font(soon ? DS.Font.dataLarge : DS.Font.headline).monospacedDigit().foregroundStyle(fg)
           .contentTransition(.numericText(countsDown: true))
       }
     }
     .padding(DS.Space.md)
     .background(
-      soon ? DS.signal : DS.paper,
-      in: RoundedRectangle(cornerRadius: max(DS.radius, 18), style: .continuous)
-    )
-    .overlay(
-      RoundedRectangle(cornerRadius: max(DS.radius, 18), style: .continuous)
-        .strokeBorder(DS.signal, lineWidth: 2)
+      soon ? DS.accent : DS.paper,
+      in: RoundedRectangle(cornerRadius: max(DS.radius, 16), style: .continuous)
     )
     .animation(motion, value: soon)
     .accessibilityElement(children: .combine)
@@ -479,95 +488,27 @@ struct TimerView: View {
     group.map { plan.steps[$0].label }.joined(separator: " & ")
   }
 
-  // MARK: Context and schedule
-
-  /// The recipe's numbers. Water is the recipe's target: nothing here is measured.
-  private var context: some View {
-    HStack(alignment: .top, spacing: DS.Space.md) {
-      Image(systemName: "drop.fill").font(.title3.weight(.semibold)).foregroundStyle(DS.accent)
-        .frame(width: 28).accessibilityHidden(true)
-      VStack(alignment: .leading, spacing: 2) {
-        Text(RecipeFormat.weight(setup.scaled.totalWaterG, units)).font(DS.Font.dataLarge)
-          .foregroundStyle(DS.ink)
-        Text("Recipe water").font(.footnote).foregroundStyle(DS.ink2)
-        Text(
-          [
-            RecipeFormat.weight(setup.scaled.doseG, units) + " coffee",
-            setup.tempC.map { RecipeFormat.temperature($0, units) },
-          ].compactMap { $0 }.joined(separator: " · ")
-        )
-        .font(.footnote).foregroundStyle(DS.ink2)
-      }
-      Spacer(minLength: 0)
-    }
-    .padding(DS.Space.md)
-    .panel(DS.paper)
-    .accessibilityElement(children: .combine)
-  }
-
-  /// What is still to come, then what the schedule has already passed.
-  private var schedule: some View {
-    let current = currentGroup ?? (state.phase == .notStarted ? -1 : groups.count)
-    let upcoming = groups.indices.filter { $0 > current }
-    let earlier = groups.indices.filter { $0 < current }
-    return VStack(alignment: .leading, spacing: DS.Space.lg) {
-      if !upcoming.isEmpty {
-        VStack(alignment: .leading, spacing: DS.Space.md) {
-          SectionRule("Up next")
-          ForEach(upcoming, id: \.self) { group in
-            row(group, state: .upcoming, isLast: group == upcoming.last)
-          }
-        }
-      }
-      if !earlier.isEmpty {
-        VStack(alignment: .leading, spacing: DS.Space.md) {
-          SectionRule("Earlier in the schedule")
-          ForEach(earlier, id: \.self) { group in
-            row(group, state: .done, isLast: group == earlier.last)
-          }
-        }
-        .accessibilityHint("Steps the schedule has passed, not steps confirmed done")
-      }
-    }
-    .animation(motion, value: current)
-  }
-
-  private func row(_ group: Int, state rowState: RowState, isLast: Bool) -> some View {
-    let steps = groups[group].map { plan.steps[$0] }
-    let instructions = steps.map(\.instruction).filter { !$0.isEmpty }.joined(separator: " ")
-    return TimelineRow(
-      time: RecipeFormat.clock(steps[0].startOffsetS), name: stepNames(groups[group]),
-      detail: rowState == .upcoming && !instructions.isEmpty ? instructions : nil,
-      trailing: steps.compactMap(\.targetCumulativeWaterG).last.map {
-        RecipeFormat.weight($0, units)
-      },
-      state: rowState, isLast: isLast
-    )
-    .accessibilityIdentifier("timer.step.\(groups[group][0])")
-  }
-
-  /// The finish is its own moment: what was reached against the target, then one
-  /// next step. Nothing moves on until the user taps it.
+  /// The finish is its own moment: the time reached, then one next step. Nothing moves
+  /// on until the user taps it.
   private var finishedBanner: some View {
     let early = session.outcome?.endedEarly == true
-    return HStack(alignment: .top, spacing: DS.Space.md) {
-      Image(systemName: early ? "stop.circle.fill" : "checkmark.circle.fill").font(.title)
-        .foregroundStyle(DS.accent).accessibilityHidden(true)
-        .scaleEffect(finishedShown || reduceMotion ? 1 : 0.6)
-        .opacity(finishedShown ? 1 : 0)
-      VStack(alignment: .leading, spacing: 2) {
-        Text(early ? "Brew ended" : "Brew finished").font(.headline).foregroundStyle(DS.ink)
-          .accessibilityAddTraits(.isHeader)
-        Text(
-          "\(RecipeFormat.clock(Int(state.elapsedS))) reached, \(RecipeFormat.clock(plan.totalDurationS)) target. "
-            + (early ? "Log it with the time you reached." : "Taste it, then log how it was.")
-        )
+    return VStack(spacing: DS.Space.xs) {
+      Text(early ? "Brew ended" : "Brew finished").font(.headline).foregroundStyle(DS.accent)
+        .accessibilityAddTraits(.isHeader)
+      Text(RecipeFormat.clock(Int(state.elapsedS)))
+        .font(DS.flavor.timerReadout).monospacedDigit().foregroundStyle(DS.ink)
+        .minimumScaleFactor(0.5).lineLimit(1)
+        .dynamicTypeSize(...DS.readoutCap)
+        .accessibilityLabel(RecipeFormat.spokenTime(Int(state.elapsedS)))
+      Text(early ? "Log it with the time you reached." : "Taste it, then log how it was.")
         .font(.subheadline).foregroundStyle(DS.ink2)
-      }
     }
-    .padding(DS.Space.md)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .panel(DS.paper, border: DS.accent)
+    .multilineTextAlignment(.center)
+    .padding(DS.Space.lg)
+    .frame(maxWidth: .infinity)
+    .panel(DS.paper)
+    .scaleEffect(finishedShown || reduceMotion ? 1 : 0.94)
+    .opacity(finishedShown ? 1 : 0)
     .accessibilityElement(children: .combine)
     .accessibilityIdentifier("timer.finished")
     .onAppear {
@@ -605,7 +546,6 @@ struct TimerView: View {
     }
     .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.md)
     .background(DS.bg, ignoresSafeAreaEdges: .bottom)
-    .overlay(alignment: .top) { Hairline().opacity(0.5) }
     .animation(motion, value: state.targetReached)
   }
 
@@ -649,5 +589,52 @@ struct TimerView: View {
       words += ", to \(RecipeFormat.weight(target, units, withSymbol: false)) \(unit)"
     }
     AccessibilityNotification.Announcement(words).post()
+  }
+}
+
+/// The current step on a ring that fills clockwise from twelve, with a dot at the tip.
+private struct StepRing: View {
+  let fraction: Double
+  let color: Color
+
+  var body: some View {
+    GeometryReader { g in
+      let line: CGFloat = 12
+      let r = min(g.size.width, g.size.height) / 2 - line
+      let angle = (fraction * 360 - 90) * .pi / 180
+      ZStack {
+        Circle().stroke(DS.line.opacity(0.35), lineWidth: line)
+        Circle().trim(from: 0, to: fraction)
+          .stroke(color, style: StrokeStyle(lineWidth: line, lineCap: .round))
+          .rotationEffect(.degrees(-90))
+        Circle().fill(DS.ink).frame(width: line * 1.6, height: line * 1.6)
+          .offset(x: r * cos(angle), y: r * sin(angle))
+      }
+      .frame(width: r * 2, height: r * 2)
+      .frame(width: g.size.width, height: g.size.height)
+    }
+    .accessibilityHidden(true)
+  }
+}
+
+/// Four bars that bob while the music plays and rest when it is paused.
+private struct Equalizer: View {
+  let playing: Bool
+
+  var body: some View {
+    TimelineView(.animation(minimumInterval: 1 / 12, paused: !playing)) { context in
+      let t = context.date.timeIntervalSinceReferenceDate
+      HStack(alignment: .bottom, spacing: 2) {
+        ForEach(0..<4, id: \.self) { i in
+          Capsule()
+            .frame(
+              width: 3,
+              height: playing ? 4 + 10 * abs(sin(t * (2.5 + Double(i) * 0.7) + Double(i))) : 4)
+        }
+      }
+      .frame(height: 14, alignment: .bottom)
+    }
+    .foregroundStyle(DS.accent)
+    .accessibilityHidden(true)
   }
 }
