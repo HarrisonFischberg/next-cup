@@ -187,6 +187,21 @@ enum AppStyle: String, CaseIterable, Identifiable {
     UserDefaults.standard.string(forKey: storageKey).flatMap(AppStyle.init) ?? .sundayStudio
   }
 
+  /// The looks Settings offers, in its order. The owner removed the rest (Oct 2026).
+  /// shortcut: the removed looks' palettes stay because the UI tests pin Steel & Kraft;
+  /// delete them once those tests move to an offered look.
+  static let offered: [AppStyle] = [
+    .sundayStudio, .morningEdition, .steelBlue, .daily, .cafePage, .roasterPoster,
+  ]
+
+  /// Someone still on a removed look moves to Sunday Studio.
+  static func leaveRemovedLook(_ d: UserDefaults = .standard) {
+    guard let raw = d.string(forKey: storageKey), let style = AppStyle(rawValue: raw),
+      !offered.contains(style)
+    else { return }
+    d.set(AppStyle.sundayStudio.rawValue, forKey: storageKey)
+  }
+
   /// Moves everyone onto Sunday Studio once, the first launch after the redesign ships.
   static func adoptSundayStudioOnce(_ d: UserDefaults = .standard) {
     guard !d.bool(forKey: "style.sundayStudioAdopted") else { return }
