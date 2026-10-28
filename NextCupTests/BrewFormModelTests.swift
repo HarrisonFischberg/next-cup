@@ -183,7 +183,45 @@ struct BrewFormModelTests {
 
     let reopened = harness.model()
     #expect(reopened.draft == first.draft)
-    #expect(reopened.notice?.message == "Restored your unsaved brew.")
+    #expect(reopened.notice == .restored(editing: false))
+  }
+
+  @Test func leavingAnUntouchedFormLeavesNoDraftAndNoNotice() throws {
+    let harness = try Harness()
+    let brew = try savedBrew(harness)
+    harness.model().flushDraft()
+    #expect(harness.draftStore.load() == .none)
+    #expect(harness.model().notice == nil)
+
+    harness.model(editing: brew).flushDraft()
+    #expect(harness.draftStore.load() == .none)
+    #expect(harness.model(editing: brew).notice == nil)
+  }
+
+  @Test func anOldDraftThatMatchesTheSavedBrewOpensWithoutANotice() throws {
+    let harness = try Harness()
+    let brew = try savedBrew(harness)
+    let untouched = harness.model(editing: brew).draft
+    _ = harness.draftStore.save(untouched)
+    let reopened = harness.model(editing: brew)
+    #expect(reopened.notice == nil)
+    #expect(reopened.draft == untouched)
+  }
+
+  @Test func undoChangesGoesBackToTheSavedBrewAndDropsTheDraft() throws {
+    let harness = try Harness()
+    let brew = try savedBrew(harness)
+    let first = harness.model(editing: brew)
+    first.draft.notes = "unsaved edit"
+    first.flushDraft()
+
+    let reopened = harness.model(editing: brew)
+    #expect(reopened.notice == .restored(editing: true))
+    reopened.startOver()
+    #expect(reopened.notice == nil)
+    #expect(reopened.draft.notes == brew.notes)
+    #expect(reopened.draft.doseG == 15)
+    #expect(harness.draftStore.load() == .none)
   }
 
   @Test func seededFormRestoresItsOwnDraftButNotAnotherRuns() throws {

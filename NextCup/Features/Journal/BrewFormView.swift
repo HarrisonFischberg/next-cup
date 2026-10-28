@@ -81,6 +81,7 @@ struct BrewFormView: View {
         simulatesSaveFailure: Self.simulatesSaveFailure)
       if let startingBean, editing == nil, repeating == nil, model?.draft.beans?.isEmpty ?? true {
         model?.addBean(startingBean)
+        model?.treatAsOpened()
       }
     }
   }
@@ -298,10 +299,19 @@ struct BrewFormView: View {
   }
 
   private func noticeBanner(_ notice: FormNotice, _ model: BrewFormModel) -> some View {
-    StateBanner(
+    let keepTitle: String? =
+      switch notice.kind {
+      case .info: "Dismiss"
+      case .restored: model.isEditing ? "Keep changes" : "Keep it"
+      case .error: nil
+      }
+    return StateBanner(
       kind: notice.kind == .error ? .error : .info, message: notice.message,
-      actionTitle: notice.kind == .info ? "Dismiss" : nil,
-      action: notice.kind == .info ? { model.dismissNotice() } : nil
+      actionTitle: keepTitle,
+      action: notice.kind == .error ? nil : { model.dismissNotice() },
+      secondaryTitle: notice.kind == .restored
+        ? (model.isEditing ? "Undo changes" : "Start over") : nil,
+      secondaryAction: notice.kind == .restored ? { model.startOver() } : nil
     )
     .accessibilityIdentifier("brewform.notice")
   }
