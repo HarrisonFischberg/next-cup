@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "methods": [
     {
       "key": "cone-dripper",
@@ -96,6 +96,14 @@
       "symbol": "cup.and.saucer",
       "trackedParameters": ["dose", "water", "grind", "time", "rating", "notes", "photo"],
       "defaultStepKinds": ["pour", "brew", "wait"]
+    },
+    {
+      "key": "nespresso",
+      "name": "Nespresso",
+      "style": "espresso",
+      "symbol": "capsule",
+      "trackedParameters": ["dose", "water", "time", "rating", "notes", "photo"],
+      "defaultStepKinds": ["brew"]
     }
   ]
 }
