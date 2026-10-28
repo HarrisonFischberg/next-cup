@@ -1,6 +1,6 @@
 import Foundation
 
-/// The four tabs of the shell. Settings opens from the Journal's gear, so a
+/// The four tabs of the shell. Settings opens from the gear on each tab, so a
 /// stored `settings` value from an older build falls back to Journal. The raw value is what is persisted
 /// under `storageKey`, so it must never change once shipped.
 enum AppTab: String, CaseIterable, Identifiable, Sendable {

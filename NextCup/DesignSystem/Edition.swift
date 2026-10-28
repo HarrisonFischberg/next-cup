@@ -44,6 +44,27 @@ extension PageHeader where Trailing == EmptyView {
   }
 }
 
+/// Settings, from the top of every tab: a gear on the left of the page's add button.
+/// `large` matches a page that draws its own round add button instead of a bar.
+struct SettingsGear: View {
+  let id: String
+  var large = false
+
+  var body: some View {
+    NavigationLink(value: DeepLink.settings) {
+      if large {
+        Image(systemName: "gearshape").font(.title2.weight(.semibold)).foregroundStyle(DS.ink)
+          .frame(width: 52, height: 52).background(DS.paper, in: Circle())
+          .overlay(Circle().strokeBorder(DS.line.opacity(0.5)))
+      } else {
+        Image(systemName: "gearshape")
+      }
+    }
+    .accessibilityLabel("Settings")
+    .accessibilityIdentifier(id)
+  }
+}
+
 /// Small tracked label in the accent: a kicker over a title, "03 / WAIT" over a step.
 struct Kicker: View {
   let text: String

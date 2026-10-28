@@ -69,6 +69,7 @@ struct BeanLibraryView: View {
     .safeAreaInset(edge: .top, spacing: 0) { if !library.isEmpty { filterBar } }
     .safeAreaInset(edge: .bottom, spacing: 0) { toast }
     .toolbar {
+      ToolbarItem(placement: .primaryAction) { SettingsGear(id: "beans.settings") }
       ToolbarItem(placement: .primaryAction) {
         Button {
           editor = .new
