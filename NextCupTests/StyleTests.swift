@@ -68,6 +68,17 @@ struct StyleTests {
     #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.morningEdition.rawValue)
   }
 
+  @Test func aRemovedLookMovesToSundayStudioAndAnOfferedOneStays() {
+    let d = UserDefaults(suiteName: "removed.\(UUID().uuidString)")!
+    d.set(AppStyle.nightMint.rawValue, forKey: AppStyle.storageKey)
+    AppStyle.leaveRemovedLook(d)
+    #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.sundayStudio.rawValue)
+    d.set(AppStyle.cafePage.rawValue, forKey: AppStyle.storageKey)
+    AppStyle.leaveRemovedLook(d)
+    #expect(d.string(forKey: AppStyle.storageKey) == AppStyle.cafePage.rawValue)
+    #expect(AppStyle.offered.count == 6)
+  }
+
   @Test func handoffDirectionsKeepTheirOwnPersonalities() {
     #expect(AppStyle.sundayStudio.flavor.motion == .playful)
     #expect(AppStyle.sundayStudio.flavor.control == .pill && !AppStyle.sundayStudio.flavor.caps)
