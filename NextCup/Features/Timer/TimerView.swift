@@ -20,7 +20,7 @@ struct TimerView: View {
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
-  @AppStorage(SystemTimerHaptics.soundKey) private var sound = false
+  @AppStorage(SystemTimerHaptics.soundKey) private var sound = true
   @Environment(\.scenePhase) private var scenePhase
   @Environment(\.dynamicTypeSize) private var dts
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
