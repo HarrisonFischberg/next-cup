@@ -1565,10 +1565,28 @@ final class NextCupUITests: XCTestCase {
     try shot("explore-default")
   }
 
+  /// Then a tap on a suggestion opens its Start brew page. Screenshots go to
+  /// docs/design/explore while its `.capture` exists.
   @MainActor
   func testExploreShowsLabelledDefaultForANewBean() throws {
+    let folder = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("docs/design/explore")
+    let capture = FileManager.default.fileExists(
+      atPath: folder.appendingPathComponent(".capture").path)
+    func shot(_ name: String) throws {
+      guard capture else { return }
+      sleep(1)
+      try XCUIApplication().screenshot().pngRepresentation.write(
+        to: folder.appendingPathComponent("new_\(name).png"))
+    }
     let app = launch()
-    try runExploreFlow(app) { _ in }
+    try runExploreFlow(app) { if $0 == "explore-default" { try shot("explore-picks") } }
+    let pick = element(app, "explore.pick.Washed Ethiopia.1")
+    XCTAssertTrue(pick.waitForExistence(timeout: 5))
+    pick.tap()
+    XCTAssertTrue(app.buttons["Start brew"].waitForExistence(timeout: 5))
+    try shot("explore-pick-opens-brew")
   }
 
   /// Writes Explore screenshots in light, dark and the largest text size. Runs
