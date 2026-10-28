@@ -104,7 +104,7 @@ final class BrewFormModel {
     BrewDraft(
       id: brew.id, date: brew.date, methodID: brew.method?.id, recipeID: brew.recipe?.id,
       doseG: brew.doseG, waterG: brew.waterG, tempC: brew.tempC, totalTimeS: brew.totalTimeS,
-      grindSetting: brew.grindSetting ?? "", verdict: brew.verdict?.rawValue,
+      grindSetting: brew.grindSetting ?? "", verdict: Verdict.joined(brew.verdicts),
       ratingTenths: brew.ratingTenths ?? 0, notes: brew.notes, photo: brew.photo,
       targets: brew.targetsJSON.flatMap { try? JSONDecoder().decode(BrewTargets.self, from: $0) },
       beans: (brew.beans ?? []).sorted { $0.createdAt < $1.createdAt }.map {
@@ -545,7 +545,9 @@ final class BrewFormModel {
     brew.waterProfile = draft.waterProfileID.flatMap { try? store.find(WaterProfile.self, id: $0) }
     let grind = draft.grindSetting.trimmingCharacters(in: .whitespacesAndNewlines)
     brew.grindSetting = grind.isEmpty ? nil : grind
-    brew.verdict = draft.verdict.flatMap(Verdict.init(rawValue:))
+    let tastes = Verdict.picked(draft.verdict)
+    brew.verdict = tastes.first
+    brew.alsoTasted = tastes.count > 1 ? tastes.dropFirst().map(\.rawValue) : nil
     brew.ratingTenths = draft.ratingTenths == 0 ? nil : draft.ratingTenths
     brew.notes = draft.notes
     brew.photo = draft.photo

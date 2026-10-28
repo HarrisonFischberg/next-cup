@@ -732,16 +732,20 @@ struct BrewFormView: View {
       dts.isAccessibilitySize
       ? AnyLayout(VStackLayout(spacing: DS.Space.xs))
       : AnyLayout(HStackLayout(spacing: DS.Space.xs))
+    let picked = Verdict.picked(verdict.wrappedValue)
+    // The four faults share a row; Balanced gets a row of its own, so its name fits.
+    let rows: [[Verdict]] = [[.sour, .bitter, .weak, .strong], [.balanced]]
     return VStack(alignment: .leading, spacing: DS.Space.sm) {
       Text("HOW IT TASTED").font(DS.Font.label).foregroundStyle(DS.ink2)
-      layout {
-        ForEach(Verdict.allCases, id: \.self) { option in
-          ChoiceButton(
-            title: option.rawValue.capitalized, isSelected: verdict.wrappedValue == option.rawValue
-          ) {
-            verdict.wrappedValue = verdict.wrappedValue == option.rawValue ? nil : option.rawValue
+      Text("Pick all that apply.").font(.footnote).foregroundStyle(DS.ink2)
+      ForEach(rows, id: \.self) { row in
+        layout {
+          ForEach(row, id: \.self) { option in
+            ChoiceButton(title: option.rawValue.capitalized, isSelected: picked.contains(option)) {
+              verdict.wrappedValue = Verdict.toggled(option, in: verdict.wrappedValue)
+            }
+            .accessibilityIdentifier("brewform.verdict.\(option.rawValue)")
           }
-          .accessibilityIdentifier("brewform.verdict.\(option.rawValue)")
         }
       }
     }

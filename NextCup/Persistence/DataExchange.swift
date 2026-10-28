@@ -77,7 +77,7 @@ struct DataExporter {
         Self.number(brew.tempC), brew.totalTimeS.map(String.init) ?? "",
         brew.grindSetting ?? "", Self.number(brew.tds),
         brew.ratingTenths.map { Self.number(Double($0) / 10) } ?? "",
-        brew.verdict?.rawValue ?? "",
+        brew.verdicts.map(\.rawValue).joined(separator: "; "),
         brew.notes,
       ])
     }

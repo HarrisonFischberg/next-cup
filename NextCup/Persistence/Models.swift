@@ -28,12 +28,20 @@ final class Brew: Identified {
   /// 0 to 100: the rating out of 10 in tenths. Stored under its old name, when it held
   /// half points out of 5; `RatingMigration` converted those once.
   @Attribute(originalName: "ratingHalfSteps") var ratingTenths: Int?
+  /// The first taste picked; dial-in and the journal's colours follow it.
   var verdict: Verdict?
+  /// Further tastes picked with `verdict`, as raw values: a cup can be sour and weak.
+  var alsoTasted: [String]?
   var notes: String = ""
   @Attribute(.externalStorage) var photo: Data?
   var targetsJSON: Data?
   /// Unused: drafts live in files (`DraftStore`). Kept so the schema and old archives stay valid.
   var isDraft: Bool = false
+
+  /// Every taste picked, the first one first.
+  var verdicts: [Verdict] {
+    (verdict.map { [$0] } ?? []) + (alsoTasted ?? []).compactMap(Verdict.init(rawValue:))
+  }
 
   var method: BrewMethod?
   var recipe: Recipe?
