@@ -265,19 +265,29 @@ struct TimerView: View {
     return min(max((state.elapsedS - span.start) / (span.end - span.start), 0), 1)
   }
 
-  /// The first part of a water step is the pour; the rest is hands off. Recipes carry no
-  /// pour length yet, so the bloom gets 10 s and other pours 15 s.
-  private var pouring: Bool {
-    guard let span, let group = currentGroup, !state.targetReached else { return false }
-    let steps = groups[group].map { plan.steps[$0] }
-    guard steps.contains(where: { $0.targetCumulativeWaterG != nil }) else { return false }
-    let pourS = steps.contains { $0.label.localizedCaseInsensitiveContains("bloom") } ? 10.0 : 15
-    return state.elapsedS - span.start < min(pourS, span.end - span.start)
+  /// Each step as a plain command, with how long your hands are busy and the valve after it.
+  private var cues: [StepCue] {
+    StepCue.cues(plan: plan, kinds: setup.stepKinds, units: units)
   }
 
-  /// The last five seconds before a step change or the target.
+  private var cue: StepCue? {
+    cues.indices.contains(currentGroup ?? 0) ? cues[currentGroup ?? 0] : nil
+  }
+
+  /// The hands-on start of the step (pouring, closing the valve, stirring); the rest is
+  /// hands off.
+  private var handsOn: Bool {
+    guard let span, let cue, !state.targetReached else { return false }
+    guard let doS = cue.doS else { return true }
+    return state.elapsedS - span.start < min(doS, span.end - span.start)
+  }
+
+  private var pouring: Bool { handsOn && cue?.pours == true }
+
+  /// The last five seconds before a step change or the target, once your hands are free:
+  /// a short step (open the valve) says what to do before it says what comes next.
   private var soon: Bool {
-    state.phase == .running && !state.targetReached && span != nil && toNext <= 5
+    state.phase == .running && !state.targetReached && span != nil && toNext <= 5 && !handsOn
   }
 
   private var countdown: String { RecipeFormat.clock(Int(toNext.rounded(.up))) }
@@ -350,14 +360,16 @@ struct TimerView: View {
 
   /// The countdown to the next step on a ring that fills clockwise over the step.
   private var dial: some View {
-    let active = pouring || soon
+    let active = handsOn || soon
     let chip: String =
       switch state.phase {
       case .notStarted: "Ready"
       case .paused: "Paused"
       default:
         state.targetReached
-          ? "Target reached" : soon ? "Get ready" : pouring ? "Pour now" : "Hands off"
+          ? "Target reached"
+          : soon
+            ? "Get ready" : pouring ? "Pour now" : handsOn ? "Do it now" : "Hands off"
       }
     let number =
       state.phase == .notStarted
@@ -397,35 +409,24 @@ struct TimerView: View {
     .accessibilityIdentifier("timer.countdown")
   }
 
-  /// The step as a command, with what to add and how; steps that start together read as one.
-  private func command(_ group: Int) -> (title: String, detail: String?) {
-    let steps = groups[group].map { plan.steps[$0] }
-    let words = steps.map(\.instruction).filter { !$0.isEmpty }.joined(separator: " ")
-    guard let target = steps.compactMap(\.targetCumulativeWaterG).last else {
-      return (stepNames(groups[group]), words.isEmpty ? nil : words)
-    }
-    let before =
-      groups[..<group].reversed().lazy
-      .compactMap { $0.compactMap { plan.steps[$0].targetCumulativeWaterG }.last }.first ?? 0
-    let add = "Add \(RecipeFormat.weight(target - before, units))."
-    return (
-      "Pour to \(RecipeFormat.weight(target, units))", words.isEmpty ? add : add + " " + words
-    )
-  }
-
   private var instruction: some View {
-    let group = currentGroup ?? 0
-    let step = command(group)
-    return VStack(spacing: DS.Space.xs) {
-      Text(state.targetReached ? "Let it finish draining" : step.title)
-        .font(DS.Font.instruction).foregroundStyle(pouring ? DS.accent : DS.ink)
+    // Ready and the hands-on part say what to do; after it, what to leave alone.
+    let doing = state.phase == .notStarted || handsOn
+    let title =
+      state.targetReached
+      ? "Let it finish draining" : (doing ? cue?.title : cue?.waitTitle) ?? ""
+    let detail =
+      state.targetReached
+      ? "Finish brew when the last drops are through." : doing ? cue?.detail : cue?.waitDetail
+    return VStack(spacing: DS.Space.sm) {
+      Text(title)
+        .font(DS.Font.instruction).foregroundStyle(handsOn ? DS.accent : DS.ink)
         .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.7).lineLimit(3)
         .accessibilityAddTraits(.isHeader)
-      if let detail = state.targetReached
-        ? "Finish brew when the last drops are through." : step.detail
-      {
+      if let detail {
         Text(detail).font(.body).foregroundStyle(DS.ink2)
       }
+      if let open = cue?.valveOpen, !doing, !state.targetReached { valveBadge(open: open) }
     }
     .multilineTextAlignment(.center)
     .fixedSize(horizontal: false, vertical: true)
@@ -436,15 +437,28 @@ struct TimerView: View {
     .accessibilityIdentifier("timer.current")
   }
 
+  /// Where the valve stands, always in view on a brewer that has one.
+  private func valveBadge(open: Bool) -> some View {
+    Label(
+      open ? "Valve open" : "Valve closed",
+      systemImage: open ? "arrow.down.circle.fill" : "xmark.circle.fill"
+    )
+    .font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
+    .padding(.horizontal, DS.Space.md).padding(.vertical, DS.Space.xs)
+    .background(DS.paper, in: Capsule())
+    .contentTransition(.opacity)
+    .accessibilityIdentifier("timer.valve")
+  }
+
   /// What comes next, what to do, and the countdown to it.
   private var upcoming: (kicker: String, action: String, countdown: String?) {
     switch state.phase {
-    case .notStarted: return ("First", groups.indices.first.map { command($0).title } ?? "", nil)
+    case .notStarted: return ("First", cues.first?.title ?? "", nil)
     case .finished: return ("Done", "Reached \(RecipeFormat.clock(Int(state.elapsedS))).", nil)
     case .running, .paused:
       if state.targetReached { return ("Now", "Finish when it has drained.", nil) }
       if let group = currentGroup, group + 1 < groups.count {
-        return (soon ? "Get ready" : "Next", command(group + 1).title, countdown)
+        return (soon ? "Get ready" : "Next", cues[group + 1].title, countdown)
       }
       return ("Last step", "Finish at \(RecipeFormat.clock(plan.totalDurationS))", nil)
     }
