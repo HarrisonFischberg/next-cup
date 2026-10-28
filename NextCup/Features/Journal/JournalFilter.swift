@@ -46,8 +46,9 @@ struct JournalFilter: Equatable {
     if let beanName, !brew.beanNames.contains(beanName) { return false }
     guard !term.isEmpty else { return true }
     var fields: [String?] = [
-      brew.notes, brew.method?.name, brew.recipe?.name, brew.grindSetting, brew.verdict?.rawValue,
+      brew.notes, brew.method?.name, brew.recipe?.name, brew.grindSetting,
     ]
+    fields += brew.verdicts.map(\.rawValue)
     fields += brew.beanNames
     return fields.contains { $0?.localizedStandardContains(term) == true }
   }

@@ -265,25 +265,30 @@ private struct RecipeDetailContent: View {
         Image(systemName: "cup.and.saucer.fill").font(.body.weight(.semibold))
           .foregroundStyle(DS.accent).frame(width: 28).accessibilityHidden(true)
         Text("How much coffee?").font(.footnote).foregroundStyle(DS.ink2)
-        Spacer(minLength: 0)
+        Spacer(minLength: DS.Space.sm)
+        // Tap buttons, not a wheel: a scroll past the card cannot change the unit.
+        Picker("Unit", selection: $yieldUnit) {
+          ForEach(BrewYield.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
+        }
+        .pickerStyle(.segmented).fixedSize()
+        .accessibilityIdentifier("recipe.yield.unit")
       }
       .padding([.horizontal, .top], DS.Space.md)
-      // Two wheels: the amount and its unit. Until it is turned, the amount wheel rests
-      // on what the recipe makes and the recipe's dose stands.
-      HStack(spacing: 0) {
+      // Until it is turned, the wheel rests on what the recipe makes and the recipe's
+      // dose stands.
+      HStack(spacing: DS.Space.sm) {
         Picker("How much coffee", selection: shownYield) {
           ForEach(yieldMeasure.options, id: \.self) { amount in
             Text(amount.formatted(.number.precision(.fractionLength(0...1))))
           }
         }
+        .pickerStyle(.wheel).font(DS.Font.dataLarge).foregroundStyle(DS.ink)
+        .frame(height: 120).clipped()
         .accessibilityIdentifier("recipe.yield")
-        Picker("Unit", selection: $yieldUnit) {
-          ForEach(BrewYield.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
-        }
-        .accessibilityIdentifier("recipe.yield.unit")
+        Text(yieldMeasure.title).font(DS.Font.dataLarge).foregroundStyle(DS.ink2)
+          .frame(minWidth: 64, alignment: .leading)
+          .accessibilityHidden(true)
       }
-      .pickerStyle(.wheel).font(DS.Font.dataLarge).foregroundStyle(DS.ink)
-      .frame(height: 120).clipped()
       .padding(.horizontal, DS.Space.sm)
       if yieldG != nil { tuningRow }
     }

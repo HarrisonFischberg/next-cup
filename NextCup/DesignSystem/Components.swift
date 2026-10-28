@@ -367,10 +367,8 @@ struct GradeScale: View {
           .accessibilityHidden(true)
         nudge("plus", by: 1).disabled(tenths == Rating.maxTenths)
       }
-      if tenths == 0 {
-        Text("Slide to rate this cup from 0 to 10.").font(.footnote).foregroundStyle(DS.ink2)
-          .accessibilityHidden(true)
-      }
+      Text("Slide to rate this cup from 0 to 10.").font(.footnote).foregroundStyle(DS.ink2)
+        .accessibilityHidden(true)
     }
     .sensoryFeedback(.selection, trigger: tenths / 10)
     .accessibilityElement()

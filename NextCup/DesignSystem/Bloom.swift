@@ -52,19 +52,6 @@ struct CupMark: View {
   }
 }
 
-/// A small ring leading a journal row, tinted by how the cup was graded.
-struct RingGlyph: View {
-  let color: Color
-  var body: some View {
-    ZStack {
-      Circle().stroke(color, lineWidth: 5).padding(2.5)
-      Circle().fill(color.opacity(0.18)).padding(12)
-    }
-    .frame(width: 38, height: 38)
-    .accessibilityHidden(true)
-  }
-}
-
 /// The timer's ring: progress, a dot at each step change, and a marker at now.
 struct TimerRing: View {
   let fraction: Double

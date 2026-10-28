@@ -23,6 +23,14 @@ final class NextCupUITests: XCTestCase {
       app.swipeUp()
       swipes += 1
     }
+    // A swipe can carry the target up under the navigation bar, where a tap does not
+    // reach it; a short drag brings it back down.
+    if target.exists, target.frame.minY < 120 {
+      app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+        .press(
+          forDuration: 0.05,
+          thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)))
+    }
   }
 
   /// The text inside a tile after its title: value, unit and target, in order.
@@ -365,10 +373,12 @@ final class NextCupUITests: XCTestCase {
     app.buttons["Increase Dose"].tap()
     let grind = app.textFields["brewform.grind"]
     scrollUntilHittable(grind, in: app)
-    // Lift the field clear of the Save bar with a short drag.
-    let mid = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
-    let higher = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
-    mid.press(forDuration: 0.05, thenDragTo: higher)
+    // Lift the field clear of the Save bar with a short drag, when it sits low.
+    if grind.frame.midY > app.frame.height * 0.6 {
+      let mid = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
+      let higher = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+      mid.press(forDuration: 0.05, thenDragTo: higher)
+    }
     grind.tap()
     grind.typeText("21 clicks")
     grind.typeText("\n")  // Return dismisses the keyboard; the Done key is not always hittable
