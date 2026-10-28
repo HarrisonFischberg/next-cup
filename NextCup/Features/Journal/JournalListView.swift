@@ -380,11 +380,8 @@ struct JournalListView: View {
   }
 
   private func openUnsaved(_ entry: SavedDraft) {
-    switch entry.kind {
-    case .newBrew: router.open(.newBrew)
-    case .editing(let id): router.journalPath.append(.brew(id))
-    case .repeating(let id): router.journalPath.append(.brewAgain(id))
-    }
+    router.journalPath.append(
+      .unsaved(entry.store.fileURL.deletingPathExtension().lastPathComponent))
   }
 
   private func discard(_ entry: SavedDraft) {
@@ -526,6 +523,7 @@ private struct UnsavedBrewRow: View {
     .contentShape(Rectangle())
     .accessibilityElement(children: .combine)
     .accessibilityHint("Opens it so you can finish and save it")
+    .accessibilityIdentifier("journal.unsaved.row")
   }
 
   /// "Last changed Oct 28, 3:29 PM · Cone dripper"

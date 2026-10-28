@@ -6,18 +6,10 @@ import UIKit
 
 /// A notice above the form: what happened to the draft, never silent.
 struct FormNotice: Equatable {
-  /// `restored` offers Keep and Start over; `info` offers Dismiss.
-  enum Kind { case info, restored, error }
+  /// `info` offers Dismiss.
+  enum Kind { case info, error }
   let kind: Kind
   let message: String
-
-  static func restored(editing: Bool) -> FormNotice {
-    FormNotice(
-      kind: .restored,
-      message: editing
-        ? "You changed this brew earlier but didn't save. Those changes are filled in below."
-        : "You started this brew earlier but didn't save it. What you entered is filled in below.")
-  }
 }
 
 /// State and rules for the brew form (S02). The draft is autosaved outside the
@@ -53,8 +45,8 @@ final class BrewFormModel {
   /// The draft value and suggested value before an answer, kept for Undo.
   private var undoDraftValue: String?
   private var undoToValue: String?
-  /// What the form opens with before any restore. Start over goes back to it,
-  /// and a form left exactly like it keeps no draft.
+  /// What the form opens with before any resume. A form left exactly like it
+  /// keeps no draft.
   private var baseline: BrewDraft
 
   let seed: BrewFormSeed?
@@ -70,14 +62,15 @@ final class BrewFormModel {
 
   var isEditing: Bool { editingID != nil }
 
-  /// Opens the form: restores a saved draft when one belongs here, otherwise
-  /// starts from the saved brew being edited, the timer's seed or a blank brew.
-  /// An edit and a repeat keep their own draft files, so they never touch a new
-  /// brew's draft.
+  /// Opens the form from the saved brew being edited, the timer's seed or a
+  /// blank brew. Unsaved brews are reopened only from the Journal (`resuming`),
+  /// and a timer run's form picks its own draft back up; either way without a
+  /// banner. Each opening writes its own draft file, so it never overwrites
+  /// another unsaved brew.
   init(
     seed: BrewFormSeed?, editing brew: Brew? = nil, repeating source: Brew? = nil, store: Store,
-    draftStore: DraftStore = .standard(), defaults: UserDefaults = .standard,
-    simulatesSaveFailure: Bool = false
+    draftStore: DraftStore = .newBrew(), resuming: Bool = false,
+    defaults: UserDefaults = .standard, simulatesSaveFailure: Bool = false
   ) {
     self.seed = seed
     self.editingID = brew?.id
@@ -98,10 +91,9 @@ final class BrewFormModel {
     }
     let opened = opening()
     baseline = opened
-    switch draftStore.load() {
-    case .draft(let saved) where belongs(saved) && !Self.sameValues(saved, opened, editing: brew != nil):
+    switch resuming || seed != nil ? draftStore.load() : .none {
+    case .draft(let saved) where belongs(saved):
       draft = saved
-      notice = .restored(editing: brew != nil)
     case .discardedCorrupt:
       draft = opened
       notice = FormNotice(
@@ -128,23 +120,14 @@ final class BrewFormModel {
     _ draft: BrewDraft, editing brew: Brew?, repeating source: Brew?, store: Store,
     defaults: UserDefaults = .standard
   ) -> Bool {
-    let opened = fresh(seed: nil, editing: brew, repeating: source, store: store, defaults: defaults)
+    let opened = fresh(
+      seed: nil, editing: brew, repeating: source, store: store, defaults: defaults)
     return !sameValues(draft, opened, editing: brew != nil)
   }
 
   /// Takes what the form holds now as its starting point, so values filled in
   /// for the user (a bean chosen before opening) are not mistaken for typing.
-  func treatAsOpened() {
-    guard notice?.kind != .restored else { return }
-    baseline = draft
-  }
-
-  /// Throws the restored draft away and goes back to what the form opens with.
-  func startOver() {
-    draft = baseline
-    notice = nil
-    flushDraft()
-  }
+  func treatAsOpened() { baseline = draft }
 
   private static func saved(_ brew: Brew) -> BrewDraft {
     BrewDraft(
@@ -476,7 +459,7 @@ final class BrewFormModel {
 
   /// Writes the draft now (backgrounding, leaving the screen). A failure is
   /// shown and the draft stays in memory. An untouched form removes its draft
-  /// instead, so opening and leaving never shows a restore next time.
+  /// instead, so opening and leaving never lists an unsaved brew.
   func flushDraft(force: Bool = false) {
     autosave?.cancel()
     guard savedBrewID == nil else { return }

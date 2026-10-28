@@ -18,6 +18,8 @@ struct BrewFormView: View {
   var onSaved: (() -> Void)?
   /// A bean to start a new blank brew with (Bean detail's Brew this bean).
   var startingBean: Bean?
+  /// An unsaved brew reopened from the Journal: the form picks up its draft file.
+  var resuming: DraftStore?
 
   @Environment(\.modelContext) private var context
   @Environment(\.dismiss) private var dismiss
@@ -76,14 +78,21 @@ struct BrewFormView: View {
       guard model == nil else { return }
       model = BrewFormModel(
         seed: seed, editing: editing, repeating: repeating, store: Store(context: context),
-        draftStore: editing.map { .editing($0.id) } ?? repeating.map { .repeating($0.id) }
-          ?? .standard(),
-        simulatesSaveFailure: Self.simulatesSaveFailure)
+        draftStore: resuming ?? seededDraft ?? editing.map { .editing($0.id) }
+          ?? repeating.map { .repeating($0.id) } ?? .newBrew(),
+        resuming: resuming != nil, simulatesSaveFailure: Self.simulatesSaveFailure)
       if let startingBean, editing == nil, repeating == nil, model?.draft.beans?.isEmpty ?? true {
         model?.addBean(startingBean)
         model?.treatAsOpened()
       }
     }
+  }
+
+  /// The draft file this timer run's form wrote earlier, so reopening it keeps typing.
+  private var seededDraft: DraftStore? {
+    guard let seed else { return nil }
+    return DraftStore.all().first { $0.kind == .newBrew && $0.draft.sourceKey == seed.sessionKey }?
+      .store
   }
 
   private static var simulatesSaveFailure: Bool {
@@ -299,19 +308,10 @@ struct BrewFormView: View {
   }
 
   private func noticeBanner(_ notice: FormNotice, _ model: BrewFormModel) -> some View {
-    let keepTitle: String? =
-      switch notice.kind {
-      case .info: "Dismiss"
-      case .restored: model.isEditing ? "Keep changes" : "Keep it"
-      case .error: nil
-      }
-    return StateBanner(
+    StateBanner(
       kind: notice.kind == .error ? .error : .info, message: notice.message,
-      actionTitle: keepTitle,
-      action: notice.kind == .error ? nil : { model.dismissNotice() },
-      secondaryTitle: notice.kind == .restored
-        ? (model.isEditing ? "Undo changes" : "Start over") : nil,
-      secondaryAction: notice.kind == .restored ? { model.startOver() } : nil
+      actionTitle: notice.kind == .info ? "Dismiss" : nil,
+      action: notice.kind == .info ? { model.dismissNotice() } : nil
     )
     .accessibilityIdentifier("brewform.notice")
   }
