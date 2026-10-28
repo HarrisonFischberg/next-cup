@@ -18,19 +18,29 @@ struct FlavorPicker: View {
       : Self.featured + (Self.featured.contains(AppStyle.current) ? [] : [AppStyle.current])
   }
 
-  private var columns: [GridItem] {
-    Array(
-      repeating: GridItem(.flexible(), spacing: DS.Space.md, alignment: .top),
-      count: dts.isAccessibilitySize ? 1 : 2)
+  /// The tiles in rows of two (one at accessibility sizes). A plain Grid, not a lazy one:
+  /// inside a List row a LazyVGrid left a screen of blank space after More looks.
+  private var rows: [[AppStyle]] {
+    let count = dts.isAccessibilitySize ? 1 : 2
+    return stride(from: 0, to: shown.count, by: count).map {
+      Array(shown[$0..<min($0 + count, shown.count)])
+    }
   }
 
   var body: some View {
     VStack(alignment: .leading, spacing: DS.Space.lg) {
-      LazyVGrid(columns: columns, spacing: DS.Space.md) {
-        ForEach(shown) { option in
-          FlavorTile(style: option, isSelected: option == AppStyle.current) {
-            Self.keepPlace()
-            style = option.rawValue
+      Grid(horizontalSpacing: DS.Space.md, verticalSpacing: DS.Space.md) {
+        ForEach(rows, id: \.self) { row in
+          GridRow(alignment: .top) {
+            ForEach(row) { option in
+              FlavorTile(style: option, isSelected: option == AppStyle.current) {
+                Self.keepPlace()
+                style = option.rawValue
+              }
+            }
+            if row.count == 1, !dts.isAccessibilitySize {
+              Color.clear.gridCellUnsizedAxes(.vertical)
+            }
           }
         }
       }
