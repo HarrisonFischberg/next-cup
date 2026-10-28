@@ -122,6 +122,16 @@ final class BrewFormModel {
     return saved == opened
   }
 
+  /// Whether a draft file holds anything the form would not open with anyway.
+  /// Older builds left untouched drafts behind; those are not worth listing.
+  static func hasChanges(
+    _ draft: BrewDraft, editing brew: Brew?, repeating source: Brew?, store: Store,
+    defaults: UserDefaults = .standard
+  ) -> Bool {
+    let opened = fresh(seed: nil, editing: brew, repeating: source, store: store, defaults: defaults)
+    return !sameValues(draft, opened, editing: brew != nil)
+  }
+
   /// Takes what the form holds now as its starting point, so values filled in
   /// for the user (a bean chosen before opening) are not mistaken for typing.
   func treatAsOpened() {
