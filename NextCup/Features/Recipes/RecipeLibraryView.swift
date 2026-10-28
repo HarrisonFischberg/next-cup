@@ -143,7 +143,7 @@ struct RecipeLibraryView: View {
   }
 
   private func methodTile(_ method: BrewMethod) -> some View {
-    let count = method.recipes?.count ?? 0
+    let count = method.builtInKey == NespressoJokeView.methodKey ? 1 : method.recipes?.count ?? 0
     let side: CGFloat = dts.isAccessibilitySize ? 120 : 88
     return VStack(spacing: DS.Space.xs) {
       BrewGlyphView(glyph: method.glyph).frame(width: side, height: side)
