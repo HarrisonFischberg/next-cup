@@ -20,6 +20,8 @@ struct JournalListView: View {
   @State private var deleteTimer: Task<Void, Never>?
   @State private var deleteError: String?
   @State private var showImport = false
+  /// Brews started or edited and left without saving, read from the draft files.
+  @State private var unsaved: [SavedDraft] = []
   @AppStorage(JournalStorage.methodKey) private var methodFilter = ""
   @AppStorage(JournalStorage.beanKey) private var beanFilter = ""
   @AppStorage(JournalStorage.sortKey) private var sortChoice = JournalSort.newest.rawValue
@@ -68,6 +70,24 @@ struct JournalListView: View {
           } else {
             GettingStartedCard(
               logBrew: { router.open(.newBrew) }, importPage: { showImport = true })
+          }
+          if !unsaved.isEmpty {
+            LazyVStack(alignment: .leading, spacing: DS.Space.sm) {
+              unsavedHeader
+              ForEach(unsaved) { entry in
+                Button {
+                  openUnsaved(entry)
+                } label: {
+                  UnsavedBrewRow(entry: entry, methods: methods)
+                    .background(
+                      RoundedRectangle(cornerRadius: max(DS.radius, 18), style: .continuous)
+                        .fill(DS.paper))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, DS.Space.lg)
+                .contextMenu { discardButton(entry) }
+              }
+            }
           }
         }
       } else if shown.isEmpty {
@@ -120,7 +140,14 @@ struct JournalListView: View {
     .sheet(isPresented: $showImport) {
       PaperImportView(context: context) { showImport = false }
     }
-    .onChange(of: scenePhase) { _, phase in if phase != .active { commitPendingDelete() } }
+    .onChange(of: scenePhase) { _, phase in
+      if phase != .active { commitPendingDelete() } else { loadUnsaved() }
+    }
+    .onAppear(perform: loadUnsaved)
+    .onReceive(NotificationCenter.default.publisher(for: DraftStore.didChange)) { _ in
+      loadUnsaved()
+    }
+    .onChange(of: brews.count) { _, _ in loadUnsaved() }
     .onDisappear { commitPendingDelete() }
   }
 
@@ -216,6 +243,31 @@ struct JournalListView: View {
         .accessibilityAction(named: "Delete") { delete(brew) }
         .accessibilityIdentifier("journal.row.\(brew.id.uuidString)")
       }
+      if !unsaved.isEmpty {
+        unsavedHeader
+          .listRowInsets(EdgeInsets()).listRowBackground(DS.bg).listRowSeparator(.hidden)
+      }
+      ForEach(unsaved) { entry in
+        Button {
+          openUnsaved(entry)
+        } label: {
+          UnsavedBrewRow(entry: entry, methods: methods)
+        }
+        .buttonStyle(.plain)
+        .listRowInsets(
+          EdgeInsets(
+            top: DS.Space.xs, leading: DS.Space.lg, bottom: DS.Space.xs,
+            trailing: DS.Space.lg + DS.Space.md)
+        )
+        .listRowBackground(
+          RoundedRectangle(cornerRadius: max(DS.radius, 18), style: .continuous).fill(DS.paper)
+            .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.xs)
+        )
+        .listRowSeparator(.hidden)
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) { discardButton(entry) }
+        .contextMenu { discardButton(entry) }
+        .accessibilityAction(named: "Discard") { discard(entry) }
+      }
     }
     .listStyle(.plain)
     .scrollContentBackground(.hidden)
@@ -286,6 +338,58 @@ struct JournalListView: View {
     }
     .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.xs)
     .background(DS.bg)
+  }
+
+  // MARK: Unsaved brews
+
+  private var unsavedHeader: some View {
+    VStack(alignment: .leading, spacing: 2) {
+      Text("Unsaved Brews").font(.system(.title2, design: .serif, weight: .medium))
+        .foregroundStyle(DS.ink).accessibilityAddTraits(.isHeader)
+      Text("Started or changed, but not saved yet. Tap one to finish it.")
+        .font(.subheadline).foregroundStyle(DS.ink2)
+    }
+    .padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.lg)
+    .accessibilityIdentifier("journal.unsaved")
+  }
+
+  private func discardButton(_ entry: SavedDraft) -> some View {
+    Button(role: .destructive) {
+      discard(entry)
+    } label: {
+      Label("Discard", systemImage: "trash")
+    }
+  }
+
+  /// Reads the draft files. A draft for a brew that is gone, or one that holds
+  /// nothing new, is left out.
+  private func loadUnsaved() {
+    let store = Store(context: context)
+    unsaved = DraftStore.all().filter { entry in
+      switch entry.kind {
+      case .newBrew:
+        return BrewFormModel.hasChanges(entry.draft, editing: nil, repeating: nil, store: store)
+      case .editing(let id):
+        guard let brew = try? store.find(Brew.self, id: id) else { return false }
+        return BrewFormModel.hasChanges(entry.draft, editing: brew, repeating: nil, store: store)
+      case .repeating(let id):
+        guard let source = try? store.find(Brew.self, id: id) else { return false }
+        return BrewFormModel.hasChanges(entry.draft, editing: nil, repeating: source, store: store)
+      }
+    }
+  }
+
+  private func openUnsaved(_ entry: SavedDraft) {
+    switch entry.kind {
+    case .newBrew: router.open(.newBrew)
+    case .editing(let id): router.journalPath.append(.brew(id))
+    case .repeating(let id): router.journalPath.append(.brewAgain(id))
+    }
+  }
+
+  private func discard(_ entry: SavedDraft) {
+    _ = entry.store.clear()
+    loadUnsaved()
   }
 
   private func brewAgain(_ brew: Brew) {
@@ -385,6 +489,52 @@ struct FilterMenu<Content: View>: View {
     }
     .accessibilityLabel(title)
     .accessibilityValue(value)
+  }
+}
+
+/// A brew left without saving: what it is, whether it is new or an edit, and
+/// when it was last changed.
+private struct UnsavedBrewRow: View {
+  let entry: SavedDraft
+  let methods: [BrewMethod]
+
+  private var method: String? { methods.first { $0.id == entry.draft.methodID }?.name }
+  private var title: String { entry.draft.beans?.first?.name ?? method ?? "Brew" }
+
+  private var status: String {
+    switch entry.kind {
+    case .newBrew: "New brew, not saved"
+    case .editing: "Changes not saved"
+    case .repeating: "Brew again, not saved"
+    }
+  }
+
+  var body: some View {
+    HStack(alignment: .center, spacing: DS.Space.md) {
+      VStack(alignment: .leading, spacing: 2) {
+        Text(status.uppercased()).font(DS.Font.label).foregroundStyle(DS.signal)
+        Text(title).font(.system(.title3, design: .serif, weight: .medium))
+          .foregroundStyle(DS.ink).lineLimit(2)
+        Text(subtitle).font(.subheadline).foregroundStyle(DS.ink2)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+        .foregroundStyle(DS.ink2).accessibilityHidden(true)
+    }
+    .padding(DS.Space.lg)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .contentShape(Rectangle())
+    .accessibilityElement(children: .combine)
+    .accessibilityHint("Opens it so you can finish and save it")
+  }
+
+  /// "Last changed Oct 28, 3:29 PM · Cone dripper"
+  private var subtitle: String {
+    var text =
+      "Last changed "
+      + entry.changedAt.formatted(.dateTime.month(.abbreviated).day().hour().minute())
+    if let method, method != title { text += " · \(method)" }
+    return text
   }
 }
 
