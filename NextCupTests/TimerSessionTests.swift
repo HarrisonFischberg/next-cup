@@ -89,6 +89,37 @@ struct TimerSessionTests {
     #expect(throws: TimerPlanError.noSteps) { try TimerPlanBuilder.setup(for: empty, doseG: 15) }
   }
 
+  // MARK: Ticking
+
+  @Test func tickWaitsForTheNextWholeSecondAtMostAQuarterSecond() {
+    #expect(abs(TimerSession.delay(toNextSecondFrom: 4.9) - 0.105) < 1e-9)
+    #expect(abs(TimerSession.delay(toNextSecondFrom: 4.999) - 0.006) < 1e-9)
+    #expect(TimerSession.delay(toNextSecondFrom: 4.0) == 0.25)
+    #expect(TimerSession.delay(toNextSecondFrom: 4.3) == 0.25)
+  }
+
+  /// The screen's loop: tick, then wait `nextTickDelay()`. Every second must show within a
+  /// few milliseconds of starting, so the readout and its countdown change a full second apart.
+  @Test func eachSecondShowsAsItStarts() throws {
+    let (session, clock, _, _) = try makeSession()
+    session.start()
+    clock.advance(0.37)  // the screen's first tick never lands on a boundary
+    var now = 0.37
+    var shownAt: [Int: Double] = [:]
+    while now < 30 {
+      session.tick()
+      let second = Int(session.state.elapsedS)
+      if shownAt[second] == nil { shownAt[second] = now }
+      let wait = session.nextTickDelay()
+      clock.advance(wait)
+      now += wait
+    }
+    for second in 1..<30 {
+      let late = try #require(shownAt[second]) - Double(second)
+      #expect(late >= 0 && late < 0.01, "second \(second) showed \(late)s late")
+    }
+  }
+
   // MARK: Running
 
   @Test func runsEndToEndAndHandsOverTheTimeReached() throws {
