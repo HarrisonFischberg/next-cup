@@ -38,6 +38,14 @@ enum AppBootstrap {
         if inMemory, ProcessInfo.processInfo.arguments.contains("-demoBrews") {
           DemoBrews.insert(into: container.mainContext)
         }
+        // Performance runs only: `-perfBrews N` logs a heavy user's year of brews.
+        let arguments = ProcessInfo.processInfo.arguments
+        if inMemory, let index = arguments.firstIndex(of: "-perfBrews"),
+          index + 1 < arguments.count,
+          let count = Int(arguments[index + 1])
+        {
+          DemoBrews.insertMany(count, into: container.mainContext)
+        }
       #endif
       return .success(container)
     } catch {
@@ -112,6 +120,38 @@ struct StartupError: Error, Equatable {
       let arguments = ProcessInfo.processInfo.arguments
       if let index = arguments.firstIndex(of: "-demoOnlyMethod"), index + 1 < arguments.count {
         for method in methods { method.isHidden = method.builtInKey != arguments[index + 1] }
+      }
+      try? context.save()
+    }
+
+    /// `count` brews over 30 beans (6 in use), newest today, with notes and ratings.
+    static func insertMany(_ count: Int, into context: ModelContext) {
+      let methods = (try? context.fetch(FetchDescriptor<BrewMethod>())) ?? []
+      let origins = ["Ethiopia", "Kenya", "Colombia", "Brazil", "Guatemala", "Rwanda"]
+      let beans = (0..<30).map { index in
+        let bean = Bean(name: "Bean \(index) \(origins[index % origins.count])")
+        bean.originCountry = origins[index % origins.count]
+        bean.roastLevel = RoastLevel.allCases[index % RoastLevel.allCases.count]
+        bean.status = index < 6 ? .inUse : .finished
+        context.insert(bean)
+        return bean
+      }
+      let verdicts: [Verdict?] = [.balanced, .sour, .bitter, .weak, .strong, nil]
+      for index in 0..<count {
+        let brew = Brew(date: Date.now.addingTimeInterval(-Double(index) * 8 * 3600))
+        brew.doseG = 15 + Double(index % 6)
+        brew.waterG = 250 + Double(index % 5) * 10
+        brew.totalTimeS = 180 + index % 90
+        brew.ratingTenths = 50 + index % 50
+        brew.verdict = verdicts[index % verdicts.count]
+        brew.grindSetting = "\(18 + index % 8)"
+        brew.notes = index % 3 == 0 ? "Sweet, juicy, a little sharp at the end. Try finer." : ""
+        if !methods.isEmpty { brew.method = methods[index % methods.count] }
+        let bean = beans[(index / 12) % beans.count]
+        let part = BrewBean(grams: brew.doseG ?? 15, beanNameSnapshot: bean.name)
+        part.bean = bean
+        brew.beans = [part]
+        context.insert(brew)
       }
       try? context.save()
     }

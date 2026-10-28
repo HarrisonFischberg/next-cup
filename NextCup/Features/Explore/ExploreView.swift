@@ -147,6 +147,7 @@ struct ExploreView: View {
     } else {
       let aliases = ExploreModel.aliases(storedAliases)
       let history = ExploreModel.history(of: brews, taxonomy: taxonomy, aliases: aliases)
+      let brewedBeanIDs = Set(brews.flatMap { ($0.beans ?? []).compactMap { $0.bean?.id } })
       ScrollView {
         LazyVStack(alignment: .leading, spacing: DS.Space.lg) {
           PageHeader(title: "Explore") { SettingsGear(id: "explore.settings", large: true) }
@@ -158,7 +159,7 @@ struct ExploreView: View {
               result: ExploreModel.limited(
                 Recommender.recommend(for: refs, history: history), to: methods),
               units: units,
-              canAsk: !brews(of: bean).isEmpty, featured: bean.id == planned.first?.id,
+              canAsk: brewedBeanIDs.contains(bean.id), featured: bean.id == planned.first?.id,
               onAsk: { insightsBean = bean })
           }
           moreSections

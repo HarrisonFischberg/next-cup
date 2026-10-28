@@ -38,11 +38,16 @@ enum ExploreModel {
   static func history(
     of brews: [Brew], taxonomy: Taxonomy, aliases: [Taxonomy.Alias]
   ) -> [RecommenderBrew] {
-    brews.compactMap { brew in
+    // Many brews share a bean, so each bean is mapped through the taxonomy once.
+    var byBean: [UUID: [BucketRef]] = [:]
+    return brews.compactMap { brew in
       guard let method = brew.method, !method.isHidden else { return nil }
       var seen = Set<BucketRef>()
-      let buckets = (brew.beans ?? []).compactMap(\.bean).flatMap {
-        buckets(of: $0, taxonomy: taxonomy, aliases: aliases)
+      let buckets = (brew.beans ?? []).compactMap(\.bean).flatMap { bean in
+        if let known = byBean[bean.id] { return known }
+        let mapped = Self.buckets(of: bean, taxonomy: taxonomy, aliases: aliases)
+        byBean[bean.id] = mapped
+        return mapped
       }.filter { seen.insert($0).inserted }
       return RecommenderBrew(
         date: brew.date, ratingTenths: brew.ratingTenths, methodKey: method.builtInKey,

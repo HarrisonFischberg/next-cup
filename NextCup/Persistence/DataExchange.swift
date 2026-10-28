@@ -17,9 +17,10 @@ struct DataExporter {
 
   func archive(now: Date = Date()) throws -> DataArchive {
     func rows<M: Identified>(_ type: M.Type) throws -> [M] {
-      try store.context.fetch(FetchDescriptor<M>()).sorted {
-        ($0.createdAt, $0.id.uuidString) < ($1.createdAt, $1.id.uuidString)
-      }
+      // Sort keys are read once per row, not once per comparison.
+      try store.context.fetch(FetchDescriptor<M>())
+        .map { (row: $0, key: ($0.createdAt, $0.id.uuidString)) }
+        .sorted { $0.key < $1.key }.map(\.row)
     }
     var archive = DataArchive(exportedAt: now)
     archive.methods = try rows(BrewMethod.self).map(MethodRecord.init)
