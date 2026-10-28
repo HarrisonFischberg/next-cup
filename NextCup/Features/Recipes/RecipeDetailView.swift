@@ -54,7 +54,7 @@ private struct RecipeDetailContent: View {
   @FocusState private var typingDose: Bool
   @AppStorage(BrewFormModel.lastGrinderKey) private var lastGrinderID = ""
   @AppStorage(BrewYield.unitKey) private var yieldUnit = BrewYield.defaultUnit.rawValue
-  /// The amount picked on the wheel, in `yieldUnit`; nil keeps the recipe's dose.
+  /// The amount turned to on the wheel, in `yieldUnit`; nil keeps the recipe's dose.
   @State private var yieldAmount: Double?
   /// The dose the amount set; typing another dose lets the amount go.
   @State private var yieldDoseG: Double?
@@ -75,6 +75,19 @@ private struct RecipeDetailContent: View {
   }
 
   private var yieldMeasure: BrewYield { BrewYield(rawValue: yieldUnit) ?? .ml }
+
+  /// The amount wheel: the amount picked, or the stop nearest what the recipe makes
+  /// (its water less what the grounds keep).
+  private var shownYield: Binding<Double> {
+    Binding(
+      get: {
+        yieldAmount
+          ?? yieldMeasure.nearest(
+            toMillilitres: recipe.waterG - BrewMath.absorption * recipe.doseG)
+          ?? yieldMeasure.options[0]
+      },
+      set: { yieldAmount = $0 })
+  }
 
   /// One tap on the dose stepper: 0.5 g, or 0.05 oz when the units are ounces.
   private var stepG: Double { units.grams(fromDisplayWeight: units.weight == .grams ? 0.5 : 0.05) }
@@ -255,13 +268,12 @@ private struct RecipeDetailContent: View {
         Spacer(minLength: 0)
       }
       .padding([.horizontal, .top], DS.Space.md)
-      // Two wheels: the amount ("Recipe" keeps the recipe's dose) and its unit.
+      // Two wheels: the amount and its unit. Until it is turned, the amount wheel rests
+      // on what the recipe makes and the recipe's dose stands.
       HStack(spacing: 0) {
-        Picker("How much coffee", selection: $yieldAmount) {
-          Text("Recipe").tag(Double?.none)
+        Picker("How much coffee", selection: shownYield) {
           ForEach(yieldMeasure.options, id: \.self) { amount in
             Text(amount.formatted(.number.precision(.fractionLength(0...1))))
-              .tag(Double?.some(amount))
           }
         }
         .accessibilityIdentifier("recipe.yield")
@@ -336,8 +348,6 @@ private struct RecipeDetailContent: View {
       doseG: recipe.doseG, waterG: recipe.waterG,
       iceG: recipe.includesIce ? recipe.iceG : nil)
     guard let yieldG, let dose = BrewMath.dose(forYieldG: yieldG, ratio: ratio) else {
-      // Back to "Recipe" on the wheel: back to the recipe's own dose.
-      if yieldDoseG != nil { scaledDoseG = nil }
       yieldDoseG = nil
       return
     }
