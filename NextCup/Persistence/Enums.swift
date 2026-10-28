@@ -5,6 +5,29 @@ import Foundation
 
 enum Verdict: String, Codable, CaseIterable, Sendable {
   case sour, bitter, weak, strong, balanced
+
+  /// The draft keeps several tastes in its one field, comma-separated ("sour,weak"), so a
+  /// single taste saved before reads the same.
+  static func picked(_ raw: String?) -> [Verdict] {
+    (raw ?? "").split(separator: ",").compactMap { Verdict(rawValue: String($0)) }
+  }
+
+  static func joined(_ verdicts: [Verdict]) -> String? {
+    verdicts.isEmpty ? nil : verdicts.map(\.rawValue).joined(separator: ",")
+  }
+
+  /// Picking or unpicking one taste. Balanced stands alone: it clears the faults, and a
+  /// fault clears it.
+  static func toggled(_ option: Verdict, in raw: String?) -> String? {
+    var tastes = picked(raw)
+    if let index = tastes.firstIndex(of: option) {
+      tastes.remove(at: index)
+    } else {
+      tastes.removeAll { option == .balanced || $0 == .balanced }
+      tastes.append(option)
+    }
+    return joined(tastes)
+  }
 }
 
 enum RoastLevel: String, Codable, CaseIterable, Sendable {
