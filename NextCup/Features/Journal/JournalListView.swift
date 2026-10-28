@@ -39,11 +39,9 @@ struct JournalListView: View {
   /// Every saved brew except the one waiting out its Undo window.
   private var logged: [Brew] { brews.filter { $0.id != pendingDelete } }
 
-  private var beanNames: [String] { Set(logged.flatMap(\.beanNames)).sorted() }
-
   /// A remembered method or bean that no longer exists is ignored, so an old
   /// choice can never leave the journal looking empty.
-  private var filter: JournalFilter {
+  private func filter(beanNames: [String]) -> JournalFilter {
     let methodID = UUID(uuidString: methodFilter)
     return JournalFilter(
       search: search,
@@ -53,6 +51,10 @@ struct JournalListView: View {
   }
 
   var body: some View {
+    // Computed once per update: each pass walks every brew and its beans.
+    let logged = self.logged
+    let beanNames = Set(logged.flatMap(\.beanNames)).sorted()
+    let filter = filter(beanNames: beanNames)
     let shown = filter.apply(to: logged)
     Group {
       if logged.isEmpty {
@@ -75,14 +77,16 @@ struct JournalListView: View {
             actionTitle: "Clear filters", action: clearFilters)
         }
       } else {
-        list(shown)
+        list(shown, logged: logged)
       }
     }
     .background(DS.bg)
     .searchable(
       text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search brews"
     )
-    .safeAreaInset(edge: .top, spacing: 0) { if !logged.isEmpty { filterBar } }
+    .safeAreaInset(edge: .top, spacing: 0) {
+      if !logged.isEmpty { filterBar(filter, beanNames: beanNames) }
+    }
     .safeAreaInset(edge: .bottom, spacing: 0) { toast }
     .toolbar {
       ToolbarItem(placement: .primaryAction) { SettingsGear(id: "journal.settings") }
@@ -124,7 +128,7 @@ struct JournalListView: View {
 
   // MARK: List
 
-  private func list(_ shown: [Brew]) -> some View {
+  private func list(_ shown: [Brew], logged: [Brew]) -> some View {
     List {
       header
         .padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.sm)
@@ -215,8 +219,7 @@ struct JournalListView: View {
 
   /// One quiet Filter button instead of three pinned menus; it names how many
   /// filters are on so a filtered list never looks like missing brews.
-  private var filterBar: some View {
-    let active = filter
+  private func filterBar(_ active: JournalFilter, beanNames: [String]) -> some View {
     let count = (active.methodID == nil ? 0 : 1) + (active.beanName == nil ? 0 : 1)
     return HStack {
       Menu {
