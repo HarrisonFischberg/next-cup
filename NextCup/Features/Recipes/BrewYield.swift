@@ -22,4 +22,18 @@ enum BrewYield: String, CaseIterable {
     case .ml: 1
     }
   }
+
+  /// The amounts its wheel offers: oz by the ounce, cups by the half, ml by 50.
+  var options: [Double] {
+    switch self {
+    case .oz: Array(stride(from: 4, through: 32, by: 1))
+    case .cups: Array(stride(from: 0.5, through: 4, by: 0.5))
+    case .ml: Array(stride(from: 100, through: 1_000, by: 50))
+    }
+  }
+
+  /// The wheel's amount nearest to `ml`, for keeping the amount when the unit changes.
+  func nearest(toMillilitres ml: Double) -> Double? {
+    options.min { abs($0 * millilitres - ml) < abs($1 * millilitres - ml) }
+  }
 }
