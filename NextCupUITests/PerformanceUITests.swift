@@ -52,9 +52,10 @@ final class PerformanceUITests: XCTestCase {
     measure(metrics: [XCTCPUMetric(application: app), XCTClockMetric()], options: options) {
       field.tap()
       field.typeText("juicy")
-      XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'juicy'"))
-        .firstMatch.waitForExistence(timeout: 10))
-      app.buttons["Cancel"].firstMatch.tap()
+      XCTAssertTrue(
+        app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'juicy'"))
+          .firstMatch.waitForExistence(timeout: 10))
+      field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 5))
     }
   }
 
