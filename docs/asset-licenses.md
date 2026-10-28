@@ -19,9 +19,9 @@
 | --- | --- | --- | --- |
 | `NextCup/Resources/methods.json`, `recipes.json`, `taxonomy.json` | Written for Next Cup | Original | Generic method and recipe text; no creator or reference-app recipes. SF Symbol names used by name only |
 
-## App icon (2026-10-25)
+## App icon (2026-10-28)
 
-`NextCup/Assets.xcassets/AppIcon.appiconset/AppIcon-Light-1024.png` (yellow, light appearance) and `AppIcon-Dark-1024.png` (blue, dark appearance): cropped from the owner's image `AppIcon-options-yellow-blue.png` (512×512, supplied 2026-10-26) and upscaled to 1024. Origin and license as the owner supplied them; confirm the source and get a full-resolution original before an App Store release.
+`NextCup/Assets.xcassets/AppIcon.appiconset/AppIcon-Light-1024.png` and `AppIcon-Dark-1024.png` (same image for both appearances): "Brew Ring", option 4 of the 2026-10-28 icon round, picked by the owner. Drawn for Next Cup as vector art (source `design/app-icon/brew-ring.svg`) and rendered to a 1024×1024 opaque PNG. Original work; no third-party assets. Replaces the earlier yellow/blue icon cropped from the owner's `AppIcon-options-yellow-blue.png`.
 
 ## Handoff redesign hero photographs (2026-10-27)
 
