@@ -91,4 +91,57 @@ final class BrewTimerCaptureUITests: XCTestCase {
       try shot("timer-switch-draining")
     }
   }
+
+  /// Every built-in method's first style, one screenshot per step at the moment the step
+  /// starts (the hands-on command), skipping ahead with Skip step.
+  @MainActor
+  func testCaptureEveryMethod() throws {
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folder.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let out = folder.appendingPathComponent("methods")
+    try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+    XCUIDevice.shared.appearance = .dark
+    defer { XCUIDevice.shared.appearance = .light }
+    let methods = [
+      "Cone dripper", "Flat-bed dripper", "Switchable immersion dripper", "Press pot",
+      "Inverted press", "Espresso", "Iced pour over", "Cold brew", "Moka pot", "AeroPress",
+      "Chemex", "Drip machine",
+    ]
+    for (number, method) in methods.enumerated() {
+      let app = XCUIApplication()
+      app.launchArguments = [
+        "-inMemoryStore", "-resetNavigationState", "-resetDraft", "-appStyle", "sundayStudio",
+      ]
+      app.launch()
+      XCTAssertTrue(
+        app.descendants(matching: .any)["tab.root.journal"].waitForExistence(timeout: 10))
+      app.tabBars.buttons["Brew"].tap()
+      let tile = app.descendants(matching: .any)["brew.method.\(method)"].firstMatch
+      XCTAssertTrue(tile.waitForExistence(timeout: 5), method)
+      for _ in 0..<8 where !tile.isHittable {
+        app.scrollViews.containing(.any, identifier: "brew.method.Cone dripper").firstMatch
+          .swipeLeft(velocity: .slow)
+      }
+      tile.tap()
+      let style = app.descendants(matching: .any)["style.1"].firstMatch
+      XCTAssertTrue(style.waitForExistence(timeout: 5), method)
+      style.tap()
+      app.buttons["Start brew"].tap()
+      XCTAssertTrue(app.buttons["Start"].waitForExistence(timeout: 5), method)
+      app.buttons["Start"].tap()
+      let skip = app.buttons["Skip step"]
+      for step in 1...10 {
+        sleep(1)
+        try app.screenshot().pngRepresentation.write(
+          to: out.appendingPathComponent(String(format: "%02d-step%02d.png", number + 1, step)))
+        guard skip.exists, skip.isHittable else { break }
+        skip.tap()
+        if app.descendants(matching: .any)["timer.finished"].waitForExistence(timeout: 1) {
+          break
+        }
+      }
+      app.terminate()
+    }
+  }
 }
