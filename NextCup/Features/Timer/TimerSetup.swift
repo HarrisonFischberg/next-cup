@@ -19,6 +19,9 @@ struct TimerSetup: Identifiable, Hashable {
   var sceneKind: BrewSceneKind = .pourOver
   var glyph: BrewGlyph = .cone
   var stepKinds: [String] = []
+  /// The built-in method's key (or its style for one the user made), so the timer
+  /// words each step the way that brewer is used.
+  var methodKey: String?
   /// Chosen on the Start brew page and carried into the brew form.
   var beanID: UUID?
   var beanName: String?
@@ -78,7 +81,8 @@ enum TimerPlanBuilder {
       tempC: tuning?.tempC ?? recipe.tempC, scaled: scaled, stepTitles: timerSteps.map(\.label),
       sceneKind: BrewSceneKind(
         methodKey: recipe.method?.builtInKey, style: recipe.method?.style.rawValue),
-      glyph: recipe.method?.glyph ?? .cup, stepKinds: steps.map(\.kind.rawValue))
+      glyph: recipe.method?.glyph ?? .cup, stepKinds: steps.map(\.kind.rawValue),
+      methodKey: recipe.method?.builtInKey ?? recipe.method?.style.rawValue)
   }
 }
 

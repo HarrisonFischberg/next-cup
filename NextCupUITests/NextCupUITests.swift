@@ -136,7 +136,7 @@ final class NextCupUITests: XCTestCase {
     scrollUntilHittable(brew, in: app)
     brew.tap()
     XCTAssertTrue(element(app, "timer.status").waitForExistence(timeout: 10))
-    XCTAssertTrue(element(app, "timer.status").label.hasPrefix("READY"))
+    XCTAssertTrue(element(app, "timer.status").label.hasPrefix("Ready"))
   }
 
   @MainActor
@@ -261,20 +261,20 @@ final class NextCupUITests: XCTestCase {
   func testTimerRunsARecipeToTheEndAndOpensThePrefilledForm() {
     let app = openTimer(speed: 60)
     XCTAssertTrue(
-      element(app, "timer.status").label.hasPrefix("READY"), app.debugDescription)
+      element(app, "timer.status").label.hasPrefix("Ready"), app.debugDescription)
     app.buttons["Start"].tap()
     // Pause and resume keep the controls reachable and change the label.
     XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 5))
     app.buttons["Pause"].tap()
     XCTAssertTrue(app.buttons["Resume"].waitForExistence(timeout: 5))
-    XCTAssertTrue(element(app, "timer.status").label.contains("PAUSED"))
+    XCTAssertTrue(element(app, "timer.status").label.contains("Paused"))
     app.buttons["Resume"].tap()
 
     // Sixty times faster, the target comes in a few seconds. The brew runs on until
     // Finish brew, and the log waits for a tap.
     let finish = app.buttons["Finish brew"]
     XCTAssertTrue(finish.waitForExistence(timeout: 30), "timer never reached the target")
-    XCTAssertTrue(element(app, "timer.status").label.contains("TARGET REACHED"))
+    XCTAssertTrue(element(app, "timer.status").label.contains("Target reached"))
     finish.tap()
     XCTAssertTrue(element(app, "timer.finished").waitForExistence(timeout: 5))
     app.buttons["Taste and log"].tap()

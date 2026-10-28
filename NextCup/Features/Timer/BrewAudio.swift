@@ -30,6 +30,12 @@ final class BrewAudio: NSObject, AVAudioPlayerDelegate {
   /// True when the user paused the song; the brew resuming leaves it paused.
   private(set) var musicPaused = false
 
+  /// How far into the song, 0...1, for the music bar's progress line.
+  var songProgress: Double {
+    guard let music, music.duration > 0 else { return 0 }
+    return music.currentTime / music.duration
+  }
+
   @ObservationIgnored private let engine = AVAudioEngine()
   @ObservationIgnored private let node = AVAudioPlayerNode()
   @ObservationIgnored private let tickBuffer = BrewAudio.click(gain: 0.16, smoothing: 2)

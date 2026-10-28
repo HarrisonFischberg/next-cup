@@ -51,7 +51,7 @@
         { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 270, "instruction": "Pour all the water quickly and evenly." },
         { "kind": "stir", "startOffsetS": 30, "instruction": "Stir the slurry a few times." },
         { "kind": "wait", "startOffsetS": 40, "instruction": "Let it steep." },
-        { "kind": "openValve", "startOffsetS": 120, "instruction": "Open the valve and place on the server." },
+        { "kind": "openValve", "startOffsetS": 120, "instruction": "Set it on your mug or carafe, then open the valve." },
         { "kind": "drawdown", "startOffsetS": 125, "instruction": "Let the coffee drain completely." }
       ]
     },
@@ -87,7 +87,7 @@
         { "kind": "pour", "startOffsetS": 0, "targetCumulativeWaterG": 240, "instruction": "Add the grounds, then pour all the water." },
         { "kind": "stir", "startOffsetS": 20, "instruction": "Stir briefly." },
         { "kind": "wait", "startOffsetS": 30, "instruction": "Steep." },
-        { "kind": "invert", "startOffsetS": 120, "instruction": "Fit the filter cap, then flip onto the server." },
+        { "kind": "invert", "startOffsetS": 120, "instruction": "Fit the filter cap, then flip it onto your mug or carafe." },
         { "kind": "press", "startOffsetS": 135, "instruction": "Press down steadily until it stops." }
       ]
     },
@@ -114,14 +114,14 @@
       "waterG": 200,
       "tempC": 94,
       "totalTimeS": 150,
-      "tuningNote": "Hot water is the brewed amount; the ice sits in the server and melts into the cup.",
+      "tuningNote": "Hot water is the brewed amount; the ice sits in the carafe and melts into the cup.",
       "includesIce": true,
       "iceG": 120,
       "steps": [
-        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 40, "instruction": "Wet the bed. The ice is already in the server." },
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 40, "instruction": "Wet the bed. The ice is already in the carafe." },
         { "kind": "pour", "startOffsetS": 35, "targetCumulativeWaterG": 120, "instruction": "Pour in slow circles." },
         { "kind": "pour", "startOffsetS": 70, "targetCumulativeWaterG": 200, "instruction": "Pour to the final hot-water weight." },
-        { "kind": "swirl", "startOffsetS": 120, "instruction": "Swirl the server to finish chilling." }
+        { "kind": "swirl", "startOffsetS": 120, "instruction": "Swirl the carafe to finish chilling." }
       ]
     },
     {
@@ -512,7 +512,7 @@
       "credit": "Workshop Coffee, iced filter",
       "creditURL": "https://workshopcoffee.com/pages/brewing-iced-filter-coffee-at-home",
       "steps": [
-        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 75, "instruction": "Pour 75 g. 200 g of ice is already in the server." },
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 75, "instruction": "Pour 75 g. 200 g of ice is already in the carafe." },
         { "kind": "stir", "startOffsetS": 10, "instruction": "Stir the bed to wet it evenly." },
         { "kind": "pour", "startOffsetS": 45, "targetCumulativeWaterG": 300, "instruction": "Pour slowly to 300 g by about 3:00." },
         { "kind": "swirl", "startOffsetS": 170, "instruction": "Stir the coffee into the ice." }
@@ -531,10 +531,10 @@
       "credit": "Balance Coffee, Japanese iced coffee",
       "creditURL": "https://balancecoffee.co.uk/blogs/blog/how-to-make-iced-coffee-japanese-style",
       "steps": [
-        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 60, "instruction": "Pour 60 g. 200 g of ice is in the server." },
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 60, "instruction": "Pour 60 g. 200 g of ice is in the carafe." },
         { "kind": "pour", "startOffsetS": 45, "targetCumulativeWaterG": 180, "instruction": "Pour to 180 g." },
         { "kind": "pour", "startOffsetS": 90, "targetCumulativeWaterG": 300, "instruction": "Pour to 300 g." },
-        { "kind": "swirl", "startOffsetS": 160, "instruction": "Swirl the server until the ice is mostly melted." }
+        { "kind": "swirl", "startOffsetS": 160, "instruction": "Swirl the carafe until the ice is mostly melted." }
       ]
     },
     {
@@ -549,7 +549,7 @@
       "includesIce": true,
       "iceG": 140,
       "steps": [
-        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 40, "instruction": "Wet the bed. The ice is already in the server." },
+        { "kind": "bloom", "startOffsetS": 0, "targetCumulativeWaterG": 40, "instruction": "Wet the bed. The ice is already in the carafe." },
         { "kind": "pour", "startOffsetS": 35, "targetCumulativeWaterG": 110, "instruction": "Pour in slow circles." },
         { "kind": "pour", "startOffsetS": 70, "targetCumulativeWaterG": 180, "instruction": "Pour to the final hot-water weight." },
         { "kind": "swirl", "startOffsetS": 120, "instruction": "Swirl to finish chilling." }

@@ -1,0 +1,147 @@
+import XCTest
+
+/// Screenshots of the active brew in Sunday Studio dark with music on: a cone pour-over
+/// (ready, pouring, hands off, get ready, finished) and a switchable steep (valve closed,
+/// steeping, valve open, draining). Runs only while `docs/design/brew-timer/.capture`
+/// exists; files are named with the CAPTURE_PREFIX environment variable (old_ or new_).
+final class BrewTimerCaptureUITests: XCTestCase {
+  private var folder: URL {
+    URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("docs/design/brew-timer")
+  }
+
+  /// Opens `recipe` of `method` at three times speed and calls `shoot` with a function
+  /// that waits for a brew time and a function that saves a named screenshot.
+  @MainActor
+  private func capture(
+    method: String, recipe: String,
+    shoot: (_ at: (Double) -> Void, _ shot: (String) throws -> Void, XCUIApplication) throws ->
+      Void
+  ) throws {
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folder.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let prefix = ProcessInfo.processInfo.environment["CAPTURE_PREFIX"] ?? "new_"
+    XCUIDevice.shared.appearance = .dark
+    defer { XCUIDevice.shared.appearance = .light }
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-inMemoryStore", "-resetNavigationState", "-resetDraft", "-appStyle", "sundayStudio",
+      "-brewMusic", "-timerSpeed", "3",
+    ]
+    app.launch()
+    XCTAssertTrue(
+      app.descendants(matching: .any)["tab.root.journal"].waitForExistence(timeout: 10))
+    app.tabBars.buttons["Brew"].tap()
+    app.descendants(matching: .any)["brew.method.\(method)"].firstMatch.tap()
+    let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", recipe))
+      .firstMatch
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+    row.tap()
+    app.buttons["Start brew"].tap()
+    XCTAssertTrue(app.buttons["Start"].waitForExistence(timeout: 5))
+    var started = Date()
+    try shoot(
+      { brewS in
+        if brewS == 0 {
+          app.buttons["Start"].tap()
+          started = Date()
+        } else {
+          Thread.sleep(until: started.addingTimeInterval(brewS / 3))
+        }
+      },
+      { name in
+        try app.screenshot().pngRepresentation.write(
+          to: self.folder.appendingPathComponent("\(prefix)\(name).png"))
+      }, app)
+  }
+
+  @MainActor
+  func testCaptureActiveBrew() throws {
+    try capture(method: "Cone dripper", recipe: "Balanced cone") { at, shot, app in
+      try shot("timer-ready")
+      at(0)
+      at(5)
+      try shot("timer-pouring")
+      at(24)
+      try shot("timer-hands-off")
+      at(41.5)
+      try shot("timer-get-ready")
+      let finish = app.buttons["Finish brew"]
+      XCTAssertTrue(finish.waitForExistence(timeout: 70))
+      finish.tap()
+      sleep(1)
+      try shot("timer-finished")
+    }
+  }
+
+  @MainActor
+  func testCaptureSwitchableValve() throws {
+    try capture(method: "Switchable immersion dripper", recipe: "Steep then release") {
+      at, shot, _ in
+      at(0)
+      at(2)
+      try shot("timer-switch-close-and-pour")
+      at(60)
+      try shot("timer-switch-steeping")
+      at(121.5)
+      try shot("timer-switch-open-valve")
+      at(150)
+      try shot("timer-switch-draining")
+    }
+  }
+
+  /// Every built-in method's first style, one screenshot per step at the moment the step
+  /// starts (the hands-on command), skipping ahead with Skip step.
+  @MainActor
+  func testCaptureEveryMethod() throws {
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folder.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let out = folder.appendingPathComponent("methods")
+    try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+    XCUIDevice.shared.appearance = .dark
+    defer { XCUIDevice.shared.appearance = .light }
+    let methods = [
+      "Cone dripper", "Flat-bed dripper", "Switchable immersion dripper", "Press pot",
+      "Inverted press", "Espresso", "Iced pour over", "Cold brew", "Moka pot", "AeroPress",
+      "Chemex", "Drip machine",
+    ]
+    for (number, method) in methods.enumerated() {
+      let app = XCUIApplication()
+      app.launchArguments = [
+        "-inMemoryStore", "-resetNavigationState", "-resetDraft", "-appStyle", "sundayStudio",
+      ]
+      app.launch()
+      XCTAssertTrue(
+        app.descendants(matching: .any)["tab.root.journal"].waitForExistence(timeout: 10))
+      app.tabBars.buttons["Brew"].tap()
+      let tile = app.descendants(matching: .any)["brew.method.\(method)"].firstMatch
+      XCTAssertTrue(tile.waitForExistence(timeout: 5), method)
+      for _ in 0..<8 where !tile.isHittable {
+        app.scrollViews.containing(.any, identifier: "brew.method.Cone dripper").firstMatch
+          .swipeLeft(velocity: .slow)
+      }
+      tile.tap()
+      let style = app.descendants(matching: .any)["style.1"].firstMatch
+      XCTAssertTrue(style.waitForExistence(timeout: 5), method)
+      style.tap()
+      app.buttons["Start brew"].tap()
+      XCTAssertTrue(app.buttons["Start"].waitForExistence(timeout: 5), method)
+      app.buttons["Start"].tap()
+      let skip = app.buttons["Skip step"]
+      for step in 1...10 {
+        sleep(1)
+        try app.screenshot().pngRepresentation.write(
+          to: out.appendingPathComponent(String(format: "%02d-step%02d.png", number + 1, step)))
+        guard skip.exists, skip.isHittable else { break }
+        skip.tap()
+        if app.descendants(matching: .any)["timer.finished"].waitForExistence(timeout: 1) {
+          break
+        }
+      }
+      app.terminate()
+    }
+  }
+}
