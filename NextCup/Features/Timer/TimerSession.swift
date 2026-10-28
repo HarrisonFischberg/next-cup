@@ -1,4 +1,3 @@
-import AudioToolbox
 import NextCupKit
 import Observation
 import SwiftUI
@@ -29,10 +28,7 @@ struct SystemTimerHaptics: TimerHaptics {
     case .start, .pauseToggle: UIImpactFeedbackGenerator(style: .light).impactOccurred()
     case .stepChange, .targetReached:
       UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-      // System sound 1057 is a short tick that stays silent with the ringer switch off.
-      if UserDefaults.standard.object(forKey: Self.soundKey) as? Bool ?? true {
-        AudioServicesPlaySystemSound(1057)
-      }
+      BrewAudio.shared.chime()
     case .finish: UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
   }

@@ -15,10 +15,12 @@ struct TimerView: View {
   @State private var logged = false
   @State private var confirmsEnd = false
   @State private var finishedShown = false
+  /// The phone's volume is all the way down while the brew's sound is on.
+  @State private var muted = false
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
-  @AppStorage(SystemTimerHaptics.soundKey) private var sound = true
+  @AppStorage(SystemTimerHaptics.soundKey) private var sound = false
   @Environment(\.scenePhase) private var scenePhase
   @Environment(\.dynamicTypeSize) private var dts
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -50,6 +52,14 @@ struct TimerView: View {
       ScrollView {
         VStack(alignment: .leading, spacing: DS.Space.lg) {
           if dts.isAccessibilitySize { readout }
+          if !sound, session.outcome == nil { soundPrompt }
+          if muted, sound, session.outcome == nil {
+            StateBanner(
+              kind: .info,
+              message: "Your volume is all the way down. Turn it up to hear the ticks and music."
+            )
+            .accessibilityIdentifier("timer.muted")
+          }
           if session.outcome != nil { finishedBanner } else { currentStep }
           context
           schedule
@@ -75,7 +85,7 @@ struct TimerView: View {
             sound ? "Sound on" : "Sound off",
             systemImage: sound ? "speaker.wave.2.fill" : "speaker.slash.fill")
         }
-        .accessibilityHint("Plays a short tone when a step changes")
+        .accessibilityHint("Plays a soft tick, a chime at each step, and music")
         .accessibilityIdentifier("timer.sound")
       }
     }
@@ -94,6 +104,7 @@ struct TimerView: View {
     .task {
       while !Task.isCancelled {
         session.tick()
+        muted = BrewAudio.isMuted
         try? await Task.sleep(for: .milliseconds(250))
       }
     }
@@ -103,8 +114,64 @@ struct TimerView: View {
     .onChange(of: state.targetReached) { _, reached in
       if reached, running { AccessibilityNotification.Announcement("Target time reached").post() }
     }
+    // A tick each running second; the music follows the brew: playing, paused, over.
+    .onChange(of: Int(state.elapsedS)) { _, _ in
+      if state.phase == .running { BrewAudio.shared.tick() }
+    }
+    .onChange(of: state.phase, initial: true) { _, phase in
+      switch phase {
+      case .running: BrewAudio.shared.playMusic()
+      case .paused: BrewAudio.shared.pauseMusic()
+      case .finished: BrewAudio.shared.stop()
+      case .notStarted: break
+      }
+    }
+    .onChange(of: sound) { _, on in
+      if on, state.phase == .running {
+        BrewAudio.shared.playMusic()
+      } else if !on {
+        BrewAudio.shared.stop()
+      }
+    }
     .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
-    .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+    .onDisappear {
+      UIApplication.shared.isIdleTimerDisabled = false
+      BrewAudio.shared.stop()
+    }
+  }
+
+  /// One press turns on the ticks, the step chimes and the music, even on silent.
+  private var soundPrompt: some View {
+    Button {
+      sound = true
+      BrewAudio.shared.chime()
+    } label: {
+      HStack(spacing: DS.Space.md) {
+        Image(systemName: "speaker.wave.3.fill").font(.title.weight(.semibold))
+          .foregroundStyle(DS.onSignal).frame(width: 56, height: 56)
+          .background(DS.signal, in: Circle())
+        VStack(alignment: .leading, spacing: 2) {
+          Text("Tap for sound and music").font(DS.Font.headline).foregroundStyle(DS.ink)
+          Text("A tick each second, a chime at each step, and soft music. Plays on silent too.")
+            .font(.footnote).foregroundStyle(DS.ink2).fixedSize(horizontal: false, vertical: true)
+        }
+        Spacer(minLength: 0)
+      }
+      .padding(DS.Space.md)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(
+        DS.paper, in: RoundedRectangle(cornerRadius: max(DS.radius, 18), style: .continuous)
+      )
+      .overlay(
+        RoundedRectangle(cornerRadius: max(DS.radius, 18), style: .continuous)
+          .strokeBorder(DS.accent, lineWidth: 2)
+      )
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .accessibilityElement(children: .combine)
+    .accessibilityHint("Turns on timer sounds and music")
+    .accessibilityIdentifier("timer.sound.prompt")
   }
 
   // MARK: Readout
