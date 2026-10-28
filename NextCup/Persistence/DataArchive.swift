@@ -343,6 +343,7 @@ struct BrewRecord: ArchiveRecord {
   /// Version 1 archives: half points out of 5, read once on import.
   var ratingHalfSteps: Int?
   var verdict: Verdict?
+  var alsoTasted: [String]?
   var notes: String
   var photo: Data?
   var targetsJSON: Data?
@@ -361,6 +362,7 @@ struct BrewRecord: ArchiveRecord {
       b.grindSetting, b.grindValue, b.tempC, b.totalTimeS
     )
     (tds, ratingTenths, verdict, notes) = (b.tds, b.ratingTenths, b.verdict, b.notes)
+    alsoTasted = b.alsoTasted
     (photo, targetsJSON, isDraft) = (b.photo, b.targetsJSON, b.isDraft)
     (methodID, recipeID, grinderID) = (b.method?.id, b.recipe?.id, b.grinder?.id)
     (waterProfileID, suggestionFollowedID) = (b.waterProfile?.id, b.suggestionFollowed?.id)
@@ -376,6 +378,7 @@ struct BrewRecord: ArchiveRecord {
     (b.tds, b.ratingTenths, b.verdict, b.notes) = (
       tds, ratingTenths ?? ratingHalfSteps.map { $0 * 10 }, verdict, notes
     )
+    b.alsoTasted = alsoTasted
     (b.photo, b.targetsJSON, b.isDraft) = (photo, targetsJSON, isDraft)
   }
 

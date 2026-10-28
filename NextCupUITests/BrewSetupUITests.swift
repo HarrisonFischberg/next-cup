@@ -41,8 +41,8 @@ final class BrewSetupUITests: XCTestCase {
 
     // 16 oz of coffee sets a bigger dose than the recipe's.
     let recipeDose = dose.value as? String ?? ""
-    app.pickerWheels.element(boundBy: 1).adjust(toPickerWheelValue: "oz")
-    app.pickerWheels.element(boundBy: 0).adjust(toPickerWheelValue: "16")
+    app.buttons["oz"].tap()
+    app.pickerWheels.firstMatch.adjust(toPickerWheelValue: "16")
     let tuning = element("recipe.yield.tuning")
     XCTAssertTrue(tuning.waitForExistence(timeout: 5))
     XCTAssertNotEqual(dose.value as? String, recipeDose, "the amount did not change the dose")
@@ -96,5 +96,83 @@ final class BrewSetupUITests: XCTestCase {
     XCTAssertEqual(pause.label, "Pause music")
     pause.tap()
     XCTAssertEqual(pause.label, "Play music")
+  }
+
+  /// How it tasted takes several faults and Balanced clears them. A screenshot shows the
+  /// rating hint staying once a rating is set.
+  @MainActor
+  func testHowItTastedTakesSeveralPicksAndTheRatingHintStays() throws {
+    let folder = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("docs/design/brew-form")
+    let capture = FileManager.default.fileExists(
+      atPath: folder.appendingPathComponent(".capture").path)
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-inMemoryStore", "-resetNavigationState", "-resetDraft", "-appStyle", "sundayStudio",
+    ]
+    app.launch()
+    func element(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
+
+    app.tabBars.buttons["Journal"].tap()
+    let log = app.buttons["Log a brew"].firstMatch
+    XCTAssertTrue(log.waitForExistence(timeout: 10))
+    log.tap()
+    let sour = element("brewform.verdict.sour")
+    XCTAssertTrue(sour.waitForExistence(timeout: 5))
+    var swipes = 0
+    while !sour.isHittable && swipes < 12 {
+      app.swipeUp()
+      swipes += 1
+    }
+    sour.tap()
+    element("brewform.verdict.weak").tap()
+    XCTAssertTrue(sour.isSelected)
+    XCTAssertTrue(element("brewform.verdict.weak").isSelected)
+
+    // The hint is hidden from VoiceOver (the rating reads its own value), so the
+    // screenshot shows it staying.
+    let rating = app.descendants(matching: .any).matching(
+      NSPredicate(format: "label == 'Rating'")
+    ).firstMatch
+    // Drag the slider's thumb from 0 to the right; the thumb sits just past the minus.
+    let origin = rating.coordinate(withNormalizedOffset: .zero)
+    let slider = rating.frame
+    origin.withOffset(CGVector(dx: 66, dy: slider.height - 40))
+      .press(
+        forDuration: 0.1, thenDragTo: origin.withOffset(CGVector(dx: 220, dy: slider.height - 40)))
+    XCTAssertNotEqual(rating.value as? String, "Not rated")
+    if capture {
+      app.swipeUp()
+      sleep(1)
+      try app.screenshot().pngRepresentation.write(
+        to: folder.appendingPathComponent("new_tasted-and-rating.png"))
+    }
+
+    element("brewform.verdict.balanced").tap()
+    XCTAssertTrue(element("brewform.verdict.balanced").isSelected)
+    XCTAssertFalse(sour.isSelected, "Balanced clears the faults")
+  }
+
+  /// The Journal lists older brews under their own Past Brews header.
+  @MainActor
+  func testTheJournalShowsPastBrewsUnderTheirOwnHeader() throws {
+    let folder = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("docs/design/brew-form")
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-inMemoryStore", "-demoBrews", "-resetNavigationState", "-resetDraft", "-appStyle",
+      "sundayStudio",
+    ]
+    app.launch()
+    app.tabBars.buttons["Journal"].tap()
+    let past = app.descendants(matching: .any)["journal.past"].firstMatch
+    XCTAssertTrue(past.waitForExistence(timeout: 10))
+    if FileManager.default.fileExists(atPath: folder.appendingPathComponent(".capture").path) {
+      sleep(1)
+      try app.screenshot().pngRepresentation.write(
+        to: folder.appendingPathComponent("new_journal-past-brews.png"))
+    }
   }
 }

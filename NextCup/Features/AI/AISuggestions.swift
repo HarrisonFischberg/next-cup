@@ -58,7 +58,9 @@ enum AISuggestions {
       parts.append("temperature \(SuggestionApplication.number(value)) C")
     }
     if let value = brew.totalTimeS { parts.append("time \(value) s") }
-    if let value = brew.verdict { parts.append("tasted \(value.rawValue)") }
+    if !brew.verdicts.isEmpty {
+      parts.append("tasted " + brew.verdicts.map(\.rawValue).joined(separator: " and "))
+    }
     if let value = brew.ratingTenths { parts.append("rating \(Rating.text(value)) of 10") }
     if !brew.notes.isEmpty { parts.append("notes: \(brew.notes)") }
     return "- " + parts.joined(separator: "; ")

@@ -157,6 +157,13 @@ struct JournalListView: View {
         .listRowBackground(DS.bg)
         .listRowSeparator(.hidden)
       }
+      if !shown.isEmpty {
+        Text("Past Brews").font(.system(.title2, design: .serif, weight: .medium))
+          .foregroundStyle(DS.ink).accessibilityAddTraits(.isHeader)
+          .padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.md)
+          .listRowInsets(EdgeInsets()).listRowBackground(DS.bg).listRowSeparator(.hidden)
+          .accessibilityIdentifier("journal.past")
+      }
       ForEach(shown) { brew in
         NavigationLink(value: DeepLink.brew(brew.id)) {
           BrewRow(brew: brew, units: units)
@@ -382,66 +389,96 @@ struct FilterMenu<Content: View>: View {
 }
 
 /// One brew in the list: method and grade, when, the numbers, and a note preview.
+/// One past brew, in the Today card's manner: the bean large, when and on what, the
+/// rating on the right, then the numbers, the tastes and the notes with room to breathe.
 private struct BrewRow: View {
   let brew: Brew
   let units: UnitPreferences
 
+  private var title: String { brew.beanNames.first ?? brew.method?.name ?? "Brew" }
+
   var body: some View {
-    HStack(alignment: .top, spacing: DS.Space.md) {
-      if DS.isBloom { RingGlyph(color: ringColor) }
-      details
-    }
-    .padding(DS.Space.md)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .accessibilityElement(children: .combine)
-  }
-
-  /// Bloom's row ring, by taste verdict (the verdict is also written in the row).
-  private var ringColor: Color {
-    switch brew.verdict {
-    case .balanced: DS.sage
-    case .sour, .weak: DS.crema
-    case .bitter, .strong: DS.espresso
-    case nil: DS.line
-    }
-  }
-
-  private var details: some View {
-    VStack(alignment: .leading, spacing: DS.Space.xs) {
-      HStack(alignment: .firstTextBaseline, spacing: DS.Space.sm) {
-        Text((brew.method?.name ?? "Brew").dsTitle).font(DS.Font.headline)
-          .foregroundStyle(DS.ink)
-        Spacer(minLength: DS.Space.sm)
-        if let grade = brew.ratingTenths, grade > 0 { GradeBadge(tenths: grade) }
+    VStack(alignment: .leading, spacing: DS.Space.md) {
+      HStack(alignment: .firstTextBaseline, spacing: DS.Space.md) {
+        VStack(alignment: .leading, spacing: 2) {
+          Text(title).font(.system(.title3, design: .serif, weight: .medium))
+            .foregroundStyle(DS.ink).lineLimit(2)
+          Text(subtitle).font(.subheadline).foregroundStyle(DS.ink2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        if let grade = brew.ratingTenths, grade > 0 {
+          HStack(alignment: .firstTextBaseline, spacing: 2) {
+            Text(Rating.text(grade)).font(.system(.title2, design: .serif, weight: .semibold))
+              .foregroundStyle(DS.ink)
+            Text("/10").font(.footnote).foregroundStyle(DS.ink2)
+          }
+          .accessibilityElement(children: .ignore)
+          .accessibilityLabel("Rated \(Rating.text(grade)) of 10")
+        }
       }
-      Text(brew.date.formatted(date: .abbreviated, time: .shortened))
-        .font(.footnote).foregroundStyle(DS.ink2)
-      if let numbers {
-        Text(numbers).font(DS.Font.mono(.footnote)).foregroundStyle(DS.ink2)
+      if !stats.isEmpty {
+        HStack(alignment: .top, spacing: DS.Space.lg) {
+          ForEach(stats, id: \.name) { stat in
+            VStack(alignment: .leading, spacing: 2) {
+              Text(stat.value).font(DS.Font.mono(.subheadline)).foregroundStyle(DS.ink)
+              Text(stat.name).font(.caption).foregroundStyle(DS.ink2)
+            }
+            .accessibilityElement(children: .combine)
+          }
+        }
       }
-      if let detail {
-        Text(detail).font(.footnote).foregroundStyle(DS.ink2)
+      if !tags.isEmpty {
+        HStack(spacing: DS.Space.xs) {
+          ForEach(tags, id: \.self) { tag in
+            Text(tag).font(.caption.weight(.semibold)).foregroundStyle(DS.ink)
+              .padding(.horizontal, DS.Space.sm).padding(.vertical, 4)
+              .background(DS.ink.opacity(0.06), in: Capsule())
+          }
+        }
       }
       if !brew.notes.isEmpty {
         Text(brew.notes).font(.footnote).foregroundStyle(DS.ink).lineLimit(2)
       }
       if let dialIn {
-        Text(dialIn).font(.footnote).foregroundStyle(DS.ink2)
+        Text(dialIn).font(.footnote.weight(.medium)).foregroundStyle(DS.signal)
           .accessibilityIdentifier("journal.row.dialin")
       }
     }
+    .padding(DS.Space.lg)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .accessibilityElement(children: .combine)
   }
 
-  private var numbers: String? {
-    var parts: [String] = []
+  /// "Oct 27, 8:12 AM · Cone dripper", and the other beans of a blend.
+  private var subtitle: String {
+    var text = brew.date.formatted(.dateTime.month(.abbreviated).day().hour().minute())
+    if let method = brew.method?.name, method != title { text += " · \(method)" }
+    let others = brew.beanNames.dropFirst()
+    if !others.isEmpty { text += " · with " + others.joined(separator: ", ") }
+    return text
+  }
+
+  private var stats: [(name: String, value: String)] {
+    var stats: [(name: String, value: String)] = []
     if let dose = brew.doseG, let water = brew.waterG {
-      parts.append("\(RecipeFormat.weight(dose, units)) : \(RecipeFormat.weight(water, units))")
+      stats.append(
+        (
+          "dose : water",
+          "\(RecipeFormat.weight(dose, units)) : \(RecipeFormat.weight(water, units))"
+        ))
     }
     if let ratio = BrewMath.ratioLabel(BrewMath.ratio(doseG: brew.doseG, waterG: brew.waterG)) {
-      parts.append(ratio)
+      stats.append(("ratio", ratio))
     }
-    if let seconds = brew.totalTimeS { parts.append(RecipeFormat.clock(seconds)) }
-    return parts.isEmpty ? nil : parts.joined(separator: "  ·  ")
+    if let seconds = brew.totalTimeS { stats.append(("time", RecipeFormat.clock(seconds))) }
+    return stats
+  }
+
+  /// The tastes picked and the grind, as small tags.
+  private var tags: [String] {
+    var tags = brew.verdicts.map(\.rawValue.capitalized)
+    if let grind = brew.grindSetting { tags.append("Grind \(grind)") }
+    return tags
   }
 
   /// The suggestion this cup produced and the one it followed (X4).
@@ -455,13 +492,6 @@ private struct BrewRow: View {
     if let followed = brew.suggestionFollowed {
       parts.append("Followed: \(SuggestionFormat.headline(followed, units))")
     }
-    return parts.isEmpty ? nil : parts.joined(separator: "  ·  ")
-  }
-
-  private var detail: String? {
-    var parts = brew.beanNames
-    if let verdict = brew.verdict { parts.append(verdict.rawValue.capitalized) }
-    if let grind = brew.grindSetting { parts.append("Grind \(grind)") }
     return parts.isEmpty ? nil : parts.joined(separator: "  ·  ")
   }
 }
