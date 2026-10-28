@@ -48,10 +48,10 @@ struct MethodStylesView: View {
             EmptyState(
               title: "No styles yet", message: "Recipes you create for this method show here.")
           }
-          ForEach(styles) { recipe in
-            NavigationLink(value: DeepLink.recipe(recipe.id)) { card(recipe) }
+          ForEach(Array(styles.enumerated()), id: \.element.id) { index, recipe in
+            NavigationLink(value: DeepLink.recipe(recipe.id)) { card(recipe, number: index + 1) }
               .buttonStyle(.plain)
-              .accessibilityIdentifier("style.\(recipe.id.uuidString)")
+              .accessibilityIdentifier("style.\(index + 1)")
           }
           yourStyle
         }
@@ -92,7 +92,23 @@ struct MethodStylesView: View {
     .accessibilityIdentifier("style.yours")
   }
 
-  private func card(_ recipe: Recipe) -> some View {
+  /// One style as its own card, numbered; the whole card opens its Start brew page.
+  private func card(_ recipe: Recipe, number: Int) -> some View {
+    HStack(alignment: .top, spacing: DS.Space.md) {
+      Text("\(number)").font(DS.Font.mono(.headline, .bold)).foregroundStyle(DS.onSignal)
+        .frame(width: DS.Size.minTap, height: DS.Size.minTap)
+        .background(DS.signal, in: Circle())
+        .accessibilityLabel("Style \(number)")
+      cardText(recipe)
+    }
+    .padding(DS.Space.lg)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .panel(DS.paper)
+    .contentShape(Rectangle())
+    .accessibilityElement(children: .combine)
+  }
+
+  private func cardText(_ recipe: Recipe) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.sm) {
       HStack(alignment: .firstTextBaseline) {
         Text(recipe.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
@@ -108,11 +124,6 @@ struct MethodStylesView: View {
       }
       Text(details(recipe)).font(DS.Font.mono(.footnote)).foregroundStyle(DS.ink)
     }
-    .padding(DS.Space.lg)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .panel(DS.paper)
-    .contentShape(Rectangle())
-    .accessibilityElement(children: .combine)
   }
 
   private func details(_ recipe: Recipe) -> String {
