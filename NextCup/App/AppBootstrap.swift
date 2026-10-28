@@ -104,6 +104,15 @@ struct StartupError: Error, Equatable {
         brew.beans = [part]
         context.insert(brew)
       }
+      // A dark bag in use, so Explore has a card; `-demoOnlyMethod <key>` keeps one method shown.
+      let bag = Bean(name: "Southern Weather")
+      bag.roastLevel = .dark
+      bag.status = .inUse
+      context.insert(bag)
+      let arguments = ProcessInfo.processInfo.arguments
+      if let index = arguments.firstIndex(of: "-demoOnlyMethod"), index + 1 < arguments.count {
+        for method in methods { method.isHidden = method.builtInKey != arguments[index + 1] }
+      }
       try? context.save()
     }
   }

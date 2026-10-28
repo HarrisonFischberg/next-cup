@@ -74,6 +74,7 @@ struct RootTabView: View {
         }
       }
     }
+    .environment(router)
     .tint(DS.ink)
     // The ink tint is white in dark looks, so an on switch would vanish; switches use the accent.
     .toggleStyle(SwitchToggleStyle(tint: DS.accent))
@@ -105,7 +106,7 @@ private struct TabRoot: View {
     case .journal: stack(path: $router.journalPath)
     case .recipes: stack(path: $router.recipesPath)
     case .beans: stack(path: $router.beansPath)
-    case .explore: stack(path: nil)
+    case .explore: stack(path: $router.explorePath)
     }
   }
 

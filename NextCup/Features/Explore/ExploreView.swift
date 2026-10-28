@@ -11,6 +11,7 @@ struct ExploreView: View {
   @Query(sort: \Brew.date, order: .reverse)
   private var brews: [Brew]
   @Query private var storedAliases: [TaxonomyAlias]
+  @Query(sort: \BrewMethod.sortOrder) private var methods: [BrewMethod]
   @Environment(\.modelContext) private var context
   @State private var insightsBean: Bean?
   @State private var taxonomy = ExploreModel.taxonomy
@@ -131,7 +132,8 @@ struct ExploreView: View {
     if planned.isEmpty {
       ScrollView {
         VStack(alignment: .leading, spacing: DS.Space.lg) {
-          PageHeader("Explore").padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.lg)
+          PageHeader(title: "Explore") { SettingsGear(id: "explore.settings", large: true) }
+            .padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.lg)
           EmptyState(
             title: "Nothing to plan yet",
             message:
@@ -147,13 +149,15 @@ struct ExploreView: View {
       let history = ExploreModel.history(of: brews, taxonomy: taxonomy, aliases: aliases)
       ScrollView {
         LazyVStack(alignment: .leading, spacing: DS.Space.lg) {
-          PageHeader("Explore")
-          Kicker("Next cup for your beans", color: DS.ink2).accessibilityAddTraits(.isHeader)
+          PageHeader(title: "Explore") { SettingsGear(id: "explore.settings", large: true) }
+          Kicker("For your Next Cup", color: DS.ink2).accessibilityAddTraits(.isHeader)
           ForEach(planned) { bean in
             let refs = ExploreModel.buckets(of: bean, taxonomy: taxonomy, aliases: aliases)
             BeanRecommendationCard(
               bean: bean, buckets: refs,
-              result: Recommender.recommend(for: refs, history: history), units: units,
+              result: ExploreModel.limited(
+                Recommender.recommend(for: refs, history: history), to: methods),
+              units: units,
               canAsk: !brews(of: bean).isEmpty, featured: bean.id == planned.first?.id,
               onAsk: { insightsBean = bean })
           }

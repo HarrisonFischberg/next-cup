@@ -285,16 +285,17 @@ final class NextCupUITests: XCTestCase {
   }
 
   @MainActor
-  func testLoggingAFinishedBrewSavesItOnceAndLocksTheTimerButton() {
+  func testLoggingAFinishedBrewSavesItOnceAndLandsOnTheJournal() {
     let app = openTimer(speed: 60)
     app.buttons["Start"].tap()
     tasteAndLog(app, timeout: 30)
     XCTAssertTrue(element(app, "brewform.prefilled").waitForExistence(timeout: 5))
     app.buttons["Save brew"].tap()
-    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
-    app.buttons["Done"].tap()
-    XCTAssertTrue(app.buttons["Brew logged"].waitForExistence(timeout: 5))
-    XCTAssertFalse(app.buttons["Brew logged"].isEnabled)
+    XCTAssertTrue(
+      element(app, "tab.root.journal").waitForExistence(timeout: 5), "a save lands on the Journal")
+    let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'journal.row.'"))
+    XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 5))
+    XCTAssertEqual(rows.count, 1, "the brew is saved once")
   }
 
   @MainActor
@@ -401,7 +402,8 @@ final class NextCupUITests: XCTestCase {
     app.launch()
     XCTAssertTrue(element(app, "brewform.notice").waitForExistence(timeout: 10))
     app.buttons["Save brew"].tap()
-    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
+    XCTAssertTrue(
+      element(app, "tab.root.journal").waitForExistence(timeout: 5), "a save lands on the Journal")
   }
 
   @MainActor
@@ -438,8 +440,8 @@ final class NextCupUITests: XCTestCase {
     notes.tap()
     notes.typeText(note)
     app.buttons["Save brew"].tap()
-    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
-    app.buttons["Done"].tap()
+    XCTAssertTrue(
+      element(app, "tab.root.journal").waitForExistence(timeout: 5), "a save lands on the Journal")
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 5))
   }
 
@@ -722,8 +724,8 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(text(app, in: "brewform.dose").hasPrefix("15"))
     app.buttons["Increase Dose"].tap()
     app.buttons["Save brew"].tap()
-    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
-    app.buttons["Done"].tap()
+    XCTAssertTrue(
+      element(app, "tab.root.journal").waitForExistence(timeout: 5), "a save lands on the Journal")
     XCTAssertTrue(
       journalRow(app, containing: "15.1 g").waitForExistence(timeout: 5),
       "list shows the edited dose: \(app.debugDescription)")
@@ -769,8 +771,8 @@ final class NextCupUITests: XCTestCase {
       element(app, "brewform.notes").value as? String ?? "", "", "the old notes are not copied")
 
     app.buttons["Save brew"].tap()
-    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
-    app.buttons["Done"].tap()
+    XCTAssertTrue(
+      element(app, "tab.root.journal").waitForExistence(timeout: 5), "a save lands on the Journal")
     let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'journal.row.'"))
     XCTAssertTrue(
       rows.element(boundBy: 1).waitForExistence(timeout: 5), "the repeat is a second brew")
@@ -1478,8 +1480,8 @@ final class NextCupUITests: XCTestCase {
     try shot("brewform-blend")
 
     app.buttons["Save brew"].tap()
-    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
-    app.buttons["Done"].tap()
+    XCTAssertTrue(
+      element(app, "tab.root.journal").waitForExistence(timeout: 5), "a save lands on the Journal")
 
     app.tabBars.buttons["Beans"].tap()
     element(app, "beans.row.Washed Ethiopia").tap()
@@ -1634,12 +1636,9 @@ final class NextCupUITests: XCTestCase {
     scrollUntilHittable(sour, in: app)
     sour.tap()
     app.buttons["Save brew"].tap()
-    XCTAssertTrue(element(app, "brewform.saved").waitForExistence(timeout: 5))
-    let made = element(app, "brewform.saved.suggestion")
-    XCTAssertTrue(made.waitForExistence(timeout: 5))
-    XCTAssertTrue(made.label.contains("Grind: 20 → 19"), "got \(made.label)")
+    XCTAssertTrue(
+      element(app, "tab.root.journal").waitForExistence(timeout: 5), "a save lands on the Journal")
     try shot("dialin-saved")
-    app.buttons["Done"].tap()
 
     // History: the journal row names the suggestion this cup produced.
     let row = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Next: Grind: 20'"))
