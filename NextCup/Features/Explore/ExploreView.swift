@@ -109,6 +109,21 @@ struct ExploreView: View {
     }
   }
 
+  /// The Start brew page for a suggestion: its recipe when one matches, else its
+  /// brewer's styles.
+  private func link(for item: Recommendation) -> DeepLink? {
+    guard
+      let method = methods.first(where: { item.methodKey != nil && $0.builtInKey == item.methodKey }
+      )
+        ?? methods.first(where: { $0.name == item.methodName })
+    else { return nil }
+    let recipes = method.recipes ?? []
+    let recipe =
+      recipes.first { $0.name == item.recipeName }
+      ?? (item.recipeName == nil && recipes.count == 1 ? recipes.first : nil)
+    return recipe.map { .recipe($0.id) } ?? .method(method.id)
+  }
+
   private func sectionRow(_ title: String, _ detail: String, _ symbol: String) -> some View {
     HStack(spacing: DS.Space.md) {
       Image(systemName: symbol).foregroundStyle(DS.ink2).frame(width: 24).accessibilityHidden(true)
@@ -160,7 +175,7 @@ struct ExploreView: View {
                 Recommender.recommend(for: refs, history: history), to: methods),
               units: units,
               canAsk: brewedBeanIDs.contains(bean.id), featured: bean.id == planned.first?.id,
-              onAsk: { insightsBean = bean })
+              link: link(for:), onAsk: { insightsBean = bean })
           }
           moreSections
         }
@@ -188,6 +203,7 @@ private struct BeanRecommendationCard: View {
   let canAsk: Bool
   /// The first card is the screen's standout; the rest show only their top pick.
   let featured: Bool
+  let link: (Recommendation) -> DeepLink?
   let onAsk: () -> Void
 
   var body: some View {
@@ -198,8 +214,17 @@ private struct BeanRecommendationCard: View {
           Array(result.items.prefix(featured ? result.items.count : 1).enumerated()), id: \.offset
         ) { index, item in
           Hairline()
-          RecommendationRow(
-            item: item, rank: result.items.count > 1 ? index + 1 : nil, units: units)
+          let rank = result.items.count > 1 ? index + 1 : nil
+          // A tap on a suggestion opens its Start brew page.
+          if let link = link(item) {
+            NavigationLink(value: link) {
+              RecommendationRow(item: item, rank: rank, units: units, opens: true)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("explore.pick.\(bean.name).\(index + 1)")
+          } else {
+            RecommendationRow(item: item, rank: rank, units: units)
+          }
         }
         Hairline()
         if featured {
@@ -264,6 +289,7 @@ private struct RecommendationRow: View {
   let item: Recommendation
   let rank: Int?
   let units: UnitPreferences
+  var opens = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: DS.Space.sm) {
@@ -271,6 +297,11 @@ private struct RecommendationRow: View {
         if let rank { Text("\(rank)").font(DS.Font.data).foregroundStyle(DS.ink2) }
         Text(item.methodName.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
         if item.isDefault { Tag(text: "Default") }
+        if opens {
+          Spacer(minLength: DS.Space.sm)
+          Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+            .foregroundStyle(DS.ink2).accessibilityHidden(true)
+        }
       }
       if let recipe = item.recipeName {
         Text("Recipe: \(recipe)").font(.footnote).foregroundStyle(DS.ink2)
@@ -288,7 +319,9 @@ private struct RecommendationRow: View {
     }
     .padding(DS.Space.md)
     .frame(maxWidth: .infinity, alignment: .leading)
+    .contentShape(Rectangle())
     .accessibilityElement(children: .combine)
+    .accessibilityHint(opens ? "Opens Start brew" : "")
   }
 
   private var values: [(String, String)] {
