@@ -53,12 +53,15 @@ enum TimerPlanBuilder {
   /// Seconds the brew runs after the last step when the recipe gives no total time.
   static let tailS = 30
 
-  /// Builds the plan for a recipe at `doseG`. Step times never change with dose;
-  /// water targets scale with it.
-  static func setup(for recipe: Recipe, doseG: Double) throws -> TimerSetup {
+  /// Builds the plan for a recipe at `doseG`. Water targets scale with the dose and
+  /// pour-over times stretch gently; an AI tuning for the batch sets the temperature and
+  /// stretches every step to its total time instead.
+  static func setup(
+    for recipe: Recipe, doseG: Double, tuning: BrewSizeAI.Tuning? = nil
+  ) throws -> TimerSetup {
     let scaled = try RecipeScaler.scale(recipe.scalable, toDose: doseG).recipe
     let steps = recipe.orderedSteps
-    let factor = recipe.timingFactor(doseG: doseG)
+    let factor = recipe.timingFactor(doseG: doseG, tuning: tuning)
     let timerSteps = steps.enumerated().map { index, step in
       TimerStep(
         order: index, label: RecipeFormat.title(step.kind), instruction: step.instruction,
@@ -72,7 +75,7 @@ enum TimerPlanBuilder {
     let plan = try TimerPlan(steps: timerSteps, totalDurationS: total)
     return TimerSetup(
       plan: plan, recipeID: recipe.id, recipeName: recipe.name, methodName: recipe.method?.name,
-      tempC: recipe.tempC, scaled: scaled, stepTitles: timerSteps.map(\.label),
+      tempC: tuning?.tempC ?? recipe.tempC, scaled: scaled, stepTitles: timerSteps.map(\.label),
       sceneKind: BrewSceneKind(
         methodKey: recipe.method?.builtInKey, style: recipe.method?.style.rawValue),
       glyph: recipe.method?.glyph ?? .cup, stepKinds: steps.map(\.kind.rawValue))
@@ -81,8 +84,12 @@ enum TimerPlanBuilder {
 
 extension Recipe {
   /// Pour-over times stretch gently with the dose; steeps, espresso and cold brew keep theirs.
-  func timingFactor(doseG: Double) -> Double {
-    RecipeTiming.factor(
+  /// A tuning's total time wins when the recipe has one to measure it against.
+  func timingFactor(doseG: Double, tuning: BrewSizeAI.Tuning? = nil) -> Double {
+    if let tuning, let total = totalTimeS, total > 0 {
+      return Double(tuning.totalTimeS) / Double(total)
+    }
+    return RecipeTiming.factor(
       isPourOver: method?.style == .pourOver, recipeDoseG: self.doseG, doseG: doseG)
   }
 }
