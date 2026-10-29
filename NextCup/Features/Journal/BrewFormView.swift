@@ -830,19 +830,9 @@ struct BrewFormView: View {
 
   private func saveBar(_ model: BrewFormModel) -> some View {
     VStack(spacing: DS.Space.xs) {
-      if !model.draft.canSave {
-        // How close the brew is to savable, not just what is missing.
-        let dose = (model.draft.doseG ?? 0) > 0
-        let water = (model.draft.waterG ?? 0) > 0
-        Text("Dose \(dose ? "✓" : "○")   Water \(water ? "✓" : "○")   to save")
-          .font(.footnote.weight(.semibold)).foregroundStyle(DS.ink2)
-          .accessibilityLabel(
-            "Set \([dose ? nil : "dose", water ? nil : "water"].compactMap { $0 }.joined(separator: " and ")) to save"
-          )
-          .accessibilityIdentifier("brewform.save.hint")
-      }
       SteelButton(title: "Save brew", isLoading: model.isSaving) { model.save() }
         .disabled(!model.canSave)
+        .accessibilityHint(model.draft.canSave ? "" : "Set dose and water to save")
         .accessibilityIdentifier("brewform.save")
     }
     .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.md)

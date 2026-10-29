@@ -401,7 +401,6 @@ final class NextCupUITests: XCTestCase {
     app.buttons["Log a brew"].firstMatch.tap()
     XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 5))
     XCTAssertFalse(app.buttons["Save brew"].isEnabled, "nothing to save yet")
-    XCTAssertTrue(element(app, "brewform.save.hint").exists)
   }
 
   @MainActor
