@@ -47,6 +47,7 @@ struct BrewFormView: View {
   @State private var cameraShown = false
   @State private var detailsShown: Bool?
   @FocusState private var focused: Field?
+  @AppStorage(BrewYield.unitKey) private var yieldUnit = BrewYield.defaultUnit.rawValue
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -215,6 +216,13 @@ struct BrewFormView: View {
         beansSection(model)
         suggestionSection(model)
         let fields = shownFields(for: model.draft.methodID)
+        if let amount = (BrewYield(rawValue: yieldUnit) ?? .ml).amountText(
+          doseG: model.draft.doseG, waterG: model.draft.waterG)
+        {
+          Label("Makes about \(amount)", systemImage: "cup.and.saucer.fill")
+            .font(.subheadline).foregroundStyle(DS.ink2)
+            .accessibilityIdentifier("brewform.amount")
+        }
         tiles(model, fields)
         if fields.contains(.grind) {
           grindField(binding.draft.grindSetting)
