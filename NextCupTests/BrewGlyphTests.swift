@@ -11,6 +11,7 @@ struct BrewGlyphTests {
       let methods: [Method]
     }
     let keys = try JSONDecoder().decode(File.self, from: Data(contentsOf: url)).methods.map(\.key)
+      .filter { $0 != NespressoJokeView.methodKey }  // the joke method keeps the mug on purpose
     let glyphs = keys.map(BrewGlyph.init(methodKey:))
     #expect(!glyphs.contains(.cup))
     #expect(Set(glyphs).count == keys.count)
