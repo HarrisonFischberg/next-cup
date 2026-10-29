@@ -297,6 +297,7 @@ private struct RecipeDetailContent: View {
           .accessibilityHidden(true)
       }
       .padding(.horizontal, DS.Space.sm)
+      if yieldG != nil, let current = scaled?.recipe { pourLine(current) }
       if yieldG != nil { tuningRow }
     }
     .panel(DS.paper)
@@ -316,6 +317,22 @@ private struct RecipeDetailContent: View {
       }
     }
     .task(id: yieldDoseG) { await tune() }
+  }
+
+  /// The amount is what ends up in the cup, so say how much to pour for it and why it is more.
+  @ViewBuilder private func pourLine(_ current: ScalableRecipe) -> some View {
+    if let cup = BrewMath.cupG(waterG: current.totalWaterG, doseG: current.doseG) {
+      let kept = current.totalWaterG - cup
+      Text(
+        kept > 0.5
+          ? "Pour \(RecipeFormat.weight(current.totalWaterG, units)) of water. The grounds keep "
+            + "about \(RecipeFormat.weight(kept, units)), so the rest is what reaches your cup."
+          : "Pour \(RecipeFormat.weight(current.totalWaterG, units)); that is what reaches your cup."
+      )
+      .font(.footnote).foregroundStyle(DS.ink2)
+      .padding(.horizontal, DS.Space.md).padding(.bottom, DS.Space.sm)
+      .accessibilityIdentifier("recipe.yield.pour")
+    }
   }
 
   @ViewBuilder private var tuningRow: some View {
