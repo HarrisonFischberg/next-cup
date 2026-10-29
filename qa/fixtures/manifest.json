@@ -1,0 +1,1291 @@
+{
+ "version": 1,
+ "fields": [
+  "name",
+  "roaster",
+  "originCountry",
+  "region",
+  "farm",
+  "process",
+  "varietal",
+  "roastLevel",
+  "roastDate",
+  "bagWeightGrams",
+  "flavorNotes",
+  "isDecaf"
+ ],
+ "fixtures": [
+  {
+   "id": "S01",
+   "parent": "S01",
+   "product": "p-alto",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S01.jpg",
+   "tags": [
+    "clear",
+    "date:roasted"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Finca La Esperanza",
+    "roaster": "Alto Roasters",
+    "originCountry": "Colombia",
+    "region": "Huila",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "Caturra",
+    "roastLevel": "light",
+    "roastDate": "2026-10-12",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "panela",
+     "red apple",
+     "cocoa"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "farm": [
+     "",
+     "Finca La Esperanza"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S01-rot90",
+   "parent": "S01",
+   "product": "p-alto",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "rot90",
+   "file": "synthetic/S01-rot90.jpg",
+   "tags": [
+    "clear",
+    "date:roasted"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Finca La Esperanza",
+    "roaster": "Alto Roasters",
+    "originCountry": "Colombia",
+    "region": "Huila",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "Caturra",
+    "roastLevel": "light",
+    "roastDate": "2026-10-12",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "panela",
+     "red apple",
+     "cocoa"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "farm": [
+     "",
+     "Finca La Esperanza"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S01-blur",
+   "parent": "S01",
+   "product": "p-alto",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "blur",
+   "file": "synthetic/S01-blur.jpg",
+   "tags": [
+    "clear",
+    "date:roasted"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Finca La Esperanza",
+    "roaster": "Alto Roasters",
+    "originCountry": "Colombia",
+    "region": "Huila",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "Caturra",
+    "roastLevel": "light",
+    "roastDate": "2026-10-12",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "panela",
+     "red apple",
+     "cocoa"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "farm": [
+     "",
+     "Finca La Esperanza"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S01-glare",
+   "parent": "S01",
+   "product": "p-alto",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "glare",
+   "file": "synthetic/S01-glare.jpg",
+   "tags": [
+    "clear",
+    "date:roasted"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Finca La Esperanza",
+    "roaster": "Alto Roasters",
+    "originCountry": "Colombia",
+    "region": "Huila",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "Caturra",
+    "roastLevel": "light",
+    "roastDate": "2026-10-12",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "panela",
+     "red apple",
+     "cocoa"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "farm": [
+     "",
+     "Finca La Esperanza"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S01-lowres",
+   "parent": "S01",
+   "product": "p-alto",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "lowres",
+   "file": "synthetic/S01-lowres.jpg",
+   "tags": [
+    "clear",
+    "date:roasted"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Finca La Esperanza",
+    "roaster": "Alto Roasters",
+    "originCountry": "Colombia",
+    "region": "Huila",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "Caturra",
+    "roastLevel": "light",
+    "roastDate": "2026-10-12",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "panela",
+     "red apple",
+     "cocoa"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "farm": [
+     "",
+     "Finca La Esperanza"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S02",
+   "parent": "S02",
+   "product": "p-north",
+   "split": "heldout",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S02.jpg",
+   "tags": [
+    "date:best-before-only"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Kenya Gatomboya AA",
+    "roaster": "Northbound Coffee",
+    "originCountry": "Kenya",
+    "region": "",
+    "farm": "",
+    "process": "Washed",
+    "varietal": [
+     "SL28, SL34",
+     "SL28/SL34",
+     "SL28 SL34"
+    ],
+    "roastLevel": "",
+    "roastDate": "",
+    "bagWeightGrams": 340,
+    "flavorNotes": [
+     "blackcurrant",
+     "grapefruit"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Gatomboya AA",
+     "Kenya Gatomboya AA"
+    ],
+    "region": [
+     "",
+     "Gatomboya"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S03",
+   "parent": "S03",
+   "product": "p-ridge",
+   "split": "heldout",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S03.jpg",
+   "tags": [
+    "date:ambiguous"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Ethiopia Guji",
+    "roaster": "Ridge & River",
+    "originCountry": "Ethiopia",
+    "region": "Guji",
+    "farm": "",
+    "process": "Natural",
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "blueberry",
+     "jasmine"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Guji",
+     "Ethiopia Guji"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S04",
+   "parent": "S04",
+   "product": "p-ember",
+   "split": "heldout",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S04.jpg",
+   "tags": [
+    "date:missing-year"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Brazil Cerrado",
+    "roaster": "Ember House",
+    "originCountry": "Brazil",
+    "region": "Cerrado",
+    "farm": "",
+    "process": "Pulped natural",
+    "varietal": "",
+    "roastLevel": "medium",
+    "roastDate": "",
+    "bagWeightGrams": 1000,
+    "flavorNotes": [],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Cerrado",
+     "Brazil Cerrado"
+    ],
+    "process": [
+     "Pulped natural",
+     "Pulped Natural",
+     "pulped natural",
+     "Honey"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S05",
+   "parent": "S05",
+   "product": "p-alto2",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S05.jpg",
+   "tags": [
+    "date:roast-and-best-before"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Rwanda Nyamasheke",
+    "roaster": "Alto Roasters",
+    "originCountry": "Rwanda",
+    "region": "Nyamasheke",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "Red Bourbon",
+    "roastLevel": "",
+    "roastDate": "2026-10-01",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "hibiscus",
+     "orange"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Nyamasheke",
+     "Rwanda Nyamasheke"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S05-blur",
+   "parent": "S05",
+   "product": "p-alto2",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "blur",
+   "file": "synthetic/S05-blur.jpg",
+   "tags": [
+    "date:roast-and-best-before"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Rwanda Nyamasheke",
+    "roaster": "Alto Roasters",
+    "originCountry": "Rwanda",
+    "region": "Nyamasheke",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "Red Bourbon",
+    "roastLevel": "",
+    "roastDate": "2026-10-01",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "hibiscus",
+     "orange"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Nyamasheke",
+     "Rwanda Nyamasheke"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S05-rot-small",
+   "parent": "S05",
+   "product": "p-alto2",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "rot-small",
+   "file": "synthetic/S05-rot-small.jpg",
+   "tags": [
+    "date:roast-and-best-before"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Rwanda Nyamasheke",
+    "roaster": "Alto Roasters",
+    "originCountry": "Rwanda",
+    "region": "Nyamasheke",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "Red Bourbon",
+    "roastLevel": "",
+    "roastDate": "2026-10-01",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "hibiscus",
+     "orange"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Nyamasheke",
+     "Rwanda Nyamasheke"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S06",
+   "parent": "S06",
+   "product": "p-tide",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S06.jpg",
+   "tags": [
+    "date:packed-only"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Guatemala Huehuetenango",
+    "roaster": "Tidewater",
+    "originCountry": "Guatemala",
+    "region": "Huehuetenango",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "",
+    "bagWeightGrams": 340.2,
+    "flavorNotes": [],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Huehuetenango",
+     "Guatemala Huehuetenango"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S07",
+   "parent": "S07",
+   "product": "p-summit",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S07.jpg",
+   "tags": [
+    "date:harvest-year"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Peru Cajamarca",
+    "roaster": "Summit Coffee Co.",
+    "originCountry": "Peru",
+    "region": "Cajamarca",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "Typica",
+    "roastLevel": "",
+    "roastDate": "2026-10-15",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "milk chocolate",
+     "almond"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Cajamarca",
+     "Peru Cajamarca"
+    ],
+    "roaster": [
+     "Summit Coffee Co.",
+     "Summit Coffee Co",
+     "Summit Coffee"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S08",
+   "parent": "S08",
+   "product": "p-calm",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S08.jpg",
+   "tags": [
+    "decaf"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Mexico Chiapas",
+    "roaster": "Quiet Hours",
+    "originCountry": "Mexico",
+    "region": "Chiapas",
+    "farm": "",
+    "process": "",
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "2026-10-18",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "caramel",
+     "walnut"
+    ],
+    "isDecaf": true
+   },
+   "accept": {
+    "name": [
+     "Mexico Chiapas",
+     "Chiapas",
+     "Mexico Chiapas Decaf"
+    ],
+    "process": [
+     "",
+     "Swiss Water",
+     "Swiss Water Process",
+     "Swiss Water Process Decaf",
+     "Swiss Water Decaf"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S09",
+   "parent": "S09",
+   "product": "p-house",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S09.jpg",
+   "tags": [
+    "blend"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "House Blend",
+    "roaster": "Corner Coffee",
+    "originCountry": "",
+    "region": "",
+    "farm": "",
+    "process": "",
+    "varietal": "",
+    "roastLevel": "mediumDark",
+    "roastDate": "2026-10-20",
+    "bagWeightGrams": 500,
+    "flavorNotes": [
+     "dark chocolate",
+     "cherry"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "originCountry": [
+     "",
+     "Blend",
+     "Brazil, Ethiopia",
+     "Brazil / Ethiopia",
+     "Brazil and Ethiopia",
+     "Brazil 60%, Ethiopia 40%",
+     "Brazil 60% · Ethiopia 40%"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S10",
+   "parent": "S10",
+   "product": "p-pdx",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S10.jpg",
+   "tags": [
+    "address-not-origin"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Ethiopia Yirgacheffe",
+    "roaster": "Rose City Roasters",
+    "originCountry": "Ethiopia",
+    "region": "Yirgacheffe",
+    "farm": "",
+    "process": "Washed",
+    "varietal": [
+     "Heirloom",
+     "Ethiopian Heirloom"
+    ],
+    "roastLevel": "",
+    "roastDate": "2026-10-21",
+    "bagWeightGrams": 340,
+    "flavorNotes": [
+     "lemon",
+     "bergamot"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Yirgacheffe",
+     "Ethiopia Yirgacheffe"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S11",
+   "parent": "S11",
+   "product": "p-flav",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S11.jpg",
+   "tags": [
+    "notes-not-ingredients"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Honduras Marcala",
+    "roaster": "Lantern Coffee",
+    "originCountry": "Honduras",
+    "region": "Marcala",
+    "farm": "",
+    "process": [
+     "Honey",
+     "Honey process"
+    ],
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "chocolate",
+     "blueberry"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Marcala",
+     "Honduras Marcala"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S12",
+   "parent": "S12",
+   "product": "p-inject",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S12.jpg",
+   "tags": [
+    "injection"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Costa Rica Tarrazu",
+    "roaster": "Harbor Roasting",
+    "originCountry": "Costa Rica",
+    "region": "Tarrazu",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "honey",
+     "plum"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Tarrazu",
+     "Costa Rica Tarrazu"
+    ],
+    "region": [
+     "Tarrazu",
+     "Tarrazú"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S13",
+   "parent": "S13",
+   "product": "p-tea",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S13.jpg",
+   "tags": [
+    "non-coffee"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "",
+    "roaster": "",
+    "originCountry": "",
+    "region": "",
+    "farm": "",
+    "process": "",
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "",
+    "bagWeightGrams": 0,
+    "flavorNotes": [],
+    "isDecaf": false
+   },
+   "accept": {},
+   "ignore": [
+    "name",
+    "roaster",
+    "flavorNotes",
+    "bagWeightGrams"
+   ],
+   "either": null
+  },
+  {
+   "id": "S14",
+   "parent": "S14",
+   "product": "p-blank",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S14.jpg",
+   "tags": [
+    "unrelated",
+    "no-text"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "",
+    "roaster": "",
+    "originCountry": "",
+    "region": "",
+    "farm": "",
+    "process": "",
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "",
+    "bagWeightGrams": 0,
+    "flavorNotes": [],
+    "isDecaf": false
+   },
+   "accept": {},
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S15",
+   "parent": "S15",
+   "product": "p-berlin",
+   "split": "heldout",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S15.jpg",
+   "tags": [
+    "lang:de"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Äthiopien Sidamo",
+    "roaster": "Spree Rösterei",
+    "originCountry": "Ethiopia",
+    "region": "Sidamo",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "2026-10-05",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "Pfirsich",
+     "Earl Grey"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Äthiopien Sidamo",
+     "Ethiopia Sidamo",
+     "Sidamo"
+    ],
+    "originCountry": [
+     "Ethiopia",
+     "Äthiopien"
+    ],
+    "process": [
+     "Washed",
+     "gewaschen"
+    ],
+    "flavorNotes": [
+     [
+      "Pfirsich",
+      "Earl Grey"
+     ],
+     [
+      "peach",
+      "Earl Grey"
+     ]
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S16",
+   "parent": "S16",
+   "product": "p-future",
+   "split": "heldout",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S16.jpg",
+   "tags": [
+    "date:implausible-future"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Burundi Kayanza",
+    "roaster": "Northbound Coffee",
+    "originCountry": "Burundi",
+    "region": "Kayanza",
+    "farm": "",
+    "process": "Natural",
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "",
+    "bagWeightGrams": 250,
+    "flavorNotes": [],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Kayanza",
+     "Burundi Kayanza"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S17",
+   "parent": "S17",
+   "product": "p-city",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S17.jpg",
+   "tags": [
+    "roast:ambiguous-term"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Sumatra Aceh",
+    "roaster": "Foundry Coffee",
+    "originCountry": "Indonesia",
+    "region": [
+     "Aceh",
+     "Sumatra",
+     "Sumatra Aceh",
+     "Aceh, Sumatra"
+    ],
+    "farm": "",
+    "process": "Wet-hulled",
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "2026-10-22",
+    "bagWeightGrams": 340.2,
+    "flavorNotes": [],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Sumatra Aceh",
+     "Aceh"
+    ],
+    "originCountry": [
+     "Indonesia",
+     "Sumatra"
+    ],
+    "process": [
+     "Wet-hulled",
+     "Wet hulled",
+     "Giling Basah"
+    ],
+    "roastLevel": [
+     "",
+     "mediumLight",
+     "medium"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S18",
+   "parent": "S18",
+   "product": "p-faded",
+   "split": "heldout",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S18.jpg",
+   "tags": [
+    "stamp:faded"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Nicaragua Jinotega",
+    "roaster": "Blue Door Coffee",
+    "originCountry": "Nicaragua",
+    "region": "Jinotega",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "2026-10-20",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "toffee",
+     "apple"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Jinotega",
+     "Nicaragua Jinotega"
+    ],
+    "roastDate": [
+     "2026-10-20",
+     ""
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S19",
+   "parent": "S19",
+   "product": "p-hand",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S19.jpg",
+   "tags": [
+    "date:handwritten"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Panama Boquete",
+    "roaster": "Small Batch Co.",
+    "originCountry": "Panama",
+    "region": "Boquete",
+    "farm": "",
+    "process": "Washed",
+    "varietal": [
+     "Gesha",
+     "Geisha"
+    ],
+    "roastLevel": "",
+    "roastDate": "2026-10-19",
+    "bagWeightGrams": 100,
+    "flavorNotes": [
+     "jasmine",
+     "peach"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Boquete",
+     "Panama Boquete",
+     "Panama Boquete Gesha"
+    ],
+    "roaster": [
+     "Small Batch Co.",
+     "Small Batch Co",
+     "Small Batch"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S20",
+   "parent": "S20",
+   "product": "p-es",
+   "split": "heldout",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S20.jpg",
+   "tags": [
+    "lang:es"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Colombia Nariño",
+    "roaster": "Tostadores del Sur",
+    "originCountry": "Colombia",
+    "region": "Nariño",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "2026-10-08",
+    "bagWeightGrams": 500,
+    "flavorNotes": [
+     "panela",
+     "mandarina"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Colombia Nariño",
+     "Nariño"
+    ],
+    "process": [
+     "Washed",
+     "Lavado"
+    ],
+    "roastDate": [
+     "2026-10-08",
+     ""
+    ],
+    "roaster": [
+     "Tostadores del Sur",
+     "Tostadores Del Sur"
+    ],
+    "flavorNotes": [
+     [
+      "panela",
+      "mandarina"
+     ],
+     [
+      "panela",
+      "tangerine"
+     ],
+     [
+      "panela",
+      "mandarin"
+     ]
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S21",
+   "parent": "S21",
+   "product": "p-monthname",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S21.jpg",
+   "tags": [
+    "date:month-name"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Tanzania Mbeya",
+    "roaster": "Oak & Ash",
+    "originCountry": "Tanzania",
+    "region": "Mbeya",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "2026-10-02",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "black tea",
+     "lime"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Tanzania Mbeya",
+     "Tanzania Mbeya Peaberry",
+     "Mbeya"
+    ],
+    "varietal": [
+     "",
+     "Peaberry"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S21-glare",
+   "parent": "S21",
+   "product": "p-monthname",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "glare",
+   "file": "synthetic/S21-glare.jpg",
+   "tags": [
+    "date:month-name"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Tanzania Mbeya",
+    "roaster": "Oak & Ash",
+    "originCountry": "Tanzania",
+    "region": "Mbeya",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "2026-10-02",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "black tea",
+     "lime"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Tanzania Mbeya",
+     "Tanzania Mbeya Peaberry",
+     "Mbeya"
+    ],
+    "varietal": [
+     "",
+     "Peaberry"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S21-crop",
+   "parent": "S21",
+   "product": "p-monthname",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "crop",
+   "file": "synthetic/S21-crop.jpg",
+   "tags": [
+    "date:month-name"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "Tanzania Mbeya",
+    "roaster": "Oak & Ash",
+    "originCountry": "Tanzania",
+    "region": "Mbeya",
+    "farm": "",
+    "process": "Washed",
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "2026-10-02",
+    "bagWeightGrams": 250,
+    "flavorNotes": [
+     "black tea",
+     "lime"
+    ],
+    "isDecaf": false
+   },
+   "accept": {
+    "name": [
+     "Tanzania Mbeya",
+     "Tanzania Mbeya Peaberry",
+     "Mbeya"
+    ],
+    "varietal": [
+     "",
+     "Peaberry"
+    ]
+   },
+   "ignore": [],
+   "either": null
+  },
+  {
+   "id": "S22",
+   "parent": "S22",
+   "product": "p-two",
+   "split": "dev",
+   "source": "synthetic",
+   "condition": "original",
+   "file": "synthetic/S22.jpg",
+   "tags": [
+    "multiple-bags"
+   ],
+   "label_status": "exact-by-construction",
+   "expect": {
+    "name": "",
+    "roaster": "",
+    "originCountry": "",
+    "region": "",
+    "farm": "",
+    "process": "",
+    "varietal": "",
+    "roastLevel": "",
+    "roastDate": "",
+    "bagWeightGrams": 0,
+    "flavorNotes": [],
+    "isDecaf": false
+   },
+   "accept": {},
+   "ignore": [
+    "region",
+    "process",
+    "roastDate",
+    "bagWeightGrams",
+    "flavorNotes",
+    "roastLevel"
+   ],
+   "either": [
+    {
+     "name": "Kenya Kiambu",
+     "roaster": "Alto Roasters",
+     "originCountry": "Kenya"
+    },
+    {
+     "name": "Brazil Mogiana",
+     "roaster": "Ember House",
+     "originCountry": "Brazil"
+    }
+   ]
+  }
+ ]
+}
