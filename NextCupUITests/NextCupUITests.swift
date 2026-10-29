@@ -357,6 +357,19 @@ final class NextCupUITests: XCTestCase {
     return app
   }
 
+  /// Relaunches without resetting drafts and opens the first Unsaved brew in the Journal.
+  private func relaunchAndOpenUnsavedBrew(_ app: XCUIApplication) {
+    app.terminate()
+    app.launchArguments = ["-inMemoryStore", "-appStyle", "steelKraft"]
+    app.launch()
+    let row = element(app, "journal.unsaved.row")
+    app.tabBars.buttons["Journal"].tap()
+    if !row.waitForExistence(timeout: 3) { app.tabBars.buttons["Journal"].tap() }
+    XCTAssertTrue(row.waitForExistence(timeout: 10))
+    scrollUntilHittable(row, in: app)
+    row.tap()
+  }
+
   @MainActor
   func testJournalOffersLogABrewAndOpensTheBlankForm() {
     let app = launch()
@@ -384,13 +397,9 @@ final class NextCupUITests: XCTestCase {
     grind.typeText("\n")  // Return dismisses the keyboard; the Done key is not always hittable
     sleep(1)  // autosave waits for typing to pause
 
-    app.terminate()
-    app.launchArguments = [
-      "-inMemoryStore", "-appStyle", "steelKraft", "-deepLink", "nextcup://brew/new",
-    ]
-    app.launch()
-    XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 10))
-    XCTAssertTrue(element(app, "brewform.notice").waitForExistence(timeout: 5))
+    relaunchAndOpenUnsavedBrew(app)
+    XCTAssertTrue(app.textFields["brewform.grind"].waitForExistence(timeout: 10))
+    XCTAssertFalse(element(app, "brewform.notice").exists, "a reopened brew needs no banner")
     XCTAssertEqual(app.textFields["brewform.grind"].value as? String, "21 clicks")
     XCTAssertTrue(text(app, in: "brewform.dose").hasPrefix("15"))
   }
@@ -405,12 +414,8 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(app.buttons["Save brew"].isEnabled, "the draft stays savable")
     XCTAssertFalse(element(app, "brewform.saved").exists)
 
-    app.terminate()
-    app.launchArguments = [
-      "-inMemoryStore", "-appStyle", "steelKraft", "-deepLink", "nextcup://brew/new",
-    ]
-    app.launch()
-    XCTAssertTrue(element(app, "brewform.notice").waitForExistence(timeout: 10))
+    relaunchAndOpenUnsavedBrew(app)
+    XCTAssertTrue(app.buttons["Save brew"].waitForExistence(timeout: 10))
     app.buttons["Save brew"].tap()
     XCTAssertTrue(
       element(app, "tab.root.journal").waitForExistence(timeout: 5), "a save lands on the Journal")
