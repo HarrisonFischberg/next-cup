@@ -15,6 +15,7 @@ struct TimerView: View {
   @State private var logged = false
   @State private var confirmsEnd = false
   @State private var finishedShown = false
+  @State private var laterError: String?
   /// The phone's volume is all the way down while the brew's sound is on.
   @State private var muted = false
   /// Bumped five seconds before each step change, for the get-ready haptic.
@@ -24,6 +25,9 @@ struct TimerView: View {
     .rawValue
   @AppStorage(SystemTimerHaptics.soundKey) private var sound = true
   @Environment(\.scenePhase) private var scenePhase
+  @Environment(\.modelContext) private var context
+  /// The app's tabs; with them, Rate after this cup lands on the Journal.
+  @Environment(AppRouter.self) private var router: AppRouter?
   @Environment(\.dynamicTypeSize) private var dts
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -61,6 +65,10 @@ struct TimerView: View {
               message: "Your volume is all the way down. Turn it up to hear the ticks and music."
             )
             .accessibilityIdentifier("timer.muted")
+          }
+          if let laterError {
+            StateBanner(kind: .error, message: laterError).accessibilityIdentifier(
+              "timer.laterError")
           }
           if session.outcome != nil {
             finishedBanner
@@ -509,7 +517,7 @@ struct TimerView: View {
         .minimumScaleFactor(0.5).lineLimit(1)
         .dynamicTypeSize(...DS.readoutCap)
         .accessibilityLabel(RecipeFormat.spokenTime(Int(state.elapsedS)))
-      Text(early ? "Log it with the time you reached." : "Taste it, then log how it was.")
+      Text("Rate it after this cup, or while you sip.")
         .font(.subheadline).foregroundStyle(DS.ink2)
     }
     .multilineTextAlignment(.center)
@@ -536,6 +544,10 @@ struct TimerView: View {
       SteelButton(title: primaryTitle, action: primaryAction)
         .disabled(logged)
         .accessibilityIdentifier("timer.primary")
+      if session.outcome != nil, !logged {
+        SteelButton(title: "Rate while sippin’", kind: .secondary, action: rateNow)
+          .accessibilityIdentifier("timer.rateNow")
+      }
       if running {
         let layout =
           dts.isAccessibilitySize
@@ -570,7 +582,7 @@ struct TimerView: View {
     case .notStarted: "Start"
     case .running: state.targetReached ? "Finish brew" : "Pause"
     case .paused: state.targetReached ? "Finish brew" : "Resume"
-    case .finished: logged ? "Brew logged" : "Taste and log"
+    case .finished: logged ? "Brew logged" : "Rate after this cup"
     }
   }
 
@@ -579,11 +591,28 @@ struct TimerView: View {
     case .notStarted: session.start()
     case .running: state.targetReached ? session.finish() : session.pause()
     case .paused: state.targetReached ? session.finish() : session.resume()
-    case .finished:
-      if let outcome = session.outcome {
-        seed = setup.seed(elapsedS: outcome.elapsedS, endedEarly: outcome.endedEarly)
-      }
+    case .finished: rateLater()
     }
+  }
+
+  private var finishedSeed: BrewFormSeed? {
+    session.outcome.map { setup.seed(elapsedS: $0.elapsedS, endedEarly: $0.endedEarly) }
+  }
+
+  private func rateNow() { seed = finishedSeed }
+
+  /// Saves the brew as an unsaved brew in the Journal, the same draft the form
+  /// would write, so rating it later opens with the time and amounts in place.
+  private func rateLater() {
+    guard let seed = finishedSeed else { return }
+    let draftStore = BrewFormView.draft(for: seed) ?? .newBrew()
+    let model = BrewFormModel(seed: seed, store: Store(context: context), draftStore: draftStore)
+    if model.notice?.kind == .error {
+      laterError = "This brew could not be saved for later. Rate it now to keep it."
+      return
+    }
+    logged = true
+    router?.showJournal(savedLater: draftStore.fileURL.deletingPathExtension().lastPathComponent)
   }
 
   // MARK: Accessibility

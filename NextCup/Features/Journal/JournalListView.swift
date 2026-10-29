@@ -407,6 +407,21 @@ struct JournalListView: View {
         .padding(.horizontal, DS.Space.lg).padding(.bottom, DS.Space.sm)
         .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
         .accessibilityIdentifier("journal.toast")
+    } else if let name = router.savedLater {
+      // A brew from the timer saved to rate later: say where it went and offer it now.
+      SteelToast(message: "Saved to Unsaved Brews", actionTitle: "Rate now") {
+        router.savedLater = nil
+        router.journalPath.append(.unsaved(name))
+      }
+      .padding(.horizontal, DS.Space.lg).padding(.bottom, DS.Space.sm)
+      .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+      .accessibilityIdentifier("journal.savedLater")
+      .task {
+        try? await Task.sleep(for: .seconds(Self.undoSeconds))
+        // A cancelled wait (the view rebuilt as the tab switched) must not hide it at once.
+        guard !Task.isCancelled else { return }
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { router.savedLater = nil }
+      }
     }
   }
 

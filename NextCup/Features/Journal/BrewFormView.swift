@@ -78,7 +78,7 @@ struct BrewFormView: View {
       guard model == nil else { return }
       model = BrewFormModel(
         seed: seed, editing: editing, repeating: repeating, store: Store(context: context),
-        draftStore: resuming ?? seededDraft ?? editing.map { .editing($0.id) }
+        draftStore: resuming ?? seed.flatMap(Self.draft(for:)) ?? editing.map { .editing($0.id) }
           ?? repeating.map { .repeating($0.id) } ?? .newBrew(),
         resuming: resuming != nil, simulatesSaveFailure: Self.simulatesSaveFailure)
       if let startingBean, editing == nil, repeating == nil, model?.draft.beans?.isEmpty ?? true {
@@ -89,9 +89,8 @@ struct BrewFormView: View {
   }
 
   /// The draft file this timer run's form wrote earlier, so reopening it keeps typing.
-  private var seededDraft: DraftStore? {
-    guard let seed else { return nil }
-    return DraftStore.all().first { $0.kind == .newBrew && $0.draft.sourceKey == seed.sessionKey }?
+  static func draft(for seed: BrewFormSeed) -> DraftStore? {
+    DraftStore.all().first { $0.kind == .newBrew && $0.draft.sourceKey == seed.sessionKey }?
       .store
   }
 
