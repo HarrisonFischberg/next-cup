@@ -49,6 +49,7 @@ private struct RecipeDetailContent: View {
   @Query private var grinders: [Grinder]
   @Query(sort: \Bean.name) private var allBeans: [Bean]
   @State private var beanID: UUID?
+  @State private var addingBean = false
   @State private var grindSetting = ""
   @State private var doseText = ""
   @FocusState private var typingDose: Bool
@@ -205,10 +206,13 @@ private struct RecipeDetailContent: View {
         beanID = nil
         grindSetting = ""
       }
+      Divider()
+      Button("Add new beans", systemImage: "plus") { addingBean = true }
+        .accessibilityIdentifier("recipe.addBean")
     } label: {
       LabeledRow(
         symbol: "leaf.fill", label: "Beans",
-        value: chosen?.name ?? (beans.isEmpty ? "Add beans in the Beans tab" : "Choose your beans"),
+        value: chosen?.name ?? (beans.isEmpty ? "Add your beans" : "Choose your beans"),
         valueColor: chosen == nil ? DS.ink2 : DS.ink
       ) {
         Image(systemName: "chevron.right").font(.footnote.weight(.bold)).foregroundStyle(DS.ink2)
@@ -216,10 +220,13 @@ private struct RecipeDetailContent: View {
       }
       .contentShape(Rectangle())
     }
-    .disabled(beans.isEmpty)
     .accessibilityLabel("Beans")
     .accessibilityValue(chosen?.name ?? "None chosen")
     .accessibilityIdentifier("recipe.beans")
+    // Same sheet as the Beans tab +; Cancel leaves the current pick alone.
+    .sheet(isPresented: $addingBean) {
+      BeanEditorView(target: .new, onSaved: { choose($0) }) { addingBean = false }
+    }
     .onAppear {
       if beanID == nil, let first = beans.first { choose(first) }
     }
