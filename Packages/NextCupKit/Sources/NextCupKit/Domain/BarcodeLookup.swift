@@ -28,9 +28,15 @@ public enum BarcodeLookup {
   }
 
   public struct Product: Equatable, Sendable {
+    /// Empty when the record has only a brand: a brand is not the coffee's name.
     public var name: String
     /// The first listed brand, usually the roaster.
     public var brand: String?
+
+    public init(name: String, brand: String?) {
+      self.name = name
+      self.brand = brand
+    }
   }
 
   public enum Failure: Error, Equatable, Sendable {
@@ -63,9 +69,9 @@ public enum BarcodeLookup {
     }
     let brand = clean(body.product?.brands?.split(separator: ",").first.map(String.init))
     guard body.status != 0, let product = body.product,
-      let name = clean(product.productName) ?? brand
+      clean(product.productName) != nil || brand != nil
     else { return .failure(.notFound) }
-    return .success(Product(name: name, brand: brand))
+    return .success(Product(name: clean(product.productName) ?? "", brand: brand))
   }
 
   /// Validates the code, fetches through `fetch`, and parses. A transport error is "offline".
