@@ -252,6 +252,7 @@ struct BrewFormView: View {
           Text("Water Profile").font(DS.Font.headline).foregroundStyle(DS.ink)
             .frame(minHeight: DS.Size.minTap, alignment: .leading)
         }
+        .disclosureGroupStyle(DrawerDisclosureStyle())
         .tint(DS.ink2)
         .accessibilityIdentifier("brewform.details")
         if let editing {

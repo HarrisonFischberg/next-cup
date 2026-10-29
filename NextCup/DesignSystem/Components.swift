@@ -552,3 +552,41 @@ struct HiddenWhileTyping: ViewModifier {
 extension View {
   func hiddenWhileTyping() -> some View { modifier(HiddenWhileTyping()) }
 }
+
+/// A drawer whose rows are revealed by its own height, under a clip. The built-in
+/// style fades its rows in unclipped while the views below slide, so they cross over each other.
+struct DrawerDisclosureStyle: DisclosureGroupStyle {
+  func makeBody(configuration: Configuration) -> some View {
+    Drawer(configuration: configuration)
+  }
+
+  private struct Drawer: View {
+    let configuration: Configuration
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+      let open = configuration.isExpanded
+      VStack(alignment: .leading, spacing: 0) {
+        Button {
+          withAnimation(reduceMotion ? nil : .snappy(duration: 0.25)) {
+            configuration.isExpanded.toggle()
+          }
+        } label: {
+          HStack {
+            configuration.label
+            Spacer(minLength: DS.Space.sm)
+            Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+              .foregroundStyle(.tint)
+              .rotationEffect(.degrees(open ? 90 : 0))
+              .accessibilityHidden(true)
+          }
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(open ? "Expanded" : "Collapsed")
+        if open { configuration.content.transition(.opacity) }
+      }
+      .clipped()
+    }
+  }
+}
