@@ -2,7 +2,7 @@ import Foundation
 
 /// How a cup tasted. Mirrors the app's stored verdict by raw value.
 public enum DialInVerdict: String, Codable, CaseIterable, Sendable {
-  case sour, bitter, weak, strong, balanced
+  case sour, bitter, weak, bright, strong, balanced
 }
 
 /// The brewing family, which decides which levers make sense. Mirrors the app's
@@ -102,6 +102,8 @@ public enum DialInRules {
       return firstChange([strength(input, stronger: true)], verdict: input.verdict)
     case .strong:
       return firstChange([strength(input, stronger: false)], verdict: input.verdict)
+    case .bright:
+      return .keep("A bright cup is lively, not sour. Brew it again the same way.")
     }
   }
 

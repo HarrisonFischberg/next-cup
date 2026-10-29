@@ -742,8 +742,8 @@ struct BrewFormView: View {
       ? AnyLayout(VStackLayout(spacing: DS.Space.xs))
       : AnyLayout(HStackLayout(spacing: DS.Space.xs))
     let picked = Verdict.picked(verdict.wrappedValue)
-    // The four faults share a row; Balanced gets a row of its own, so its name fits.
-    let rows: [[Verdict]] = [[.sour, .bitter, .weak, .strong], [.balanced]]
+    // The tastes share a row; Balanced gets a row of its own, so its name fits.
+    let rows: [[Verdict]] = [[.sour, .bitter, .weak, .bright, .strong], [.balanced]]
     return VStack(alignment: .leading, spacing: DS.Space.sm) {
       Text("HOW IT TASTED").font(DS.Font.label).foregroundStyle(DS.ink2)
       Text("Pick all that apply.").font(.footnote).foregroundStyle(DS.ink2)
