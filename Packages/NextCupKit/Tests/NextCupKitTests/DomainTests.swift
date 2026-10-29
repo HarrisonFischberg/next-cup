@@ -12,6 +12,16 @@ import Testing
     #expect(BrewMath.dose(forYieldG: 200, ratio: nil) == nil)
   }
 
+  @Test func cupIsWhatThePourLeavesAfterTheGroundsDrink() {
+    // 18 oz asked of a 1:15 steep: pour about 614 g on 41 g and about 532 g (18 oz) comes out.
+    let cup = 18 * 29.5735
+    let dose = BrewMath.dose(forYieldG: cup, ratio: 15)!
+    #expect(abs(dose * 15 - 614.0) < 1)
+    #expect(abs(BrewMath.cupG(waterG: dose * 15, doseG: dose)! - cup) < 0.0001)
+    #expect(BrewMath.cupG(waterG: 36, doseG: 18) == 36)
+    #expect(BrewMath.cupG(waterG: 0, doseG: 18) == nil)
+  }
+
   @Test func ratioDividesWaterByDose() {
     #expect(BrewMath.ratio(doseG: 15, waterG: 250) == 250.0 / 15.0)
     #expect(BrewMath.ratioLabel(BrewMath.ratio(doseG: 15, waterG: 250)) == "1:16.7")

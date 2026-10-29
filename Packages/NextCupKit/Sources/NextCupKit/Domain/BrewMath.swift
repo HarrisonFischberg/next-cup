@@ -30,6 +30,12 @@ public enum BrewMath {
     return yieldG / (ratio > 4 ? ratio - absorption : ratio)
   }
 
+  /// What reaches the cup from `waterG` poured on `doseG`: the inverse of `dose(forYieldG:)`.
+  public static func cupG(waterG: Double, doseG: Double) -> Double? {
+    guard waterG > 0, doseG > 0 else { return nil }
+    return waterG / doseG > 4 ? waterG - absorption * doseG : waterG
+  }
+
   /// "1:16.7" style label, one decimal place; `nil` when the ratio is unknown.
   public static func ratioLabel(_ ratio: Double?) -> String? {
     guard let ratio else { return nil }
