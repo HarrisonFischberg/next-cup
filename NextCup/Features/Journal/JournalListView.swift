@@ -509,6 +509,7 @@ struct FilterMenu<Content: View>: View {
 private struct UnsavedBrewRow: View {
   let entry: SavedDraft
   let methods: [BrewMethod]
+  @AppStorage(BrewYield.unitKey) private var yieldUnit = BrewYield.defaultUnit.rawValue
 
   private var method: String? { methods.first { $0.id == entry.draft.methodID }?.name }
   private var title: String { entry.draft.beans?.first?.name ?? method ?? "Brew" }
@@ -541,12 +542,17 @@ private struct UnsavedBrewRow: View {
     .accessibilityIdentifier("journal.unsaved.row")
   }
 
-  /// "Last changed Oct 28, 3:29 PM · Cone dripper"
+  /// "Last changed Oct 28, 3:29 PM · Cone dripper · 12 oz"
   private var subtitle: String {
     var text =
       "Last changed "
       + entry.changedAt.formatted(.dateTime.month(.abbreviated).day().hour().minute())
     if let method, method != title { text += " · \(method)" }
+    if let amount = (BrewYield(rawValue: yieldUnit) ?? .ml).amountText(
+      doseG: entry.draft.doseG, waterG: entry.draft.waterG)
+    {
+      text += " · \(amount)"
+    }
     return text
   }
 }
