@@ -38,6 +38,9 @@ enum AppBootstrap {
         if inMemory, ProcessInfo.processInfo.arguments.contains("-demoBrews") {
           DemoBrews.insert(into: container.mainContext)
         }
+        if inMemory, ProcessInfo.processInfo.arguments.contains("-demoBeans") {
+          DemoBrews.insertBeans(into: container.mainContext)
+        }
         // Performance runs only: `-perfBrews N` logs a heavy user's year of brews.
         let arguments = ProcessInfo.processInfo.arguments
         if inMemory, let index = arguments.firstIndex(of: "-perfBrews"),
@@ -120,6 +123,27 @@ struct StartupError: Error, Equatable {
       let arguments = ProcessInfo.processInfo.arguments
       if let index = arguments.firstIndex(of: "-demoOnlyMethod"), index + 1 < arguments.count {
         for method in methods { method.isHidden = method.builtInKey != arguments[index + 1] }
+      }
+      try? context.save()
+    }
+
+    /// A few bags with roasters, origins, roast dates and weights, for Beans screenshots.
+    static func insertBeans(into context: ModelContext) {
+      let bags: [(String, String, String, Int, Double, Double, Int?)] = [
+        ("Counter Culture 46", "Counter Culture Coffee", "USA", 6, 340, 0, 82),
+        ("Hair Bender", "Stumptown", "Colombia", 12, 340, 260, nil),
+        ("Kenya Rukira", "Onyx Coffee Lab", "Kenya", 3, 250, 40, 91),
+        ("Monarch", "Intelligentsia", "Brazil", 20, 340, 300, 68),
+      ]
+      for (name, roasterName, origin, daysAgo, bag, used, rating) in bags {
+        let bean = Bean(name: name)
+        bean.roaster = Roaster(name: roasterName)
+        bean.originCountry = origin
+        bean.roastDate = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now)
+        bean.bagWeightG = bag
+        bean.remainingAdjustmentG = -used
+        bean.ratingTenths = rating
+        context.insert(bean)
       }
       try? context.save()
     }

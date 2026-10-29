@@ -112,9 +112,17 @@ struct BeanLibraryView: View {
         NavigationLink(value: DeepLink.bean(bean.id)) {
           BeanRow(bean: bean, units: units)
         }
-        .listRowInsets(EdgeInsets())
-        .listRowBackground(DS.paper)
-        .listRowSeparatorTint(DS.line)
+        // Same soft card as the Journal's Past Brews; the wider trailing inset keeps the chevron inside.
+        .listRowInsets(
+          EdgeInsets(
+            top: DS.Space.xs, leading: DS.Space.lg, bottom: DS.Space.xs,
+            trailing: DS.Space.lg + DS.Space.md)
+        )
+        .listRowBackground(
+          RoundedRectangle(cornerRadius: max(DS.radius, 18), style: .continuous).fill(DS.paper)
+            .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.xs)
+        )
+        .listRowSeparator(.hidden)
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
           let finished = bean.status == .finished
           Button {
@@ -286,7 +294,7 @@ private struct BeanRow: View {
         if bean.status != .inUse { Tag(text: bean.status.title) }
       }
     }
-    .padding(DS.Space.md)
+    .padding(DS.Space.lg)
     .frame(maxWidth: .infinity, alignment: .leading)
     .accessibilityElement(children: .combine)
   }
