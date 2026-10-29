@@ -22,6 +22,29 @@ struct SetUpFlowTests {
     #expect(bean.bagFlavorNotes == ["citrus", "dark chocolate"])
   }
 
+  @Test func appleAIGuessesWaitForReviewAndNeverFillOnTheirOwn() throws {
+    let bean = Bean(name: "Hair Bender")
+    bean.process = "washed"
+    BeanDetailsAI.suggest(
+      ["originCountry": "Blend", "process": "natural", "roastLevel": "medium", "flavorNotes": ""],
+      for: bean)
+    #expect(bean.originCountry == nil, "nothing is written before Accept")
+    #expect(BeanDetailsAI.pending(for: bean).map(\.label) == ["Country", "Roast"])
+    BeanDetailsAI.accept(bean)
+    #expect(bean.originCountry == "Blend")
+    #expect(bean.process == "washed")
+    #expect(bean.roastLevel == .medium)
+    #expect(bean.aiSuggestion == nil)
+
+    let other = Bean(name: "Other")
+    BeanDetailsAI.suggest(
+      ["originCountry": "Kenya", "process": "", "roastLevel": "", "flavorNotes": ""], for: other)
+    other.originCountry = "Typed later"
+    #expect(BeanDetailsAI.pending(for: other).isEmpty, "a field typed since is not offered")
+    BeanDetailsAI.dismiss(other)
+    #expect(other.aiSuggestion == nil && other.originCountry == "Typed later")
+  }
+
   @Test func theStartBrewBeanAndGrindReachTheBrewForm() throws {
     let container = try NextCupContainer.make(inMemory: true)
     let store = Store(context: container.mainContext)

@@ -2,10 +2,10 @@ import Foundation
 import NextCupKit
 import SwiftData
 
-/// After a bean is added, Apple's on-device model fills in what it knows of the coffee:
-/// origin, process, roast level and tasting notes. Only blank fields are filled, the model
-/// is told to leave anything it is unsure of empty, and nothing leaves the iPhone. It does
-/// not search the web; set-up says these come from Apple AI so they get checked.
+/// After a bean is added, Apple's on-device model suggests what it knows of the coffee:
+/// origin, process, roast level and tasting notes. None of it is on the bag, so it is kept
+/// as a suggestion (`Bean.aiSuggestion`) that the bean screen shows for Accept or Dismiss;
+/// only an accepted suggestion fills blank fields. Nothing leaves the iPhone.
 @MainActor
 enum BeanDetailsAI {
   static let enabledKey = "ai.fillBeanDetails"
@@ -29,7 +29,7 @@ enum BeanDetailsAI {
     Never guess.
     """
 
-  /// Fills blanks on each bean in the background; a failure leaves the bean as it was.
+  /// Asks for suggestions in the background; a failure leaves the bean as it was.
   static func fill(_ beans: [Bean], in context: ModelContext) {
     guard isOn else { return }
     let targets = beans.filter {
@@ -45,13 +45,61 @@ enum BeanDetailsAI {
         guard let result = try? await AppleIntelligence.send(payload),
           let answer = try? JSONSerialization.jsonObject(with: result.json) as? [String: Any]
         else { continue }
-        apply(answer, to: bean)
+        suggest(answer, for: bean)
       }
       try? context.save()
     }
   }
 
-  /// Writes the answer into blank fields only.
+  /// Keeps the answer's non-empty values for fields that are still blank, for review.
+  static func suggest(_ answer: [String: Any], for bean: Bean) {
+    let open = suggestions(answer, for: bean)
+    bean.aiSuggestion = open.isEmpty ? nil : try? JSONSerialization.data(withJSONObject: open)
+  }
+
+  /// The pending suggestion, limited to fields that are still blank, as label/value rows.
+  static func pending(for bean: Bean) -> [(label: String, value: String)] {
+    guard let data = bean.aiSuggestion,
+      let answer = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    else { return [] }
+    let open = suggestions(answer, for: bean)
+    return [
+      ("Country", "originCountry"), ("Process", "process"), ("Roast", "roastLevel"),
+      ("Flavor notes", "flavorNotes"),
+    ].compactMap { label, key in
+      open[key].map { (label, key == "roastLevel" ? RoastLevel(rawValue: $0)?.title ?? $0 : $0) }
+    }
+  }
+
+  static func accept(_ bean: Bean) {
+    if let data = bean.aiSuggestion,
+      let answer = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    {
+      apply(answer, to: bean)
+    }
+    bean.aiSuggestion = nil
+  }
+
+  static func dismiss(_ bean: Bean) {
+    bean.aiSuggestion = nil
+    bean.updatedAt = Date()
+  }
+
+  private static func suggestions(_ answer: [String: Any], for bean: Bean) -> [String: String] {
+    func text(_ key: String) -> String {
+      (answer[key] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+    var open: [String: String] = [:]
+    if (bean.originCountry ?? "").isEmpty { open["originCountry"] = text("originCountry") }
+    if (bean.process ?? "").isEmpty { open["process"] = text("process") }
+    if bean.roastLevel == nil, RoastLevel(rawValue: text("roastLevel")) != nil {
+      open["roastLevel"] = text("roastLevel")
+    }
+    if bean.bagFlavorNotes.isEmpty { open["flavorNotes"] = text("flavorNotes") }
+    return open.filter { !$0.value.isEmpty }
+  }
+
+  /// Writes the answer into blank fields only (what Accept does).
   static func apply(_ answer: [String: Any], to bean: Bean) {
     func text(_ key: String) -> String {
       (answer[key] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
