@@ -63,6 +63,7 @@ struct BeanDetailView: View {
         if let trend { trendLine(trend) }
         BestSoFarCard(summary: bean.bestSoFar, units: units)
         attributes
+        if !BeanDetailsAI.pending(for: bean).isEmpty { aiSuggestion }
         if !bean.bagFlavorNotes.isEmpty { flavor }
         freezer
         brews
@@ -314,6 +315,36 @@ struct BeanDetailView: View {
         }
       }
     }
+  }
+
+  /// Apple AI's guesses, kept apart from the bag's own details until the user accepts them.
+  private var aiSuggestion: some View {
+    PaperBox {
+      VStack(alignment: .leading, spacing: DS.Space.sm) {
+        Text("FROM APPLE AI, NOT ON THE BAG").font(DS.Font.label).foregroundStyle(DS.ink2)
+          .accessibilityAddTraits(.isHeader)
+        ForEach(BeanDetailsAI.pending(for: bean), id: \.label) { row in
+          SpecCell(label: row.label, value: row.value)
+        }
+        Text("Apple AI suggests these from what it knows of this coffee. Check them first.")
+          .font(.footnote).foregroundStyle(DS.ink2)
+        HStack(spacing: DS.Space.sm) {
+          Button("Accept") {
+            BeanDetailsAI.accept(bean)
+            try? context.save()
+          }
+          .buttonStyle(SteelButtonStyle())
+          .accessibilityIdentifier("bean.aiSuggestion.accept")
+          Button("Dismiss") {
+            BeanDetailsAI.dismiss(bean)
+            try? context.save()
+          }
+          .frame(minHeight: DS.Size.control)
+          .accessibilityIdentifier("bean.aiSuggestion.dismiss")
+        }
+      }
+    }
+    .accessibilityIdentifier("bean.aiSuggestion")
   }
 
   private var flavor: some View {
