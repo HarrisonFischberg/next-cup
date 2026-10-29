@@ -210,6 +210,7 @@ struct TasteView: View {
 
   private static let words: [(Verdict, String)] = [
     (.sour, "Sharp, thin, lemony"), (.bitter, "Dry, harsh, ashy"), (.weak, "Watery, light"),
+    (.bright, "Lively, juicy, fruity"),
     (.strong, "Heavy, intense"), (.balanced, "Sweet, round, clean"),
   ]
 

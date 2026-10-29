@@ -4,7 +4,7 @@ import Foundation
 /// so renaming a case is a schema migration.
 
 enum Verdict: String, Codable, CaseIterable, Sendable {
-  case sour, bitter, weak, strong, balanced
+  case sour, bitter, weak, bright, strong, balanced
 
   /// The draft keeps several tastes in its one field, comma-separated ("sour,weak"), so a
   /// single taste saved before reads the same.

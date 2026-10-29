@@ -126,8 +126,15 @@ struct DialInRulesTests {
     #expect(change(DialInRules.suggest(for: input(.strong, water: 0))) == nil)
   }
 
+  @Test func brightKeepsEverything() {
+    guard case .keep = DialInRules.suggest(for: input(.bright)) else {
+      Issue.record("bright is a good note, not a fault to fix")
+      return
+    }
+  }
+
   @Test func everyChangeCarriesAReason() {
-    for verdict in DialInVerdict.allCases where verdict != .balanced {
+    for verdict in DialInVerdict.allCases where ![.balanced, .bright].contains(verdict) {
       let draft = change(DialInRules.suggest(for: input(verdict)))
       #expect(draft?.rationale.isEmpty == false)
     }
