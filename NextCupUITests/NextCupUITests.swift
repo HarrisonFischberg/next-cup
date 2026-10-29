@@ -222,13 +222,13 @@ final class NextCupUITests: XCTestCase {
 
   /// Opens a recipe's detail with a sped-up timer clock and taps Start brew.
   @MainActor
-  /// A finished timer waits on its finish screen until Taste and log is tapped.
+  /// A finished timer waits on its finish screen until Rate while sippin’ or Rate after this cup is tapped.
   /// Reaching the target offers Finish brew; the brew keeps running until it is tapped.
   private func tasteAndLog(_ app: XCUIApplication, timeout: TimeInterval) {
     let finish = app.buttons["Finish brew"]
     XCTAssertTrue(finish.waitForExistence(timeout: timeout), "timer never reached the target")
     finish.tap()
-    let log = app.buttons["Taste and log"]
+    let log = app.buttons["Rate while sippin’"]
     XCTAssertTrue(log.waitForExistence(timeout: 5), "finish never offered the log")
     log.tap()
   }
@@ -277,7 +277,7 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "timer.status").label.contains("Target reached"))
     finish.tap()
     XCTAssertTrue(element(app, "timer.finished").waitForExistence(timeout: 5))
-    app.buttons["Taste and log"].tap()
+    app.buttons["Rate while sippin’"].tap()
     let form = element(app, "brewform.prefilled")
     XCTAssertTrue(form.waitForExistence(timeout: 5), "timer never reached the brew form")
     XCTAssertTrue(
@@ -289,7 +289,7 @@ final class NextCupUITests: XCTestCase {
 
     // Back returns to the finished timer, which can reopen the form.
     app.navigationBars.buttons.element(boundBy: 0).tap()
-    XCTAssertTrue(app.buttons["Taste and log"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["Rate while sippin’"].waitForExistence(timeout: 5))
   }
 
   @MainActor
@@ -332,12 +332,36 @@ final class NextCupUITests: XCTestCase {
     sleep(2)
     end.tap()
     app.buttons["End and log it"].tap()
-    let log = app.buttons["Taste and log"]
+    let log = app.buttons["Rate while sippin’"]
     XCTAssertTrue(log.waitForExistence(timeout: 5), "ending early offers the log")
     log.tap()
     XCTAssertTrue(element(app, "brewform.prefilled").waitForExistence(timeout: 5))
     XCTAssertFalse(text(app, in: "brewform.time").hasPrefix("0:00"))
     XCTAssertTrue(app.staticTexts["You ended this brew early. The time is what it reached."].exists)
+  }
+
+  @MainActor
+  func testRateAfterThisCupSavesTheBrewToUnsavedBrewsWithItsTime() {
+    let app = openTimer(speed: 60)
+    app.buttons["Start"].tap()
+    let finish = app.buttons["Finish brew"]
+    XCTAssertTrue(finish.waitForExistence(timeout: 30), "timer never reached the target")
+    finish.tap()
+    let later = app.buttons["Rate after this cup"]
+    XCTAssertTrue(
+      later.waitForExistence(timeout: 5), "finish never offered Rate after this cup")
+    XCTAssertTrue(app.buttons["Rate while sippin’"].exists)
+    later.tap()
+    // Back on the Journal, with a note saying where the brew went.
+    XCTAssertTrue(element(app, "journal.savedLater").waitForExistence(timeout: 5))
+    let row = element(app, "journal.unsaved.row")
+    XCTAssertTrue(row.waitForExistence(timeout: 5), "no Unsaved Brews row")
+    scrollUntilHittable(row, in: app)
+    row.tap()
+    XCTAssertTrue(element(app, "brewform.dose").waitForExistence(timeout: 5))
+    XCTAssertTrue(text(app, in: "brewform.dose").hasPrefix("15"), app.debugDescription)
+    XCTAssertTrue(text(app, in: "brewform.water").hasPrefix("250"))
+    XCTAssertFalse(text(app, in: "brewform.time").hasPrefix("0:00"))
   }
 
   // MARK: Brew form (S02)
