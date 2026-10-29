@@ -11,6 +11,8 @@ final class AppRouter {
   var recipesPath: [DeepLink] = []
   var beansPath: [DeepLink] = []
   var explorePath: [DeepLink] = []
+  /// The draft a finished brew was just saved to for rating later, for the Journal's toast.
+  var savedLater: String?
 
   /// Replaces the destination tab's stack with the linked screen, so opening the
   /// same link twice never stacks duplicates.
@@ -24,7 +26,8 @@ final class AppRouter {
   }
 
   /// After a brew is saved: every tab back to its root, with the Journal on screen.
-  func showJournal() {
+  func showJournal(savedLater: String? = nil) {
+    self.savedLater = savedLater
     (journalPath, recipesPath, beansPath, explorePath) = ([], [], [], [])
     UserDefaults.standard.set(AppTab.journal.rawValue, forKey: AppTab.storageKey)
   }
