@@ -457,11 +457,13 @@ final class NextCupUITests: XCTestCase {
     notes.typeText("Sweet and clean")
     let keyboard = app.keyboards.firstMatch
     XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
+    // The Save bar steps aside while typing, so nothing floats over the keyboard.
     let save = app.buttons["Save brew"]
-    XCTAssertTrue(save.exists)
-    XCTAssertLessThanOrEqual(
-      save.frame.maxY, keyboard.frame.minY + 1,
-      "Save (\(save.frame)) must sit above the keyboard (\(keyboard.frame))")
+    XCTAssertTrue(save.waitForNonExistence(timeout: 2), "Save hides while the keyboard is up")
+    app.toolbars.buttons["Done"].firstMatch.tap()
+    XCTAssertTrue(keyboard.waitForNonExistence(timeout: 5))
+    XCTAssertTrue(save.waitForExistence(timeout: 2), "Done brings Save back")
+    XCTAssertTrue(save.isHittable)
   }
 
   // MARK: Journal (S01)
@@ -478,6 +480,7 @@ final class NextCupUITests: XCTestCase {
     scrollUntilHittable(notes, in: app)
     notes.tap()
     notes.typeText(note)
+    app.toolbars.buttons["Done"].firstMatch.tap()
     app.buttons["Save brew"].tap()
     XCTAssertTrue(
       element(app, "tab.root.journal").waitForExistence(timeout: 5), "a save lands on the Journal")

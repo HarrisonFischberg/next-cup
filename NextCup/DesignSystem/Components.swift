@@ -529,3 +529,26 @@ struct SkeletonRow: View {
     .accessibilityElement().accessibilityLabel("Loading")
   }
 }
+
+/// A pinned bottom bar steps aside while the keyboard is up, so it never floats
+/// over the keyboard's Done bar or covers the field being typed in.
+struct HiddenWhileTyping: ViewModifier {
+  @State private var keyboardUp = false
+  func body(content: Content) -> some View {
+    VStack(spacing: 0) { if !keyboardUp { content } }
+      .onReceive(
+        NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)
+      ) { _ in
+        keyboardUp = true
+      }
+      .onReceive(
+        NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)
+      ) { _ in
+        keyboardUp = false
+      }
+  }
+}
+
+extension View {
+  func hiddenWhileTyping() -> some View { modifier(HiddenWhileTyping()) }
+}

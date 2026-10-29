@@ -269,7 +269,7 @@ struct BrewFormView: View {
           close: { askingAI = false })
       }
     }
-    .safeAreaInset(edge: .bottom, spacing: 0) { saveBar(model) }
+    .safeAreaInset(edge: .bottom, spacing: 0) { saveBar(model).hiddenWhileTyping() }
     .toolbar {
       ToolbarItemGroup(placement: .keyboard) {
         Spacer()

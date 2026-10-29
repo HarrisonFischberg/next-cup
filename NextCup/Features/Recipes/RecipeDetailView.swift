@@ -132,6 +132,7 @@ private struct RecipeDetailContent: View {
           .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.md)
           .background(DS.bg, ignoresSafeAreaEdges: .bottom)
           .overlay(alignment: .top) { Hairline().opacity(0.5) }
+          .hiddenWhileTyping()
       }
     }
     .navigationDestination(item: $timerSetup) { TimerView(setup: $0) }
