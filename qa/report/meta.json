@@ -157,7 +157,7 @@
  "open": [
   "No real bag photos yet: all accuracy numbers are synthetic. Target 100+ reviewed real products (workflow in qa/README.md).",
   "Physical iPhone rows A, B, C, F (proxy) and camera capture, live barcode decoding, VoiceOver and large text on the bean editor.",
-  "Apple puts the roaster in the name on 5 of 30 labels (OCR loses which text is the big header). Next step to measure: pass text size from Vision into the prompt.",
+  "Apple puts the roaster in the name on 5 of 30 labels (OCR loses which text is the big header). Tried and rejected: marking the biggest OCR lines as [large] in the prompt made it worse on the dev split (name wrong 8 vs 6 of 23, 3 schema failures vs 0), so it was reverted. Next idea to measure: guided generation for the on-device model.",
   "Apple answer failed the schema on 1 of 30 (S16); upgrade AppleIntelligence to guided generation, as its own shortcut comment says.",
   "Anthropic leaves the roaster blank on some labels (recall 96.9%) and once put the roaster into varietal (S20).",
   "Answers vary between identical runs on 6 of 12 repeated fixture/provider pairs, with no blockers in any run.",
