@@ -42,4 +42,22 @@ struct GrinderGuideTests {
     #expect(GrinderGuide.find("1Zpresso K-Ultra")?.recommended(for: .pourOver) == "0.5.3")
     #expect(GrinderGuide.find("Baratza Encore")?.recommended(for: .espresso) == nil)
   }
+
+  @Test func everyRecommendedSettingIsOnItsGrindersWheel() {
+    for guide in GrinderGuide.all {
+      let settings = Set(guide.settings)
+      #expect(settings.count == guide.settings.count, "\(guide.name) repeats a setting")
+      for method in [
+        GrinderGuide.Method.pourOver, .aeroPress, .frenchPress, .moka, .espresso, .coldBrew,
+      ] {
+        guard let start = guide.recommended(for: method) else { continue }
+        #expect(
+          GrinderGuide.setting(start, in: guide.settings) != nil,
+          "\(guide.name) \(method): \(start)")
+      }
+    }
+    #expect(GrinderGuide.find("Comandante C40 MK4")?.settings.last == "40")
+    #expect(GrinderGuide.find("Fellow Ode Gen 2")?.settings.contains("3.7") == true)
+    #expect(GrinderGuide.otherSettings.first == "0" && GrinderGuide.otherSettings.last == "40")
+  }
 }
