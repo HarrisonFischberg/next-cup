@@ -43,6 +43,8 @@ struct BeanFields: Equatable {
   var bagWeightG: Double?
   var status = BeanStatus.inUse
   var isDecaf = false
+  /// The bag photo used to add the bean, kept on the bean for reference (metadata stripped).
+  var photo: Data?
 
   init() {}
 
@@ -62,6 +64,7 @@ struct BeanFields: Equatable {
     bagWeightG = bean.bagWeightG
     status = bean.status
     isDecaf = bean.isDecaf
+    photo = bean.photo
   }
 
   /// Notes typed as "jasmine, peach; honey" become separate, de-duplicated notes.
@@ -111,6 +114,7 @@ struct BeanService {
     target.bagWeightG = fields.bagWeightG
     target.status = fields.status
     target.isDecaf = fields.isDecaf
+    target.photo = fields.photo
     target.roaster = roaster(named: fields.roasterName)
     if let roaster = target.roaster {
       if let city = Self.clean(fields.roasterCity) { roaster.city = city }
