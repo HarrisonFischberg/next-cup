@@ -1,5 +1,5 @@
-import NextCupKit
 import Foundation
+import NextCupKit
 
 /// The units "How much coffee?" takes. A cup is the US cup, 8 fl oz.
 enum BrewYield: String, CaseIterable {
