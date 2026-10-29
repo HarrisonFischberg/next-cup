@@ -1,3 +1,4 @@
+import NextCupKit
 import SwiftData
 import SwiftUI
 
@@ -151,6 +152,7 @@ private struct TabRoot: View {
     case .timer(let id, let doseG): TimerDestination(link: link, recipeID: id, doseG: doseG)
     case .settings: SettingsRootView()
     case .taste(let id): TasteDestination(link: link, brewID: id)
+    case .unsaved(let name): UnsavedDestination(link: link, fileName: name)
     }
   }
 }
@@ -175,6 +177,57 @@ private struct TasteDestination: View {
       .background(DS.bg)
       .navigationTitle(link.screenName)
       .accessibilityIdentifier(link.identifier)
+    }
+  }
+}
+
+/// Reopens an unsaved brew from the Journal with what was typed. One that was
+/// saved or discarded meanwhile, or whose saved brew is gone, says so.
+private struct UnsavedDestination: View {
+  let link: DeepLink
+  let fileName: String
+  @Environment(\.modelContext) private var context
+  /// Read once, so the form keeps its file while it rewrites it.
+  @State private var entry: SavedDraft?
+
+  init(link: DeepLink, fileName: String) {
+    self.link = link
+    self.fileName = fileName
+    _entry = State(
+      initialValue: DraftStore.all().first {
+        $0.store.fileURL.deletingPathExtension().lastPathComponent == fileName
+      })
+  }
+
+  var body: some View {
+    if let entry, let resumed = form(entry) {
+      resumed.background {
+        Color.clear.accessibilityElement().accessibilityIdentifier(link.identifier)
+      }
+    } else {
+      ScrollView {
+        EmptyState(
+          title: "Unsaved brew not found",
+          message: "It was saved or discarded, or its brew was deleted.")
+      }
+      .background(DS.bg)
+      .navigationTitle(link.screenName)
+      .navigationBarTitleDisplayMode(.inline)
+      .accessibilityIdentifier(link.identifier)
+    }
+  }
+
+  private func form(_ entry: SavedDraft) -> BrewFormView? {
+    let store = Store(context: context)
+    switch entry.kind {
+    case .newBrew:
+      return BrewFormView(seed: nil, resuming: entry.store)
+    case .editing(let id):
+      guard let brew = try? store.find(Brew.self, id: id) else { return nil }
+      return BrewFormView(seed: nil, editing: brew, resuming: entry.store)
+    case .repeating(let id):
+      guard let source = try? store.find(Brew.self, id: id) else { return nil }
+      return BrewFormView(seed: nil, repeating: source, resuming: entry.store)
     }
   }
 }

@@ -2,7 +2,7 @@ import Foundation
 
 /// A `nextcup://` entry point (blueprint §3c):
 /// `brew/new`, `brew/<id>`, `brew-again/<id>`, `recipe/<id>`, `bean/<id>`, `settings`,
-/// `taste/<id>`.
+/// `taste/<id>`, `unsaved/<draft file name>`.
 enum DeepLink: Hashable, Sendable {
   case newBrew
   case brew(UUID)
@@ -18,6 +18,8 @@ enum DeepLink: Hashable, Sendable {
   case settings
   /// How a saved brew tasted, then the change for the next cup (taste reminder tap).
   case taste(UUID)
+  /// An unsaved brew listed in the Journal, by its draft file's name (no extension).
+  case unsaved(String)
 
   static let scheme = "nextcup"
 
@@ -54,6 +56,12 @@ enum DeepLink: Hashable, Sendable {
     case "taste":
       guard let id = UUID(uuidString: target) else { return nil }
       self = .taste(id)
+    case "unsaved":
+      // Only a draft file name, never a path.
+      guard target.hasPrefix("brew-"),
+        target.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") })
+      else { return nil }
+      self = .unsaved(target)
     case "timer":
       let dose = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
         .first { $0.name == "dose" }?.value.flatMap(Double.init)
@@ -68,7 +76,7 @@ enum DeepLink: Hashable, Sendable {
 
   var tab: AppTab {
     switch self {
-    case .newBrew, .brew, .brewAgain, .settings, .taste: .journal
+    case .newBrew, .brew, .brewAgain, .settings, .taste, .unsaved: .journal
     case .recipe, .method, .timer: .recipes
     case .bean: .beans
     }
@@ -86,6 +94,7 @@ enum DeepLink: Hashable, Sendable {
       URL(string: "\(Self.scheme)://timer/\(id.uuidString)?dose=\(doseG)")!
     case .settings: URL(string: "\(Self.scheme)://settings")!
     case .taste(let id): URL(string: "\(Self.scheme)://taste/\(id.uuidString)")!
+    case .unsaved(let name): URL(string: "\(Self.scheme)://unsaved/\(name)")!
     }
   }
 
@@ -101,6 +110,7 @@ enum DeepLink: Hashable, Sendable {
     case .timer: "Timer"
     case .settings: "Settings"
     case .taste: "Taste"
+    case .unsaved: "Unsaved brew"
     }
   }
 
@@ -115,6 +125,7 @@ enum DeepLink: Hashable, Sendable {
     case .timer(let id, _): "destination.timer.\(id.uuidString)"
     case .settings: "tab.root.settings"
     case .taste(let id): "destination.taste.\(id.uuidString)"
+    case .unsaved(let name): "destination.unsaved.\(name)"
     }
   }
 }

@@ -20,9 +20,10 @@ struct NextCupApp: App {
       UserDefaults.standard.removeObject(forKey: GettingStartedCard.dismissedKey)
       UserDefaults.standard.removeObject(forKey: FlavorPicker.returnKey)
     }
-    // UI tests start without a draft left by an earlier test; relaunches omit this.
+    // UI tests start without drafts left by an earlier test; relaunches omit this.
     if ProcessInfo.processInfo.arguments.contains("-resetDraft") {
-      _ = DraftStore.standard().clear()
+      try? FileManager.default.removeItem(
+        at: DraftStore.standard().fileURL.deletingLastPathComponent())
     }
   }
 
