@@ -19,8 +19,12 @@ final class NextCupUITests: XCTestCase {
 
   private func scrollUntilHittable(_ target: XCUIElement, in app: XCUIApplication) {
     var swipes = 0
+    // Drag in the left gutter: a swipe through the middle can land on a wheel and turn it.
     while !target.isHittable && swipes < 12 {
-      app.swipeUp()
+      app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.7))
+        .press(
+          forDuration: 0.05,
+          thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.3)))
       swipes += 1
     }
     // A swipe can carry the target up under the navigation bar, where a tap does not
@@ -52,6 +56,12 @@ final class NextCupUITests: XCTestCase {
 
   private func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
     app.descendants(matching: .any)[identifier].firstMatch
+  }
+
+  /// The wheel inside a SwiftUI wheel Picker, found by the Picker's identifier.
+  private func grindWheel(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
+    let wheel = app.pickerWheels[identifier]
+    return wheel.exists ? wheel : app.pickers[identifier].pickerWheels.firstMatch
   }
 
   @MainActor
@@ -408,23 +418,15 @@ final class NextCupUITests: XCTestCase {
   func testBrewFormDraftSurvivesRelaunch() {
     let app = openBlankForm()
     app.buttons["Increase Dose"].tap()
-    let grind = app.textFields["brewform.grind"]
+    let grind = grindWheel(app, "brewform.grind")
     scrollUntilHittable(grind, in: app)
-    // Lift the field clear of the Save bar with a short drag, when it sits low.
-    if grind.frame.midY > app.frame.height * 0.6 {
-      let mid = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6))
-      let higher = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
-      mid.press(forDuration: 0.05, thenDragTo: higher)
-    }
-    grind.tap()
-    grind.typeText("21 clicks")
-    grind.typeText("\n")  // Return dismisses the keyboard; the Done key is not always hittable
-    sleep(1)  // autosave waits for typing to pause
+    grind.adjust(toPickerWheelValue: "21")
+    sleep(1)  // autosave waits for a pause
 
     relaunchAndOpenUnsavedBrew(app)
-    XCTAssertTrue(app.textFields["brewform.grind"].waitForExistence(timeout: 10))
+    XCTAssertTrue(grindWheel(app, "brewform.grind").waitForExistence(timeout: 10))
     XCTAssertFalse(element(app, "brewform.notice").exists, "a reopened brew needs no banner")
-    XCTAssertEqual(app.textFields["brewform.grind"].value as? String, "21 clicks")
+    XCTAssertEqual(grindWheel(app, "brewform.grind").value as? String, "21")
     XCTAssertTrue(text(app, in: "brewform.dose").hasPrefix("15"))
   }
 
@@ -1685,10 +1687,9 @@ final class NextCupUITests: XCTestCase {
     }
 
     startBrew(app)
-    let grind = element(app, "brewform.grind")
+    let grind = grindWheel(app, "brewform.grind")
     scrollUntilHittable(grind, in: app)
-    grind.tap()
-    grind.typeText("20\n")
+    grind.adjust(toPickerWheelValue: "20")
     let sour = element(app, "brewform.verdict.sour")
     scrollUntilHittable(sour, in: app)
     sour.tap()
@@ -1716,14 +1717,14 @@ final class NextCupUITests: XCTestCase {
     // Accepting puts the new grind in the form; Undo takes it back.
     element(app, "suggestion.accept").tap()
     XCTAssertTrue(element(app, "suggestion.undo").waitForExistence(timeout: 5))
-    let nextGrind = element(app, "brewform.grind")
+    let nextGrind = grindWheel(app, "brewform.grind")
     scrollUntilHittable(nextGrind, in: app)
     XCTAssertEqual(nextGrind.value as? String, "19")
     try shot("dialin-accepted")
     scrollUntilHittable(element(app, "suggestion.undo"), in: app)
     element(app, "suggestion.undo").tap()
     XCTAssertTrue(element(app, "suggestion.accept").waitForExistence(timeout: 5))
-    XCTAssertFalse((element(app, "brewform.grind").value as? String) == "19")
+    XCTAssertFalse((grindWheel(app, "brewform.grind").value as? String) == "19")
 
     // Dismissing keeps the form as it is and can be taken back as well.
     element(app, "suggestion.dismiss").tap()

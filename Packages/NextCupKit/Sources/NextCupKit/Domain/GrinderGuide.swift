@@ -1,3 +1,5 @@
+import Foundation
+
 /// Starting grind ranges for popular grinders, per brew method, in each grinder's own
 /// notation. Source: Honest Coffee Guide's per-grinder tables (each entry links its page),
 /// read 2026-10-26; spot-checked against Fellow's Ode Gen 2 guide (pour over around 5)
@@ -56,6 +58,58 @@ public struct GrinderGuide: Identifiable, Hashable, Sendable {
     case "number.click": "(number.click)"
     default: "on the dial"
     }
+  }
+
+  /// Every setting the grind wheel offers, finest first, in the grinder's own notation:
+  /// zero to the coarsest end in the guide, at the guide's finest step.
+  public var settings: [String] {
+    let ends = [pourOver, aeroPress, frenchPress, moka, espresso, coldBrew].compactMap { $0 }
+      .flatMap { $0.components(separatedBy: "–") }.map { $0.trimmingCharacters(in: .whitespaces) }
+    if notation == "rotation.number.tick" {
+      let turns = ends.compactMap { Int($0.split(separator: ".").first ?? "") }.max() ?? 0
+      return (0...turns).flatMap { r in
+        (0...9).flatMap { n in (0...9).map { "\(r).\(n).\($0)" } }
+      }
+    }
+    // Baratza Vario: macro 1–10, micro A–W.
+    if ends.contains(where: { $0.last?.isLetter == true }) {
+      return (1...10).flatMap { n in "ABCDEFGHIJKLMNOPQRSTUVW".map { "\(n)\($0)" } }
+    }
+    // Eureka: the first turn reads 0–5.9 on the dial, later turns "turns+dial".
+    if ends.contains(where: { $0.contains("+") }) {
+      let turns = ends.compactMap { Int($0.split(separator: "+").first ?? "") }.max() ?? 0
+      let dial = (0..<60).map { Self.number(Double($0) / 10, decimals: 1) }
+      return dial + (1...max(turns, 1)).flatMap { t in dial.map { "\(t)+\($0)" } }
+    }
+    let decimals = ends.map { $0.split(separator: ".").dropFirst().first?.count ?? 0 }.max() ?? 0
+    let coarsest = ends.compactMap(Double.init).max() ?? 40
+    return Self.steps(through: coarsest, decimals: decimals)
+  }
+
+  /// The wheel stop for a typed or saved setting: "9.0" finds "9", "1" finds "1.0.0".
+  public static func setting(_ text: String, in settings: [String]) -> String? {
+    let t = text.trimmingCharacters(in: .whitespaces)
+    return settings.first { $0 == t || $0 == t + ".0.0" }
+      ?? Double(t).flatMap { v in settings.first { Double($0) == v } }
+  }
+
+  /// The wheel for a grinder the guide does not know: 0–40 by halves.
+  public static let otherSettings = steps(through: 40, decimals: 1, step: 0.5)
+
+  private static func steps(through max: Double, decimals: Int, step: Double? = nil) -> [String] {
+    let step = step ?? pow(10, -Double(decimals))
+    let count = Int((max / step).rounded())
+    return (0...count).map { number(Double($0) * step, decimals: decimals) }
+  }
+
+  /// "9", "3.7", "0.33": no trailing zeros, always a dot whatever the locale.
+  private static func number(_ value: Double, decimals: Int) -> String {
+    var text = String(format: "%.\(decimals)f", value)
+    if text.contains(".") {
+      while text.hasSuffix("0") { text.removeLast() }
+      if text.hasSuffix(".") { text.removeLast() }
+    }
+    return text
   }
 
   /// The guide entry for a grinder the user named, ignoring case and spacing.
