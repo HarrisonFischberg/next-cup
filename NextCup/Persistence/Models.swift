@@ -101,6 +101,9 @@ final class Bean: Identified {
   /// half points out of 5; `RatingMigration` converted those once.
   @Attribute(originalName: "ratingHalfSteps") var ratingTenths: Int?
   @Attribute(.externalStorage) var photo: Data?
+  /// Values Apple AI suggests from what it knows of the coffee (not from the bag), as JSON.
+  /// Shown for review on the bean; nothing goes into the fields until the user accepts.
+  var aiSuggestion: Data?
 
   var roaster: Roaster?
   @Relationship(deleteRule: .nullify, inverse: \BrewBean.bean) var brewUses: [BrewBean]?

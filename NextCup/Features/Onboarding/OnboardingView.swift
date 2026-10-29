@@ -262,7 +262,7 @@ struct OnboardingView: View {
           VStack(alignment: .leading, spacing: 2) {
             Text("Bean me up, Scotty").font(.body.weight(.semibold)).foregroundStyle(DS.ink)
             Text(
-              "When you add a coffee, Apple AI fills in the roast, origin and process it knows of. It works from what it already knows and what's on the bag, not a web search, so check them."
+              "When you add a coffee, Apple AI suggests the roast, origin and process it knows of. It works from what it already knows, not the bag or a web search, so you accept or dismiss each suggestion on the bean."
             )
             .font(.footnote).foregroundStyle(DS.ink2)
           }
