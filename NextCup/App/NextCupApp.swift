@@ -45,6 +45,8 @@ struct NextCupApp: App {
       .preferredColorScheme((AppearanceMode(rawValue: appearance) ?? .system).colorScheme)
       .environment(\.flavor, AppStyle.current.flavor)
       .fontDesign(AppStyle.current.flavor.bodyDesign)
+      // AutoCorrect off for every text field, search bar and sheet in the app.
+      .autocorrectionDisabled()
       // DS tokens are read, not observed, so a new flavor rebuilds the tree.
       .id(style)
     }
