@@ -124,7 +124,8 @@ struct MethodsServiceTests {
   @Test func everyBuiltInMethodStillShowsTheFieldsItDidBefore() throws {
     let methods = try BuiltInContent(bundle: .main).methods
     #expect(!methods.isEmpty)
-    for method in methods {
+    // Nespresso is a joke method with capsules, so it has no grind field.
+    for method in methods where method.key != NespressoJokeView.methodKey {
       let shown = MethodParameters.shown(tracked: method.trackedParameters)
       #expect(shown.isSuperset(of: [.dose, .water]), "\(method.name) shows dose and water")
       #expect(shown.contains(.grind) && shown.contains(.time), "\(method.name) keeps grind, time")
