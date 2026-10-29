@@ -203,6 +203,7 @@ struct TasteView: View {
   @State private var verdict: Verdict?
   @State private var tenths = 0
   @State private var notes = ""
+  @FocusState private var notesFocused: Bool
   @State private var outcome: DialInOutcome?
   @State private var error: String?
   @Environment(\.dynamicTypeSize) private var dts
@@ -230,7 +231,14 @@ struct TasteView: View {
     .navigationTitle(brew.beanNames.first ?? "Taste")
     .navigationBarTitleDisplayMode(.inline)
     .toolbarVisibility(.hidden, for: .tabBar)
-    .safeAreaInset(edge: .bottom, spacing: 0) { actions }
+    .safeAreaInset(edge: .bottom, spacing: 0) { actions.hiddenWhileTyping() }
+    .scrollDismissesKeyboard(.interactively)
+    .toolbar {
+      ToolbarItemGroup(placement: .keyboard) {
+        Spacer()
+        Button("Done") { notesFocused = false }
+      }
+    }
     .onAppear {
       verdict = brew.verdict
       tenths = brew.ratingTenths ?? 0
@@ -280,6 +288,7 @@ struct TasteView: View {
         GradeScale(tenths: $tenths)
       }
       TextField("Anything else you notice? (optional)", text: $notes, axis: .vertical)
+        .focused($notesFocused)
         .lineLimit(1...4).padding(DS.Space.lg)
         .panel(DS.paper)
     }
