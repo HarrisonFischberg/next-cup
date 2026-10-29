@@ -56,6 +56,20 @@ struct BeanTests {
     #expect(before.changedCount(to: after) == 3)
   }
 
+  @Test func theBagPhotoIsKeptOnTheBeanUntilRemoved() throws {
+    let harness = try Harness()
+    let photo = Data([0xFF, 0xD8, 0xFF])
+    let bean = try harness.add("Guji") { $0.photo = photo }
+    #expect(bean.photo == photo)
+    var fields = BeanFields(bean)
+    fields.region = "Hambela"
+    try harness.service.save(fields, editing: bean).get()
+    #expect(bean.photo == photo)
+    fields.photo = nil
+    try harness.service.save(fields, editing: bean).get()
+    #expect(bean.photo == nil)
+  }
+
   @Test func savingAddsABeanWithItsFieldsTrimmed() throws {
     let harness = try Harness()
     let bean = try harness.add("  Washed Ethiopia  ") {

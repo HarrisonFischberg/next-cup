@@ -354,10 +354,21 @@ struct BeanEditorView: View {
         .lineLimit(1...4).focused($focused)
         .frame(minHeight: DS.Size.control)
         .accessibilityIdentifier("beans.editor.notes")
+      if let data = fields.photo, let image = UIImage(data: data) {
+        Image(uiImage: image).resizable().scaledToFit()
+          .frame(maxWidth: .infinity, maxHeight: 160)
+          .accessibilityLabel("Photo of the bag")
+          .accessibilityIdentifier("beans.editor.photo")
+        Button("Remove photo", role: .destructive) { fields.photo = nil }
+          .frame(minHeight: DS.Size.control)
+          .accessibilityIdentifier("beans.editor.removePhoto")
+      }
     } header: {
       Text("Bag")
     } footer: {
-      Text("Separate flavor notes with commas. The amount left drops with each brew.")
+      Text(
+        "Separate flavor notes with commas. The amount left drops with each brew. A bag photo you read is kept on this bean, on this iPhone."
+      )
     }
     .listRowBackground(DS.paper)
   }
@@ -466,6 +477,7 @@ struct BeanEditorView: View {
         scanMessage = "That photo could not be read."
         return
       }
+      if feature == .bagRecognition { fields.photo = photo }
       let queue = scanQueue ?? AIQueue.live(context: context)
       queue.onDone = nil
       if scanQueue == nil {
@@ -494,6 +506,7 @@ struct BeanEditorView: View {
         scanMessage = "That photo could not be read."
         return
       }
+      fields.photo = photo
       var draft = BeanFields()
       draft.roastDate = LabelEvidence.roastDate(in: lines).flatMap(BagRecognition.date)
       draft.bagWeightG = LabelEvidence.bagWeightGrams(in: lines)
