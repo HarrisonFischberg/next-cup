@@ -409,7 +409,7 @@ struct JournalListView: View {
         .accessibilityIdentifier("journal.toast")
     } else if let name = router.savedLater {
       // A brew from the timer saved to rate later: say where it went and offer it now.
-      SteelToast(message: "Saved to Unsaved Brews", actionTitle: "Review now") {
+      SteelToast(message: "Saved to Unsaved Brews", actionTitle: "Rate now") {
         router.savedLater = nil
         router.journalPath.append(.unsaved(name))
       }

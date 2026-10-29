@@ -26,7 +26,7 @@ struct TimerView: View {
   @AppStorage(SystemTimerHaptics.soundKey) private var sound = true
   @Environment(\.scenePhase) private var scenePhase
   @Environment(\.modelContext) private var context
-  /// The app's tabs; with them, Drink first, rate later lands on the Journal.
+  /// The app's tabs; with them, Rate after this cup lands on the Journal.
   @Environment(AppRouter.self) private var router: AppRouter?
   @Environment(\.dynamicTypeSize) private var dts
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -517,7 +517,7 @@ struct TimerView: View {
         .minimumScaleFactor(0.5).lineLimit(1)
         .dynamicTypeSize(...DS.readoutCap)
         .accessibilityLabel(RecipeFormat.spokenTime(Int(state.elapsedS)))
-      Text("Rate it after you've had it, or review it now.")
+      Text("Rate it after this cup, or while you sip.")
         .font(.subheadline).foregroundStyle(DS.ink2)
     }
     .multilineTextAlignment(.center)
@@ -545,7 +545,7 @@ struct TimerView: View {
         .disabled(logged)
         .accessibilityIdentifier("timer.primary")
       if session.outcome != nil, !logged {
-        SteelButton(title: "Review now", kind: .secondary, action: rateNow)
+        SteelButton(title: "Rate while sippin’", kind: .secondary, action: rateNow)
           .accessibilityIdentifier("timer.rateNow")
       }
       if running {
@@ -582,7 +582,7 @@ struct TimerView: View {
     case .notStarted: "Start"
     case .running: state.targetReached ? "Finish brew" : "Pause"
     case .paused: state.targetReached ? "Finish brew" : "Resume"
-    case .finished: logged ? "Brew logged" : "Drink first, rate later"
+    case .finished: logged ? "Brew logged" : "Rate after this cup"
     }
   }
 
@@ -608,7 +608,7 @@ struct TimerView: View {
     let draftStore = BrewFormView.draft(for: seed) ?? .newBrew()
     let model = BrewFormModel(seed: seed, store: Store(context: context), draftStore: draftStore)
     if model.notice?.kind == .error {
-      laterError = "This brew could not be saved for later. Review it now to keep it."
+      laterError = "This brew could not be saved for later. Rate it now to keep it."
       return
     }
     logged = true

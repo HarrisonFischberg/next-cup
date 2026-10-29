@@ -1,6 +1,6 @@
 import XCTest
 
-/// The Brew finished screen, then the Journal after Drink first, rate later. Runs only while
+/// The Brew finished screen, then the Journal after Rate after this cup. Runs only while
 /// `docs/design/brew-later/.capture` exists; files are named with CAPTURE_PREFIX
 /// (old_ or new_) and CAPTURE_VARIANT (light or dark, set on the simulator first).
 final class BrewLaterCaptureUITests: XCTestCase {
@@ -41,7 +41,7 @@ final class BrewLaterCaptureUITests: XCTestCase {
     XCTAssertTrue(
       app.descendants(matching: .any)["timer.finished"].waitForExistence(timeout: 5))
     try shot("finished")
-    let later = app.buttons["Drink first, rate later"]
+    let later = app.buttons["Rate after this cup"]
     guard later.exists else { return }
     later.tap()
     XCTAssertTrue(
