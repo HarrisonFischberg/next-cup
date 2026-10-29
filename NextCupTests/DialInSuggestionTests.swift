@@ -48,7 +48,8 @@ struct DialInSuggestionTests {
     /// Logs a brew through the real form model and returns the saved brew.
     @discardableResult
     func log(
-      _ verdict: Verdict?, bean: Bean? = nil, grind: String = "20", daysAgo: Int = 0
+      _ verdict: Verdict?, also: [Verdict] = [], bean: Bean? = nil, grind: String = "20",
+      daysAgo: Int = 0
     ) throws -> Brew {
       let model = model()
       model.draft.methodID = method.id
@@ -56,7 +57,7 @@ struct DialInSuggestionTests {
       model.draft.waterG = 250
       model.draft.tempC = 94
       model.draft.grindSetting = grind
-      model.draft.verdict = verdict?.rawValue
+      model.draft.verdict = Verdict.joined((verdict.map { [$0] } ?? []) + also)
       model.draft.date = Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!
       if let bean { model.addBean(bean) }
       #expect(model.save())
@@ -85,7 +86,7 @@ struct DialInSuggestionTests {
   @Test func eachVerdictMakesWhatTheRulesSay() throws {
     let expected: [(Verdict, BrewParameter?, String?)] = [
       (.sour, .grind, "19"), (.bitter, .grind, "21"), (.weak, .water, "235"),
-      (.strong, .water, "270"), (.balanced, nil, nil),
+      (.strong, .water, "270"), (.balanced, nil, nil), (.bright, nil, nil),
     ]
     for (verdict, field, value) in expected {
       let harness = try Harness()
@@ -95,6 +96,12 @@ struct DialInSuggestionTests {
       #expect(stored.first?.toValue == value)
       #expect(stored.count == (field == nil ? 0 : 1))
     }
+  }
+
+  @Test func aFaultPickedWithBrightDecidesTheChange() throws {
+    let harness = try Harness()
+    try harness.log(.bright, also: [.sour])
+    #expect(try harness.suggestions().first?.toValue == "19")
   }
 
   @Test func noVerdictMakesNoSuggestion() throws {
