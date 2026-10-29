@@ -1,3 +1,4 @@
+import NextCupKit
 import Foundation
 
 /// The units "How much coffee?" takes. A cup is the US cup, 8 fl oz.
@@ -30,6 +31,16 @@ enum BrewYield: String, CaseIterable {
     case .cups: Array(stride(from: 0.5, through: 4, by: 0.5))
     case .ml: Array(stride(from: 100, through: 1_000, by: 50))
     }
+  }
+
+  /// "12 oz": the coffee a brew makes (its water less what the grounds keep) in this
+  /// unit, the way the amount wheel reads it. Nil without both dose and water.
+  func amountText(doseG: Double?, waterG: Double?) -> String? {
+    guard let doseG, let waterG else { return nil }
+    let amount = (waterG - BrewMath.absorption * doseG) / millilitres
+    guard amount > 0 else { return nil }
+    let digits = self == .cups ? 0...1 : 0...0
+    return "\(amount.formatted(.number.precision(.fractionLength(digits)))) \(title)"
   }
 
   /// The wheel's amount nearest to `ml`, for keeping the amount when the unit changes.
