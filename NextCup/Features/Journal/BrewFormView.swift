@@ -201,6 +201,7 @@ struct BrewFormView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: DS.Space.lg) {
         header(model)
+        brewedRow(binding.draft.date)
         if let notice = model.notice { noticeBanner(notice, model) }
         if let error = model.saveError {
           StateBanner(
@@ -214,8 +215,9 @@ struct BrewFormView: View {
         }
         methodPicker(binding.draft, model)
         beansSection(model)
-        suggestionSection(model)
         let fields = shownFields(for: model.draft.methodID)
+        if fields.contains(.grind) { grinderPicker(model) }
+        suggestionSection(model)
         if let amount = (BrewYield(rawValue: yieldUnit) ?? .ml).amountText(
           doseG: model.draft.doseG, waterG: model.draft.waterG)
         {
@@ -241,17 +243,13 @@ struct BrewFormView: View {
           }
         }
         if fields.contains(.notes) { notesField(binding.draft.notes) }
-        // Less-used inputs fold away; a value already set keeps the section open.
+        if fields.contains(.photo) { photoRow(model) }
+        // Water is rarely changed, so it folds away; a value already set keeps it open.
         DisclosureGroup(isExpanded: detailsBinding(model)) {
-          VStack(alignment: .leading, spacing: DS.Space.lg) {
-            brewedRow(binding.draft.date)
-            if fields.contains(.grind) { grinderPicker(model) }
-            waterPicker(model)
-            if fields.contains(.photo) { photoRow(model) }
-          }
-          .padding(.top, DS.Space.md)
+          waterPicker(model)
+            .padding(.top, DS.Space.md)
         } label: {
-          Text("More details").font(DS.Font.headline).foregroundStyle(DS.ink)
+          Text("Water Profile").font(DS.Font.headline).foregroundStyle(DS.ink)
             .frame(minHeight: DS.Size.minTap, alignment: .leading)
         }
         .tint(DS.ink2)
@@ -825,13 +823,12 @@ struct BrewFormView: View {
     }
   }
 
-  /// Open by default only when a folded value is already set (a repeat or an edit).
+  /// Open by default only when a water profile is already set (a repeat or an edit).
   private func detailsBinding(_ model: BrewFormModel) -> Binding<Bool> {
     Binding(
       get: {
         detailsShown
-          ?? (model.draft.photo != nil || model.draft.waterProfileID != nil
-            || model.isEditing)
+          ?? (model.draft.waterProfileID != nil || model.isEditing)
       },
       set: { detailsShown = $0 })
   }
