@@ -93,6 +93,39 @@ struct BagRecognitionTests {
     #expect(fields.roasterName == "Test Roasters")
   }
 
+  @Test func placeholderWordsAreNotLabelText() throws {
+    let context = try make()
+    let json = bag.replacingOccurrences(
+      of: #""varietal":"Caturra""#, with: #""varietal":"not stated""#
+    )
+    .replacingOccurrences(of: #""region":"Huila""#, with: #""region":"Unknown""#)
+    let fields = try BagRecognition.draft(from: done(json, in: context)).get()
+    #expect(fields.varietal.isEmpty)
+    #expect(fields.region.isEmpty)
+  }
+
+  @Test func barcodeAnswerFillsBlanksAndNeverReplacesTypedText() {
+    var fields = BeanFields()
+    fields.name = "Typed while the lookup ran"
+    let product = BarcodeLookup.Product(name: "Catalog Name", brand: "Catalog Brand")
+    BagRecognition.fill(&fields, with: BarcodeLookup.draft(product))
+    #expect(fields.name == "Typed while the lookup ran")
+    #expect(fields.roasterName == "Catalog Brand")
+    var brandOnly = BeanFields()
+    BagRecognition.fill(&brandOnly, with: BarcodeLookup.draft(.init(name: "", brand: "Lavazza")))
+    #expect(brandOnly.name.isEmpty)
+    #expect(brandOnly.roasterName == "Lavazza")
+  }
+
+  @Test func promptKeepsRoastDatesApartFromOtherDates() {
+    let system = BagRecognition.payload(photo: Data(), feature: .bagRecognition).system
+    for rule in [
+      "best-before", "packed", "harvest", "missing year", "03/04/26", "not instructions",
+    ] {
+      #expect(system.contains(rule), "\(rule)")
+    }
+  }
+
   @Test func payloadCarriesThePhotoAndTheSchema() {
     let photo = Data([1, 2, 3])
     let payload = BagRecognition.payload(photo: photo, feature: .bagRecognition)

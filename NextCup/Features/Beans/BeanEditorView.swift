@@ -426,9 +426,9 @@ struct BeanEditorView: View {
       lookingUp = false
       switch result {
       case .success(let product):
+        // Fills blanks only, like a photo: a late answer never replaces what was typed.
         await showFilling(["Barcode found", "Filling the fields"], since: started) {
-          fields.name = product.name
-          if let brand = product.brand { fields.roasterName = brand }
+          BagRecognition.fill(&fields, with: BarcodeLookup.draft(product))
         }
         if product.brand != nil { matchShown = true }
       case .failure(let failure):
@@ -450,6 +450,7 @@ struct BeanEditorView: View {
     guard let provider = preferences.provider(for: feature),
       let model = preferences.modelID(for: feature)
     else {
+      if feature == .bagRecognition { return readLabelWithoutAI(load) }
       scanMessage = "Choose a provider and model for \(feature.title) in Settings → AI first."
       return
     }
@@ -481,6 +482,38 @@ struct BeanEditorView: View {
     }
   }
 
+  /// With no AI model (Apple Intelligence off or unsupported, no key set), the label is still
+  /// read on this iPhone with Vision, and only what `LabelEvidence` reads plainly (roast
+  /// date, weight) is filled for review. Nothing leaves the device.
+  private func readLabelWithoutAI(_ load: @escaping () async -> Data?) {
+    Task {
+      let started = Date()
+      guard let raw = await load(), let photo = PhotoSanitizer.sanitized(raw),
+        let lines = try? await PaperScanner.lines(in: photo).map(\.text)
+      else {
+        scanMessage = "That photo could not be read."
+        return
+      }
+      var draft = BeanFields()
+      draft.roastDate = LabelEvidence.roastDate(in: lines).flatMap(BagRecognition.date)
+      draft.bagWeightG = LabelEvidence.bagWeightGrams(in: lines)
+      await showFilling(["Label read on this iPhone", "Filling the fields"], since: started) {
+        fill(with: draft)
+      }
+      filledMessage =
+        (filledMessage ?? "")
+        + " Without an AI model only the roast date and weight are read; choose one in Settings → AI to read more."
+    }
+  }
+
+  private func fill(with draft: BeanFields) {
+    BagRecognition.fill(&fields, with: draft)
+    hasRoastDate = fields.roastDate != nil
+    if weightText.isEmpty, let grams = fields.bagWeightG {
+      weightText = RecipeFormat.weight(grams, units, withSymbol: false)
+    }
+  }
+
   /// Fills the form from a finished scan. Nothing is saved: the user reviews and taps Save.
   private func finishScan() {
     guard let scan else { return }
@@ -490,11 +523,7 @@ struct BeanEditorView: View {
       case .success(let draft):
         Task {
           await showFilling(["Label read", "Filling the fields"], since: Date()) {
-            BagRecognition.fill(&fields, with: draft)
-            hasRoastDate = fields.roastDate != nil
-            if weightText.isEmpty, let grams = fields.bagWeightG {
-              weightText = RecipeFormat.weight(grams, units, withSymbol: false)
-            }
+            fill(with: draft)
           }
         }
       case .failure(let failure):
