@@ -761,10 +761,12 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(row.waitForExistence(timeout: 5))
     XCTAssertTrue(row.label.contains("15 g"), "row shows the dose, got \(row.label)")
 
-    // Edit: the form opens on the saved values; Save changes the same brew.
+    // Edit: the brew opens locked on the saved values; Edit unlocks it and Save
+    // changes the same brew.
     row.tap()
     XCTAssertTrue(element(app, "brewform.edit").waitForExistence(timeout: 5))
     XCTAssertTrue(text(app, in: "brewform.dose").hasPrefix("15"))
+    element(app, "brewform.unlock").tap()
     app.buttons["Increase Dose"].tap()
     app.buttons["Save brew"].tap()
     XCTAssertTrue(

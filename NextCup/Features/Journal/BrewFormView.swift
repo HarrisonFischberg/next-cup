@@ -46,6 +46,9 @@ struct BrewFormView: View {
   @State private var libraryShown = false
   @State private var cameraShown = false
   @State private var detailsShown: Bool?
+  /// Set by Edit and Cancel. A saved brew opens locked, so a stray swipe can't
+  /// change it; an unsaved edit reopened from the Journal opens unlocked.
+  @State private var unlocked: Bool?
   @FocusState private var focused: Field?
   @AppStorage(BrewYield.unitKey) private var yieldUnit = BrewYield.defaultUnit.rawValue
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
@@ -53,6 +56,13 @@ struct BrewFormView: View {
     .rawValue
 
   private enum Field: Hashable { case notes }
+
+  private var locked: Bool { editing != nil && !(unlocked ?? (resuming != nil)) }
+
+  private var title: String {
+    if editing != nil { return locked ? "Saved brew" : "Edit brew" }
+    return repeating != nil ? "Brew again" : "New brew"
+  }
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -73,7 +83,7 @@ struct BrewFormView: View {
       }
     }
     .background(DS.bg)
-    .navigationTitle(editing != nil ? "Edit brew" : (repeating != nil ? "Brew again" : "New brew"))
+    .navigationTitle(title)
     .navigationBarTitleDisplayMode(.inline)
     .task {
       guard model == nil else { return }
@@ -201,7 +211,7 @@ struct BrewFormView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: DS.Space.lg) {
         header(model)
-        brewedRow(binding.draft.date)
+        brewedRow(binding.draft.date).disabled(locked)
         if let notice = model.notice { noticeBanner(notice, model) }
         if let error = model.saveError {
           StateBanner(
@@ -213,47 +223,50 @@ struct BrewFormView: View {
           StateBanner(
             kind: .info, message: "You ended this brew early. The time is what it reached.")
         }
-        methodPicker(binding.draft, model)
-        beansSection(model)
         let fields = shownFields(for: model.draft.methodID)
-        if fields.contains(.grind) { grinderPicker(model) }
-        suggestionSection(model)
-        if let amount = (BrewYield(rawValue: yieldUnit) ?? .ml).amountText(
-          doseG: model.draft.doseG, waterG: model.draft.waterG)
-        {
-          Label("Makes about \(amount)", systemImage: "cup.and.saucer.fill")
-            .font(.subheadline).foregroundStyle(DS.ink2)
-            .accessibilityIdentifier("brewform.amount")
-        }
-        tiles(model, fields)
-        if fields.contains(.grind) {
-          grindField(model, binding.draft.grindSetting)
-          grindHint(model)
-        }
-        verdictRow(binding.draft.verdict)
-        if model.draft.verdict == nil, !model.isEditing {
-          Text("Not tasted yet? Save without it. We'll remind you to taste in 20 minutes.")
-            .font(.footnote).foregroundStyle(DS.ink2)
-            .accessibilityIdentifier("brewform.tasteLater")
-        }
-        if fields.contains(.rating) {
-          VStack(alignment: .leading, spacing: DS.Space.sm) {
-            Text("RATING").font(DS.Font.label).foregroundStyle(DS.ink2)
-            GradeScale(tenths: binding.draft.ratingTenths)
+        Group {
+          methodPicker(binding.draft, model)
+          beansSection(model)
+          if fields.contains(.grind) { grinderPicker(model) }
+          suggestionSection(model)
+          if let amount = (BrewYield(rawValue: yieldUnit) ?? .ml).amountText(
+            doseG: model.draft.doseG, waterG: model.draft.waterG)
+          {
+            Label("Makes about \(amount)", systemImage: "cup.and.saucer.fill")
+              .font(.subheadline).foregroundStyle(DS.ink2)
+              .accessibilityIdentifier("brewform.amount")
           }
+          tiles(model, fields)
+          if fields.contains(.grind) {
+            grindField(model, binding.draft.grindSetting)
+            grindHint(model)
+          }
+          verdictRow(binding.draft.verdict)
+          if model.draft.verdict == nil, !model.isEditing {
+            Text("Not tasted yet? Save without it. We'll remind you to taste in 20 minutes.")
+              .font(.footnote).foregroundStyle(DS.ink2)
+              .accessibilityIdentifier("brewform.tasteLater")
+          }
+          if fields.contains(.rating) {
+            VStack(alignment: .leading, spacing: DS.Space.sm) {
+              Text("RATING").font(DS.Font.label).foregroundStyle(DS.ink2)
+              GradeScale(tenths: binding.draft.ratingTenths)
+            }
+          }
+          if fields.contains(.notes) { notesField(binding.draft.notes) }
+          if fields.contains(.photo) { photoRow(model) }
+          // Water is rarely changed, so it folds away; a value already set keeps it open.
+          DisclosureGroup(isExpanded: detailsBinding(model)) {
+            waterPicker(model)
+              .padding(.top, DS.Space.md)
+          } label: {
+            Text("Water Profile").font(DS.Font.headline).foregroundStyle(DS.ink)
+              .frame(minHeight: DS.Size.minTap, alignment: .leading)
+          }
+          .tint(DS.ink2)
+          .accessibilityIdentifier("brewform.details")
         }
-        if fields.contains(.notes) { notesField(binding.draft.notes) }
-        if fields.contains(.photo) { photoRow(model) }
-        // Water is rarely changed, so it folds away; a value already set keeps it open.
-        DisclosureGroup(isExpanded: detailsBinding(model)) {
-          waterPicker(model)
-            .padding(.top, DS.Space.md)
-        } label: {
-          Text("Water Profile").font(DS.Font.headline).foregroundStyle(DS.ink)
-            .frame(minHeight: DS.Size.minTap, alignment: .leading)
-        }
-        .tint(DS.ink2)
-        .accessibilityIdentifier("brewform.details")
+        .disabled(locked)
         if let editing {
           SuggestionHistory(brew: editing, units: units)
           SteelButton(title: "Ask AI about this brew", kind: .secondary) { askingAI = true }
@@ -275,8 +288,26 @@ struct BrewFormView: View {
           close: { askingAI = false })
       }
     }
-    .safeAreaInset(edge: .bottom, spacing: 0) { saveBar(model).hiddenWhileTyping() }
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      if !locked { saveBar(model).hiddenWhileTyping() }
+    }
     .toolbar {
+      if editing != nil {
+        ToolbarItem(placement: .topBarTrailing) {
+          if locked {
+            Button("Edit") { unlocked = true }
+              .accessibilityIdentifier("brewform.unlock")
+          } else {
+            Button("Cancel") {
+              focused = nil
+              model.revert()
+              unlocked = false
+            }
+            .accessibilityHint("Discards your changes")
+            .accessibilityIdentifier("brewform.cancel")
+          }
+        }
+      }
       ToolbarItemGroup(placement: .keyboard) {
         Spacer()
         Button("Done") { focused = nil }
@@ -298,16 +329,18 @@ struct BrewFormView: View {
 
   private func header(_ model: BrewFormModel) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
-      Text(
-        (model.isEditing ? "Edit brew" : (model.repeatingID != nil ? "Brew again" : "New brew"))
-          .dsTitle
-      )
-      .font(DS.Font.display).foregroundStyle(DS.ink)
-      .dynamicTypeSize(...DS.displayCap)
-      .accessibilityAddTraits(.isHeader)
+      Text(title.dsTitle)
+        .font(DS.Font.display).foregroundStyle(DS.ink)
+        .dynamicTypeSize(...DS.displayCap)
+        .accessibilityAddTraits(.isHeader)
       if let seed {
         Text([seed.recipeName, seed.methodName].compactMap { $0 }.joined(separator: " · "))
           .font(.subheadline).foregroundStyle(DS.ink2)
+      }
+      if locked {
+        Text("Saved in your journal. Tap Edit to change it.")
+          .font(.subheadline).foregroundStyle(DS.ink2)
+          .accessibilityIdentifier("brewform.locked")
       }
     }
   }
