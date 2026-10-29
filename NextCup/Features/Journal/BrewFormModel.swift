@@ -129,6 +129,12 @@ final class BrewFormModel {
   /// for the user (a bean chosen before opening) are not mistaken for typing.
   func treatAsOpened() { baseline = draft }
 
+  /// Drops every change since the form opened (Cancel on a saved brew).
+  func revert() {
+    draft = baseline
+    flushDraft()
+  }
+
   private static func saved(_ brew: Brew) -> BrewDraft {
     BrewDraft(
       id: brew.id, date: brew.date, methodID: brew.method?.id, recipeID: brew.recipe?.id,

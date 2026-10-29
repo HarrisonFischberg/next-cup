@@ -173,6 +173,20 @@ struct BrewFormModelTests {
     #expect(source.notes == "Better with a finer grind.")
   }
 
+  @Test func cancellingAnEditPutsTheSavedValuesBackAndLeavesNoDraft() throws {
+    let harness = try Harness()
+    let brew = try savedBrew(harness)
+    let model = harness.model(editing: brew)
+    let saved = model.draft
+    model.draft.grindSetting = "40"
+    model.draft.notes = "slipped"
+    model.flushDraft()
+    model.revert()
+    #expect(model.draft == saved)
+    #expect(harness.draftStore.load() == .none)
+    #expect(brew.notes != "slipped")
+  }
+
   // MARK: Autosave and restore
 
   @Test func flushedDraftReopensFromTheJournalWithoutANotice() throws {
