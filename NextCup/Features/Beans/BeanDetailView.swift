@@ -65,6 +65,7 @@ struct BeanDetailView: View {
         attributes
         if !BeanDetailsAI.pending(for: bean).isEmpty { aiSuggestion }
         if !bean.bagFlavorNotes.isEmpty { flavor }
+        if let data = bean.photo, let image = UIImage(data: data) { bagPhoto(image) }
         freezer
         brews
       }
@@ -186,6 +187,18 @@ struct BeanDetailView: View {
         .accessibilityIdentifier("bean.status")
         if bean.isDecaf { Tag(text: "Decaf") }
       }
+    }
+  }
+
+  /// The bag photo the bean was added from, kept for reference.
+  private func bagPhoto(_ image: UIImage) -> some View {
+    VStack(alignment: .leading, spacing: DS.Space.sm) {
+      Text("THE BAG").font(DS.Font.label).foregroundStyle(DS.ink)
+      Image(uiImage: image).resizable().scaledToFit()
+        .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
+        .frame(maxWidth: .infinity, maxHeight: 320)
+        .accessibilityLabel("Photo of the bag")
+        .accessibilityIdentifier("bean.photo")
     }
   }
 
