@@ -33,11 +33,11 @@ struct BarcodeLookupTests {
         == .success(.init(name: "Major Dickason's Blend", brand: "Peet's Coffee")))
   }
 
-  @Test func brandAloneStillFillsTheName() {
+  @Test func brandAloneLeavesTheNameBlank() {
     let body = json(#"{"status":1,"product":{"product_name":"","brands":"Lavazza"}}"#)
     #expect(
       BarcodeLookup.parse(body, statusCode: 200)
-        == .success(.init(name: "Lavazza", brand: "Lavazza")))
+        == .success(.init(name: "", brand: "Lavazza")))
   }
 
   @Test func notFoundPaths() {

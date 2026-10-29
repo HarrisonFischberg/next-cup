@@ -192,6 +192,29 @@ struct AIClientTests {
     }
   }
 
+  @Test func timeoutsAreRetriedThenGiveUp() async {
+    let stub = StubTransport(Array(repeating: .failure(URLError(.timedOut)), count: 3))
+    await #expect(throws: AIError.unavailable(nil)) {
+      try await client(stub).send(payload(), provider: .anthropic, model: "m")
+    }
+    #expect(await stub.requests.count == AIClient.maxAttempts)
+  }
+
+  @Test func cancellingStopsWithoutRetrying() async {
+    let stub = StubTransport([.failure(URLError(.cancelled)), ok(anthropicBody)])
+    await #expect(throws: AIError.cancelled) {
+      try await client(stub).send(payload(), provider: .anthropic, model: "m")
+    }
+    #expect(await stub.requests.count == 1)
+  }
+
+  @Test func anthropicAnswerOutsideTheSchemaIsDiscarded() async {
+    let stub = StubTransport([ok(anthropicBody(#"{"field":"grind"}"#))])
+    await #expect(throws: AIError.invalidResponse) {
+      try await client(stub).send(payload(), provider: .anthropic, model: "m")
+    }
+  }
+
   @Test func offlineIsNotRetried() async {
     let stub = StubTransport([.failure(URLError(.notConnectedToInternet)), ok(anthropicBody)])
     await #expect(throws: AIError.offline) {

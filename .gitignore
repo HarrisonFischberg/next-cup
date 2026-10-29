@@ -16,3 +16,7 @@ xcuserdata/
 
 # Loop screenshots stay on the Mac; they made every clone slow.
 ralph/screenshots/
+.env.qa.local
+!.env.qa.example
+qa/results/
+qa/report/artifact.html

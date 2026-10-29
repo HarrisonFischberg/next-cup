@@ -57,6 +57,19 @@ private actor StubTransport: Transport {
     #expect(await stub.count == 1)
   }
 
+  /// Matrix F: a stored cloud key does not matter once the feature is set to Apple; the
+  /// cloud transport is never opened, whatever the on-device model answers.
+  @Test func appleChoiceNeverOpensTheCloudEvenWithAStoredKey() async throws {
+    let (queue, stub, _) = try make([ok(valid)], key: "sk-stored")
+    let photo = PaperSample.page(["Roasted 2026-10-12"])
+    let request = try queue.enqueue(
+      BagRecognition.payload(photo: photo, feature: .bagRecognition), feature: .bagRecognition,
+      provider: .apple, modelID: AppleIntelligence.modelID)
+    await queue.waitForIdle()
+    #expect(await stub.count == 0)
+    #expect(request.status != .queued && request.status != .sending)
+  }
+
   @Test func discardingTheResultLeavesNoAnswerOnTheRow() async throws {
     let (queue, _, _) = try make([ok(valid)])
     let request = try enqueue(queue)
