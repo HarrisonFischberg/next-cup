@@ -52,7 +52,7 @@ struct BrewFormView: View {
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
 
-  private enum Field: Hashable { case grind, notes }
+  private enum Field: Hashable { case notes }
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -227,7 +227,7 @@ struct BrewFormView: View {
         }
         tiles(model, fields)
         if fields.contains(.grind) {
-          grindField(binding.draft.grindSetting)
+          grindField(model, binding.draft.grindSetting)
           grindHint(model)
         }
         verdictRow(binding.draft.verdict)
@@ -701,18 +701,14 @@ struct BrewFormView: View {
     grams == nil ? "" : units.weightSymbol
   }
 
-  private func grindField(_ text: Binding<String>) -> some View {
+  private func grindField(_ model: BrewFormModel, _ text: Binding<String>) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.xs) {
       Text("GRIND SETTING").font(DS.Font.label).foregroundStyle(DS.ink2)
-      TextField("e.g. 21 clicks", text: text)
-        .font(DS.Font.mono(.body, .bold)).foregroundStyle(DS.ink)
-        .textInputAutocapitalization(.never).autocorrectionDisabled()
-        .submitLabel(.done).focused($focused, equals: .grind)
-        .onSubmit { focused = nil }
-        .padding(DS.Space.md).frame(minHeight: DS.Size.control)
-        .panel(DS.paper)
-        .accessibilityLabel("Grind setting")
-        .accessibilityIdentifier("brewform.grind")
+      GrindWheel(
+        setting: text, grinderName: grinders.first { $0.id == model.draft.grinderID }?.name,
+        identifier: "brewform.grind"
+      )
+      .panel(DS.paper)
     }
   }
 

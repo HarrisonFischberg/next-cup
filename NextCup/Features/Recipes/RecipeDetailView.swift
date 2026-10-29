@@ -241,13 +241,10 @@ private struct RecipeDetailContent: View {
       let recommended = method.flatMap { guide?.recommended(for: $0) }
       VStack(alignment: .leading, spacing: 0) {
         LabeledRow(symbol: "dial.low.fill", label: "Grinder setting", value: grinder.name) {
-          TextField(recommended ?? "Setting", text: $grindSetting)
-            .multilineTextAlignment(.trailing)
-            .font(DS.Font.mono(.title, .bold)).foregroundStyle(DS.accent)
-            .frame(maxWidth: 96, minHeight: DS.Size.minTap)
-            .accessibilityLabel("Grind setting")
-            .accessibilityIdentifier("recipe.grindSetting")
+          EmptyView()
         }
+        GrindWheel(
+          setting: $grindSetting, grinderName: grinder.name, identifier: "recipe.grindSetting")
         if let recommended, let guide {
           Text(
             "Start at \(recommended) \(guide.unitLabel)  ·  Finer if sour  ·  Coarser if bitter"
