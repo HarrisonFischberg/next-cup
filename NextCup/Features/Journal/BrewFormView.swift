@@ -277,7 +277,7 @@ struct BrewFormView: View {
           close: { askingAI = false })
       }
     }
-    .safeAreaInset(edge: .bottom, spacing: 0) { saveBar(model) }
+    .safeAreaInset(edge: .bottom, spacing: 0) { saveBar(model).hiddenWhileTyping() }
     .toolbar {
       ToolbarItemGroup(placement: .keyboard) {
         Spacer()
@@ -750,8 +750,8 @@ struct BrewFormView: View {
       ? AnyLayout(VStackLayout(spacing: DS.Space.xs))
       : AnyLayout(HStackLayout(spacing: DS.Space.xs))
     let picked = Verdict.picked(verdict.wrappedValue)
-    // The four faults share a row; Balanced gets a row of its own, so its name fits.
-    let rows: [[Verdict]] = [[.sour, .bitter, .weak, .strong], [.balanced]]
+    // The tastes share a row; Balanced gets a row of its own, so its name fits.
+    let rows: [[Verdict]] = [[.sour, .bitter, .weak, .bright, .strong], [.balanced]]
     return VStack(alignment: .leading, spacing: DS.Space.sm) {
       Text("HOW IT TASTED").font(DS.Font.label).foregroundStyle(DS.ink2)
       Text("Pick all that apply.").font(.footnote).foregroundStyle(DS.ink2)
@@ -838,19 +838,9 @@ struct BrewFormView: View {
 
   private func saveBar(_ model: BrewFormModel) -> some View {
     VStack(spacing: DS.Space.xs) {
-      if !model.draft.canSave {
-        // How close the brew is to savable, not just what is missing.
-        let dose = (model.draft.doseG ?? 0) > 0
-        let water = (model.draft.waterG ?? 0) > 0
-        Text("Dose \(dose ? "✓" : "○")   Water \(water ? "✓" : "○")   to save")
-          .font(.footnote.weight(.semibold)).foregroundStyle(DS.ink2)
-          .accessibilityLabel(
-            "Set \([dose ? nil : "dose", water ? nil : "water"].compactMap { $0 }.joined(separator: " and ")) to save"
-          )
-          .accessibilityIdentifier("brewform.save.hint")
-      }
       SteelButton(title: "Save brew", isLoading: model.isSaving) { model.save() }
         .disabled(!model.canSave)
+        .accessibilityHint(model.draft.canSave ? "" : "Set dose and water to save")
         .accessibilityIdentifier("brewform.save")
     }
     .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.md)

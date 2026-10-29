@@ -19,7 +19,9 @@ struct SuggestionService {
     }
     for old in made { store.context.delete(old) }
 
-    guard let verdict = brew.verdict.flatMap({ DialInVerdict(rawValue: $0.rawValue) }) else {
+    // Bright is a good note, so a fault picked with it decides the change.
+    let tasted = brew.verdicts.first { $0 != .bright } ?? brew.verdict
+    guard let verdict = tasted.flatMap({ DialInVerdict(rawValue: $0.rawValue) }) else {
       return commit(.keep("Choose how it tasted to get a suggestion."))
     }
     let outcome = DialInRules.suggest(for: input(for: brew, verdict: verdict))
