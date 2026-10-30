@@ -9,14 +9,6 @@ import app.rarecreatures.nextcup.ui.PageHeader
 import app.rarecreatures.nextcup.ui.SettingsGear
 
 @Composable
-fun JournalScreen(openSettings: () -> Unit, startBrew: () -> Unit) {
-    LazyColumn(Modifier.fillMaxSize()) {
-        item { PageHeader("Journal") { SettingsGear(openSettings) } }
-        item { EmptyState("No brews yet", "Every cup you log shows up here, newest first.", "Brew a cup", startBrew) }
-    }
-}
-
-@Composable
 fun BeansScreen(openSettings: () -> Unit) {
     LazyColumn(Modifier.fillMaxSize()) {
         item { PageHeader("Beans") { SettingsGear(openSettings) } }

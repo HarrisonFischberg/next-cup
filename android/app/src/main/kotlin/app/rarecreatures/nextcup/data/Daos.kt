@@ -27,8 +27,8 @@ interface RecipeDao {
     @Query("SELECT * FROM recipe WHERE methodId = :methodId ORDER BY name") fun observeForMethod(methodId: String): Flow<List<Recipe>>
     @Query("SELECT * FROM recipe WHERE id = :id") suspend fun find(id: String): Recipe?
     @Query("SELECT * FROM recipe WHERE id = :id") fun observe(id: String): Flow<Recipe?>
-    @Query("SELECT * FROM recipe_step WHERE recipeId = :recipeId ORDER BY startOffsetS, `order`") suspend fun steps(recipeId: String): List<RecipeStep>
-    @Query("SELECT * FROM recipe_step WHERE recipeId = :recipeId ORDER BY startOffsetS, `order`") fun observeSteps(recipeId: String): Flow<List<RecipeStep>>
+    @Query("SELECT * FROM recipe_step WHERE recipeId = :recipeId ORDER BY `order`, startOffsetS") suspend fun steps(recipeId: String): List<RecipeStep>
+    @Query("SELECT * FROM recipe_step WHERE recipeId = :recipeId ORDER BY `order`, startOffsetS") fun observeSteps(recipeId: String): Flow<List<RecipeStep>>
     @Query("SELECT * FROM recipe_step") suspend fun allSteps(): List<RecipeStep>
     @Upsert suspend fun upsert(recipe: Recipe)
     @Upsert suspend fun upsertAll(recipes: List<Recipe>)
@@ -118,6 +118,7 @@ interface SuggestionDao {
     @Query("SELECT * FROM suggestion WHERE id = :id") suspend fun find(id: String): Suggestion?
     @Upsert suspend fun upsert(suggestion: Suggestion)
     @Upsert suspend fun upsertAll(suggestions: List<Suggestion>)
+    @Delete suspend fun delete(suggestion: Suggestion)
 }
 
 @Dao

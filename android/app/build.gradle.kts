@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.compose.material.icons)
     implementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling)
+    implementation(libs.androidx.exifinterface)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)

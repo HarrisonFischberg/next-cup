@@ -35,7 +35,7 @@ import kotlinx.coroutines.flow.combine
 
 /** The Brew tab: the brew types the owner uses, each with how many styles it has. */
 @Composable
-fun BrewScreen(openSettings: () -> Unit) {
+fun BrewScreen(openSettings: () -> Unit, openMethod: (String) -> Unit) {
     val db = LocalContext.current.app.db
     val rows by remember {
         combine(db.methods().observeAll(), db.recipes().observeAll()) { methods, recipes ->
@@ -51,6 +51,7 @@ fun BrewScreen(openSettings: () -> Unit) {
             list.isEmpty() -> item { EmptyState("No brew types", "Built-in brew types appear here the first time the app opens.") }
             else -> items(list, key = { it.first.id }) { (method, count) ->
                 Card(
+                    onClick = { openMethod(method.id) },
                     colors = CardDefaults.cardColors(containerColor = DS.colors.paper, contentColor = DS.colors.ink),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = DS.Space.lg, vertical = DS.Space.xs)
                         .semantics(mergeDescendants = true) { contentDescription = "${method.name}, $count styles" },
