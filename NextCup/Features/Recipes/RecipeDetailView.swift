@@ -129,6 +129,7 @@ private struct RecipeDetailContent: View {
         credit
       }
       .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.lg)
+      .dialPopups()
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       if !steps.isEmpty {
@@ -256,7 +257,8 @@ private struct RecipeDetailContent: View {
           EmptyView()
         }
         GrindWheel(
-          setting: $grindSetting, grinderName: grinder.name, identifier: "recipe.grindSetting")
+          setting: $grindSetting, grinderName: grinder.name, identifier: "recipe.grindSetting",
+          dial: true)
         if let recommended, let guide {
           Text(
             "Start at \(recommended) \(guide.unitLabel)  ·  Finer if sour  ·  Coarser if bitter"
@@ -291,27 +293,20 @@ private struct RecipeDetailContent: View {
         .accessibilityIdentifier("recipe.yield.unit")
       }
       .padding([.horizontal, .top], DS.Space.md)
-      // Until it is turned, the wheel rests on what the recipe makes and the recipe's
+      // Until it is stepped, the amount rests on what the recipe makes and the recipe's
       // dose stands.
-      HStack(spacing: DS.Space.sm) {
-        Picker("How much coffee", selection: shownYield) {
-          ForEach(yieldMeasure.options, id: \.self) { amount in
-            Text(amount.formatted(.number.precision(.fractionLength(0...1))))
-          }
-        }
-        .pickerStyle(.wheel).font(DS.Font.dataLarge).foregroundStyle(DS.ink)
-        .frame(height: 120).clipped()
-        .accessibilityIdentifier("recipe.yield")
-        Text(yieldMeasure.title).font(DS.Font.dataLarge).foregroundStyle(DS.ink2)
-          .frame(minWidth: 64, alignment: .leading)
-          .accessibilityHidden(true)
-      }
-      .padding(.horizontal, DS.Space.sm)
+      let amounts = yieldMeasure.options
+      let names = amounts.map { $0.formatted(.number.precision(.fractionLength(0...1))) }
+      DialStepper(
+        title: "How much coffee", hint: "Hold for the dial", options: names,
+        selection: Binding(
+          get: { names[amounts.firstIndex(of: shownYield.wrappedValue) ?? 0] },
+          set: { shownYield.wrappedValue = amounts[names.firstIndex(of: $0) ?? 0] }),
+        unit: yieldMeasure.title, identifier: "recipe.yield")
       if yieldG != nil, let current = scaled?.recipe { pourLine(current) }
       if yieldG != nil { tuningRow }
     }
     .panel(DS.paper)
-    .sensoryFeedback(.selection, trigger: yieldAmount)
     .onChange(of: yieldAmount) { applyYield() }
     .onChange(of: yieldUnit) { old, new in
       // The amount carries over to the new unit, to the wheel's nearest stop.

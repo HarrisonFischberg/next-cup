@@ -1,7 +1,7 @@
 import XCTest
 
-/// The grind setting is a wheel in the grinder's own notation, on the brew form and on
-/// Brew setup. Screenshots are written while `docs/design/grind-wheel/.capture` exists,
+/// The grind setting is in the grinder's own notation: a wheel on the brew form, a stepper
+/// on Brew setup. Screenshots are written while `docs/design/grind-wheel/.capture` exists,
 /// named with TEST_RUNNER_CAPTURE_PREFIX (default new_).
 final class GrindWheelUITests: XCTestCase {
   @MainActor
@@ -55,7 +55,7 @@ final class GrindWheelUITests: XCTestCase {
     }
     try shot("brew-form-grind")
 
-    // Brew setup: saving makes the Comandante the setup's grinder; its wheel rests on
+    // Brew setup: saving makes the Comandante the setup's grinder; its stepper rests on
     // the guide's starting point.
     for _ in 0..<8 where !app.buttons["Increase Dose"].isHittable { app.swipeDown() }
     app.buttons["Increase Dose"].tap()
@@ -70,9 +70,7 @@ final class GrindWheelUITests: XCTestCase {
     let setup = element("recipe.grindSetting")
     XCTAssertTrue(setup.waitForExistence(timeout: 5))
     scrollTo(setup)
-    if !app.textFields["recipe.grindSetting"].exists {
-      XCTAssertEqual(wheel("recipe.grindSetting").value as? String, "20")
-    }
+    XCTAssertEqual(setup.value as? String, "20 clicks")
     try shot("brew-setup-grind")
   }
 }
