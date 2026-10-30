@@ -13,4 +13,26 @@ struct BrewAudioTests {
       #expect(player.duration > 120, "\(url.lastPathComponent) is a full track")
     }
   }
+
+  /// Without the audio background mode, iOS silences the music as soon as the app is closed.
+  @Test func musicKeepsPlayingWithTheAppClosed() {
+    let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String]
+    #expect(modes?.contains("audio") == true)
+  }
+
+  @Test func musicResumesOnlyWhenTheSystemSaysSo() {
+    let ended = AVAudioSession.InterruptionType.ended.rawValue
+    let began = AVAudioSession.InterruptionType.began.rawValue
+    let resume = AVAudioSession.InterruptionOptions.shouldResume.rawValue
+    #expect(
+      BrewAudio.resumesAfter([
+        AVAudioSessionInterruptionTypeKey: ended, AVAudioSessionInterruptionOptionKey: resume,
+      ]))
+    #expect(
+      !BrewAudio.resumesAfter([
+        AVAudioSessionInterruptionTypeKey: ended, AVAudioSessionInterruptionOptionKey: UInt(0),
+      ]))
+    #expect(!BrewAudio.resumesAfter([AVAudioSessionInterruptionTypeKey: began]))
+    #expect(!BrewAudio.resumesAfter(nil))
+  }
 }
