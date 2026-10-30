@@ -166,7 +166,8 @@ private struct RecipeDetailContent: View {
     .sheet(item: $editor) { target in
       RecipeEditorView(target: target) { saved in
         editor = nil
-        if let saved, saved.id != recipe.id { savedCopy = saved.id }
+        // Only a "Change steps" copy opens on top; Customize keeps the user where they were.
+        if case .prepared = target, let saved { savedCopy = saved.id }
       }
     }
     .navigationDestination(item: $savedCopy) { id in
