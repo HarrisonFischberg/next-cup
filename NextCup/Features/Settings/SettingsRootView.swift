@@ -170,17 +170,38 @@ struct SettingsRootView: View {
 
 /// Plain-language summary of what the app stores and what leaves the device.
 struct PrivacySummaryView: View {
+  static let policyURL = URL(string: "https://rarecreatures.app/apps/next-cup/privacy/")!
+  static let supportURL = URL(string: "https://rarecreatures.app/apps/next-cup/support/")!
+
   var body: some View {
     List {
       Section {
         row("Your brews, beans, recipes and photos are stored only on this iPhone.")
-        row("There is no account, no analytics and no advertising.")
+        row("There is no account, no analytics, no advertising and no server of ours.")
         row("Photos are saved without location or camera metadata.")
         row(
-          "Nothing is sent anywhere. AI features, if added later, stay off until you add "
-            + "your own key and agree to a disclosure."
+          "With no AI key, AI features use Apple's on-device model where it is available, "
+            + "and nothing leaves your iPhone."
+        )
+        row(
+          "With your own OpenAI or Anthropic key, a request goes straight to that provider "
+            + "only after you accept its notice and tap."
+        )
+        row(
+          "Roaster search sends your search to Apple Maps, and a barcode scan sends only the "
+            + "barcode number to Open Food Facts."
         )
         row("Export your data or delete all of it under Settings → Your data.")
+      }
+      Section {
+        Link("Read the full privacy policy", destination: Self.policyURL)
+          .foregroundStyle(DS.accent)
+          .listRowBackground(DS.paper)
+          .accessibilityIdentifier("settings.privacy.policy")
+        Link("Get help", destination: Self.supportURL)
+          .foregroundStyle(DS.accent)
+          .listRowBackground(DS.paper)
+          .accessibilityIdentifier("settings.privacy.support")
       }
     }
     .listStyle(.insetGrouped)

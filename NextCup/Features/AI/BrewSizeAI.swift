@@ -4,7 +4,8 @@ import NextCupKit
 /// "How much coffee?" on the Start brew page: once the dose is scaled to the amount, the
 /// chosen AI suggests the temperature, total time and grind change for that batch size.
 /// The provider in Settings → AI answers; with no key it falls to Apple's on-device model,
-/// and with neither the recipe's own timing rule stays.
+/// and with neither the recipe's own timing rule stays. Apple's model runs as the wheel
+/// settles, because nothing leaves the iPhone; a keyed provider waits for a tap.
 @MainActor
 enum BrewSizeAI {
   struct Tuning: Equatable {
@@ -33,6 +34,13 @@ enum BrewSizeAI {
 
   /// True when some model can answer: a keyed provider in use, or Apple's on-device model.
   static var isAvailable: Bool { route != nil }
+
+  /// The provider that would answer, when it is a keyed cloud provider; nil for Apple's model.
+  /// The page asks for a tap before anything goes to it.
+  static var cloudProviderTitle: String? {
+    guard let (provider, _) = route, provider.kind != nil else { return nil }
+    return provider.title
+  }
 
   private static var route: (AIProvider, String)? {
     let preferences = AIPreferences()

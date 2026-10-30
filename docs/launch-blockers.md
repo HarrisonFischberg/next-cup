@@ -6,8 +6,11 @@
 | B002 | Ralph quickstart not cloned; `/goal` not yet verified (REA verified 2026-10-21 by real calls, see `docs/rea-findings.md`) | failed check | Builder | Phase 4 (Ralph, `/goal`) | RESOLVED 2026-10-21: quickstart cloned and reviewed, own `ralph/ralph.sh`, `/goal` command exists; turn-bound enforcement unverified (see `ralph/REVIEW.md`) |
 | B003 | Authorization to analyze the three reference products: public pages and store listings only, no login or paywall bypass | approval | Owner | Phase 2 | Owner supplied the three URLs 2026-10-21; analysis kept to public pages. Confirm at the comparison stop |
 | B004 | Creator recipe import: confirm the source list, store parameters only with credit and links, check each source's terms | legal review | Owner | Feature build | OPEN |
-| B005 | Privacy policy and support URL (candidate host: rarecreatures.app) | approval | Owner | TestFlight external testing | OPEN |
-| B006 | Draft privacy policy and AI-provider disclosure for qualified review | legal review | Owner | TestFlight external testing | OPEN |
+| B005 | Privacy policy and support URL (candidate host: rarecreatures.app) | approval | Owner | TestFlight external testing | RESOLVED 2026-10-30: published at https://rarecreatures.app/apps/next-cup/privacy/ and /support/ (studio-site repo); the app links both from Settings > Privacy |
+| B006 | Draft privacy policy and AI-provider disclosure for qualified review | legal review | Owner | TestFlight external testing, App Store | OPEN: owner gets a lawyer read or accepts shipping without one (`docs/app-store/owner-checklist.md` step 3) |
+| B015 | Amount wheel sent the batch to a keyed AI provider with no tap, against "nothing is sent until you tap" | failed check | Builder | App Store | RESOLVED 2026-10-30: a keyed provider now waits for a tap on "Tune ... with <provider>"; disclosure lists it and moved to version 3 so it is shown again; Apple's on-device model still runs without a tap |
+| B016 | In-app Settings > Privacy said "Nothing is sent anywhere. AI features, if added later..." | failed check | Builder | App Store | RESOLVED 2026-10-30: rewritten to match the app, with links to the policy and support pages |
+| B017 | EU trader status (Digital Services Act) needs a public business address if declared trader; address still UNKNOWN | missing fact | Owner | App Store in the EU | OPEN: owner declares in App Store Connect or leaves the EU out at launch |
 | B007 | Best-of comparison approval before the final spec is written | approval | Owner | Phase 2 final spec, 2B | RESOLVED 2026-10-21: owner approved the comparison as written (Bluetooth scales stay deferred); review findings get folded in as additions |
 | B008 | Public review research (`/replica-entrepreneur`) on the three references not yet run | missing fact | Builder | Comparison stop | RESOLVED 2026-10-21: 151 items (50 App Store reviews of one reference, 99 public issues of another, 2 HN comments); no reviews exist for the third (0 ratings); Reddit skipped (official API needs a registered app). Fix plan X1–X8 and angle options in the lab |
 | B009 | Does the creator video channel from intake belong in Phase 2 research? | missing fact | Owner | Phase 2 | RESOLVED 2026-10-21: owner chose to study it when creator-recipe import is built (see B004), not in Phase 2 |
@@ -34,7 +37,7 @@ Never infer these from a reference app. Never invent them.
 
 - Legal entity and trading name: UNKNOWN
 - Business location: UNKNOWN
-- Launch countries/states: UNKNOWN (TestFlight beta; no store launch planned)
+- Launch countries/states: App Store launch of the iOS app requested 2026-10-30; territories chosen by the owner in App Store Connect (see B017)
 - Public business contact: UNKNOWN
 - Privacy contact: UNKNOWN
 - Minimum user age / children may use: UNKNOWN
