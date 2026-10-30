@@ -21,6 +21,10 @@
 	<string>Next Cup uses the camera when you ask, to photograph a brew or a coffee bag, or to scan the bag's barcode. Photos stay on your iPhone unless you send one to your AI provider.</string>
 	<key>NSLocationDefaultAccuracyReduced</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Next Cup uses your location once, when you ask, to find coffee roasters near you. It is not stored.</string>
 </dict>
