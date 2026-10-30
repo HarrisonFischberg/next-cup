@@ -30,7 +30,7 @@ struct GrindWheel: View {
   var body: some View {
     let stops = stops
     DialStepper(
-      title: "Grind setting", hint: "Hold the number for the dial", options: stops,
+      title: "Grind setting", options: stops,
       selection: Binding(
         get: { GrinderGuide.setting(setting, in: stops) ?? "" },
         set: { setting = $0 }),

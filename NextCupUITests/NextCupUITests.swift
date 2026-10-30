@@ -182,7 +182,7 @@ final class NextCupUITests: XCTestCase {
     let water = element(app, "recipe.water")
     XCTAssertTrue(water.waitForExistence(timeout: 5))
     XCTAssertTrue(water.label.contains("250"), "unscaled water is 250 g, got \(water.label)")
-    app.buttons["Increase dose"].tap()  // 15 g to 15.5 g: 250 g x 15.5 / 15 = 258 g
+    app.buttons["Increase Dose"].tap()  // 15 g to 15.5 g: 250 g x 15.5 / 15 = 258 g
     XCTAssertTrue(water.label.contains("258"), "scaled water is 258 g, got \(water.label)")
     XCTAssertTrue(element(app, "recipe.dose.reset").exists)
     element(app, "recipe.dose.reset").tap()
@@ -606,7 +606,7 @@ final class NextCupUITests: XCTestCase {
       "the method is set: \(app.debugDescription)")
   }
 
-  /// Start brew: tap the dose to type grams; water scales and pour-over times stretch gently.
+  /// Start brew: the pencil types a dose in grams; water scales and pour-over times stretch gently.
   /// After Start, the time stays on screen.
   @MainActor
   func testTypingADoseScalesWaterAndPourTimesAndTheTimerStaysInView() throws {
@@ -616,9 +616,10 @@ final class NextCupUITests: XCTestCase {
     element(app, "brew.method.Cone dripper").tap()
     app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'")).firstMatch
       .tap()
-    let value = element(app, "stepper.dose.value")
+    XCTAssertTrue(element(app, "stepper.dose.value").waitForExistence(timeout: 5))
+    app.buttons["Type the dose"].tap()
+    let value = element(app, "stepper.dose.field")
     XCTAssertTrue(value.waitForExistence(timeout: 5))
-    value.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()  // caret after "15"
     value.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 6) + "30")
     let doubled = NSPredicate(format: "label CONTAINS %@", "500")
     expectation(for: doubled, evaluatedWith: element(app, "recipe.water"))
@@ -629,6 +630,9 @@ final class NextCupUITests: XCTestCase {
     let capture = FileManager.default.fileExists(
       atPath: folderURL.appendingPathComponent(".capture").path)
     if capture { try save(app.screenshot(), "\(folderURL.path)/start-brew-top.png") }
+    // Done puts the keyboard away and the dose back on its stepper.
+    if app.buttons["Done"].exists { app.buttons["Done"].tap() }
+    XCTAssertTrue(element(app, "stepper.dose.value").waitForExistence(timeout: 5))
     app.buttons["Start brew"].tap()
     XCTAssertTrue(element(app, "timer.screen").waitForExistence(timeout: 5))
     app.buttons["Start"].tap()

@@ -4,14 +4,16 @@ import SwiftUI
 /// change it. Holding the number opens a dial over it: slide while still holding and let go
 /// to keep; a hold let go without sliding leaves the dial open to slide, and a tap outside
 /// closes it. The host shows the dial with `dialPopups()`, outside any clipped panel.
+/// Every stepper row is this view, so their labels and controls line up.
 struct DialStepper: View {
   /// What VoiceOver calls it, e.g. "Grind setting".
   let title: String
-  let hint: String
   let options: [String]
   @Binding var selection: String
   let unit: String?
   let identifier: String
+  /// Shown in place of the number while the value is being typed.
+  var field: AnyView?
 
   @State private var open = false
   /// The stop the hold began on; nil when no finger is down on the number.
@@ -21,7 +23,7 @@ struct DialStepper: View {
 
   var body: some View {
     HStack(spacing: DS.Space.sm) {
-      Text(hint).font(.footnote).foregroundStyle(DS.ink2)
+      Text("Hold for dial").font(.footnote).foregroundStyle(DS.ink2).layoutPriority(1)
       Spacer(minLength: DS.Space.sm)
       stepButton("minus", label: "Decrease \(title)", id: "decrease") { step(by: -1) }
         .disabled(index == 0)
@@ -33,12 +35,25 @@ struct DialStepper: View {
     .sensoryFeedback(.selection, trigger: selection)
   }
 
-  private var number: some View {
+  @ViewBuilder private var number: some View {
+    if let field {
+      HStack(alignment: .firstTextBaseline, spacing: 2) {
+        field
+        if let unit { Text(unit).font(DS.Font.mono(.callout)) }
+      }
+      .foregroundStyle(DS.ink).frame(minWidth: 112, minHeight: DS.Size.minTap)
+    } else {
+      dialNumber
+    }
+  }
+
+  private var dialNumber: some View {
     HStack(alignment: .firstTextBaseline, spacing: 2) {
       Text(Self.shown(selection)).font(DS.Font.dataLarge)
       if let unit { Text(unit).font(DS.Font.mono(.callout)) }
     }
-    .foregroundStyle(DS.ink).frame(minWidth: 84, minHeight: DS.Size.minTap)
+    // One width for every row, so − and + sit at the same place on each.
+    .foregroundStyle(DS.ink).frame(minWidth: 112, minHeight: DS.Size.minTap)
     .contentShape(Rectangle())
     .gesture(hold)
     .anchorPreference(key: DialPopupKey.self, value: .bounds) { anchor in
