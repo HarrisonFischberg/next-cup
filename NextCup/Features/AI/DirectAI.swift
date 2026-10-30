@@ -18,6 +18,18 @@ enum DirectAI {
     return AppleIntelligence.isAvailable ? (.apple, AppleIntelligence.modelID) : nil
   }
 
+  /// The keyed provider picked in Settings → AI whose notice has not been accepted yet
+  /// (it was never shown, or its text changed). Until it is, `route` would quietly fall to
+  /// Apple's model, so a tap shows the notice first.
+  static var pendingDisclosure: AIProvider? {
+    let preferences = AIPreferences()
+    guard let provider = preferences.provider(for: .diagnosis), provider.kind != nil,
+      preferences.modelID(for: .diagnosis) != nil, KeychainStore().hasKey(for: provider),
+      !preferences.hasAcceptedDisclosure(for: provider)
+    else { return nil }
+    return provider
+  }
+
   /// The provider that would answer, when it is a keyed cloud provider; nil for Apple's model.
   static var cloudProviderTitle: String? {
     guard let (provider, _) = route, provider.kind != nil else { return nil }
