@@ -2,7 +2,7 @@
 
 _Last updated: October 2026 · applies to Next Cup 0.1 · published by Rare Creatures LLC_
 
-**Status: draft adapted from the studio's other app policies and checked against the code on 2026-10-25. Not reviewed by a lawyer and not yet published. Do not treat it as legal advice.**
+**Status (2026-10-30): superseded. The published policy is the source of truth: https://rarecreatures.app/apps/next-cup/privacy/ (`apps/next-cup/privacy/index.html` in the studio-site repo). Change that page, not this file. This draft is kept for history; it was never reviewed by a lawyer. Since this draft: with no key, AI uses Apple's on-device model and nothing leaves the iPhone; brew-size tuning with a keyed provider waits for a tap.**
 
 Next Cup is an iPhone coffee brew journal. It keeps everything **on your phone**. It has no server, no account, no analytics and no advertising, and Rare Creatures LLC receives none of your data. This document says exactly what it stores, what it can send and when, and how to erase everything.
 

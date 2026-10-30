@@ -61,6 +61,8 @@ private struct RecipeDetailContent: View {
   @State private var yieldDoseG: Double?
   @State private var tuning: BrewSizeAI.Tuning?
   @State private var tuningFailed = false
+  /// A keyed cloud provider gets the batch only after this tap; Apple's model needs none.
+  @State private var tuningRequested = false
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -314,7 +316,7 @@ private struct RecipeDetailContent: View {
         yieldAmount = nil
       }
     }
-    .task(id: yieldDoseG) { await tune() }
+    .task(id: TuningTrigger(doseG: yieldDoseG, requested: tuningRequested)) { await tune() }
   }
 
   /// The amount is what ends up in the cup, so say how much to pour for it and why it is more.
@@ -349,6 +351,15 @@ private struct RecipeDetailContent: View {
           if !tuning.note.isEmpty {
             Text(tuning.note).font(.footnote).foregroundStyle(DS.ink2)
           }
+        } else if let provider = BrewSizeAI.cloudProviderTitle, !tuningRequested, !tuningFailed {
+          Text("Dose and water follow the recipe's ratio.")
+            .font(.footnote).foregroundStyle(DS.ink2)
+          Button("Tune time, temperature and grind with \(provider)") {
+            tuningRequested = true
+          }
+          .font(.footnote.weight(.semibold)).foregroundStyle(DS.accent)
+          .accessibilityHint("Sends the recipe name, brewer and these numbers to \(provider)")
+          .accessibilityIdentifier("recipe.yield.tune")
         } else if tuningFailed || !BrewSizeAI.isAvailable {
           Text(
             "Dose and water follow the recipe's ratio. Add a key in Settings > AI to tune time, "
@@ -360,10 +371,14 @@ private struct RecipeDetailContent: View {
         }
       }
       Spacer(minLength: 0)
-      if tuning == nil, !tuningFailed, BrewSizeAI.isAvailable { ProgressView() }
+      if tuning == nil, !tuningFailed, BrewSizeAI.isAvailable,
+        BrewSizeAI.cloudProviderTitle == nil || tuningRequested
+      {
+        ProgressView()
+      }
     }
     .padding(.horizontal, DS.Space.md).padding(.bottom, DS.Space.md)
-    .accessibilityElement(children: .combine)
+    .accessibilityElement(children: .contain)
     .accessibilityIdentifier("recipe.yield.tuning")
   }
 
@@ -371,6 +386,7 @@ private struct RecipeDetailContent: View {
   private func applyYield() {
     tuning = nil
     tuningFailed = false
+    tuningRequested = false
     let ratio = BrewMath.ratio(
       doseG: recipe.doseG, waterG: recipe.waterG,
       iceG: recipe.includesIce ? recipe.iceG : nil)
@@ -384,9 +400,12 @@ private struct RecipeDetailContent: View {
   }
 
   /// Waits for the wheel to settle, then asks the AI; a failure keeps the ratio's numbers.
+  /// A keyed cloud provider is asked only after the tap (`tuningRequested`).
   private func tune() async {
     guard let yieldDoseG, let yieldG, BrewSizeAI.isAvailable else { return }
-    try? await Task.sleep(for: .milliseconds(800))
+    let needsTap = BrewSizeAI.cloudProviderTitle != nil
+    guard !needsTap || tuningRequested else { return }
+    if !needsTap { try? await Task.sleep(for: .milliseconds(800)) }
     guard !Task.isCancelled, let scaled else { return }
     let payload = BrewSizeAI.payload(
       recipe: recipe.name, method: recipe.method?.name, recipeDoseG: recipe.doseG,
@@ -669,4 +688,10 @@ extension Recipe {
   /// Built-in versions share a key prefix: "cone-balanced" and "cone-balanced/strong".
   var family: String? { builtInKey?.split(separator: "/").first.map(String.init) }
   var isVersion: Bool { builtInKey?.contains("/") == true }
+}
+
+/// What restarts the batch tuning: a new dose from the wheel, or the tap that sends it.
+private struct TuningTrigger: Equatable {
+  var doseG: Double?
+  var requested: Bool
 }
