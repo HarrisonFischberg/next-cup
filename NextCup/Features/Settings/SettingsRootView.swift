@@ -191,6 +191,10 @@ struct PrivacySummaryView: View {
           "Roaster search sends your search to Apple Maps, and a barcode scan sends only the "
             + "barcode number to Open Food Facts."
         )
+        row(
+          "Scanning a QR code on a bag opens its link once to read the coffee's page, "
+            + "like a browser would, without cookies."
+        )
         row("Export your data or delete all of it under Settings → Your data.")
       }
       Section {

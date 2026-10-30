@@ -176,15 +176,17 @@ struct OnboardingView: View {
     return picked.count == 1 ? "Add 1 bean" : "Add \(picked.count) beans"
   }
 
-  /// Three equal ways in: scan the barcode, photograph the bag, or pick from a list of
+  /// Three equal ways in: scan the barcode or QR code, photograph the bag, or pick from a list of
   /// popular coffees (typing is a quiet fallback). Every route ends in a bean the user can edit.
   private var firstBag: some View {
     let shown = PopularBeans.search(beanSearch)
     return VStack(alignment: .leading, spacing: DS.Space.md) {
-      title("Your beans", "Scan the barcode, take a photo of the bag, or pick from the list.")
+      title(
+        "Your beans",
+        "Scan the barcode or QR code, take a photo of the bag, or pick from the list.")
       GlassEffectContainer(spacing: DS.Space.sm) {
         HStack(spacing: DS.Space.sm) {
-          captureButton("Scan the barcode", "barcode.viewfinder", .barcode)
+          captureButton("Scan the bag", "qrcode.viewfinder", .barcode)
           captureButton("Take a photo", "camera", .photo)
         }
       }
