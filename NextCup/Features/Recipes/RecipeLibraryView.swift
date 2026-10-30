@@ -13,6 +13,9 @@ struct RecipeLibraryView: View {
   private var shownMethods: [BrewMethod]
   @State private var search = ""
   @State private var editor: RecipeEditorTarget?
+  @State private var creatingWithAI = false
+  /// The recipe "Create with AI" wrote, opened in the editor once its sheet is gone.
+  @State private var aiDraft: RecipeDraft?
   @Environment(\.dynamicTypeSize) private var dts
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
@@ -54,13 +57,16 @@ struct RecipeLibraryView: View {
       LazyVStack(alignment: .leading, spacing: DS.Space.xl) {
         PageHeader(title: "Brew") {
           SettingsGear(id: "recipes.settings", large: true)
-          Button {
-            editor = .new
+          Menu {
+            Button("Create with AI", systemImage: "sparkles") { creatingWithAI = true }
+              .accessibilityIdentifier("recipes.add.ai")
+            Button("New recipe", systemImage: "square.and.pencil") { editor = .new }
+              .accessibilityIdentifier("recipes.add.blank")
           } label: {
             Image(systemName: "plus").font(.title2.weight(.bold)).foregroundStyle(DS.onSignal)
               .frame(width: 52, height: 52).background(DS.signal, in: Circle())
           }
-          .accessibilityLabel("New recipe")
+          .accessibilityLabel("Add recipe")
           .accessibilityIdentifier("recipes.add")
         }
         searchField
@@ -90,6 +96,20 @@ struct RecipeLibraryView: View {
     .toolbar(.hidden, for: .navigationBar)
     .sheet(item: $editor) { target in
       RecipeEditorView(target: target) { _ in editor = nil }
+    }
+    .sheet(
+      isPresented: $creatingWithAI,
+      onDismiss: {
+        if let aiDraft { editor = .prepared(aiDraft) }
+        aiDraft = nil
+      }
+    ) {
+      RecipeCreateAIView { draft in
+        aiDraft = draft
+        creatingWithAI = false
+      } cancel: {
+        creatingWithAI = false
+      }
     }
     .accessibilityIdentifier("tab.root.recipes")
   }

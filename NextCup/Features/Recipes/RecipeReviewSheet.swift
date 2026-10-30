@@ -1,8 +1,9 @@
 import NextCupKit
 import SwiftUI
 
-/// What "Improve with AI" suggests: why, each change, and the whole set of steps it would
-/// use. "Use these steps" puts them in the editor (still unsaved); "Keep mine" leaves it.
+/// What "Improve with AI" suggests: why, each change, the numbers and the whole set of
+/// steps it would use. "Use these steps" puts them in the editor (still unsaved); "Keep
+/// mine" leaves it.
 struct RecipeReviewSheet: View {
   let review: RecipeReviewAI.Review
   let units: UnitPreferences
@@ -68,9 +69,12 @@ struct RecipeReviewSheet: View {
   }
 
   @ViewBuilder private var numbers: some View {
+    let draft = review.draft
     let figures = [
-      review.tempC.map { RecipeFormat.temperature($0, units) },
-      review.totalTimeS.map { "\(RecipeFormat.clock($0)) total" },
+      "\(RecipeFormat.weight(draft.doseG, units)) coffee",
+      "\(RecipeFormat.weight(draft.waterG, units)) water",
+      draft.tempC.map { RecipeFormat.temperature($0, units) },
+      draft.totalTimeS.map { "\(RecipeFormat.clock($0)) total" },
     ]
     .compactMap { $0 }
     if !figures.isEmpty {
@@ -83,12 +87,12 @@ struct RecipeReviewSheet: View {
     VStack(alignment: .leading, spacing: DS.Space.md) {
       SectionRule("Steps")
       VStack(alignment: .leading, spacing: 0) {
-        ForEach(Array(review.steps.enumerated()), id: \.element.id) { index, step in
+        ForEach(Array(review.draft.steps.enumerated()), id: \.element.id) { index, step in
           TimelineRow(
             time: RecipeFormat.clock(step.startOffsetS), name: RecipeFormat.title(step.kind),
             detail: step.instruction.isEmpty ? nil : step.instruction,
             trailing: step.targetCumulativeWaterG.map { RecipeFormat.weight($0, units) },
-            isLast: index == review.steps.count - 1)
+            isLast: index == review.draft.steps.count - 1)
         }
       }
     }

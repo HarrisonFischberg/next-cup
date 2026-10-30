@@ -12,6 +12,11 @@ enum RecipeEditorTarget: Identifiable, Hashable {
   /// A new recipe from a draft already filled in, such as a recipe at the size set on Start brew.
   case prepared(RecipeDraft)
 
+  var isPrepared: Bool {
+    if case .prepared = self { return true }
+    return false
+  }
+
   var id: String {
     switch self {
     case .new: "new"
@@ -50,6 +55,8 @@ struct RecipeEditorView: View {
   @State private var reviewError: String?
   /// The fields before AI steps were used, for Undo.
   @State private var beforeAI: RecipeEditorFields?
+  /// The keyed provider's notice, shown before its first recipe request.
+  @State private var disclosure: AIProvider?
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -81,9 +88,13 @@ struct RecipeEditorView: View {
             .accessibilityIdentifier("recipe.editor.error")
         }
         if isCopy {
-          Text("Your changes are saved as a new recipe. The original stays as it is.")
-            .font(.footnote).foregroundStyle(DS.ink2)
-            .listRowBackground(DS.bg)
+          Text(
+            target.isPrepared
+              ? "Saved as a new recipe in your library when you tap Save."
+              : "Your changes are saved as a new recipe. The original stays as it is."
+          )
+          .font(.footnote).foregroundStyle(DS.ink2)
+          .listRowBackground(DS.bg)
         }
         basics
         numbers
@@ -119,6 +130,15 @@ struct RecipeEditorView: View {
             self.beforeAI = nil
           }
           .accessibilityIdentifier("recipe.editor.ai.undo")
+        }
+      }
+      .sheet(item: $disclosure) { provider in
+        AIDisclosureView(provider: provider) {
+          AIPreferences().acceptDisclosure(for: provider)
+          disclosure = nil
+          requestReview()
+        } cancel: {
+          disclosure = nil
         }
       }
       .sheet(item: $review) { review in
@@ -276,8 +296,8 @@ struct RecipeEditorView: View {
 
   /// Who reads the recipe: the keyed provider (only on the tap) or Apple's model on the iPhone.
   private var improveSection: some View {
-    let provider = RecipeReviewAI.cloudProviderTitle
-    let available = RecipeReviewAI.isAvailable
+    let provider = DirectAI.pendingDisclosure?.title ?? RecipeReviewAI.cloudProviderTitle
+    let available = RecipeReviewAI.isAvailable || DirectAI.pendingDisclosure != nil
     return Section {
       TextField(
         "Anything to work around? For example: my cone only holds about 400 g",
@@ -307,7 +327,8 @@ struct RecipeEditorView: View {
           ? "Turn on Apple Intelligence, or add a key in Settings > AI, to get suggestions."
           : (provider.map {
             "Sends the brewer, these numbers, the steps and your note to \($0). "
-          } ?? "Apple Intelligence reads the recipe on this iPhone. ")
+          } ?? "Apple Intelligence reads the recipe on this iPhone. It is a small model; an "
+            + "Anthropic or OpenAI key in Settings > AI rewrites steps far better. ")
             + "Nothing changes until you choose Use these steps."
       )
     }
@@ -362,6 +383,10 @@ struct RecipeEditorView: View {
   private func requestReview() {
     focused = false
     reviewError = nil
+    if let pending = DirectAI.pendingDisclosure {
+      disclosure = pending
+      return
+    }
     let draft: RecipeDraft
     switch fields.draft(units: units) {
     case .failure(let failure):
@@ -388,9 +413,11 @@ struct RecipeEditorView: View {
     self.review = nil
     guard case .success(var draft) = fields.draft(units: units) else { return }
     let before = fields
-    draft.steps = review.steps
-    draft.tempC = review.tempC
-    draft.totalTimeS = review.totalTimeS
+    draft.doseG = review.draft.doseG
+    draft.waterG = review.draft.waterG
+    draft.steps = review.draft.steps
+    draft.tempC = review.draft.tempC
+    draft.totalTimeS = review.draft.totalTimeS
     fields = RecipeEditorFields(draft: draft, units: units)
     removed = nil
     beforeAI = before
