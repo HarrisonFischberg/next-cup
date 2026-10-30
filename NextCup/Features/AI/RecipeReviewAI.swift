@@ -81,7 +81,9 @@ enum RecipeReviewAI {
     the brewer named. Follow their note exactly: amounts, cup size, taste, the coffee and \
     any limit of their gear (never more water in the brewer at once than it holds). Use a \
     sound ratio and temperature for the brewer and roast. name is a short title of two to \
-    four words. changes is an empty list.
+    four words. changes is an empty list. On a switchable dripper the first step is \
+    closeValve unless the recipe starts open, and a valve step's instruction only works \
+    the valve.
     """ + "\n" + format
 
   static var isAvailable: Bool { DirectAI.route != nil }
@@ -164,6 +166,7 @@ enum RecipeReviewAI {
             ? water.rounded() : nil,
           instruction: String(instruction.prefix(300))))
     }
+    steps = valvesOnly(steps)
     func number(_ key: String) -> Double { (answer[key] as? NSNumber)?.doubleValue ?? 0 }
     var draft = base
     draft.steps = RecipeEditorService.sorted(steps)
@@ -191,6 +194,31 @@ enum RecipeReviewAI {
       summary: (answer["summary"] as? String ?? "").trimmingCharacters(
         in: .whitespacesAndNewlines),
       changes: changes, draft: draft, source: source)
+  }
+
+  /// Valve steps only work the valve: one whose instruction also pours or doses (the next
+  /// step does that) gets a plain one, and a recipe that opens a valve it never closed
+  /// starts by closing it, so the timer shows the valve as its own step.
+  static func valvesOnly(_ steps: [RecipeStepDraft]) -> [RecipeStepDraft] {
+    var steps = steps.map { step -> RecipeStepDraft in
+      var step = step
+      let lower = step.instruction.lowercased()
+      let doesMore =
+        lower.contains("pour")
+        || lower.range(of: #"\d\s?g\b"#, options: .regularExpression) != nil
+      if step.kind == .closeValve, doesMore { step.instruction = "Close the valve." }
+      if step.kind == .openValve, doesMore { step.instruction = "Open the valve to drain." }
+      return step
+    }
+    let sorted = RecipeEditorService.sorted(steps)
+    if sorted.contains(where: { $0.kind == .openValve }),
+      let first = sorted.first, first.kind != .closeValve, first.kind != .openValve
+    {
+      steps.insert(
+        RecipeStepDraft(kind: .closeValve, startOffsetS: 0, instruction: "Close the valve."),
+        at: 0)
+    }
+    return steps
   }
 
   /// The last pour reaches the recipe's water (within 2%), so no water is left unpoured.

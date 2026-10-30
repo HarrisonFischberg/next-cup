@@ -162,4 +162,30 @@ struct RecipeReviewAITests {
         == "Brewer: Switchable dripper (Immersion)\nWhat they want: 600 g, cone holds 400 g")
     #expect(payload.imageJPEG == nil)
   }
+
+  @Test func valveStepsOnlyWorkTheValve() throws {
+    // Live answers folded the bloom into the close step, or left the close step out.
+    let folded = try #require(
+      RecipeReviewAI.parse(
+        answer(steps: [
+          [
+            "kind": "closeValve", "atS": 0, "waterG": 0,
+            "instruction": "Close the valve, add 36 g of coffee and pour 72 g of water.",
+          ],
+          ["kind": "bloom", "atS": 0, "waterG": 72, "instruction": "Pour 72 g to bloom."],
+          ["kind": "openValve", "atS": 120, "waterG": 0, "instruction": "Open the valve."],
+          ["kind": "pour", "atS": 150, "waterG": 615, "instruction": "Pour the rest."],
+        ]), base: base(), source: "x", mode: .create))
+    #expect(folded.draft.steps[0].instruction == "Close the valve.")
+    #expect(folded.draft.steps[2].instruction == "Open the valve.")
+
+    let missing = try #require(
+      RecipeReviewAI.parse(
+        answer(steps: [
+          ["kind": "bloom", "atS": 0, "waterG": 72, "instruction": "Close the valve and bloom."],
+          ["kind": "openValve", "atS": 120, "waterG": 0, "instruction": "Open the valve."],
+          ["kind": "pour", "atS": 150, "waterG": 615, "instruction": "Pour the rest."],
+        ]), base: base(), source: "x", mode: .create))
+    #expect(missing.draft.steps.map(\.kind) == [.closeValve, .bloom, .openValve, .pour])
+  }
 }
