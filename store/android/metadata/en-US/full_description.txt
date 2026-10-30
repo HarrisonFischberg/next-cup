@@ -1,0 +1,21 @@
+Next Cup is a coffee brew journal for people who brew with a scale and a kettle and want tomorrow's cup to be better than today's.
+
+BREW WITH A TIMER THAT KNOWS THE RECIPE
+Pick a brewer and a style, set how much coffee you want, and the dose and water follow the recipe's ratio. The timer walks you through each pour and wait, with chimes, an optional soundtrack, and the current step in a notification while you brew.
+
+THIRTEEN WAYS TO BREW
+Cone and flat-bed drippers, switchable immersion, press pot and inverted press, espresso, iced pour over, cold brew, moka pot, AeroPress, Chemex, drip machine and Nespresso, each with its own styles and starting recipes.
+
+A JOURNAL THAT LEARNS YOUR TASTE
+Save each brew with its dose, water, grind, temperature, time, taste and a photo. Tell Next Cup how the cup tasted, and it suggests one change for next time, built from the recipe and your recent brews of the same coffee. A suggestion only changes your recipe when you tap to use it.
+
+YOUR BEANS, ORGANIZED
+Keep each bag with its roaster, origin, process, roast date and flavor notes. Scan the bag's barcode or take a photo to fill in the details, see how much is left, and find coffee roasters near you on the map.
+
+AI THAT STAYS OPTIONAL
+With no key, AI features use the on-device model where your phone has one, and nothing leaves your phone. You can add your own OpenAI or Anthropic key instead; Next Cup shows what each action sends before the first request and sends nothing until you tap.
+
+PRIVATE BY DESIGN
+No account, no ads, no analytics and no server of ours. Your journal stays on your phone, with daily backups, export to CSV or JSON, and one place to delete everything.
+
+Make it yours with several looks, light and dark.
