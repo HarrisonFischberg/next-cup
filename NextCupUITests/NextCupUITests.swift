@@ -60,8 +60,7 @@ final class NextCupUITests: XCTestCase {
 
   /// The wheel inside a SwiftUI wheel Picker, found by the Picker's identifier.
   private func grindWheel(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
-    let wheel = app.pickerWheels[identifier]
-    return wheel.exists ? wheel : app.pickers[identifier].pickerWheels.firstMatch
+    element(app, identifier)
   }
 
   @MainActor
@@ -419,7 +418,7 @@ final class NextCupUITests: XCTestCase {
     app.buttons["Increase Dose"].tap()
     let grind = grindWheel(app, "brewform.grind")
     scrollUntilHittable(grind, in: app)
-    grind.adjust(toPickerWheelValue: "21")
+    app.step("brewform.grind", to: 21)
     sleep(1)  // autosave waits for a pause
 
     relaunchAndOpenUnsavedBrew(app)
@@ -1693,7 +1692,7 @@ final class NextCupUITests: XCTestCase {
     startBrew(app)
     let grind = grindWheel(app, "brewform.grind")
     scrollUntilHittable(grind, in: app)
-    grind.adjust(toPickerWheelValue: "20")
+    app.step("brewform.grind", to: 20)
     let sour = element(app, "brewform.verdict.sour")
     scrollUntilHittable(sour, in: app)
     sour.tap()

@@ -1,6 +1,6 @@
 import XCTest
 
-/// Start brew: the grind and "How much coffee?" are − / + steppers, so a scroll past them
+/// Start brew and Log a brew: the grind and "How much coffee?" are − / + steppers, so a scroll past them
 /// cannot change them; holding the number opens a dial. Screenshots are written while
 /// `docs/design/start-brew-stepper/.capture` exists, named with CAPTURE_PREFIX (default new_)
 /// and CAPTURE_SUFFIX (e.g. _dark).
@@ -43,6 +43,16 @@ final class StartBrewStepperUITests: XCTestCase {
     grinder.tap()
     app.buttons["Popular grinders"].tap()
     app.buttons["Comandante C40 MK4"].tap()
+    // Log a brew has the same stepper and dial.
+    let formGrind = element("brewform.grind")
+    for _ in 0..<8 where !(formGrind.exists && formGrind.isHittable) { app.swipeDown() }
+    app.step("brewform.grind", to: 20)
+    try shot("log-brew")
+    formGrind.press(forDuration: 0.8)
+    XCTAssertTrue(element("dial.popup").waitForExistence(timeout: 2))
+    try shot("log-brew-hold")
+    app.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.75)).tap()
+    XCTAssertFalse(element("dial.popup").waitForExistence(timeout: 1))
     for _ in 0..<8 where !app.buttons["Increase Dose"].isHittable { app.swipeDown() }
     app.buttons["Increase Dose"].tap()
     app.buttons["Increase Water"].tap()

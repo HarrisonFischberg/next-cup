@@ -257,8 +257,7 @@ private struct RecipeDetailContent: View {
           EmptyView()
         }
         GrindWheel(
-          setting: $grindSetting, grinderName: grinder.name, identifier: "recipe.grindSetting",
-          dial: true)
+          setting: $grindSetting, grinderName: grinder.name, identifier: "recipe.grindSetting")
         if let recommended, let guide {
           Text(
             "Start at \(recommended) \(guide.unitLabel)  ·  Finer if sour  ·  Coarser if bitter"
