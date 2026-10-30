@@ -121,8 +121,13 @@ struct TimerView: View {
         try? await Task.sleep(for: .seconds(session.nextTickDelay()), tolerance: .milliseconds(5))
       }
     }
-    // Coming back catches up without replaying the cues that were missed.
-    .onChange(of: scenePhase) { _, phase in if phase == .active { session.tick(cues: false) } }
+    // Coming back catches up without replaying the cues that were missed, and picks the
+    // music back up if the system stopped it while the app was closed.
+    .onChange(of: scenePhase) { _, phase in
+      guard phase == .active else { return }
+      session.tick(cues: false)
+      if state.phase == .running { BrewAudio.shared.resume() }
+    }
     .onChange(of: state.currentIndex) { _, index in announce(stepAt: index) }
     .onChange(of: state.targetReached) { _, reached in
       if reached, running { AccessibilityNotification.Announcement("Target time reached").post() }

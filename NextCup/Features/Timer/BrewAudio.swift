@@ -4,7 +4,9 @@ import Observation
 /// The brew's sounds: a soft clock tick-tock each second, a chime at a step change or the target,
 /// and café jazz or quiet piano at 20% volume, one bundled track after another. The playback category
 /// plays them with the ringer switch off, as a music app does, and mixes with other
-/// audio. The tick and chime are made here, so there is no sound file to license.
+/// audio. The `audio` background mode keeps them going while the app is closed and the brew
+/// shows in the Dynamic Island. The tick and chime are made here, so there is no sound file
+/// to license.
 @MainActor @Observable
 final class BrewAudio: NSObject, AVAudioPlayerDelegate {
   static let shared = BrewAudio()
@@ -47,12 +49,37 @@ final class BrewAudio: NSObject, AVAudioPlayerDelegate {
   /// This brew's shuffled order, so previous goes back to the song before.
   @ObservationIgnored private var playlist: [URL] = []
   @ObservationIgnored private var position = 0
+  /// True while the brew runs with music on, so a call, Siri or the app being closed can
+  /// stop the song and `resume()` brings it back.
+  @ObservationIgnored private var wantsMusic = false
 
   private override init() {
     super.init()
     engine.attach(node)
     engine.connect(node, to: engine.mainMixerNode, format: tickBuffer?.format)
+    NotificationCenter.default.addObserver(
+      self, selector: #selector(interrupted(_:)),
+      name: AVAudioSession.interruptionNotification, object: nil)
   }
+
+  /// A call or another app took the audio; when it hands it back and says to, the song carries on.
+  @objc nonisolated private func interrupted(_ note: Notification) {
+    let resumes = Self.resumesAfter(note.userInfo)
+    Task { @MainActor in if resumes { self.resume() } }
+  }
+
+  /// True for an interruption that ended with the system's go-ahead to play again.
+  nonisolated static func resumesAfter(_ info: [AnyHashable: Any]?) -> Bool {
+    guard let raw = info?[AVAudioSessionInterruptionTypeKey] as? UInt,
+      AVAudioSession.InterruptionType(rawValue: raw) == .ended,
+      let options = info?[AVAudioSessionInterruptionOptionKey] as? UInt
+    else { return false }
+    return AVAudioSession.InterruptionOptions(rawValue: options).contains(.shouldResume)
+  }
+
+  /// Coming back to the brew, or after an interruption: the song plays again if it was
+  /// playing before, and stays quiet if the user or the brew paused it.
+  func resume() { if wantsMusic { playMusic() } }
 
   /// Brew sounds, the tick and the music all start on; the timer offers "Tap for sound
   /// and music" to anyone who turned them off. UI tests run silent unless they pass
@@ -80,6 +107,7 @@ final class BrewAudio: NSObject, AVAudioPlayerDelegate {
   /// Starts or resumes the music, unless the user is already listening to something else
   /// or paused the song themselves.
   func playMusic() {
+    wantsMusic = true
     guard Self.on(Self.musicKey), !Self.tracks.isEmpty, !musicPaused,
       !AVAudioSession.sharedInstance().isOtherAudioPlaying, activate()
     else { return }
@@ -130,10 +158,14 @@ final class BrewAudio: NSObject, AVAudioPlayerDelegate {
   }
 
   /// The brew paused: the music waits with it, without counting as the user's pause.
-  func pauseMusic() { music?.pause() }
+  func pauseMusic() {
+    wantsMusic = false
+    music?.pause()
+  }
 
   /// The brew is over or the screen is gone: silence, and hand the audio back.
   func stop() {
+    wantsMusic = false
     music?.stop()
     music = nil
     nowPlaying = nil
