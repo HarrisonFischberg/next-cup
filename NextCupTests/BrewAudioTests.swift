@@ -28,10 +28,11 @@ struct BrewAudioTests {
       BrewAudio.resumesAfter([
         AVAudioSessionInterruptionTypeKey: ended, AVAudioSessionInterruptionOptionKey: resume,
       ]))
-    #expect(
-      !BrewAudio.resumesAfter([
-        AVAudioSessionInterruptionTypeKey: ended, AVAudioSessionInterruptionOptionKey: UInt(0),
-      ]))
+    // Evaluated outside #expect: the macro reported a negated call on a dictionary literal as failed.
+    let withoutGoAhead = BrewAudio.resumesAfter([
+      AVAudioSessionInterruptionTypeKey: ended, AVAudioSessionInterruptionOptionKey: UInt(0),
+    ])
+    #expect(!withoutGoAhead)
     #expect(!BrewAudio.resumesAfter([AVAudioSessionInterruptionTypeKey: began]))
     #expect(!BrewAudio.resumesAfter(nil))
   }
