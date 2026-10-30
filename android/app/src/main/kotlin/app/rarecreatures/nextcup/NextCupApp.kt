@@ -23,6 +23,8 @@ class NextCupApp : Application() {
     val timer: TimerController by lazy { TimerController(this, db, prefs.raw, scope) }
     val taxonomy: Taxonomy by lazy { Taxonomy.fromJson(asset("taxonomy.json")) }
 
+    val catalog: app.rarecreatures.nextcup.beans.RoasterCatalog? by lazy { runCatching { app.rarecreatures.nextcup.beans.RoasterCatalog.parse(asset("catalog.json")) }.getOrNull() }
+
     fun asset(name: String): String = assets.open(name).bufferedReader().use { it.readText() }
 
     override fun onCreate() {

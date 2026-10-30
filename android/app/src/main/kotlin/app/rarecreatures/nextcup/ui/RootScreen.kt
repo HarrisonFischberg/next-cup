@@ -24,7 +24,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import app.rarecreatures.nextcup.app
 import app.rarecreatures.nextcup.brew.FormSource
+import app.rarecreatures.nextcup.ui.screens.BeanDetailScreen
+import app.rarecreatures.nextcup.ui.screens.BeanEditorScreen
 import app.rarecreatures.nextcup.ui.screens.BeansScreen
+import app.rarecreatures.nextcup.ui.screens.RoasterDetailScreen
+import app.rarecreatures.nextcup.ui.screens.RoasterDiscoveryScreen
 import app.rarecreatures.nextcup.ui.screens.BrewFormScreen
 import app.rarecreatures.nextcup.ui.screens.BrewScreen
 import app.rarecreatures.nextcup.ui.screens.ExploreScreen
@@ -99,8 +103,18 @@ fun RootScreen(openTimer: StateFlow<Int>) {
                     brewAgain = { nav.navigate(Routes.again(it)) }, resume = { nav.navigate(Routes.unsaved(it)) },
                 )
             }
-            composable(AppTab.BEANS.raw) { BeansScreen(openSettings) }
-            composable(AppTab.EXPLORE.raw) { ExploreScreen(openSettings) }
+            composable(AppTab.BEANS.raw) { BeansScreen(openSettings, addBean = { nav.navigate("newBean") }) { nav.navigate("bean/$it") } }
+            composable(AppTab.EXPLORE.raw) { ExploreScreen(openSettings, openRoaster = { nav.navigate("roaster/$it") }) { nav.navigate("discover") } }
+            composable("newBean") { BeanEditorScreen(null, { nav.popBackStack() }) { id -> nav.navigate("bean/$id") { popUpTo("newBean") { inclusive = true } } } }
+            composable("editBean/{id}", idArg) { e -> BeanEditorScreen(e.arguments!!.getString("id"), { nav.popBackStack() }) { nav.popBackStack() } }
+            composable("bean/{id}", idArg) { e ->
+                val id = e.arguments!!.getString("id")!!
+                BeanDetailScreen(id, { nav.popBackStack() }, edit = { nav.navigate("editBean/$id") }, openBrew = { nav.navigate(Routes.brew(it)) }) { nav.navigate(Routes.recipe(it)) }
+            }
+            composable("roaster/{id}", idArg) { e ->
+                RoasterDetailScreen(e.arguments!!.getString("id")!!, { nav.popBackStack() }, openBean = { nav.navigate("bean/$it") }) { nav.navigate(Routes.recipe(it)) }
+            }
+            composable("discover") { RoasterDiscoveryScreen { nav.popBackStack() } }
             composable(Routes.SETTINGS) { SettingsScreen { nav.popBackStack() } }
             composable("method/{id}", idArg) { e -> MethodStylesScreen(e.arguments!!.getString("id")!!, { nav.popBackStack() }) { nav.navigate(Routes.recipe(it)) } }
             composable("recipe/{id}", idArg) { e -> RecipeDetailScreen(e.arguments!!.getString("id")!!, { nav.popBackStack() }) { nav.navigate(Routes.TIMER) } }
