@@ -20,3 +20,12 @@ ralph/screenshots/
 !.env.qa.example
 qa/results/
 qa/report/artifact.html
+
+# Store releases: build output and secrets never go in git (release/README.md)
+fastlane/report.xml
+fastlane/README.md
+fastlane/test_output/
+*.p8
+*.jks
+*.keystore
+play-*.json
