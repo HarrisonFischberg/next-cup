@@ -11,10 +11,7 @@ final class SavedBrewLockUITests: XCTestCase {
     app.descendants(matching: .any)[id].firstMatch
   }
 
-  private func wheel(_ id: String) -> XCUIElement {
-    let wheel = app.pickerWheels[id]
-    return wheel.exists ? wheel : app.pickers[id].pickerWheels.firstMatch
-  }
+  private func wheel(_ id: String) -> XCUIElement { element(id) }
 
   private func dose() -> String {
     element("brewform.dose").staticTexts.allElementsBoundByIndex.dropFirst().map { $0.label }
@@ -48,7 +45,7 @@ final class SavedBrewLockUITests: XCTestCase {
     app.buttons["Increase Water"].tap()
     let grind = wheel("brewform.grind")
     scrollTo(grind)
-    grind.adjust(toPickerWheelValue: "12")
+    app.step("brewform.grind", to: 12)
     app.buttons["Save brew"].tap()
     let row = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'journal.row.'"))
       .firstMatch
@@ -73,20 +70,20 @@ final class SavedBrewLockUITests: XCTestCase {
     scrollTo(grind)
     XCTAssertEqual(grind.value as? String, "12")
     grind.swipeUp()
-    XCTAssertEqual(grind.value as? String, "12", "a swipe on a locked wheel changes nothing")
+    XCTAssertEqual(grind.value as? String, "12", "a swipe on a locked grind changes nothing")
+    XCTAssertFalse(app.buttons["brewform.grind.increase"].isEnabled)
 
     // Edit unlocks; Cancel puts the saved values back and locks again.
     element("brewform.unlock").tap()
     XCTAssertTrue(app.navigationBars["Edit brew"].waitForExistence(timeout: 5))
-    grind.adjust(toPickerWheelValue: "14")
-    XCTAssertEqual(grind.value as? String, "14")
+    app.step("brewform.grind", to: 14)
     element("brewform.cancel").tap()
     XCTAssertTrue(element("brewform.locked").waitForExistence(timeout: 5))
     XCTAssertEqual(grind.value as? String, "12", "Cancel discards the change")
 
     // Edit and Save keep the change; the brew reopens locked with it.
     element("brewform.unlock").tap()
-    grind.adjust(toPickerWheelValue: "14")
+    app.step("brewform.grind", to: 14)
     app.buttons["Save brew"].tap()
     let row = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Grind 14'")).firstMatch
     XCTAssertTrue(row.waitForExistence(timeout: 5), "the Journal shows the saved change")

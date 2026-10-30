@@ -274,6 +274,7 @@ struct BrewFormView: View {
         }
       }
       .padding(DS.Space.lg)
+      .dialPopups()
       // Behind the fields, so a tap on empty space dismisses the keyboard
       // without stealing the tap from a field.
       .background {
