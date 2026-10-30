@@ -49,7 +49,9 @@ enum RecipeReviewAI {
   /// How every answer is written, for both modes.
   private static let format = """
     Return the whole recipe. doseG is the coffee in grams and waterG the total brew water in \
-    grams. steps are in time order; atS is the second the step starts. A step's waterG is \
+    grams. steps are in time order; atS is the second the step starts. Steps in the same \
+    second are listed in the order they are done, so a closeValve comes before the water it \
+    holds. A step's waterG is \
     the running total poured so far after a bloom, pour or bypass step, and 0 for every \
     other step; the last pouring step's waterG equals the recipe's waterG. Step kinds: \
     bloom, pour, wait, stir, swirl, invert, press, plug, bypass, drawdown; closeValve and \
