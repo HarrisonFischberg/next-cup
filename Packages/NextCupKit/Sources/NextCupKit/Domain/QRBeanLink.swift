@@ -273,7 +273,9 @@ public enum QRBeanLink {
         continue
       }
       if fold(label).hasPrefix("roast date") || fold(label).hasPrefix("roasted on") {
-        if draft.roastDate == nil { draft.roastDate = LabelEvidence.roastDate(in: ["roast \(value)"]) }
+        if draft.roastDate == nil {
+          draft.roastDate = LabelEvidence.roastDate(in: ["roast \(value)"])
+        }
         continue
       }
       if fold(label) == "weight" || fold(label) == "size" || fold(label) == "net weight" {

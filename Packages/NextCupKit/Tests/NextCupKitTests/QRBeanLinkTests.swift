@@ -9,8 +9,12 @@ struct QRBeanLinkTests {
     #expect(
       QRBeanLink.link(from: " https://Roaster.coffee/products/guji?ref=bag ")?.absoluteString
         == "https://roaster.coffee/products/guji?ref=bag")
-    #expect(QRBeanLink.link(from: "http://roaster.coffee/x")?.absoluteString == "https://roaster.coffee/x")
-    #expect(QRBeanLink.link(from: "www.roaster.coffee/x")?.absoluteString == "https://www.roaster.coffee/x")
+    #expect(
+      QRBeanLink.link(from: "http://roaster.coffee/x")?.absoluteString
+        == "https://roaster.coffee/x")
+    #expect(
+      QRBeanLink.link(from: "www.roaster.coffee/x")?.absoluteString
+        == "https://www.roaster.coffee/x")
     for bad in [
       "ftp://roaster.coffee/x", "javascript:alert(1)", "https://user:pw@roaster.coffee/",
       "https://192.168.1.1/", "https://10.0.0.1/admin", "https://printer.local/",
@@ -104,7 +108,8 @@ struct QRBeanLinkTests {
 
   @Test func plainTextCodeIsReadLineByLine() {
     let draft = QRBeanLink.parse(
-      text: "Roaster: Tiny Roastery\nCoffee name: Finca El Paraiso\nOrigin: Colombia\nProcess: Anaerobic\nNet weight: 12 oz"
+      text: "Roaster: Tiny Roastery\nCoffee name: Finca El Paraiso\nOrigin: Colombia\n"
+        + "Process: Anaerobic\nNet weight: 12 oz"
     )
     #expect(draft.roaster == "Tiny Roastery")
     #expect(draft.name == "Finca El Paraiso")
@@ -116,7 +121,8 @@ struct QRBeanLinkTests {
 
   @Test func lookUpPaths() async throws {
     let link = try #require(QRBeanLink.link(from: "https://bit.ly/abc"))
-    let page = Data(#"<meta property="og:title" content="Rwanda Nyamasheke"><p>Process: Natural</p>"#.utf8)
+    let page = Data(
+      #"<meta property="og:title" content="Rwanda Nyamasheke"><p>Process: Natural</p>"#.utf8)
     let final = URL(string: "https://shop.roaster.coffee/products/rwanda")
     let found = await QRBeanLink.lookUp(link) { _ in (page, 200, final, "text/html") }
     var expected = QRBeanLink.Draft()
