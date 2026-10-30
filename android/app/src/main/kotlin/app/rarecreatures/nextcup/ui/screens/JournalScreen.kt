@@ -63,6 +63,15 @@ import app.rarecreatures.nextcup.ui.Kicker
 import app.rarecreatures.nextcup.ui.PageHeader
 import app.rarecreatures.nextcup.ui.SettingsGear
 import app.rarecreatures.nextcup.ui.theme.DS
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.TextButton
+import app.rarecreatures.nextcup.beans.readText
+import app.rarecreatures.nextcup.brew.PaperPage
+import app.rarecreatures.nextcup.brew.PhotoSanitizer
+import app.rarecreatures.nextcup.kit.BrewDraft
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
@@ -76,7 +85,7 @@ private data class JournalRow(val brew: Brew, val method: String?, val beans: St
 @Composable
 fun JournalScreen(
     openSettings: () -> Unit, startBrew: () -> Unit, logBrew: () -> Unit,
-    openBrew: (String) -> Unit, brewAgain: (String) -> Unit, resume: (String) -> Unit,
+    openBrew: (String) -> Unit, brewAgain: (String) -> Unit, resume: (String) -> Unit, importPage: (BrewDraft) -> Unit,
 ) {
     val app = LocalContext.current.app
     val db = app.db
@@ -95,6 +104,17 @@ fun JournalScreen(
     }.collectAsStateWithLifecycle(null)
     val drafts by remember { DraftStore.changes.map { DraftStore.all() }.flowOn(Dispatchers.IO) }.collectAsStateWithLifecycle(emptyList())
     var query by rememberSaveable { mutableStateOf("") }
+    var reading by remember { mutableStateOf(false) }
+    val pickPage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            reading = true
+            val photo = withContext(Dispatchers.IO) { runCatching { app.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()?.let { PhotoSanitizer.sanitized(it) } }
+            val draft = photo?.let { PaperPage.draft(readText(it), db.methods().all()) }
+            reading = false
+            if (draft == null) snackbar.showSnackbar("Nothing on that page could be read as a brew.") else importPage(draft)
+        }
+    }
 
     Scaffold(
         containerColor = DS.colors.bg,
@@ -105,7 +125,14 @@ fun JournalScreen(
     ) { padding ->
         val list = rows
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(bottom = 96.dp)) {
-            item { PageHeader("Journal") { SettingsGear(openSettings) } }
+            item {
+                PageHeader("Journal") {
+                    TextButton(enabled = !reading, onClick = { pickPage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
+                        Text(if (reading) "Reading…" else "Import page")
+                    }
+                    SettingsGear(openSettings)
+                }
+            }
             if (drafts.isNotEmpty()) {
                 item {
                     Column(Modifier.padding(horizontal = DS.Space.lg, vertical = DS.Space.sm)) {

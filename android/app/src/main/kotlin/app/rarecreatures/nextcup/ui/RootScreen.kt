@@ -10,6 +10,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,7 +36,10 @@ import app.rarecreatures.nextcup.ui.screens.BrewFormScreen
 import app.rarecreatures.nextcup.ui.screens.BrewScreen
 import app.rarecreatures.nextcup.ui.screens.ExploreScreen
 import app.rarecreatures.nextcup.ui.screens.JournalScreen
+import app.rarecreatures.nextcup.ui.screens.AskAIScreen
+import app.rarecreatures.nextcup.ui.screens.DONE_KEY
 import app.rarecreatures.nextcup.ui.screens.MethodStylesScreen
+import app.rarecreatures.nextcup.ui.screens.OnboardingScreen
 import app.rarecreatures.nextcup.ui.screens.RecipeDetailScreen
 import app.rarecreatures.nextcup.ui.screens.SettingsScreen
 import app.rarecreatures.nextcup.ui.screens.TimerScreen
@@ -73,6 +79,20 @@ fun RootScreen(openTimer: StateFlow<Int>) {
         if (timerTaps > 0 && app.timer.setup.value != null) nav.navigate(Routes.TIMER) { launchSingleTop = true }
     }
     val idArg = listOf(navArgument("id") { type = NavType.StringType })
+    // First run only: someone with brews already logged never sees it.
+    var onboarding by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(Unit) { onboarding = !prefs.raw.getBoolean(DONE_KEY, false) && app.db.brews().count() == 0 }
+    when (onboarding) {
+        null -> return
+        true -> {
+            OnboardingScreen { brewFirst ->
+                onboarding = false
+                if (brewFirst) prefs.selectedTab = AppTab.RECIPES.raw
+            }
+            return
+        }
+        false -> {}
+    }
 
     Scaffold(
         containerColor = DS.colors.bg,
@@ -101,6 +121,7 @@ fun RootScreen(openTimer: StateFlow<Int>) {
                     openSettings, startBrew = { prefs.selectedTab = AppTab.RECIPES.raw; nav.selectTab(AppTab.RECIPES) },
                     logBrew = { nav.navigate(Routes.NEW_BREW) }, openBrew = { nav.navigate(Routes.brew(it)) },
                     brewAgain = { nav.navigate(Routes.again(it)) }, resume = { nav.navigate(Routes.unsaved(it)) },
+                    importPage = { draft -> app.pendingPaper = draft; nav.navigate("paper") },
                 )
             }
             composable(AppTab.BEANS.raw) { BeansScreen(openSettings, addBean = { nav.navigate("newBean") }) { nav.navigate("bean/$it") } }
@@ -128,8 +149,13 @@ fun RootScreen(openTimer: StateFlow<Int>) {
                 BrewFormScreen(outcome?.let { FormSource.FromTimer(it) } ?: FormSource.New, back = { app.timer.consumeOutcome(); nav.popBackStack() })
             }
             composable(Routes.NEW_BREW) { BrewFormScreen(FormSource.New, back = { nav.popBackStack() }) }
-            composable("brew/{id}", idArg) { e -> BrewFormScreen(FormSource.Editing(e.arguments!!.getString("id")!!), back = { nav.popBackStack() }) }
+            composable("brew/{id}", idArg) { e ->
+                val id = e.arguments!!.getString("id")!!
+                BrewFormScreen(FormSource.Editing(id), back = { nav.popBackStack() }, askAI = { nav.navigate("ask/$id") })
+            }
             composable("again/{id}", idArg) { e -> BrewFormScreen(FormSource.Repeating(e.arguments!!.getString("id")!!), back = { nav.popBackStack() }) }
+            composable("ask/{id}", idArg) { e -> AskAIScreen(e.arguments!!.getString("id")!!, { nav.popBackStack() }) { nav.navigate(Routes.SETTINGS) } }
+            composable("paper") { BrewFormScreen(app.pendingPaper?.let { FormSource.FromPaper(it) } ?: FormSource.New, back = { app.pendingPaper = null; nav.popBackStack() }) }
             composable("unsaved/{id}", idArg) { e -> BrewFormScreen(FormSource.Resuming(e.arguments!!.getString("id")!!), back = { nav.popBackStack() }) }
         }
     }

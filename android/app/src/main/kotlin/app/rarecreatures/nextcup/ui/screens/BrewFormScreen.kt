@@ -72,7 +72,7 @@ import java.util.UUID
 /** Log or edit one brew. Everything typed autosaves as a draft; Save writes the brew. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun BrewFormScreen(source: FormSource, back: () -> Unit, vm: BrewFormViewModel = viewModel()) {
+fun BrewFormScreen(source: FormSource, back: () -> Unit, askAI: (() -> Unit)? = null, vm: BrewFormViewModel = viewModel()) {
     val context = LocalContext.current
     LaunchedEffect(Unit) { vm.open(source) }
     val d by vm.draft.collectAsStateWithLifecycle()
@@ -115,7 +115,9 @@ fun BrewFormScreen(source: FormSource, back: () -> Unit, vm: BrewFormViewModel =
     val espresso = method?.style == BrewStyle.ESPRESSO
 
     Column(Modifier.fillMaxSize().imePadding()) {
-        BackBar(if (editing != null) "Edit brew" else "Log a brew", leave)
+        BackBar(if (editing != null) "Edit brew" else "Log a brew", leave) {
+            if (askAI != null && editing != null) TextButton(onClick = { vm.flush(); askAI() }) { Text("Ask AI") }
+        }
         if (saved != null) {
             SavedPanel(made, dialInNote, newBest?.let { "New best for ${it.bean}: ${Rating.text(it.tenths)} of 10 (was ${Rating.text(it.previous)})." }, units, back)
             return@Column

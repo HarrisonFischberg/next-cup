@@ -43,6 +43,8 @@ sealed interface FormSource {
     data class Resuming(val draftName: String) : FormSource
     /** The brew the timer just finished. */
     data class FromTimer(val outcome: TimerOutcome) : FormSource
+    /** A handwritten journal page, read on device. */
+    data class FromPaper(val draft: BrewDraft) : FormSource
 }
 
 data class NewBest(val bean: String, val tenths: Int, val previous: Int)
@@ -121,12 +123,13 @@ class BrewFormViewModel(application: Application) : AndroidViewModel(application
                     draftStore = DraftStore.named("brew-draft-${o.run.sessionKey}")
                     (draftStore.load() as? DraftLoad.Draft)?.let { draft.value = it.draft }
                 }
+                is FormSource.FromPaper -> fresh = source.draft
                 FormSource.New -> fresh = blank()
             }
             baseline = fresh
             if (source !is FormSource.FromTimer || draft.value.sourceKey == null) draft.value = fresh
             // A form opened from a timer run or a repeat is saved at once, so its values survive a crash.
-            if (source is FormSource.FromTimer || source is FormSource.Repeating) flush(force = true)
+            if (source is FormSource.FromTimer || source is FormSource.Repeating || source is FormSource.FromPaper) flush(force = true)
             findWaiting()
         }
     }
