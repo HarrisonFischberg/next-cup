@@ -1,4 +1,5 @@
 import com.android.build.api.variant.ApplicationAndroidComponentsExtension
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -19,8 +20,24 @@ android {
         versionName = "0.1"
     }
 
+    // The upload key is read from android/local.properties (never committed):
+    //   nextcup.storeFile=/absolute/path/to/upload.jks
+    //   nextcup.storePassword=…  nextcup.keyAlias=upload  nextcup.keyPassword=…
+    // Without it, a release build is left unsigned.
+    val signing = Properties().apply { rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) } }
+    val storeFile = signing.getProperty("nextcup.storeFile")
+    signingConfigs {
+        if (storeFile != null) create("upload") {
+            this.storeFile = file(storeFile)
+            storePassword = signing.getProperty("nextcup.storePassword")
+            keyAlias = signing.getProperty("nextcup.keyAlias")
+            keyPassword = signing.getProperty("nextcup.keyPassword")
+        }
+    }
+
     buildTypes {
         release {
+            if (storeFile != null) signingConfig = signingConfigs.getByName("upload")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
