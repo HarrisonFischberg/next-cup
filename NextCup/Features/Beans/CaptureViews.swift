@@ -56,17 +56,25 @@ enum BarcodeScanner {
   }
 }
 
-/// Full-screen live scanner for retail barcodes (EAN-8, EAN-13, UPC-E). Returns
-/// the first code it reads; nothing is looked up until it does.
+/// What the live scanner read off the bag.
+enum ScannedCode: Equatable {
+  /// A retail barcode's digits.
+  case barcode(String)
+  /// A QR code's text, usually a link to the roaster's page for the coffee.
+  case qr(String)
+}
+
+/// Full-screen live scanner for retail barcodes (EAN-8, EAN-13, UPC-E) and QR codes.
+/// Returns the first code it reads; nothing is looked up until it does.
 struct BarcodeScannerView: View {
-  let onCode: (String) -> Void
+  let onCode: (ScannedCode) -> Void
   let onCancel: () -> Void
 
   var body: some View {
     ZStack(alignment: .bottom) {
       ScannerRepresentable(onCode: onCode).ignoresSafeArea()
       VStack(spacing: DS.Space.md) {
-        Text("Point at the barcode on the bag")
+        Text("Point at the barcode or QR code on the bag")
           .font(.headline).foregroundStyle(.white)
           .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.sm)
           .background(.black.opacity(0.55), in: Capsule())
@@ -82,11 +90,11 @@ struct BarcodeScannerView: View {
 }
 
 private struct ScannerRepresentable: UIViewControllerRepresentable {
-  let onCode: (String) -> Void
+  let onCode: (ScannedCode) -> Void
 
   func makeUIViewController(context: Context) -> DataScannerViewController {
     let scanner = DataScannerViewController(
-      recognizedDataTypes: [.barcode(symbologies: [.ean8, .ean13, .upce])],
+      recognizedDataTypes: [.barcode(symbologies: [.ean8, .ean13, .upce, .qr])],
       qualityLevel: .balanced, isHighlightingEnabled: true)
     scanner.delegate = context.coordinator
     return scanner
@@ -100,9 +108,9 @@ private struct ScannerRepresentable: UIViewControllerRepresentable {
   func makeCoordinator() -> Coordinator { Coordinator(onCode: onCode) }
 
   @MainActor final class Coordinator: NSObject, DataScannerViewControllerDelegate {
-    let onCode: (String) -> Void
+    let onCode: (ScannedCode) -> Void
     private(set) var done = false
-    init(onCode: @escaping (String) -> Void) { self.onCode = onCode }
+    init(onCode: @escaping (ScannedCode) -> Void) { self.onCode = onCode }
 
     func dataScanner(
       _ scanner: DataScannerViewController, didAdd items: [RecognizedItem],
@@ -114,7 +122,7 @@ private struct ScannerRepresentable: UIViewControllerRepresentable {
         done = true
         scanner.stopScanning()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        onCode(value)
+        onCode(code.observation.symbology == .qr ? .qr(value) : .barcode(value))
         return
       }
     }
