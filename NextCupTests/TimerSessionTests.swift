@@ -48,6 +48,7 @@ struct TimerSessionTests {
     bloom.instruction = "Wet the bed"
     let pour = RecipeStep(order: 1, kind: .pour, startOffsetS: 40)
     pour.targetCumulativeWaterG = 250
+    pour.instruction = "Pour to 250 g at 94 °C."
     let drawdown = RecipeStep(order: 2, kind: .drawdown, startOffsetS: 90)
     recipe.steps = [pour, drawdown, bloom]
     return recipe
@@ -75,6 +76,16 @@ struct TimerSessionTests {
     #expect(setup.plan.steps.map(\.targetCumulativeWaterG) == [90, 500, nil])
     #expect(setup.plan.totalDurationS == 120)
     #expect(setup.scaled.doseG == 30)
+    #expect(setup.plan.steps[1].instruction == "Pour to 500 g at 94 °C.")
+    #expect(setup.plan.steps[0].instruction == "Wet the bed")
+  }
+
+  @Test func stepWeightsInTheTextFollowTheDose() {
+    #expect(TimerPlanBuilder.scaledWeights(in: "Pour to 500 g in the centre.", by: 0.806)
+      == "Pour to 403 g in the centre.")
+    #expect(TimerPlanBuilder.scaledWeights(in: "Stop at 36g, about 30 s.", by: 0.5)
+      == "Stop at 18g, about 30 s.")
+    #expect(TimerPlanBuilder.scaledWeights(in: "Pour to 500 g.", by: 1) == "Pour to 500 g.")
   }
 
   @Test func planAddsATailWhenTheRecipeGivesNoUsableTotal() throws {

@@ -65,9 +65,11 @@ enum TimerPlanBuilder {
     let scaled = try RecipeScaler.scale(recipe.scalable, toDose: doseG).recipe
     let steps = recipe.orderedSteps
     let factor = recipe.timingFactor(doseG: doseG, tuning: tuning)
+    let weightFactor = recipe.doseG > 0 ? scaled.doseG / recipe.doseG : 1
     let timerSteps = steps.enumerated().map { index, step in
       TimerStep(
-        order: index, label: RecipeFormat.title(step.kind), instruction: step.instruction,
+        order: index, label: RecipeFormat.title(step.kind),
+        instruction: scaledWeights(in: step.instruction, by: weightFactor),
         startOffsetS: RecipeTiming.scaled(step.startOffsetS, by: factor),
         targetCumulativeWaterG: index < scaled.steps.count
           ? scaled.steps[index].targetCumulativeWaterG : nil)
@@ -83,6 +85,16 @@ enum TimerPlanBuilder {
         methodKey: recipe.method?.builtInKey, style: recipe.method?.style.rawValue),
       glyph: recipe.method?.glyph ?? .cup, stepKinds: steps.map(\.kind.rawValue),
       methodKey: recipe.method?.builtInKey ?? recipe.method?.style.rawValue)
+  }
+
+  /// Gram amounts written in a step ("Pour to 500 g") follow the batch, like its target:
+  /// every weight in a recipe scales with the dose.
+  static func scaledWeights(in text: String, by factor: Double) -> String {
+    guard abs(factor - 1) > 0.001 else { return text }
+    return text.replacing(/(\d+(?:\.\d+)?)(\s?)g\b/) { match in
+      let grams = (Double(match.output.1) ?? 0) * factor
+      return "\(Int(grams.rounded()))\(match.output.2)g"
+    }
   }
 }
 
