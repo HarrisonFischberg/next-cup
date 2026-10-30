@@ -46,6 +46,15 @@
 				<string>CA92.1</string>
 			</array>
 		</dict>
+		<!-- DraftStore reads contentModificationDate of its own draft files in the app container. -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+			</array>
+		</dict>
 	</array>
 </dict>
 </plist>
