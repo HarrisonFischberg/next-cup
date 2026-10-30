@@ -128,3 +128,24 @@ extension BarcodeLookup {
     return fields
   }
 }
+
+extension QRBeanLink {
+  /// What a QR code's page or text said, as a bean draft. The site is kept apart:
+  /// `BagRecognition.fill` never touches the roaster's website.
+  static func fields(_ draft: Draft) -> BeanFields {
+    var fields = BeanFields()
+    fields.name = draft.name
+    fields.roasterName = draft.roaster
+    fields.originCountry = draft.originCountry
+    fields.region = draft.region
+    fields.farm = draft.farm
+    fields.process = draft.process
+    fields.varietal = draft.varietal
+    fields.roastLevel = roastLevelName(draft.roastLevel).flatMap(RoastLevel.init(rawValue:))
+    fields.roastDate = draft.roastDate.flatMap(BagRecognition.date)
+    fields.flavorNotes = draft.flavorNotes
+    fields.bagWeightG = draft.bagWeightGrams
+    fields.isDecaf = draft.isDecaf
+    return fields
+  }
+}

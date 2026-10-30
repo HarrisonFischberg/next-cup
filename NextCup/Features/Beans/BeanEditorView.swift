@@ -19,7 +19,7 @@ enum BeanEditorTarget: Identifiable, Hashable {
 
 /// Add a bean, or change one. Weight is typed in the user's unit and stored in
 /// grams. An unsaved change blocks swipe-to-dismiss; Cancel discards it.
-/// How the editor starts: straight into a bag photo or a barcode scan (set-up offers both).
+/// How the editor starts: straight into a bag photo or a barcode or QR scan (set-up offers both).
 enum BeanCaptureStart: String, Identifiable {
   case photo, barcode, manual
   var id: String { rawValue }
@@ -58,6 +58,11 @@ struct BeanEditorView: View {
   @State private var cameraShown = false
   @State private var scannerShown = false
   @State private var lookingUp = false
+  @State private var lookupStages: [String] = []
+  /// The link from a scanned QR code, kept in view so it can be opened whatever was read.
+  @State private var scannedLink: URL?
+  /// The site the QR link ended on, used as the roaster's website on save if it has none.
+  @State private var linkSite: URL?
   /// Set when a barcode was not found, so the AI photo route is offered next.
   @State private var offerPhotoRoute = false
   /// The last two stages of a scan, shown while the result goes into the fields.
@@ -147,7 +152,7 @@ struct BeanEditorView: View {
         .ignoresSafeArea()
       }
       .fullScreenCover(isPresented: $scannerShown) {
-        BarcodeScannerView(onCode: lookUp, onCancel: { scannerShown = false })
+        BarcodeScannerView(onCode: scanned, onCancel: { scannerShown = false })
       }
       .onChange(of: scan?.status) { _, status in if status != nil { finishScan() } }
       .sheet(isPresented: $matchShown) {
@@ -199,10 +204,10 @@ struct BeanEditorView: View {
       } else if let stages = fillStages {
         StagedProgress(stages: stages, current: fillStage)
       } else if lookingUp {
-        StagedProgress(stages: ["Looking up the barcode", "Filling the fields"], current: 0)
+        StagedProgress(stages: lookupStages, current: 0)
       } else {
         Button(action: startBarcode) {
-          Label("Scan the barcode", systemImage: "barcode.viewfinder")
+          Label("Scan the barcode or QR code", systemImage: "qrcode.viewfinder")
             .frame(minHeight: DS.Size.control, alignment: .leading)
         }
         .accessibilityIdentifier("beans.editor.barcode")
@@ -224,6 +229,13 @@ struct BeanEditorView: View {
           .accessibilityIdentifier("beans.editor.photoRoute")
         }
       }
+      if let scannedLink {
+        Link(destination: scannedLink) {
+          Label("Open the link on the bag (\(scannedLink.host() ?? "web"))", systemImage: "link")
+            .frame(minHeight: DS.Size.control, alignment: .leading)
+        }
+        .accessibilityIdentifier("beans.editor.qrLink")
+      }
       if let filledMessage {
         StateBanner(kind: .info, message: filledMessage)
           .listRowInsets(EdgeInsets()).listRowBackground(DS.bg)
@@ -236,7 +248,7 @@ struct BeanEditorView: View {
       }
     } footer: {
       Text(
-        "A barcode is looked up in Open Food Facts. Photos go to your AI provider with your key. You review every field before saving."
+        "A barcode is looked up in Open Food Facts. A QR code's link is opened once to read the coffee's page. Photos go to your AI provider with your key. You review every field before saving."
       )
     }
     .listRowBackground(DS.paper)
@@ -415,7 +427,7 @@ struct BeanEditorView: View {
     Task {
       guard await BarcodeScanner.requestIfNeeded() else {
         scanMessage =
-          "Barcode scanning needs the camera on an iPhone that supports it, with camera access allowed. Try a photo of the bag instead."
+          "Scanning needs the camera on an iPhone that supports it, with camera access allowed. Try a photo of the bag instead."
         offerPhotoRoute = true
         return
       }
@@ -423,10 +435,70 @@ struct BeanEditorView: View {
     }
   }
 
+  private func scanned(_ code: ScannedCode) {
+    switch code {
+    case .barcode(let digits): lookUp(digits)
+    case .qr(let payload): readQR(payload)
+    }
+  }
+
+  /// Reads a QR code once. A link is fetched (no cookies, nothing sent but the request)
+  /// and the page fills blanks for review; plain text is read as "Label: value" lines.
+  /// Whatever happens, the link stays on screen so the user can open it and type the rest.
+  private func readQR(_ payload: String) {
+    scannerShown = false
+    guard let link = QRBeanLink.link(from: payload) else {
+      let draft = QRBeanLink.parse(text: payload)
+      if draft.isEmpty {
+        offerPhotoRoute = true
+        scanMessage = "That QR code has no web link or coffee details to read."
+        return
+      }
+      Task {
+        await showFilling(["QR code read", "Filling the fields"], since: Date()) {
+          fill(with: QRBeanLink.fields(draft))
+        }
+      }
+      return
+    }
+    scannedLink = link
+    lookupStages = ["Opening \(link.host() ?? "the link")", "Filling the fields"]
+    lookingUp = true
+    Task {
+      let started = Date()
+      let result = await QRBeanLink.lookUp(link) { request in
+        let session = URLSession(configuration: .ephemeral)
+        defer { session.finishTasksAndInvalidate() }
+        let (data, response) = try await session.data(for: request)
+        return (
+          data, (response as? HTTPURLResponse)?.statusCode ?? 0, response.url, response.mimeType
+        )
+      }
+      lookingUp = false
+      switch result {
+      case .success(let draft):
+        linkSite = draft.website
+        await showFilling(["Page read", "Filling the fields"], since: started) {
+          fill(with: QRBeanLink.fields(draft))
+        }
+        if !draft.roaster.isEmpty, fields.roasterCity.isEmpty { matchShown = true }
+      case .failure(let failure):
+        scanMessage =
+          switch failure {
+          case .nothingFound:
+            "The page did not list the coffee's details. Open the link to read it and fill in the rest."
+          case .offline: "The link could not be opened. Check your connection, or open it below."
+          case .unreadable: "The link is not a page that can be read. Open it below to check."
+          }
+      }
+    }
+  }
+
   /// Looks a scanned code up once. A match fills name and roaster for review and offers
   /// the map match; anything else offers the AI photo route. Nothing is saved here.
   private func lookUp(_ code: String) {
     scannerShown = false
+    lookupStages = ["Looking up the barcode", "Filling the fields"]
     lookingUp = true
     Task {
       let started = Date()
@@ -582,6 +654,12 @@ struct BeanEditorView: View {
     // An untouched weight keeps its stored grams: the field shows it rounded.
     if weightText != originalWeightText {
       fields.bagWeightG = trimmed.isEmpty ? nil : typedWeightG
+    }
+    // A QR page's site becomes the roaster's website only when it has none yet.
+    if fields.roasterWebsite == nil, let linkSite,
+      roasters.first(where: { $0.name == fields.roasterName })?.website == nil
+    {
+      fields.roasterWebsite = linkSite
     }
     switch service.save(fields, editing: bean) {
     case .success(let saved):

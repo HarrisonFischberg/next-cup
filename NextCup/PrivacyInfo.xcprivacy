@@ -8,7 +8,9 @@
 	<array/>
 	<!-- T037: Open Food Facts (world.openfoodfacts.org) receives only a scanned barcode number,
 	     after a scan, to look up product name and brand. Not user data, not tracking, so no
-	     new collected type; camera photos fall under Photos or Videos below. -->
+	     new collected type; camera photos fall under Photos or Videos below.
+	     QR codes (2026-10-30): a scanned web link is fetched once from the phone, like following
+	     a link; the site sees the request, the developer collects nothing, so no new type. -->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
 		<dict>

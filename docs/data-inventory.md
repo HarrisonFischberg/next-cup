@@ -110,6 +110,19 @@ New vendor: **Open Food Facts** (Open Food Facts association, open database, no 
 
 Supersedes "No camera is used" above. Network endpoints are now the two AI providers, Apple Maps search and Open Food Facts.
 
+## QR codes on bags (2026-10-30)
+
+No new vendor of ours. The roaster's own site (whatever host the bag's QR code names) receives one request, the same as opening the link in a browser.
+
+| Data | Where it lives or goes | Retention | Removed by |
+| --- | --- | --- | --- |
+| Scanned QR text | Read on device by VisionKit. A web link (https, or http upgraded to https; named public host only, no IP address, local name or user name) is fetched once with `GET`, the user agent `NextCup/1.0 (iOS; hello@rarecreatures.app)` and an ephemeral session (no cookies, no cache); nothing else is sent. Text that is not a link is read on device and never sent | Not stored; the link is shown in the open editor only | Closing the editor |
+| Page facts (name, roaster, origin, region, farm, process, varietal, roast level, roast date, notes, weight) | Read on device from the page (`QRBeanLink`, first 2 MB, page text treated as data); filled into blank fields for review; saved only when the user taps Save | As the bean | Delete the bean; delete all data |
+| The page's site (`https://host/`) | Saved as the roaster's website on Save, only if that roaster has none | As the roaster | Edit or delete the roaster; delete all data |
+| The roaster's server logs | The roaster's site sees the iPhone's IP address and the user agent, as for any web visit | Per that site's terms | n/a |
+
+Network endpoints are now the two AI providers, Apple Maps search, Open Food Facts and the link on a scanned QR code. App Privacy label: unchanged (Rare Creatures LLC still collects nothing new; the request goes from the phone to the site the user scanned, as when following a link).
+
 ## Apple on-device AI and model lists (2026-10-26)
 
 | Data | Flow | Retention | Control |

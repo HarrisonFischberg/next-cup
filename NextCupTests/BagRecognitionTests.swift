@@ -117,6 +117,24 @@ struct BagRecognitionTests {
     #expect(brandOnly.roasterName == "Lavazza")
   }
 
+  @Test func qrPageFillsBlanksWithMappedRoastLevel() {
+    var draft = QRBeanLink.Draft()
+    draft.name = "Guji Hambela"
+    draft.roaster = "Sunny Hill"
+    draft.roastLevel = "Medium Light"
+    draft.roastDate = "2026-10-01"
+    draft.website = URL(string: "https://sunnyhill.coffee/")
+    var fields = BeanFields()
+    fields.name = "Typed Name"
+    BagRecognition.fill(&fields, with: QRBeanLink.fields(draft))
+    #expect(fields.name == "Typed Name")
+    #expect(fields.roasterName == "Sunny Hill")
+    #expect(fields.roastLevel == .mediumLight)
+    #expect(fields.roastDate != nil)
+    // The site is applied on save, only for a roaster without one.
+    #expect(fields.roasterWebsite == nil)
+  }
+
   @Test func promptKeepsRoastDatesApartFromOtherDates() {
     let system = BagRecognition.payload(photo: Data(), feature: .bagRecognition).system
     for rule in [
