@@ -118,6 +118,36 @@ struct RecipeEditorTests {
     #expect(try context.fetch(FetchDescriptor<Recipe>()).count == 2)
   }
 
+  @Test func aRecipeAtANewSizeBecomesItsOwnRecipeWithScaledSteps() throws {
+    let harness = try Harness()
+    let context = harness.container.mainContext
+    let builtIn = Recipe(name: "Steep then release", doseG: 18, waterG: 270)
+    builtIn.builtInKey = "switchable-steep"
+    builtIn.tempC = 94
+    builtIn.totalTimeS = 210
+    context.insert(builtIn)
+    let pour = RecipeStep(order: 0, kind: .pour, startOffsetS: 0)
+    pour.targetCumulativeWaterG = 270
+    pour.instruction = "Pour 270 g quickly."
+    builtIn.steps = [pour, RecipeStep(order: 1, kind: .openValve, startOffsetS: 120)]
+    try context.save()
+
+    let draft = harness.service.draft(
+      from: builtIn, scaledTo: 41, tuning: nil, name: "Steep then release (18 oz)")
+    #expect(draft.sourceID == nil)
+    #expect(draft.name == "Steep then release (18 oz)")
+    #expect(draft.doseG == 41)
+    #expect(abs(draft.waterG - 615) < 0.5)
+    #expect(abs((draft.steps[0].targetCumulativeWaterG ?? 0) - 615) < 0.5)
+    #expect(draft.steps[0].instruction == "Pour 615 g quickly.")
+    // Immersion keeps its steep time.
+    #expect(draft.steps[1].startOffsetS == 120)
+
+    let copy = try harness.service.save(draft).get()
+    #expect(copy.id != builtIn.id && copy.builtInKey == nil)
+    #expect(builtIn.doseG == 18 && builtIn.orderedSteps.first?.targetCumulativeWaterG == 270)
+  }
+
   // MARK: Validation
 
   @Test func rejectsBadRecipesBeforeTouchingTheStore() throws {
