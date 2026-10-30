@@ -41,11 +41,14 @@ private struct RecipeDetailContent: View {
   @State private var timerSetup: TimerSetup?
   @State private var startFailed = false
   @State private var editor: RecipeEditorTarget?
+  /// A recipe saved from "Change steps", opened on top so the user brews it next.
+  @State private var savedCopy: UUID?
   @State private var showsInstructions = false
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
   @Environment(\.dynamicTypeSize) private var dts
+  @Environment(\.modelContext) private var modelContext
   @Query private var grinders: [Grinder]
   @Query(sort: \Bean.name) private var allBeans: [Bean]
   @State private var beanID: UUID?
@@ -161,7 +164,14 @@ private struct RecipeDetailContent: View {
       }
     }
     .sheet(item: $editor) { target in
-      RecipeEditorView(target: target) { _ in editor = nil }
+      RecipeEditorView(target: target) { saved in
+        editor = nil
+        // Only a "Change steps" copy opens on top; Customize keeps the user where they were.
+        if case .prepared = target, let saved { savedCopy = saved.id }
+      }
+    }
+    .navigationDestination(item: $savedCopy) { id in
+      RecipeDetailView(link: .recipe(id), recipeID: id)
     }
   }
 
@@ -571,7 +581,36 @@ private struct RecipeDetailContent: View {
           .accessibilityIdentifier("recipe.step.\(index)")
         }
       }
+      SteelButton(title: "Change steps", kind: .secondary, action: changeSteps)
+        .accessibilityHint("Add or change steps, with optional AI suggestions")
+        .accessibilityIdentifier("recipe.steps.change")
+      Text(
+        editsInPlace
+          ? "Add a step, change a pour or let AI suggest better steps."
+          : "Add a step, change a pour or let AI suggest better steps. It saves as your own "
+            + "recipe at this size; this one stays as it is."
+      )
+      .font(.footnote).foregroundStyle(DS.ink2)
     }
+  }
+
+  /// One of the user's own recipes at its own size is changed in place; anything else
+  /// (a built-in, or a different size) becomes a new recipe.
+  private var editsInPlace: Bool { recipe.builtInKey == nil && scaledDoseG == nil }
+
+  private func changeSteps() {
+    if editsInPlace {
+      editor = .edit(recipe.id)
+      return
+    }
+    let size =
+      yieldAmount.map {
+        "\($0.formatted(.number.precision(.fractionLength(0...1)))) \(yieldMeasure.title)"
+      } ?? (scaledDoseG == nil ? "mine" : "\(RecipeFormat.weight(doseG, units)) dose")
+    let service = RecipeEditorService(store: Store(context: modelContext))
+    editor = .prepared(
+      service.draft(
+        from: recipe, scaledTo: doseG, tuning: tuning, name: "\(recipe.name) (\(size))"))
   }
 
   @ViewBuilder private var credit: some View {

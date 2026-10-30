@@ -1,8 +1,9 @@
 import Foundation
+import NextCupKit
 import SwiftData
 
 /// One step in an editable recipe. Water is grams, time is seconds (storage units).
-struct RecipeStepDraft: Identifiable, Equatable {
+struct RecipeStepDraft: Identifiable, Hashable {
   var id = UUID()
   var kind: StepKind = .pour
   var startOffsetS = 0
@@ -12,7 +13,7 @@ struct RecipeStepDraft: Identifiable, Equatable {
 
 /// A recipe as the editor holds it. Plain values, so it round-trips through the
 /// store without a live model and can be compared in tests.
-struct RecipeDraft: Equatable {
+struct RecipeDraft: Hashable {
   /// The recipe saved in place. `nil` saves a new recipe (new, or a customized copy).
   var sourceID: UUID?
   var name = ""
@@ -82,6 +83,36 @@ struct RecipeEditorService {
           kind: $0.kind, startOffsetS: $0.startOffsetS,
           targetCumulativeWaterG: $0.targetCumulativeWaterG, instruction: $0.instruction)
       })
+  }
+
+  /// A new recipe made from `recipe` as the setup page shows it at `doseG`: weights scaled
+  /// (in the instructions too), times stretched and the batch tuning's temperature, the way
+  /// the timer would run it. Saving it never touches the original.
+  func draft(
+    from recipe: Recipe, scaledTo doseG: Double, tuning: BrewSizeAI.Tuning?, name: String
+  ) -> RecipeDraft {
+    var draft = self.draft(from: recipe, asCopy: true)
+    draft.name = name
+    guard let scaled = try? RecipeScaler.scale(recipe.scalable, toDose: doseG).recipe else {
+      return draft
+    }
+    let factor = recipe.timingFactor(doseG: doseG, tuning: tuning)
+    let weightFactor = recipe.doseG > 0 ? scaled.doseG / recipe.doseG : 1
+    draft.doseG = scaled.doseG
+    draft.waterG = scaled.waterG
+    draft.iceG = scaled.iceG
+    draft.tempC = tuning?.tempC ?? recipe.tempC
+    draft.totalTimeS = recipe.totalTimeS.map { RecipeTiming.scaled($0, by: factor) }
+    for index in draft.steps.indices {
+      draft.steps[index].startOffsetS = RecipeTiming.scaled(
+        draft.steps[index].startOffsetS, by: factor)
+      draft.steps[index].instruction = TimerPlanBuilder.scaledWeights(
+        in: draft.steps[index].instruction, by: weightFactor)
+      if index < scaled.steps.count {
+        draft.steps[index].targetCumulativeWaterG = scaled.steps[index].targetCumulativeWaterG
+      }
+    }
+    return draft
   }
 
   /// Checks a draft without touching the store.

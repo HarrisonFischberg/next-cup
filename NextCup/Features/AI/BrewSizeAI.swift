@@ -33,25 +33,11 @@ enum BrewSizeAI {
     """
 
   /// True when some model can answer: a keyed provider in use, or Apple's on-device model.
-  static var isAvailable: Bool { route != nil }
+  static var isAvailable: Bool { DirectAI.route != nil }
 
   /// The provider that would answer, when it is a keyed cloud provider; nil for Apple's model.
   /// The page asks for a tap before anything goes to it.
-  static var cloudProviderTitle: String? {
-    guard let (provider, _) = route, provider.kind != nil else { return nil }
-    return provider.title
-  }
-
-  private static var route: (AIProvider, String)? {
-    let preferences = AIPreferences()
-    if let provider = preferences.provider(for: .diagnosis), provider.kind != nil,
-      let model = preferences.modelID(for: .diagnosis), KeychainStore().hasKey(for: provider),
-      preferences.hasAcceptedDisclosure(for: provider)
-    {
-      return (provider, model)
-    }
-    return AppleIntelligence.isAvailable ? (.apple, AppleIntelligence.modelID) : nil
-  }
+  static var cloudProviderTitle: String? { DirectAI.cloudProviderTitle }
 
   static func payload(
     recipe: String, method: String?, recipeDoseG: Double, doseG: Double, waterG: Double,
@@ -71,22 +57,8 @@ enum BrewSizeAI {
   }
 
   static func tune(_ payload: AIRequestPayload) async throws -> Tuning {
-    guard let (provider, model) = route else { throw AIError.unavailable(nil) }
-    let result: AIResult
-    if let kind = provider.kind {
-      let keychain = KeychainStore()
-      let client = AIClient(
-        transport: URLSessionTransport(),
-        key: { _ in (try? keychain.key(for: provider)) ?? nil },
-        disclosureAccepted: { _ in true })
-      result = try await client.send(
-        payload, provider: kind, model: model, effort: AIPreferences().effort)
-    } else {
-      result = try await AppleIntelligence.send(payload)
-    }
-    guard let answer = try JSONSerialization.jsonObject(with: result.json) as? [String: Any],
-      let tuning = parse(answer, source: provider == .apple ? "On this iPhone" : provider.title)
-    else { throw AIError.invalidResponse }
+    let (answer, source) = try await DirectAI.send(payload)
+    guard let tuning = parse(answer, source: source) else { throw AIError.invalidResponse }
     return tuning
   }
 

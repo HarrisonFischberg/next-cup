@@ -9,18 +9,22 @@ enum RecipeEditorTarget: Identifiable, Hashable {
   case edit(UUID)
   /// Save a changed copy; the original (a built-in, or a recipe being duplicated) stays.
   case copy(UUID)
+  /// A new recipe from a draft already filled in, such as a recipe at the size set on Start brew.
+  case prepared(RecipeDraft)
 
   var id: String {
     switch self {
     case .new: "new"
     case .edit(let id): "edit-\(id.uuidString)"
     case .copy(let id): "copy-\(id.uuidString)"
+    case .prepared(let draft): "prepared-\(draft.name)"
     }
   }
 }
 
 /// S08: create or change a recipe, with every step kind. Weights and temperature
-/// are typed in the user's units. Removing a step offers Undo.
+/// are typed in the user's units. Removing a step offers Undo. "Improve with AI" suggests
+/// steps that only replace the user's after "Use these steps", and that offers Undo too.
 struct RecipeEditorView: View {
   let target: RecipeEditorTarget
   /// A new recipe starts on this method (Your Style on a method's styles page).
@@ -39,6 +43,13 @@ struct RecipeEditorView: View {
   @State private var saving = false
   @State private var removed: (index: Int, step: RecipeEditorFields.StepFields)?
   @FocusState private var focused: Bool
+  /// What the AI should know that the recipe does not say ("my cone holds 400 g").
+  @State private var aiNote = ""
+  @State private var reviewing = false
+  @State private var review: RecipeReviewAI.Review?
+  @State private var reviewError: String?
+  /// The fields before AI steps were used, for Undo.
+  @State private var beforeAI: RecipeEditorFields?
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -57,6 +68,7 @@ struct RecipeEditorView: View {
     case .new: "New recipe"
     case .edit: "Edit recipe"
     case .copy: "Customize recipe"
+    case .prepared: "Make it yours"
     }
   }
 
@@ -68,7 +80,7 @@ struct RecipeEditorView: View {
             .listRowInsets(EdgeInsets()).listRowBackground(DS.bg)
             .accessibilityIdentifier("recipe.editor.error")
         }
-        if case .copy = target {
+        if isCopy {
           Text("Your changes are saved as a new recipe. The original stays as it is.")
             .font(.footnote).foregroundStyle(DS.ink2)
             .listRowBackground(DS.bg)
@@ -76,6 +88,7 @@ struct RecipeEditorView: View {
         basics
         numbers
         stepsSection
+        improveSection
         notes
       }
       .scrollContentBackground(.hidden)
@@ -100,6 +113,19 @@ struct RecipeEditorView: View {
         if let removed {
           SteelToast(message: "Step removed", actionTitle: "Undo") { undoRemove(removed) }
             .accessibilityIdentifier("recipe.editor.undo")
+        } else if let beforeAI {
+          SteelToast(message: "AI steps in use. Save to keep them.", actionTitle: "Undo") {
+            fields = beforeAI
+            self.beforeAI = nil
+          }
+          .accessibilityIdentifier("recipe.editor.ai.undo")
+        }
+      }
+      .sheet(item: $review) { review in
+        RecipeReviewSheet(review: review, units: units) {
+          use(review)
+        } keep: {
+          self.review = nil
         }
       }
       .task { load() }
@@ -248,6 +274,46 @@ struct RecipeEditorView: View {
     }
   }
 
+  /// Who reads the recipe: the keyed provider (only on the tap) or Apple's model on the iPhone.
+  private var improveSection: some View {
+    let provider = RecipeReviewAI.cloudProviderTitle
+    let available = RecipeReviewAI.isAvailable
+    return Section {
+      TextField(
+        "Anything to work around? For example: my cone only holds about 400 g",
+        text: $aiNote, axis: .vertical
+      )
+      .font(.subheadline).focused($focused).frame(minHeight: DS.Size.control, alignment: .top)
+      .accessibilityIdentifier("recipe.editor.ai.note")
+      if let reviewError {
+        Text(reviewError).font(.footnote).foregroundStyle(DS.error)
+          .accessibilityIdentifier("recipe.editor.ai.error")
+      }
+      Button(action: requestReview) {
+        HStack(spacing: DS.Space.sm) {
+          if reviewing { ProgressView() } else { Image(systemName: "sparkles") }
+          Text(reviewing ? "Reading your recipe…" : "Improve with AI")
+        }
+        .frame(minHeight: DS.Size.control, alignment: .leading)
+      }
+      .disabled(!available || reviewing || fields.steps.isEmpty)
+      .accessibilityHint(provider.map { "Sends this recipe and your note to \($0)" } ?? "")
+      .accessibilityIdentifier("recipe.editor.ai.improve")
+    } header: {
+      Text("Improve with AI")
+    } footer: {
+      Text(
+        !available
+          ? "Turn on Apple Intelligence, or add a key in Settings > AI, to get suggestions."
+          : (provider.map {
+            "Sends the brewer, these numbers, the steps and your note to \($0). "
+          } ?? "Apple Intelligence reads the recipe on this iPhone. ")
+            + "Nothing changes until you choose Use these steps."
+      )
+    }
+    .listRowBackground(DS.paper)
+  }
+
   private var notes: some View {
     Section("Notes") {
       TextField("Tuning note", text: $fields.tuningNote, axis: .vertical)
@@ -270,20 +336,68 @@ struct RecipeEditorView: View {
     case .new:
       loadedFields.methodID = methodID ?? methods.first { !$0.isHidden }?.id
       loadedFields.steps = [RecipeEditorFields.StepFields()]
+    case .prepared(let draft):
+      loadedFields = RecipeEditorFields(draft: draft, units: units)
     case .edit(let id), .copy(let id):
       guard let recipe = try? Store(context: context).find(Recipe.self, id: id) else {
         error = RecipeEditorError.notFound.message
         loaded = true
         return
       }
-      var isCopy = false
-      if case .copy = target { isCopy = true }
       loadedFields = RecipeEditorFields(
         draft: service.draft(from: recipe, asCopy: isCopy), units: units)
     }
     fields = loadedFields
     original = loadedFields
     loaded = true
+  }
+
+  private var isCopy: Bool {
+    switch target {
+    case .copy, .prepared: true
+    case .new, .edit: false
+    }
+  }
+
+  private func requestReview() {
+    focused = false
+    reviewError = nil
+    let draft: RecipeDraft
+    switch fields.draft(units: units) {
+    case .failure(let failure):
+      reviewError = failure.message
+      return
+    case .success(let read): draft = read
+    }
+    let methodName = methods.first { $0.id == draft.methodID }?.name
+    let payload = RecipeReviewAI.payload(draft, methodName: methodName, note: aiNote)
+    reviewing = true
+    Task {
+      defer { reviewing = false }
+      do {
+        review = try await RecipeReviewAI.review(payload, base: draft)
+      } catch {
+        reviewError =
+          "The AI could not suggest steps that add up for this recipe. Your steps are unchanged."
+      }
+    }
+  }
+
+  /// The AI's steps, temperature and time replace the fields; Undo brings the old ones back.
+  private func use(_ review: RecipeReviewAI.Review) {
+    self.review = nil
+    guard case .success(var draft) = fields.draft(units: units) else { return }
+    let before = fields
+    draft.steps = review.steps
+    draft.tempC = review.tempC
+    draft.totalTimeS = review.totalTimeS
+    fields = RecipeEditorFields(draft: draft, units: units)
+    removed = nil
+    beforeAI = before
+    Task {
+      try? await Task.sleep(for: .seconds(8))
+      if beforeAI == before { beforeAI = nil }
+    }
   }
 
   private func addStep() {
