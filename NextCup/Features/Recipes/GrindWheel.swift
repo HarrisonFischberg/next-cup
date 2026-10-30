@@ -1,15 +1,14 @@
 import NextCupKit
 import SwiftUI
 
-/// The grind setting as a wheel, styled like "How much coffee?": the grinder's own
-/// notation from the guide, or 0–40 by halves for a grinder the guide does not know.
-/// "—" means no grind noted; a saved setting off the wheel is kept as its own stop.
-/// `dial` shows the same stops as a − / + stepper that a scroll cannot turn.
+/// The grind setting as a − / + stepper with a hold-for-dial, so a scroll cannot turn it:
+/// the grinder's own notation from the guide, or 0–40 by halves for a grinder the guide
+/// does not know. "—" means no grind noted; a saved setting off the guide is kept as its
+/// own stop.
 struct GrindWheel: View {
   @Binding var setting: String
   let grinderName: String?
   let identifier: String
-  var dial = false
 
   private var guide: GrinderGuide? { GrinderGuide.find(grinderName) }
 
@@ -28,35 +27,13 @@ struct GrindWheel: View {
     }
   }
 
-  @ViewBuilder var body: some View {
+  var body: some View {
     let stops = stops
-    let selection = Binding(
-      get: { GrinderGuide.setting(setting, in: stops) ?? "" },
-      set: { setting = $0 })
-    if dial {
-      DialStepper(
-        title: "Grind setting", hint: "Hold the number for the dial", options: stops,
-        selection: selection, unit: unit, identifier: identifier)
-    } else {
-      wheel(stops, selection)
-    }
-  }
-
-  private func wheel(_ stops: [String], _ selection: Binding<String>) -> some View {
-    HStack(spacing: DS.Space.sm) {
-      Picker("Grind setting", selection: selection) {
-        ForEach(stops, id: \.self) { Text($0.isEmpty ? "—" : $0) }
-      }
-      .pickerStyle(.wheel).font(DS.Font.dataLarge).foregroundStyle(DS.ink)
-      .frame(height: 120).clipped()
-      .accessibilityIdentifier(identifier)
-      if let unit {
-        Text(unit).font(DS.Font.dataLarge).foregroundStyle(DS.ink2)
-          .frame(minWidth: 64, alignment: .leading)
-          .accessibilityHidden(true)
-      }
-    }
-    .padding(.horizontal, DS.Space.sm)
-    .sensoryFeedback(.selection, trigger: setting)
+    DialStepper(
+      title: "Grind setting", hint: "Hold the number for the dial", options: stops,
+      selection: Binding(
+        get: { GrinderGuide.setting(setting, in: stops) ?? "" },
+        set: { setting = $0 }),
+      unit: unit, identifier: identifier)
   }
 }
