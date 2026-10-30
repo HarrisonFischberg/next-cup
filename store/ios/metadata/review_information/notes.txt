@@ -1,0 +1,11 @@
+Next Cup is a coffee brew journal. There is no account or sign-in; everything is stored on the device.
+
+To try the main flow: tap Brew, choose a brewer (for example Cone dripper), pick a style, then Start brew. The timer runs through the steps. Finish, rate the taste, and the Journal shows the brew with a suggestion for the next one.
+
+AI features: with no key, Next Cup uses Apple's on-device Foundation Models where Apple Intelligence is available, and nothing leaves the device. Users can optionally add their own OpenAI or Anthropic API key in Settings > AI. Before the first request to a provider, the app shows a notice listing exactly what each action sends, and nothing is sent until the user accepts it and taps an action. We do not provide a demo key; the on-device path covers the same screens.
+
+Permissions: camera only when the user taps Take a photo or scans a bag's barcode; location only when the user taps Use my location in roaster search (a typed city works without it); notifications only for an optional reminder to taste a saved brew.
+
+Network use: Apple Maps for roaster search, Open Food Facts for barcode lookups (barcode number only), and the user's own AI provider if they add a key. No analytics, ads or tracking.
+
+Privacy policy in the app: Settings > Privacy > Read the full privacy policy.

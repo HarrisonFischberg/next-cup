@@ -1,0 +1,77 @@
+# Store uploads for Next Cup. Run through ./release.sh, which passes live:true only
+# with --live; without it every lane builds and stops before anything leaves the Mac.
+# Setup, env vars and the steps Apple and Google don't automate: release/README.md.
+
+default_platform(:ios)
+
+def live?(options)
+  options[:live].to_s == "true"
+end
+
+platform :ios do
+  before_all do |_lane, options|
+    next unless live?(options)
+    app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_filepath: File.expand_path(ENV.fetch("ASC_KEY_PATH"))
+    )
+  end
+
+  # Build number is a UTC timestamp, same as scripts/archive-testflight.sh, so every upload is higher.
+  private_lane :archive do
+    build_app(
+      project: "NextCup.xcodeproj",
+      scheme: "NextCup",
+      export_method: "app-store",
+      output_directory: "build",
+      xcargs: "CURRENT_PROJECT_VERSION=#{Time.now.utc.strftime('%Y%m%d.%H%M')} -allowProvisioningUpdates"
+    )
+  end
+
+  lane :beta do |options|
+    archive
+    next UI.important("Dry run: archived, nothing uploaded. Add --live to upload to TestFlight.") unless live?(options)
+    upload_to_testflight(skip_waiting_for_build_processing: true)
+  end
+
+  lane :release do |options|
+    archive
+    next UI.important("Dry run: archived, nothing uploaded. Add --live to upload and submit for review.") unless live?(options)
+    deliver(
+      metadata_path: "store/ios/metadata",
+      screenshots_path: "store/ios/screenshots",
+      app_rating_config_path: "store/ios/age_rating.json",
+      overwrite_screenshots: true,
+      submit_for_review: true,
+      automatic_release: false,
+      force: true,
+      precheck_include_in_app_purchases: false,
+      submission_information: { add_id_info_uses_idfa: false }
+    )
+  end
+end
+
+platform :android do
+  lane :release do |options|
+    # Injected signing: the keystore never has to be named in android/ build files.
+    gradle(
+      project_dir: "android",
+      task: "bundle",
+      build_type: "Release",
+      properties: {
+        "android.injected.signing.store.file" => File.expand_path(ENV.fetch("ANDROID_KEYSTORE_PATH")),
+        "android.injected.signing.store.password" => ENV.fetch("ANDROID_KEYSTORE_PASSWORD"),
+        "android.injected.signing.key.alias" => ENV.fetch("ANDROID_KEY_ALIAS"),
+        "android.injected.signing.key.password" => ENV.fetch("ANDROID_KEY_PASSWORD")
+      }
+    )
+    next UI.important("Dry run: signed AAB built, nothing uploaded. Add --live to upload.") unless live?(options)
+    upload_to_play_store(
+      json_key: File.expand_path(ENV.fetch("PLAY_JSON_KEY_PATH")),
+      track: options[:track] || "internal",
+      aab: lane_context[SharedValues::GRADLE_AAB_OUTPUT_PATH],
+      metadata_path: "store/android/metadata"
+    )
+  end
+end
