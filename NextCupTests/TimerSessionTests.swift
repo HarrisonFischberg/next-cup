@@ -81,10 +81,12 @@ struct TimerSessionTests {
   }
 
   @Test func stepWeightsInTheTextFollowTheDose() {
-    #expect(TimerPlanBuilder.scaledWeights(in: "Pour to 500 g in the centre.", by: 0.806)
-      == "Pour to 403 g in the centre.")
-    #expect(TimerPlanBuilder.scaledWeights(in: "Stop at 36g, about 30 s.", by: 0.5)
-      == "Stop at 18g, about 30 s.")
+    #expect(
+      TimerPlanBuilder.scaledWeights(in: "Pour to 500 g in the centre.", by: 0.806)
+        == "Pour to 403 g in the centre.")
+    #expect(
+      TimerPlanBuilder.scaledWeights(in: "Stop at 36g, about 30 s.", by: 0.5)
+        == "Stop at 18g, about 30 s.")
     #expect(TimerPlanBuilder.scaledWeights(in: "Pour to 500 g.", by: 1) == "Pour to 500 g.")
   }
 
