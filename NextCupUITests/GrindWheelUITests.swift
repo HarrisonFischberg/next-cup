@@ -1,6 +1,6 @@
 import XCTest
 
-/// The grind setting is a wheel in the grinder's own notation, on the brew form and on
+/// The grind setting is a stepper in the grinder's own notation, on the brew form and on
 /// Brew setup. Screenshots are written while `docs/design/grind-wheel/.capture` exists,
 /// named with TEST_RUNNER_CAPTURE_PREFIX (default new_).
 final class GrindWheelUITests: XCTestCase {
@@ -18,10 +18,6 @@ final class GrindWheelUITests: XCTestCase {
     ]
     app.launch()
     func element(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
-    func wheel(_ id: String) -> XCUIElement {
-      let wheel = app.pickerWheels[id]
-      return wheel.exists ? wheel : app.pickers[id].pickerWheels.firstMatch
-    }
     func shot(_ name: String) throws {
       guard capture else { return }
       sleep(1)
@@ -32,7 +28,7 @@ final class GrindWheelUITests: XCTestCase {
       for _ in 0..<8 where !(target.exists && target.isHittable) { app.swipeUp() }
     }
 
-    // Brew form: choose a Comandante, then turn its wheel to 24 clicks.
+    // Brew form: choose a Comandante, then step it to 24 clicks.
     XCTAssertTrue(element("tab.root.journal").waitForExistence(timeout: 10))
     app.buttons["Log a brew"].firstMatch.tap()
     XCTAssertTrue(element("destination.brew.new").waitForExistence(timeout: 5))
@@ -46,16 +42,11 @@ final class GrindWheelUITests: XCTestCase {
     app.buttons["Comandante C40 MK4"].tap()
     let grind = element("brewform.grind")
     for _ in 0..<8 where !(grind.exists && grind.isHittable) { app.swipeDown() }
-    if app.textFields["brewform.grind"].exists {
-      grind.tap()
-      grind.typeText("24\n")
-    } else {
-      wheel("brewform.grind").adjust(toPickerWheelValue: "24")
-      XCTAssertEqual(wheel("brewform.grind").value as? String, "24")
-    }
+    app.step("brewform.grind", to: 24)
+    XCTAssertEqual(grind.value as? String, "24 clicks")
     try shot("brew-form-grind")
 
-    // Brew setup: saving makes the Comandante the setup's grinder; its wheel rests on
+    // Brew setup: saving makes the Comandante the setup's grinder; its stepper rests on
     // the guide's starting point.
     for _ in 0..<8 where !app.buttons["Increase Dose"].isHittable { app.swipeDown() }
     app.buttons["Increase Dose"].tap()
@@ -70,9 +61,7 @@ final class GrindWheelUITests: XCTestCase {
     let setup = element("recipe.grindSetting")
     XCTAssertTrue(setup.waitForExistence(timeout: 5))
     scrollTo(setup)
-    if !app.textFields["recipe.grindSetting"].exists {
-      XCTAssertEqual(wheel("recipe.grindSetting").value as? String, "20")
-    }
+    XCTAssertEqual(setup.value as? String, "20 clicks")
     try shot("brew-setup-grind")
   }
 }
