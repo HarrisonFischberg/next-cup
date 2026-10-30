@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "NextCup"
-include(":core")
+include(":app", ":core")

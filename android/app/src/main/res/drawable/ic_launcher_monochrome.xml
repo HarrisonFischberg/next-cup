@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- design/app-icon/brew-ring.svg, scaled into the adaptive icon's safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="1024" android:viewportHeight="1024">
+    <group android:pivotX="512" android:pivotY="512" android:scaleX="0.86" android:scaleY="0.86">
+        <path android:pathData="M182,512 a330,330 0 1,0 660,0 a330,330 0 1,0 -660,0" android:strokeColor="#66FFFFFF" android:strokeWidth="30" android:fillColor="#00000000" />
+        <path android:pathData="M512,182 A330,330 0 1,1 182,512" android:strokeColor="#FFFFFF" android:strokeWidth="30" android:strokeLineCap="round" android:fillColor="#00000000" />
+        <path android:pathData="M156,512 a26,26 0 1,0 52,0 a26,26 0 1,0 -52,0" android:fillColor="#FFFFFF" />
+        <path android:pathData="M385,440 L605,440 L605,594 Q605,640 559,640 L431,640 Q385,640 385,594 Z" android:strokeColor="#FFFFFF" android:strokeWidth="30" android:strokeLineJoin="round" android:fillColor="#00000000" />
+        <path android:pathData="M605,490 C725,480 725,570 605,560" android:strokeColor="#FFFFFF" android:strokeWidth="30" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#00000000" />
+        <path android:pathData="M455,400 C415,355 495,385 455,320" android:strokeColor="#FFFFFF" android:strokeWidth="24" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#00000000" />
+        <path android:pathData="M535,400 C495,355 575,385 535,320" android:strokeColor="#FFFFFF" android:strokeWidth="24" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#00000000" />
+    </group>
+</vector>
