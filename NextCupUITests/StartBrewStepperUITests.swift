@@ -2,14 +2,14 @@ import XCTest
 
 /// Start brew and Log a brew: the grind and "How much coffee?" are − / + steppers, so a scroll past them
 /// cannot change them; holding the number opens a dial. Screenshots are written while
-/// `docs/design/start-brew-stepper/.capture` exists, named with CAPTURE_PREFIX (default new_)
+/// `docs/design/matching-steppers/.capture` exists, named with CAPTURE_PREFIX (default new_)
 /// and CAPTURE_SUFFIX (e.g. _dark).
 final class StartBrewStepperUITests: XCTestCase {
   @MainActor
   func testTheGrindAndAmountStepAndHoldingOpensTheDial() throws {
     let folder = URL(fileURLWithPath: #filePath)
       .deletingLastPathComponent().deletingLastPathComponent()
-      .appendingPathComponent("docs/design/start-brew-stepper")
+      .appendingPathComponent("docs/design/matching-steppers")
     let capture = FileManager.default.fileExists(
       atPath: folder.appendingPathComponent(".capture").path)
     let env = ProcessInfo.processInfo.environment
@@ -47,13 +47,15 @@ final class StartBrewStepperUITests: XCTestCase {
     let formGrind = element("brewform.grind")
     for _ in 0..<8 where !(formGrind.exists && formGrind.isHittable) { app.swipeDown() }
     app.step("brewform.grind", to: 20)
+    XCTAssertTrue(app.staticTexts["Hold for dial"].exists)
     try shot("log-brew")
     formGrind.press(forDuration: 0.8)
     XCTAssertTrue(element("dial.popup").waitForExistence(timeout: 2))
     try shot("log-brew-hold")
     app.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.75)).tap()
     XCTAssertFalse(element("dial.popup").waitForExistence(timeout: 1))
-    for _ in 0..<8 where !app.buttons["Increase Dose"].isHittable { app.swipeDown() }
+    let increaseDose = app.buttons["Increase Dose"]
+    for _ in 0..<8 where !(increaseDose.exists && increaseDose.isHittable) { app.swipeDown() }
     app.buttons["Increase Dose"].tap()
     app.buttons["Increase Water"].tap()
     app.buttons["Save brew"].tap()
@@ -90,7 +92,22 @@ final class StartBrewStepperUITests: XCTestCase {
     XCTAssertTrue(element("recipe.yield.tuning").waitForExistence(timeout: 5))
     XCTAssertNotEqual(dose.value as? String, recipeDose, "the amount did not change the dose")
 
+    // Grind, amount and dose are the same row: same label, − and + at the same place.
+    XCTAssertEqual(app.staticTexts.matching(identifier: "Hold for dial").count, 3)
+    let minus = ["recipe.grindSetting", "recipe.yield", "stepper.dose.value"]
+      .map { app.buttons["\($0).decrease"].frame.minX }
+    XCTAssertEqual(Set(minus).count, 1, "the − buttons do not line up: \(minus)")
     try shot("start-brew")
+
+    // The dose dial works like the others, and Reset puts the recipe's dose back.
+    dose.press(forDuration: 0.8)
+    XCTAssertTrue(element("dial.popup").waitForExistence(timeout: 2))
+    try shot("start-brew-dose-hold")
+    app.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.15)).tap()
+    XCTAssertFalse(element("dial.popup").waitForExistence(timeout: 1))
+    element("recipe.dose.reset").tap()
+    XCTAssertEqual(dose.value as? String, recipeDose)
+
     // Holding the number opens the dial; a tap outside closes it.
     grind.press(forDuration: 0.8)
     XCTAssertTrue(element("dial.popup").waitForExistence(timeout: 2))
