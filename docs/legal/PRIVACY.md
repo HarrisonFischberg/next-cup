@@ -33,6 +33,8 @@ Only in these cases:
 
 - **Barcode lookup (optional).** When you scan the barcode on a coffee bag, only the barcode number is sent to Open Food Facts (world.openfoodfacts.org), a free public product database, to look up the coffee's name and brand. Nothing else goes with it: no account, no identifier and no location. The answer is filled into the form for you to check, and nothing is saved until you tap Save. The camera view used for scanning stays on your phone and is not recorded.
 
+- **QR codes on bags (optional).** When you scan a QR code on a coffee bag and it holds a web link, Next Cup opens that link once, the way a browser would but without cookies, to read the coffee's details from the page. The website the code points to (usually the roaster's) sees that request, including your IP address, under its own terms; nothing else is sent. A QR code that is not a link is read on your phone only. What the page says is filled into the form for you to check, and nothing is saved until you tap Save.
+
 Any other request is not made by the app. Photos are picked with the system photo picker, so Next Cup cannot see the rest of your library. When you choose Take a photo, iOS asks for camera access first; the camera is used only while it is open.
 
 ## What Rare Creatures LLC collects
