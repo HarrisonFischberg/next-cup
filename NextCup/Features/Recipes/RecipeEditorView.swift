@@ -91,9 +91,10 @@ struct RecipeEditorView: View {
           Text(
             target.isPrepared
               ? "Saved as a new recipe in your library when you tap Save."
-              : "Your changes are saved as a new recipe. The original stays as it is.")
-            .font(.footnote).foregroundStyle(DS.ink2)
-            .listRowBackground(DS.bg)
+              : "Your changes are saved as a new recipe. The original stays as it is."
+          )
+          .font(.footnote).foregroundStyle(DS.ink2)
+          .listRowBackground(DS.bg)
         }
         basics
         numbers
