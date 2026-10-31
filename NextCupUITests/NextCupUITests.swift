@@ -606,10 +606,10 @@ final class NextCupUITests: XCTestCase {
       "the method is set: \(app.debugDescription)")
   }
 
-  /// Start brew: the pencil types a dose in grams; water scales and pour-over times stretch gently.
+  /// Start brew: stepping the dose to 30 g scales water and pour-over times stretch gently.
   /// After Start, the time stays on screen.
   @MainActor
-  func testTypingADoseScalesWaterAndPourTimesAndTheTimerStaysInView() throws {
+  func testSteppingADoseScalesWaterAndPourTimesAndTheTimerStaysInView() throws {
     let app = launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
     app.tabBars.buttons["Brew"].tap()
@@ -617,10 +617,7 @@ final class NextCupUITests: XCTestCase {
     app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Balanced cone'")).firstMatch
       .tap()
     XCTAssertTrue(element(app, "stepper.dose.value").waitForExistence(timeout: 5))
-    app.buttons["Type the dose"].tap()
-    let value = element(app, "stepper.dose.field")
-    XCTAssertTrue(value.waitForExistence(timeout: 5))
-    value.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 6) + "30")
+    app.step("stepper.dose.value", to: 30)
     let doubled = NSPredicate(format: "label CONTAINS %@", "500")
     expectation(for: doubled, evaluatedWith: element(app, "recipe.water"))
     waitForExpectations(timeout: 5)  // the water target follows the dose
@@ -630,9 +627,6 @@ final class NextCupUITests: XCTestCase {
     let capture = FileManager.default.fileExists(
       atPath: folderURL.appendingPathComponent(".capture").path)
     if capture { try save(app.screenshot(), "\(folderURL.path)/start-brew-top.png") }
-    // Done puts the keyboard away and the dose back on its stepper.
-    if app.buttons["Done"].exists { app.buttons["Done"].tap() }
-    XCTAssertTrue(element(app, "stepper.dose.value").waitForExistence(timeout: 5))
     app.buttons["Start brew"].tap()
     XCTAssertTrue(element(app, "timer.screen").waitForExistence(timeout: 5))
     app.buttons["Start"].tap()
