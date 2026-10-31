@@ -209,7 +209,7 @@ private struct RecipeDetailContent: View {
       }
       Button("No beans") {
         beanID = nil
-        grindSetting = ""
+        grindSetting = recipeGrind ?? ""
       }
       Divider()
       Button("Add new beans", systemImage: "plus") { addingBean = true }
@@ -242,7 +242,7 @@ private struct RecipeDetailContent: View {
     if let grinder {
       let guide = GrinderGuide.find(grinder.name)
       let method = GrinderGuide.method(forMethodNamed: recipe.method?.name)
-      let recommended = method.flatMap { guide?.recommended(for: $0) }
+      let recommended = recipeGrind ?? method.flatMap { guide?.recommended(for: $0) }
       VStack(alignment: .leading, spacing: 0) {
         LabeledRow(symbol: "dial.low.fill", label: "Grinder setting", value: grinder.name) {
           EmptyView()
@@ -595,12 +595,23 @@ private struct RecipeDetailContent: View {
   // MARK: Actions
 
   /// Picks a bean and brings back its last grind, so the setup starts where it left off.
+  /// The recipe's own grind (from Create with AI), when it was written for this grinder.
+  private var recipeGrind: String? {
+    guard let setting = recipe.grindSetting, let grinder else { return nil }
+    if let name = recipe.grinderName, name.caseInsensitiveCompare(grinder.name) != .orderedSame {
+      return nil
+    }
+    return setting
+  }
+
+  /// The bean's last grind on this recipe wins, then the recipe's own, then the bean's last.
   private func choose(_ bean: Bean) {
     beanID = bean.id
-    let last = (bean.brewUses ?? []).compactMap(\.brew)
+    let brews = (bean.brewUses ?? []).compactMap(\.brew)
       .filter { !($0.grindSetting ?? "").isEmpty }
-      .max { $0.date < $1.date }
-    grindSetting = last?.grindSetting ?? grindSetting
+    let onRecipe = brews.filter { $0.recipe?.id == recipe.id }.max { $0.date < $1.date }
+    let last = brews.max { $0.date < $1.date }
+    grindSetting = onRecipe?.grindSetting ?? recipeGrind ?? last?.grindSetting ?? grindSetting
   }
 
   private func startBrew() {

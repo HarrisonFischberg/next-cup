@@ -32,6 +32,8 @@ struct RecipeEditorTests {
       draft.totalTimeS = 180
       draft.tuningNote = "Grind finer if sour."
       draft.credit = "House"
+      draft.grindSetting = "34"
+      draft.grinderName = "Baratza Encore"
       draft.steps = [
         RecipeStepDraft(
           kind: .pour, startOffsetS: 45, targetCumulativeWaterG: 250, instruction: "Pour."),
@@ -58,6 +60,7 @@ struct RecipeEditorTests {
     #expect(read.name == "Morning cone")
     #expect(read.doseG == 15 && read.waterG == 250 && read.tempC == 94 && read.totalTimeS == 180)
     #expect(read.tuningNote == "Grind finer if sour." && read.credit == "House")
+    #expect(read.grindSetting == "34" && read.grinderName == "Baratza Encore")
     #expect(read.steps.map(\.kind) == [.bloom, .pour, .drawdown])
     #expect(read.steps.map(\.startOffsetS) == [0, 45, 120])
     #expect(read.steps.map(\.targetCumulativeWaterG) == [45, 250, nil])
@@ -200,6 +203,7 @@ struct RecipeEditorTests {
     #expect(abs(back.waterG - 250) < 0.05)
     #expect(abs((back.tempC ?? 0) - 94) < 0.3)
     #expect(back.totalTimeS == 180)
+    #expect(back.grindSetting == "34" && back.grinderName == "Baratza Encore")
     #expect(back.steps.map(\.kind) == [.bloom, .pour, .drawdown])
   }
 
