@@ -18,6 +18,9 @@ struct RecipeCreateAIView: View {
   @State private var otherGrinder = ""
   @State private var note = ""
   @State private var working = false
+  /// True while the provider searches coffee sites, before it writes the recipe.
+  @State private var researching = false
+  @State private var job: Task<Void, Never>?
   @State private var error: String?
   @State private var disclosure: AIProvider?
   @FocusState private var typing: Bool
@@ -98,11 +101,18 @@ struct RecipeCreateAIView: View {
       .scrollContentBackground(.hidden)
       .scrollDismissesKeyboard(.interactively)
       .background(DS.bg)
+      .overlay {
+        if working { brewing.transition(.opacity) }
+      }
+      .animation(.easeInOut(duration: 0.25), value: working)
       .navigationTitle("Create with AI")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel", action: cancel).accessibilityIdentifier("recipe.create.cancel")
+          Button("Cancel") {
+            job?.cancel()
+            cancel()
+          }.accessibilityIdentifier("recipe.create.cancel")
         }
         ToolbarItemGroup(placement: .keyboard) {
           Spacer()
@@ -126,6 +136,13 @@ struct RecipeCreateAIView: View {
         }
       }
       .onAppear {
+        #if DEBUG
+          // Holds the brewing screen for screenshots and recordings.
+          if ProcessInfo.processInfo.arguments.contains("-brewingPreview") {
+            working = true
+            researching = true
+          }
+        #endif
         if methodID == nil { methodID = methods.first { !$0.isHidden }?.id }
         if grinderChoice == nil {
           grinderChoice =
@@ -137,16 +154,40 @@ struct RecipeCreateAIView: View {
     .accessibilityIdentifier("recipe.create")
   }
 
+  /// Covers the form while the AI works: the cup brews and the caption says which step.
+  private var brewing: some View {
+    VStack(spacing: DS.Space.lg) {
+      BrewingCupView().frame(maxWidth: 180)
+      VStack(spacing: DS.Space.xs) {
+        Text(researching ? "Reading coffee sites" : "Brewing your recipe")
+          .font(DS.Font.headline).foregroundStyle(DS.ink)
+        Text(
+          researching
+            ? "Looking up popular recipes for this brewer."
+            : "Working out the dose, water and every step."
+        )
+        .font(.body).foregroundStyle(DS.ink2).multilineTextAlignment(.center)
+      }
+      .accessibilityElement(children: .combine)
+    }
+    .padding(DS.Space.lg)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(DS.bg)
+    .accessibilityIdentifier("recipe.create.brewing")
+  }
+
   private var footer: String {
     guard available else {
       return "Turn on Apple Intelligence, or add a key in Settings > AI, to create recipes."
     }
     if let provider {
-      return "Sends the brewer, grinder and what you typed to \(provider). The recipe opens "
+      return "Sends the brewer, grinder and what you typed to \(provider), which searches "
+        + "popular coffee sites for recipes first and lists them as sources. The recipe opens "
         + "for you to check and save."
     }
-    return "Apple Intelligence writes it on this iPhone. It is a small model; an Anthropic or "
-      + "OpenAI key in Settings > AI writes far better recipes."
+    return "Apple Intelligence writes it on this iPhone. It is a small model and cannot search "
+      + "the web; an Anthropic or OpenAI key in Settings > AI researches coffee sites and "
+      + "writes far better recipes."
   }
 
   private func create() {
@@ -160,22 +201,36 @@ struct RecipeCreateAIView: View {
     var base = RecipeDraft()
     base.name = "\(method.name) (AI)"
     base.methodID = method.id
-    let payload = RecipeReviewAI.createPayload(
-      methodName: method.name, style: RecipeFormat.title(method.style), note: note,
-      grinder: grinderName)
+    let style = RecipeFormat.title(method.style)
+    let grinder = grinderName
     working = true
-    Task {
-      defer { working = false }
+    job = Task {
+      defer {
+        working = false
+        researching = false
+      }
+      // A failed search never blocks the recipe: it is written without sources instead.
+      researching = DirectAI.cloudProviderTitle != nil
+      let research = try? await DirectAI.research(
+        RecipeReviewAI.researchQuestion(
+          methodName: method.name, style: style, note: note, grinder: grinder),
+        system: RecipeReviewAI.researchSystem)
+      researching = false
+      guard !Task.isCancelled else { return }
+      let payload = RecipeReviewAI.createPayload(
+        methodName: method.name, style: style, note: note, grinder: grinder, research: research)
       do {
         let review = try await RecipeReviewAI.review(payload, base: base, mode: .create)
+        guard !Task.isCancelled else { return }
         var draft = review.draft
         draft.tuningNote = RecipeReviewAI.note(
-          review.summary.isEmpty ? nil : review.summary, grind: review.grind,
-          grinder: grinderName)
+          RecipeReviewAI.summary(review.summary, sources: research?.sources ?? []),
+          grind: review.grind, grinder: grinderName)
         draft.grindSetting = RecipeReviewAI.wheelSetting(review.grind, grinder: grinderName)
         draft.grinderName = draft.grindSetting == nil ? nil : grinderName
         created(draft)
       } catch {
+        guard !Task.isCancelled else { return }
         self.error =
           "The AI could not write a recipe that adds up. Try again, or say a little more."
       }
