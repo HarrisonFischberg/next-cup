@@ -38,6 +38,9 @@ struct RecipeEditorView: View {
 
   @Environment(\.modelContext) private var context
   @Query(sort: \BrewMethod.sortOrder) private var methods: [BrewMethod]
+  @Query private var grinders: [Grinder]
+  /// The grinder used last, so the AI can say where to start on it.
+  @AppStorage(BrewFormModel.lastGrinderKey) private var lastGrinderID = ""
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -64,6 +67,7 @@ struct RecipeEditorView: View {
       temperature: TemperatureUnit(rawValue: temperatureUnit) ?? .celsius)
   }
 
+  private var grinderName: String? { grinders.first { $0.id.uuidString == lastGrinderID }?.name }
   private var service: RecipeEditorService { RecipeEditorService(store: Store(context: context)) }
   private var hasChanges: Bool { loaded && fields != original }
   private var canSave: Bool {
@@ -325,8 +329,9 @@ struct RecipeEditorView: View {
       Text(
         !available
           ? "Turn on Apple Intelligence, or add a key in Settings > AI, to get suggestions."
-          : (provider.map {
-            "Sends the brewer, these numbers, the steps and your note to \($0). "
+          : (provider.map { name in
+            "Sends the brewer, \(grinderName.map { "your \($0), " } ?? "")these numbers, the "
+              + "steps and your note to \(name). "
           } ?? "Apple Intelligence reads the recipe on this iPhone. It is a small model; an "
             + "Anthropic or OpenAI key in Settings > AI rewrites steps far better. ")
             + "Nothing changes until you choose Use these steps."
@@ -395,7 +400,8 @@ struct RecipeEditorView: View {
     case .success(let read): draft = read
     }
     let methodName = methods.first { $0.id == draft.methodID }?.name
-    let payload = RecipeReviewAI.payload(draft, methodName: methodName, note: aiNote)
+    let payload = RecipeReviewAI.payload(
+      draft, methodName: methodName, note: aiNote, grinder: grinderName)
     reviewing = true
     Task {
       defer { reviewing = false }
@@ -418,6 +424,8 @@ struct RecipeEditorView: View {
     draft.steps = review.draft.steps
     draft.tempC = review.draft.tempC
     draft.totalTimeS = review.draft.totalTimeS
+    draft.tuningNote = RecipeReviewAI.note(
+      draft.tuningNote, grind: review.grind, grinder: grinderName)
     fields = RecipeEditorFields(draft: draft, units: units)
     removed = nil
     beforeAI = before

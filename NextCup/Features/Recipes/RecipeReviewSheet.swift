@@ -75,6 +75,7 @@ struct RecipeReviewSheet: View {
       "\(RecipeFormat.weight(draft.waterG, units)) water",
       draft.tempC.map { RecipeFormat.temperature($0, units) },
       draft.totalTimeS.map { "\(RecipeFormat.clock($0)) total" },
+      review.grind.isEmpty ? nil : "grind \(review.grind)",
     ]
     .compactMap { $0 }
     if !figures.isEmpty {
