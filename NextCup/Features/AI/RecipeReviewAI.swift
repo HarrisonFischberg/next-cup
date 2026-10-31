@@ -21,6 +21,8 @@ enum RecipeReviewAI {
     var draft: RecipeDraft
     /// Who answered: "Anthropic", "OpenAI" or "On this iPhone".
     var source: String
+    /// Where to start on the user's grinder, in its own units; empty when none was named.
+    var grind = ""
   }
 
   enum Mode { case improve, create }
@@ -37,6 +39,7 @@ enum RecipeReviewAI {
     "waterG": .number,
     "tempC": .number,
     "totalTimeS": .integer,
+    "grind": .string(),
     "steps": .array(
       .object([
         "kind": .string(allowed: StepKind.allCases.map(\.rawValue)),
@@ -58,7 +61,9 @@ enum RecipeReviewAI {
     and openValve for switchable drippers; heat, offHeat and brew for stovetop and machines. \
     Each instruction is one specific sentence the brewer can follow (what to do, how much, \
     how long) for that step only, never just the step's name. tempC is the water temperature \
-    in °C (0 for none). totalTimeS is the second the cup is done. summary is one or two \
+    in °C (0 for none). totalTimeS is the second the cup is done. grind is the setting to \
+    start at on their grinder, in its own units (for example "22 clicks"), inside the \
+    guide's range when one is given; empty when no grinder is named. summary is one or two \
     plain sentences on how the recipe works.
     """
 
@@ -90,11 +95,33 @@ enum RecipeReviewAI {
   /// Who the tap sends the recipe to; nil when Apple's model answers on the iPhone.
   static var cloudProviderTitle: String? { DirectAI.cloudProviderTitle }
 
-  /// The recipe as text: brewer, numbers, the user's note and every step. No photo, no
-  /// beans, no brews.
-  static func payload(_ draft: RecipeDraft, methodName: String?, note: String)
-    -> AIRequestPayload
-  {
+  /// The grinder's name, plus the bundled guide's starting range for this brewer when the
+  /// guide knows the grinder, so the AI's grind is grounded in real settings.
+  static func grinderLine(_ grinder: String?, methodName: String?) -> String? {
+    guard let name = grinder?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty
+    else { return nil }
+    guard let guide = GrinderGuide.find(name),
+      let range = GrinderGuide.method(forMethodNamed: methodName).flatMap(guide.range(for:))
+    else { return "Grinder: \(name)" }
+    return "Grinder: \(name) (guide's starting range for this brewer: \(range) \(guide.unitLabel))"
+  }
+
+  /// The tuning note with the AI's grind as its last line, replacing an earlier one. No
+  /// grind leaves the note as it was.
+  static func note(_ note: String?, grind: String, grinder: String?) -> String? {
+    guard let grinder, !grinder.isEmpty, !grind.isEmpty else { return note }
+    var lines = (note ?? "").components(separatedBy: "\n").filter { !$0.hasPrefix("Grind: ") }
+    while lines.last?.trimmingCharacters(in: .whitespaces).isEmpty == true { lines.removeLast() }
+    if !lines.isEmpty { lines.append("") }
+    lines.append("Grind: \(grind) on \(grinder).")
+    return lines.joined(separator: "\n")
+  }
+
+  /// The recipe as text: brewer, grinder, numbers, the user's note and every step. No
+  /// photo, no beans, no brews.
+  static func payload(
+    _ draft: RecipeDraft, methodName: String?, note: String, grinder: String? = nil
+  ) -> AIRequestPayload {
     var lines = [
       "Recipe: \(draft.name)" + (methodName.map { " on a \($0)" } ?? ""),
       "Dose: \(grams(draft.doseG)) g, total water: \(grams(draft.waterG)) g"
@@ -102,6 +129,7 @@ enum RecipeReviewAI {
         + ", temperature: " + (draft.tempC.map { "\(Int($0.rounded())) °C" } ?? "not set")
         + ", total time: " + (draft.totalTimeS.map { "\($0) s" } ?? "not set"),
     ]
+    if let line = grinderLine(grinder, methodName: methodName) { lines.append(line) }
     let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
     if !trimmed.isEmpty { lines.append("Their note: \(trimmed)") }
     lines.append("Steps:")
@@ -116,12 +144,15 @@ enum RecipeReviewAI {
       schemaName: "recipe_review", schema: schema)
   }
 
-  /// A new recipe: only the brewer and the note. No beans, brews or photos.
-  static func createPayload(methodName: String, style: String, note: String) -> AIRequestPayload {
+  /// A new recipe: only the brewer, the grinder and the note. No beans, brews or photos.
+  static func createPayload(
+    methodName: String, style: String, note: String, grinder: String? = nil
+  ) -> AIRequestPayload {
     let lines = [
       "Brewer: \(methodName) (\(style))",
+      grinderLine(grinder, methodName: methodName),
       "What they want: \(note.trimmingCharacters(in: .whitespacesAndNewlines))",
-    ]
+    ].compactMap { $0 }
     return AIRequestPayload(
       system: createSystem, userText: lines.joined(separator: "\n"),
       schemaName: "recipe_create", schema: schema)
@@ -193,7 +224,10 @@ enum RecipeReviewAI {
     return Review(
       summary: (answer["summary"] as? String ?? "").trimmingCharacters(
         in: .whitespacesAndNewlines),
-      changes: changes, draft: draft, source: source)
+      changes: changes, draft: draft, source: source,
+      grind: String(
+        (answer["grind"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+          .prefix(40)))
   }
 
   /// Valve steps only work the valve: one whose instruction also pours or doses (the next

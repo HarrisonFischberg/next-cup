@@ -65,7 +65,7 @@ struct KeychainStore: Sendable {
 /// the provider and model chosen for each feature. Never holds a key.
 struct AIPreferences {
   /// Bump when the disclosure text changes so it is shown again.
-  static let disclosureVersion = 5
+  static let disclosureVersion = 6
   /// Acceptance is per provider: the text names who receives the data.
   static func disclosureKey(_ provider: AIProvider) -> String {
     "ai.disclosure.\(provider.rawValue).version"
@@ -136,7 +136,7 @@ extension AIFeature {
   var sends: String {
     switch self {
     case .diagnosis:
-      "The one brew you ask about: its date, method, bean origin, process and roast, dose, water, grind, temperature, time, taste, rating and your notes. When you tap Tune on Start brew, the recipe name, brewer and that batch's dose, water, temperature and time. When you tap Improve with AI on a recipe, its name, brewer, dose, water, temperature, time, every step with its instruction, and your note. When you tap Create with AI, the brewer you pick and what you type."
+      "The one brew you ask about: its date, method, bean origin, process and roast, dose, water, grind, temperature, time, taste, rating and your notes. When you tap Tune on Start brew, the recipe name, brewer and that batch's dose, water, temperature and time. When you tap Improve with AI on a recipe, its name, brewer, the name of the grinder you used last, dose, water, temperature, time, every step with its instruction, and your note. When you tap Create with AI, the brewer and grinder you pick and what you type."
     case .insights:
       "Up to the 8 most recent brews of one coffee, each with its date, method, bean origin, process and roast, dose, water, grind, temperature, time, taste, rating and your notes."
     case .bagRecognition:

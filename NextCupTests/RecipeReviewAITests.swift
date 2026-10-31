@@ -29,6 +29,7 @@ struct RecipeReviewAITests {
       "summary": "Split the pour so the cone never overflows.",
       "changes": [["what": "Two pours", "why": "The cone holds about 400 g."]],
       "name": "", "doseG": 0, "waterG": 0, "tempC": 95, "totalTimeS": 270, "steps": steps,
+      "grind": "",
     ]
   }
 
@@ -161,6 +162,36 @@ struct RecipeReviewAITests {
       payload.userText
         == "Brewer: Switchable dripper (Immersion)\nWhat they want: 600 g, cone holds 400 g")
     #expect(payload.imageJPEG == nil)
+  }
+
+  @Test func theGrinderGoesWithTheGuidesRangeWhenItIsKnown() {
+    let known = RecipeReviewAI.createPayload(
+      methodName: "Cone dripper", style: "Pour-over", note: "A bright cup",
+      grinder: "comandante c40 mk4")
+    #expect(
+      known.userText.contains(
+        "Grinder: comandante c40 mk4 (guide's starting range for this brewer: 15 – 25 clicks)"))
+    let typed = RecipeReviewAI.payload(
+      base(), methodName: "Switchable dripper", note: "", grinder: " My old Krups ")
+    #expect(typed.userText.contains("Grinder: My old Krups\n"))
+    #expect(!RecipeReviewAI.payload(base(), methodName: nil, note: "").userText.contains("Grinder"))
+  }
+
+  @Test func theGrindIsKeptAndWrittenIntoTheNote() throws {
+    var raw = answer(steps: [["kind": "pour", "atS": 0, "waterG": 615, "instruction": ""]])
+    raw["grind"] = " 22 clicks "
+    let review = try #require(RecipeReviewAI.parse(raw, base: base(), source: "x"))
+    #expect(review.grind == "22 clicks")
+    let note = RecipeReviewAI.note("Sweet.", grind: review.grind, grinder: "C40")
+    #expect(note == "Sweet.\n\nGrind: 22 clicks on C40.")
+    // A second suggestion replaces the first grind line instead of stacking.
+    #expect(
+      RecipeReviewAI.note(note, grind: "20 clicks", grinder: "C40")
+        == "Sweet.\n\nGrind: 20 clicks on C40.")
+    #expect(RecipeReviewAI.note(nil, grind: "20", grinder: "C40") == "Grind: 20 on C40.")
+    // No grinder or no grind leaves the note alone.
+    #expect(RecipeReviewAI.note(note, grind: "", grinder: "C40") == note)
+    #expect(RecipeReviewAI.note("Sweet.", grind: "20", grinder: nil) == "Sweet.")
   }
 
   @Test func valveStepsOnlyWorkTheValve() throws {
