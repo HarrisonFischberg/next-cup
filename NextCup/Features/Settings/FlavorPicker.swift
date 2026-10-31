@@ -7,48 +7,30 @@ struct FlavorPicker: View {
 
   @AppStorage(AppStyle.storageKey) private var style = AppStyle.sundayStudio.rawValue
   @Environment(\.dynamicTypeSize) private var dts
-  @State private var showsAll = false
-
-  /// The owner's three, plus the chosen look when it is another; the rest of the offered
-  /// looks wait behind More looks.
-  private static let featured: [AppStyle] = [.sundayStudio, .morningEdition, .steelBlue]
-  private var shown: [AppStyle] {
-    showsAll
-      ? AppStyle.offered
-      : Self.featured + (Self.featured.contains(AppStyle.current) ? [] : [AppStyle.current])
-  }
 
   /// The tiles in rows of two (one at accessibility sizes). A plain Grid, not a lazy one:
-  /// inside a List row a LazyVGrid left a screen of blank space after More looks.
+  /// inside a List row a LazyVGrid left a screen of blank space below the tiles.
   private var rows: [[AppStyle]] {
     let count = dts.isAccessibilitySize ? 1 : 2
-    return stride(from: 0, to: shown.count, by: count).map {
-      Array(shown[$0..<min($0 + count, shown.count)])
+    return stride(from: 0, to: AppStyle.offered.count, by: count).map {
+      Array(AppStyle.offered[$0..<min($0 + count, AppStyle.offered.count)])
     }
   }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: DS.Space.lg) {
-      Grid(horizontalSpacing: DS.Space.md, verticalSpacing: DS.Space.md) {
-        ForEach(rows, id: \.self) { row in
-          GridRow(alignment: .top) {
-            ForEach(row) { option in
-              FlavorTile(style: option, isSelected: option == AppStyle.current) {
-                Self.keepPlace()
-                style = option.rawValue
-              }
-            }
-            if row.count == 1, !dts.isAccessibilitySize {
-              Color.clear.gridCellUnsizedAxes(.vertical)
+    Grid(horizontalSpacing: DS.Space.md, verticalSpacing: DS.Space.md) {
+      ForEach(rows, id: \.self) { row in
+        GridRow(alignment: .top) {
+          ForEach(row) { option in
+            FlavorTile(style: option, isSelected: option == AppStyle.current) {
+              Self.keepPlace()
+              style = option.rawValue
             }
           }
+          if row.count == 1, !dts.isAccessibilitySize {
+            Color.clear.gridCellUnsizedAxes(.vertical)
+          }
         }
-      }
-      if !showsAll {
-        Button("More looks (\(AppStyle.offered.count - shown.count))") { showsAll = true }
-          .font(.body.weight(.semibold)).foregroundStyle(DS.ink)
-          .frame(maxWidth: .infinity, minHeight: DS.Size.minTap)
-          .accessibilityIdentifier("settings.flavors.more")
       }
     }
     .padding(.vertical, DS.Space.sm)
