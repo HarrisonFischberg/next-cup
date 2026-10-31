@@ -102,7 +102,7 @@ struct SettingsRootView: View {
         Text("Brewing")
       } footer: {
         Text(
-          "Brew sounds play even with the ringer switch off, and music plays at 20% volume. Music stays off while something else is playing."
+          "Brew sounds play even with the ringer switch off, and music plays at 34% volume. Music stays off while something else is playing."
         )
       }
       Section {
