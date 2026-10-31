@@ -914,6 +914,49 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(original.label.contains("15 g"), "the original is unchanged: \(original.label)")
   }
 
+  /// Long-pressing a recipe the user made offers Delete (after a confirmation); a
+  /// built-in recipe never offers it.
+  @MainActor
+  func testLongPressDeletesOnlyARecipeTheUserMade() {
+    let app = launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Brew"].tap()
+    let search = element(app, "recipes.search")
+    XCTAssertTrue(search.waitForExistence(timeout: 5))
+    search.tap()
+    search.typeText("Balanced cone\n")
+    let named = { (format: String) in
+      app.buttons.matching(NSPredicate(format: format)).firstMatch
+    }
+    let original = named("label CONTAINS[c] 'Balanced cone' AND NOT label CONTAINS[c] 'copy'")
+    XCTAssertTrue(original.waitForExistence(timeout: 5))
+    original.press(forDuration: 1)
+    XCTAssertTrue(app.buttons["Customize"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.buttons["Delete"].exists, "a built-in recipe offers no Delete")
+    app.buttons["Customize"].tap()
+    XCTAssertTrue(element(app, "recipe.editor").waitForExistence(timeout: 5))
+    app.buttons["recipe.editor.save"].tap()
+    XCTAssertTrue(element(app, "recipe.editor").waitForNonExistence(timeout: 5))
+
+    // Narrow the search to the copy so its card is on screen.
+    app.buttons["Clear search"].firstMatch.tap()
+    search.tap()
+    search.typeText("copy\n")
+    let copy = named("label CONTAINS[c] 'Balanced cone (copy)'")
+    XCTAssertTrue(copy.waitForExistence(timeout: 5))
+    copy.press(forDuration: 1)
+    XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 5))
+    app.buttons["Delete"].tap()
+    let confirm = app.buttons["Delete recipe"].firstMatch
+    XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+    confirm.tap()
+    XCTAssertTrue(copy.waitForNonExistence(timeout: 5))
+    app.buttons["Clear search"].firstMatch.tap()
+    search.tap()
+    search.typeText("Balanced cone\n")
+    XCTAssertTrue(original.waitForExistence(timeout: 5), "the built-in stays")
+  }
+
   private func openMethods(_ app: XCUIApplication) {
     openSettings(app)
     scrollUntilHittable(element(app, "settings.methods"), in: app)  // below the looks grid
