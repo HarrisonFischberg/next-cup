@@ -232,6 +232,41 @@ struct RecipeEditorTests {
     }
   }
 
+  // MARK: Delete
+
+  @Test func deletingAUserRecipeKeepsItsBrewsAndRemovesItsSteps() throws {
+    let harness = try Harness()
+    let context = harness.container.mainContext
+    let recipe = try harness.service.save(harness.makeDraft()).get()
+    let brew = Brew()
+    brew.method = harness.method
+    brew.recipe = recipe
+    brew.doseG = 15
+    brew.notes = "Bright."
+    context.insert(brew)
+    try context.save()
+
+    try harness.service.delete(recipe).get()
+
+    #expect(try context.fetch(FetchDescriptor<Recipe>()).isEmpty)
+    #expect(try context.fetch(FetchDescriptor<RecipeStep>()).isEmpty)
+    let kept = try #require(try context.fetch(FetchDescriptor<Brew>()).first)
+    #expect(kept.recipe == nil)
+    #expect(kept.method?.id == harness.method.id)
+    #expect(kept.doseG == 15 && kept.notes == "Bright.")
+  }
+
+  @Test func builtInRecipesCannotBeDeleted() throws {
+    let harness = try Harness()
+    let builtIn = Recipe(name: "Balanced cone", doseG: 15, waterG: 250)
+    builtIn.builtInKey = "cone-balanced"
+    harness.container.mainContext.insert(builtIn)
+    try harness.container.mainContext.save()
+
+    #expect(throws: RecipeEditorError.builtIn) { try harness.service.delete(builtIn).get() }
+    #expect(try harness.container.mainContext.fetch(FetchDescriptor<Recipe>()).count == 1)
+  }
+
   // MARK: Bundled content
 
   @Test func bundleHasTheSwitchableDripperAndInvertedPressWithTheirOwnSteps() throws {

@@ -39,6 +39,7 @@ enum RecipeEditorError: Error, Equatable {
   case targetGoesBackwards(step: Int)
   case targetExceedsWater(step: Int)
   case notFound
+  case builtIn
   case unreadable(field: String)
   case saveFailed(String)
 
@@ -54,6 +55,7 @@ enum RecipeEditorError: Error, Equatable {
       "Step \(step) has less water than an earlier step. Targets are running totals."
     case .targetExceedsWater(let step): "Step \(step) has more water than the recipe uses."
     case .notFound: "This recipe is no longer in your library."
+    case .builtIn: "Built-in recipes cannot be deleted."
     case .saveFailed(let reason): "The recipe could not be saved: \(reason)"
     }
   }
@@ -158,6 +160,20 @@ struct RecipeEditorService {
     switch store.save() {
     case .success:
       return .success(recipe)
+    case .failure(.saveFailed(let reason)):
+      context.rollback()
+      return .failure(.saveFailed(reason))
+    }
+  }
+
+  /// Deletes a recipe the user made. Built-ins stay (they ship with the app). Brews logged
+  /// from it keep their numbers; only their link to the recipe is cleared (nullify rule).
+  func delete(_ recipe: Recipe) -> Result<Void, RecipeEditorError> {
+    guard recipe.builtInKey == nil else { return .failure(.builtIn) }
+    context.delete(recipe)
+    switch store.save() {
+    case .success:
+      return .success(())
     case .failure(.saveFailed(let reason)):
       context.rollback()
       return .failure(.saveFailed(reason))
