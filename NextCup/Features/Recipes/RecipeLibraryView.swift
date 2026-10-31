@@ -16,6 +16,10 @@ struct RecipeLibraryView: View {
   @State private var creatingWithAI = false
   /// The recipe "Create with AI" wrote, opened in the editor once its sheet is gone.
   @State private var aiDraft: RecipeDraft?
+  /// The recipe waiting on the Delete confirmation.
+  @State private var deleting: Recipe?
+  @State private var deleteError: String?
+  @Environment(\.modelContext) private var context
   @Environment(\.dynamicTypeSize) private var dts
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
@@ -70,6 +74,11 @@ struct RecipeLibraryView: View {
           .accessibilityIdentifier("recipes.add")
         }
         searchField
+        if let deleteError {
+          StateBanner(kind: .error, message: deleteError, actionTitle: "Dismiss") {
+            self.deleteError = nil
+          }
+        }
         if recipes.isEmpty {
           EmptyState(
             title: "No recipes yet",
@@ -111,7 +120,29 @@ struct RecipeLibraryView: View {
         creatingWithAI = false
       }
     }
+    .confirmationDialog(
+      "Delete “\(deleting?.name ?? "")”?",
+      isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+      titleVisibility: .visible, presenting: deleting
+    ) { recipe in
+      Button("Delete recipe", role: .destructive) { delete(recipe) }
+        .accessibilityIdentifier("recipe.delete.confirm")
+      Button("Cancel", role: .cancel) {}
+    } message: { _ in
+      Text("Brews you logged with it stay in your journal.")
+    }
     .accessibilityIdentifier("tab.root.recipes")
+  }
+
+  private func delete(_ recipe: Recipe) {
+    deleting = nil
+    let service = RecipeEditorService(store: Store(context: context))
+    if case .failure(let failure) = service.delete(recipe) {
+      UINotificationFeedbackGenerator().notificationOccurred(.error)
+      deleteError = "The recipe was not deleted. \(failure.message)"
+    } else {
+      UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
   }
 
   /// Search, drawn on the page under the title rather than in the bar.
@@ -216,6 +247,10 @@ struct RecipeLibraryView: View {
               systemImage: recipe.builtInKey == nil
                 ? "plus.square.on.square" : "slider.horizontal.3"
             ) { editor = .copy(recipe.id) }
+            if recipe.builtInKey == nil {
+              Button("Delete", systemImage: "trash", role: .destructive) { deleting = recipe }
+                .accessibilityIdentifier("recipe.delete")
+            }
           }
           .accessibilityIdentifier("recipe.row.\(recipe.id.uuidString)")
       }
