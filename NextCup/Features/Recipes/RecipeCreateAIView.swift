@@ -2,22 +2,33 @@ import NextCupKit
 import SwiftData
 import SwiftUI
 
-/// "Create with AI" from the Brew tab's +: pick a brewer, say what you want, and the AI
-/// writes a whole recipe. It opens in the recipe editor to check and Save; nothing is
+/// "Create with AI" from the Brew tab's +: pick a brewer and grinder, say what you want,
+/// and the AI writes a whole recipe with a grind to start at. It opens in the recipe editor to check and Save; nothing is
 /// stored before that.
 struct RecipeCreateAIView: View {
   let created: (RecipeDraft) -> Void
   let cancel: () -> Void
 
   @Query(sort: \BrewMethod.sortOrder) private var methods: [BrewMethod]
+  @Query(sort: \Grinder.name) private var grinders: [Grinder]
+  @AppStorage(BrewFormModel.lastGrinderKey) private var lastGrinderID = ""
   @State private var methodID: UUID?
+  /// A grinder's name, `otherTag` for a typed one, or "" for none.
+  @State private var grinderChoice: String?
+  @State private var otherGrinder = ""
   @State private var note = ""
   @State private var working = false
   @State private var error: String?
   @State private var disclosure: AIProvider?
   @FocusState private var typing: Bool
 
+  private static let otherTag = "__other__"
   private var method: BrewMethod? { methods.first { $0.id == methodID } }
+  private var grinderName: String? {
+    let name = (grinderChoice == Self.otherTag ? otherGrinder : grinderChoice ?? "")
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    return name.isEmpty ? nil : name
+  }
   private var provider: String? {
     DirectAI.pendingDisclosure?.title ?? RecipeReviewAI.cloudProviderTitle
   }
@@ -40,6 +51,28 @@ struct RecipeCreateAIView: View {
           }
           .frame(minHeight: DS.Size.control)
           .accessibilityIdentifier("recipe.create.method")
+        }
+        .listRowBackground(DS.paper)
+        Section {
+          Picker("Grinder", selection: $grinderChoice) {
+            Text("None").tag(String?.some(""))
+            ForEach(grinders) { grinder in
+              Text(grinder.name).tag(String?.some(grinder.name))
+            }
+            Text("Other…").tag(String?.some(Self.otherTag))
+          }
+          .frame(minHeight: DS.Size.control)
+          .accessibilityIdentifier("recipe.create.grinder")
+          if grinderChoice == Self.otherTag {
+            TextField("Grinder name, e.g. Comandante C40", text: $otherGrinder)
+              .textInputAutocapitalization(.words).autocorrectionDisabled()
+              .focused($typing).frame(minHeight: DS.Size.control)
+              .accessibilityIdentifier("recipe.create.grinderName")
+          }
+        } header: {
+          Text("Grinder")
+        } footer: {
+          Text("The recipe says where to start on it.")
         }
         .listRowBackground(DS.paper)
         Section {
@@ -94,6 +127,11 @@ struct RecipeCreateAIView: View {
       }
       .onAppear {
         if methodID == nil { methodID = methods.first { !$0.isHidden }?.id }
+        if grinderChoice == nil {
+          grinderChoice =
+            grinders.first { $0.id.uuidString == lastGrinderID }?.name
+            ?? grinders.first?.name ?? ""
+        }
       }
     }
     .accessibilityIdentifier("recipe.create")
@@ -104,8 +142,8 @@ struct RecipeCreateAIView: View {
       return "Turn on Apple Intelligence, or add a key in Settings > AI, to create recipes."
     }
     if let provider {
-      return "Sends the brewer and what you typed to \(provider). The recipe opens for you to "
-        + "check and save."
+      return "Sends the brewer, grinder and what you typed to \(provider). The recipe opens "
+        + "for you to check and save."
     }
     return "Apple Intelligence writes it on this iPhone. It is a small model; an Anthropic or "
       + "OpenAI key in Settings > AI writes far better recipes."
@@ -123,14 +161,17 @@ struct RecipeCreateAIView: View {
     base.name = "\(method.name) (AI)"
     base.methodID = method.id
     let payload = RecipeReviewAI.createPayload(
-      methodName: method.name, style: RecipeFormat.title(method.style), note: note)
+      methodName: method.name, style: RecipeFormat.title(method.style), note: note,
+      grinder: grinderName)
     working = true
     Task {
       defer { working = false }
       do {
         let review = try await RecipeReviewAI.review(payload, base: base, mode: .create)
         var draft = review.draft
-        if !review.summary.isEmpty { draft.tuningNote = review.summary }
+        draft.tuningNote = RecipeReviewAI.note(
+          review.summary.isEmpty ? nil : review.summary, grind: review.grind,
+          grinder: grinderName)
         created(draft)
       } catch {
         self.error =
