@@ -54,10 +54,6 @@ private struct RecipeDetailContent: View {
   @State private var beanID: UUID?
   @State private var addingBean = false
   @State private var grindSetting = ""
-  @State private var doseText = ""
-  @FocusState private var typingDose: Bool
-  /// The pencil swaps the dose for a text field until the keyboard goes away.
-  @State private var editingDose = false
   @AppStorage(BrewFormModel.lastGrinderKey) private var lastGrinderID = ""
   @AppStorage(BrewYield.unitKey) private var yieldUnit = BrewYield.defaultUnit.rawValue
   /// The amount turned to on the wheel, in `yieldUnit`; nil keeps the recipe's dose.
@@ -140,17 +136,10 @@ private struct RecipeDetailContent: View {
           .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.md)
           .background(DS.bg, ignoresSafeAreaEdges: .bottom)
           .overlay(alignment: .top) { Hairline().opacity(0.5) }
-          .hiddenWhileTyping()
       }
     }
     .navigationDestination(item: $timerSetup) { TimerView(setup: $0) }
-    .scrollDismissesKeyboard(.interactively)
     .toolbar {
-      // The number pad has no return key; Done puts it away.
-      ToolbarItemGroup(placement: .keyboard) {
-        Spacer()
-        Button("Done") { typingDose = false }
-      }
       ToolbarItem(placement: .topBarTrailing) {
         Menu {
           if recipe.builtInKey == nil {
@@ -426,24 +415,15 @@ private struct RecipeDetailContent: View {
     }
   }
 
-  /// Dose: the same stepper row as the grind and the amount; the pencil types a dose.
-  /// Water and ratio follow it below.
+  /// Dose: the same stepper row as the grind and the amount. Water and ratio follow it below.
   private var doseControls: some View {
     VStack(alignment: .leading, spacing: 0) {
       HStack(spacing: DS.Space.sm) {
         Image(systemName: "scalemass.fill").font(.body.weight(.semibold))
           .foregroundStyle(DS.accent).frame(width: 28).accessibilityHidden(true)
         Text("Dose").font(.footnote).foregroundStyle(DS.ink2).fixedSize()
-        Spacer(minLength: DS.Space.sm)
-        Button {
-          editingDose = true
-        } label: {
-          Image(systemName: "pencil").font(.body.weight(.semibold)).foregroundStyle(DS.accent)
-            .frame(width: DS.Size.minTap, height: DS.Size.minTap)
-        }
-        .accessibilityLabel("Type the dose")
       }
-      .padding(.leading, DS.Space.md).padding(.trailing, DS.Space.xs).padding(.top, DS.Space.xs)
+      .padding([.horizontal, .top], DS.Space.md)
       let doses = doseStops
       let names = doses.map { RecipeFormat.weight($0, units, withSymbol: false) }
       DialStepper(
@@ -454,8 +434,7 @@ private struct RecipeDetailContent: View {
             guard let i = names.firstIndex(of: name) else { return }
             scaledDoseG = abs(doses[i] - recipe.doseG) < 0.0001 ? nil : doses[i]
           }),
-        unit: units.weightSymbol, identifier: "stepper.dose.value",
-        field: editingDose ? AnyView(doseField) : nil)
+        unit: units.weightSymbol, identifier: "stepper.dose.value")
       if scaledDoseG != nil {
         Button {
           scaledDoseG = nil
@@ -471,22 +450,6 @@ private struct RecipeDetailContent: View {
       }
     }
     .panel(DS.paper, border: DS.signal.opacity(0.5))
-    .onAppear { doseText = RecipeFormat.weight(doseG, units, withSymbol: false) }
-    .onChange(of: doseText) { _, typed in setTypedDose(typed) }
-    .onChange(of: typingDose) { _, typing in if !typing { editingDose = false } }
-    .onChange(of: doseG) { _, _ in
-      // The steppers moved the dose: show it, unless it is what was just typed.
-      let shown = RecipeFormat.weight(doseG, units, withSymbol: false)
-      if parsedDose(doseText) != parsedDose(shown) { doseText = shown }
-    }
-  }
-
-  private var doseField: some View {
-    TextField("Dose", text: $doseText).font(DS.Font.dataLarge).keyboardType(.decimalPad)
-      .multilineTextAlignment(.center).fixedSize().focused($typingDose)
-      .accessibilityLabel("Dose").accessibilityHint("Type a value")
-      .accessibilityIdentifier("stepper.dose.field")
-      .onAppear { typingDose = true }
   }
 
   /// The dose stepper's stops: every step up to twice the dose (at least 100 g), plus the
@@ -630,17 +593,6 @@ private struct RecipeDetailContent: View {
   }
 
   // MARK: Actions
-
-  /// A typed dose in the user's unit; anything not a positive number is ignored.
-  private func parsedDose(_ text: String) -> Double? {
-    Double(text.replacingOccurrences(of: ",", with: ".")).flatMap { $0 > 0 ? $0 : nil }
-  }
-
-  private func setTypedDose(_ text: String) {
-    guard let shown = parsedDose(text) else { return }
-    let grams = units.grams(fromDisplayWeight: shown)
-    scaledDoseG = abs(grams - recipe.doseG) < 0.0001 ? nil : grams
-  }
 
   /// Picks a bean and brings back its last grind, so the setup starts where it left off.
   private func choose(_ bean: Bean) {
