@@ -20,7 +20,7 @@ struct DialStepper: View {
   private var index: Int { options.firstIndex(of: selection) ?? 0 }
 
   var body: some View {
-    HStack(spacing: DS.Space.sm) {
+    HStack(spacing: 2) {
       Text("Hold for dial").font(.footnote).foregroundStyle(DS.ink2).layoutPriority(1)
       Spacer(minLength: DS.Space.sm)
       stepButton("minus", label: "Decrease \(title)", id: "decrease") { step(by: -1) }
@@ -39,7 +39,7 @@ struct DialStepper: View {
       if let unit { Text(unit).font(DS.Font.mono(.callout)) }
     }
     // One width for every row, so − and + sit at the same place on each.
-    .foregroundStyle(DS.ink).frame(minWidth: 112, minHeight: DS.Size.minTap)
+    .foregroundStyle(DS.ink).frame(minWidth: 100, minHeight: DS.Size.minTap)
     .contentShape(Rectangle())
     .gesture(hold)
     .anchorPreference(key: DialPopupKey.self, value: .bounds) { anchor in
@@ -98,9 +98,13 @@ struct DialStepper: View {
     _ symbol: String, label: String, id: String, action: @escaping () -> Void
   ) -> some View {
     Button(action: action) {
-      Image(systemName: symbol).font(.body.weight(.heavy)).foregroundStyle(DS.accent)
+      // A 38 pt ring with a fine glyph, inside the full 44 pt tap target.
+      Image(systemName: symbol).font(.system(size: 14, weight: .semibold))
+        .foregroundStyle(DS.accent)
+        .frame(width: 38, height: 38)
+        .overlay(Circle().strokeBorder(DS.accent, lineWidth: 1.25))
         .frame(width: DS.Size.minTap, height: DS.Size.minTap)
-        .overlay(Circle().strokeBorder(DS.accent, lineWidth: 1.5))
+        .contentShape(Rectangle())
     }
     .accessibilityLabel(label)
     .accessibilityIdentifier("\(identifier).\(id)")
