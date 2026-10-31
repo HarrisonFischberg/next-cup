@@ -168,9 +168,15 @@ struct RecipeReviewAITests {
     let known = RecipeReviewAI.createPayload(
       methodName: "Cone dripper", style: "Pour-over", note: "A bright cup",
       grinder: "comandante c40 mk4")
+    #expect(known.userText.contains("Grinder: comandante c40 mk4 (settings run from 0 finest"))
+    #expect(known.userText.contains("clicks; guide's starting range for this brewer: 15 – 25)"))
+    // The whole scale goes too, so "very coarse" can leave the pour-over range.
+    let encore = RecipeReviewAI.createPayload(
+      methodName: "Cone dripper", style: "Pour-over", note: "Very coarse", grinder: "Baratza Encore")
     #expect(
-      known.userText.contains(
-        "Grinder: comandante c40 mk4 (guide's starting range for this brewer: 15 – 25 clicks)"))
+      encore.userText.contains(
+        "Grinder: Baratza Encore (settings run from 0 finest to 40 coarsest on the dial; "
+          + "guide's starting range for this brewer: 7 – 18)"))
     let typed = RecipeReviewAI.payload(
       base(), methodName: "Switchable dripper", note: "", grinder: " My old Krups ")
     #expect(typed.userText.contains("Grinder: My old Krups\n"))
@@ -192,6 +198,16 @@ struct RecipeReviewAITests {
     // No grinder or no grind leaves the note alone.
     #expect(RecipeReviewAI.note(note, grind: "", grinder: "C40") == note)
     #expect(RecipeReviewAI.note("Sweet.", grind: "20", grinder: nil) == "Sweet.")
+  }
+
+  @Test func theGrindLandsOnTheGrindersWheel() {
+    #expect(RecipeReviewAI.wheelSetting("34", grinder: "Baratza Encore") == "34")
+    #expect(RecipeReviewAI.wheelSetting("about 36 on the dial", grinder: "Baratza Encore") == "36")
+    #expect(RecipeReviewAI.wheelSetting("24.0 clicks", grinder: "Comandante C40 MK4") == "24")
+    // A grinder the guide does not know keeps the number it was given.
+    #expect(RecipeReviewAI.wheelSetting("7 (coarse)", grinder: "My old Krups") == "7")
+    #expect(RecipeReviewAI.wheelSetting("coarse", grinder: "Baratza Encore") == nil)
+    #expect(RecipeReviewAI.wheelSetting("34", grinder: nil) == nil)
   }
 
   @Test func valveStepsOnlyWorkTheValve() throws {

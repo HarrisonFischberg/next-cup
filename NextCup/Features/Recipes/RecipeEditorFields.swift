@@ -25,6 +25,9 @@ struct RecipeEditorFields: Equatable {
   var includesIce = false
   var ice = ""
   var tuningNote = ""
+  /// Not shown as a field; kept so Save writes the AI's grind back.
+  var grindSetting: String?
+  var grinderName: String?
   var steps: [StepFields] = []
 
   init() {}
@@ -43,6 +46,7 @@ struct RecipeEditorFields: Equatable {
     includesIce = draft.includesIce
     ice = draft.iceG.map { Self.weightText($0, units) } ?? ""
     tuningNote = draft.tuningNote ?? ""
+    (grindSetting, grinderName) = (draft.grindSetting, draft.grinderName)
     steps = draft.steps.map {
       StepFields(
         id: $0.id, kind: $0.kind, time: RecipeFormat.clock($0.startOffsetS),
@@ -82,6 +86,7 @@ struct RecipeEditorFields: Equatable {
       draft.includesIce = includesIce
       draft.iceG = try number(ice, "Ice").get().map(units.grams(fromDisplayWeight:))
       draft.tuningNote = tuningNote
+      (draft.grindSetting, draft.grinderName) = (grindSetting, grinderName)
       for (index, step) in steps.enumerated() {
         var out = RecipeStepDraft(id: step.id, kind: step.kind)
         out.startOffsetS = try seconds(step.time, "Step \(index + 1) time").get() ?? 0

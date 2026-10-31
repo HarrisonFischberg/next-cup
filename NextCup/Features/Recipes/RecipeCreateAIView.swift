@@ -172,6 +172,8 @@ struct RecipeCreateAIView: View {
         draft.tuningNote = RecipeReviewAI.note(
           review.summary.isEmpty ? nil : review.summary, grind: review.grind,
           grinder: grinderName)
+        draft.grindSetting = RecipeReviewAI.wheelSetting(review.grind, grinder: grinderName)
+        draft.grinderName = draft.grindSetting == nil ? nil : grinderName
         created(draft)
       } catch {
         self.error =
