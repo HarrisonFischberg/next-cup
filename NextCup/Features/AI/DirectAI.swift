@@ -36,6 +36,18 @@ enum DirectAI {
     return provider.title
   }
 
+  /// Asks the keyed provider to search the web; nil when Apple's model would answer, since
+  /// it cannot browse.
+  static func research(_ question: String, system: String) async throws -> WebResearch? {
+    guard let (provider, model) = route, let kind = provider.kind else { return nil }
+    let keychain = KeychainStore()
+    let client = AIClient(
+      transport: URLSessionTransport(),
+      key: { _ in (try? keychain.key(for: provider)) ?? nil },
+      disclosureAccepted: { _ in true })
+    return try await client.research(question, system: system, provider: kind, model: model)
+  }
+
   /// Sends one payload and returns the decoded answer with who gave it: "Anthropic",
   /// "OpenAI" or "On this iPhone".
   static func send(_ payload: AIRequestPayload) async throws -> (

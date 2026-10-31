@@ -172,7 +172,8 @@ struct RecipeReviewAITests {
     #expect(known.userText.contains("clicks; guide's starting range for this brewer: 15 – 25)"))
     // The whole scale goes too, so "very coarse" can leave the pour-over range.
     let encore = RecipeReviewAI.createPayload(
-      methodName: "Cone dripper", style: "Pour-over", note: "Very coarse", grinder: "Baratza Encore")
+      methodName: "Cone dripper", style: "Pour-over", note: "Very coarse", grinder: "Baratza Encore"
+    )
     #expect(
       encore.userText.contains(
         "Grinder: Baratza Encore (settings run from 0 finest to 40 coarsest on the dial; "
@@ -234,5 +235,26 @@ struct RecipeReviewAITests {
           ["kind": "pour", "atS": 150, "waterG": 615, "instruction": "Pour the rest."],
         ]), base: base(), source: "x", mode: .create))
     #expect(missing.draft.steps.map(\.kind) == [.closeValve, .bloom, .openValve, .pour])
+  }
+
+  @Test func researchGoesIntoTheRecipeRequestAndItsPagesIntoTheNote() throws {
+    let source = WebSource(
+      title: "V60", url: try #require(URL(string: "https://beanbench.coffee/v60")))
+    let research = WebResearch(notes: "Most use 15 g to 250 g.", sources: [source])
+    let payload = RecipeReviewAI.createPayload(
+      methodName: "V60", style: "Pour over", note: "one cup", research: research)
+    #expect(payload.userText.hasSuffix("What coffee sites recommend:\nMost use 15 g to 250 g."))
+    #expect(
+      RecipeReviewAI.researchQuestion(
+        methodName: "V60", style: "Pour over", note: " one cup ", grinder: "Encore")
+        == "Brewer: V60 (Pour over)\nGrinder: Encore\nWhat they want: one cup")
+    let note = RecipeReviewAI.note(
+      RecipeReviewAI.summary("Bright and quick.", sources: [source]), grind: "18",
+      grinder: "Encore")
+    #expect(
+      note
+        == "Bright and quick.\n\nSources:\nV60: https://beanbench.coffee/v60\n\nGrind: 18 on Encore."
+    )
+    #expect(RecipeReviewAI.summary("", sources: []) == nil)
   }
 }
