@@ -1,6 +1,6 @@
 import XCTest
 
-/// Settings > Appearance after More looks and Settings > AI, then the Journal and Brew tabs in every look.
+/// Settings > Appearance with every look and Settings > AI, then the Journal and Brew tabs in every look.
 /// Runs only while `docs/design/looks/.capture` exists.
 final class LooksCaptureUITests: XCTestCase {
   static let styles = [
@@ -38,13 +38,11 @@ final class LooksCaptureUITests: XCTestCase {
       if index == 0 {
         app.tabBars.buttons["Journal"].tap()
         app.descendants(matching: .any)["journal.settings"].firstMatch.tap()
-        let more = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "More looks"))
-          .firstMatch
-        for _ in 0..<8 where !(more.exists && more.isHittable) { app.swipeUp() }
-        more.tap()
-        try shot("more-looks")
+        let looks = app.descendants(matching: .any)["settings.flavor.sundayStudio"].firstMatch
+        for _ in 0..<8 where !(looks.exists && looks.isHittable) { app.swipeUp() }
+        try shot("all-looks")
         app.swipeUp()
-        try shot("more-looks-scrolled")
+        try shot("all-looks-scrolled")
         let ai = app.descendants(matching: .any)["settings.ai"].firstMatch
         for _ in 0..<8 where !(ai.exists && ai.isHittable) { app.swipeUp() }
         ai.tap()
