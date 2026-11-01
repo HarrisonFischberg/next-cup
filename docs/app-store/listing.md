@@ -89,7 +89,7 @@ Decision of 2026-10-25, kept. The app's `PrivacyInfo.xcprivacy` says the same.
 - Tracking: **No**.
 - Data collected: **Yes**, two types:
   - **Photos or Videos**: purpose App Functionality; not linked to the user; not used for tracking.
-  - **Other User Content** (brew notes and journal entries sent for an AI answer): purpose App Functionality; not linked; not used for tracking.
+  - **Other User Content** (brew notes and journal entries, recipes and their steps, bean details and text typed for Create with AI, sent for an AI answer): purpose App Functionality; not linked; not used for tracking.
 - Everything else: not collected.
 
 Why not "Data Not Collected": a photo or brew notes leave the phone to OpenAI
@@ -97,6 +97,15 @@ or Anthropic when the user adds their own key and taps an AI action.
 Over-declaring is the safer error. Roaster search goes to Apple Maps (Apple's
 own service) and a barcode lookup sends only the barcode number to Open Food
 Facts; neither is personal data.
+
+Rechecked 2026-11-01 against Improve with AI, Create with AI, Ask AI for Next
+Cup (PR #76) and QR-code links: **no change to the answers**. The new AI
+features send recipe, bean and brew text, which is Other User Content, still
+only to the user's own provider on a tap. The provider's web search runs on
+the provider's side with the brewer, grinder, roast, taste or typed text, so
+the developer collects nothing new. A QR link is opened from the phone like a
+browser would; the site sees the request, the developer collects nothing.
+Nothing to change in App Store Connect.
 
 ## Export compliance
 
@@ -127,7 +136,7 @@ AI features: with no key, Next Cup uses Apple's on-device Foundation Models wher
 
 Permissions: camera only when the user taps Take a photo or scans a bag's barcode or QR code; location only when the user taps Use my location in roaster search (a typed city works without it); notifications only for an optional reminder to taste a saved brew.
 
-Network use: Apple Maps for roaster search, Open Food Facts for barcode lookups (barcode number only), the link on a bag's QR code when the user scans one (opened once, like a browser, to read the coffee's page), and the user's own AI provider if they add a key. No analytics, ads or tracking.
+Network use: Apple Maps for roaster search, Open Food Facts for barcode lookups (barcode number only), the link on a bag's QR code when the user scans one (opened once, like a browser, to read the coffee's page), and the user's own AI provider if they add a key (for Create with AI and Ask AI for Next Cup the provider may also run up to three web searches on its own side). No analytics, ads or tracking.
 
 Privacy policy in the app: Settings > Privacy > Read the full privacy policy.
 ```
