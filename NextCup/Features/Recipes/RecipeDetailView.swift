@@ -105,6 +105,7 @@ private struct RecipeDetailContent: View {
     ScrollView {
       VStack(alignment: .leading, spacing: DS.Space.lg) {
         hero
+        nextCupNote
         if startFailed {
           StateBanner(kind: .error, message: "This recipe cannot be timed. Check its steps.")
         }
@@ -195,6 +196,22 @@ private struct RecipeDetailContent: View {
     .padding(DS.Space.lg)
     .frame(maxWidth: .infinity, alignment: .leading)
     .colorBlock()
+  }
+
+  /// On a Next Cup, which brew it came from and what the AI changed. Start brew shows no
+  /// tuning note for other recipes.
+  @ViewBuilder private var nextCupNote: some View {
+    if recipe.isNextCup, let note = recipe.tuningNote, !note.isEmpty {
+      VStack(alignment: .leading, spacing: DS.Space.sm) {
+        Kicker("What the AI changed", color: DS.ink2).accessibilityAddTraits(.isHeader)
+        Text(note).font(.subheadline).foregroundStyle(DS.ink)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .textSelection(.enabled)
+          .accessibilityIdentifier("recipe.nextCupNote")
+      }
+      .padding(DS.Space.md)
+      .panel(DS.paper)
+    }
   }
 
   private var beans: [Bean] { allBeans.filter { $0.status == .inUse } }
@@ -609,7 +626,11 @@ private struct RecipeDetailContent: View {
     beanID = bean.id
     let brews = (bean.brewUses ?? []).compactMap(\.brew)
       .filter { !($0.grindSetting ?? "").isEmpty }
-    let onRecipe = brews.filter { $0.recipe?.id == recipe.id }.max { $0.date < $1.date }
+    // A Next Cup rewritten since the last brew on it wins over that brew: its grind is the point.
+    let onRecipe = brews.filter {
+      $0.recipe?.id == recipe.id && (!recipe.isNextCup || $0.date > recipe.updatedAt)
+    }
+    .max { $0.date < $1.date }
     let last = brews.max { $0.date < $1.date }
     grindSetting = onRecipe?.grindSetting ?? recipeGrind ?? last?.grindSetting ?? grindSetting
   }

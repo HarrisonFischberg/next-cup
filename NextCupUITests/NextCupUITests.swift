@@ -823,7 +823,7 @@ final class NextCupUITests: XCTestCase {
       journalRow(app, containing: "Washed Ethiopia sweet").exists, "the first is intact")
   }
 
-  /// T033: "Ask AI about this brew" shows exactly what would be sent, and with no
+  /// T033: "Get one AI tip" shows exactly what would be sent, and with no
   /// provider, model or key chosen it offers no way to send. Writes screenshots to
   /// `SCREENSHOT_DIR` (set with `TEST_RUNNER_SCREENSHOT_DIR`), else /tmp/next-cup-screenshots.
   @MainActor
