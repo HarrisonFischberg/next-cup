@@ -654,9 +654,7 @@ private struct BrewRow: View {
   private var dialIn: String? {
     var parts: [String] = []
     if let made = (brew.suggestionsMade ?? []).max(by: { $0.createdAt < $1.createdAt }) {
-      parts.append(
-        "Next: \(SuggestionFormat.headline(made, units)) (\(SuggestionFormat.title(made.state).lowercased()))"
-      )
+      parts.append("Next: \(SuggestionFormat.headline(made, units))")
     }
     if let followed = brew.suggestionFollowed {
       parts.append("Followed: \(SuggestionFormat.headline(followed, units))")
