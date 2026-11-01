@@ -174,6 +174,9 @@ final class Recipe: Identified {
   var includesIce: Bool = false
   var iceG: Double?
   var builtInKey: String?
+  /// Where to start on `grinderName`, in its own notation ("34"); Start brew pre-fills it.
+  var grindSetting: String?
+  var grinderName: String?
 
   var method: BrewMethod?
   @Relationship(deleteRule: .cascade, inverse: \RecipeStep.recipe) var steps: [RecipeStep]?

@@ -222,6 +222,8 @@ struct RecipeRecord: ArchiveRecord {
   var iceG: Double?
   var builtInKey: String?
   var methodID: UUID?
+  var grindSetting: String?
+  var grinderName: String?
   var title: String { name }
 
   init(_ r: Recipe) {
@@ -229,6 +231,7 @@ struct RecipeRecord: ArchiveRecord {
     (credit, creditURL, doseG, waterG) = (r.credit, r.creditURL, r.doseG, r.waterG)
     (tempC, totalTimeS, tuningNote) = (r.tempC, r.totalTimeS, r.tuningNote)
     (includesIce, iceG, builtInKey, methodID) = (r.includesIce, r.iceG, r.builtInKey, r.method?.id)
+    (grindSetting, grinderName) = (r.grindSetting, r.grinderName)
   }
 
   func make() -> Recipe { Recipe() }
@@ -237,6 +240,7 @@ struct RecipeRecord: ArchiveRecord {
     (r.name, r.credit, r.creditURL, r.doseG, r.waterG) = (name, credit, creditURL, doseG, waterG)
     (r.tempC, r.totalTimeS, r.tuningNote) = (tempC, totalTimeS, tuningNote)
     (r.includesIce, r.iceG, r.builtInKey) = (includesIce, iceG, builtInKey)
+    (r.grindSetting, r.grinderName) = (grindSetting, grinderName)
   }
 
   func link(_ r: Recipe, _ lookup: ModelLookup) { r.method = lookup.find(methodID) }

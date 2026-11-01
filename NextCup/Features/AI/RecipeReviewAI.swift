@@ -62,9 +62,12 @@ enum RecipeReviewAI {
     Each instruction is one specific sentence the brewer can follow (what to do, how much, \
     how long) for that step only, never just the step's name. tempC is the water temperature \
     in °C (0 for none). totalTimeS is the second the cup is done. grind is the setting to \
-    start at on their grinder, in its own units (for example "22 clicks"), inside the \
-    guide's range when one is given; empty when no grinder is named. summary is one or two \
-    plain sentences on how the recipe works.
+    start at on their grinder, written the way its dial reads with no units (for example \
+    "22" or "1.5.0"). Start inside the guide's range for the brewer, but when their note \
+    asks for a coarser or finer grind than usual, go past that end of the range as far as \
+    it asks (very coarse sits near the coarsest setting), never past the grinder's own \
+    settings. Empty when no grinder is named. summary is one or two plain sentences on how \
+    the recipe works.
     """
 
   private static let improveSystem = """
@@ -95,15 +98,31 @@ enum RecipeReviewAI {
   /// Who the tap sends the recipe to; nil when Apple's model answers on the iPhone.
   static var cloudProviderTitle: String? { DirectAI.cloudProviderTitle }
 
-  /// The grinder's name, plus the bundled guide's starting range for this brewer when the
-  /// guide knows the grinder, so the AI's grind is grounded in real settings.
+  /// The grinder's name, plus its whole scale and the bundled guide's starting range for
+  /// this brewer when the guide knows the grinder, so the AI's grind is grounded in real
+  /// settings and a "very coarse" note can go past the usual range.
   static func grinderLine(_ grinder: String?, methodName: String?) -> String? {
     guard let name = grinder?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty
     else { return nil }
-    guard let guide = GrinderGuide.find(name),
-      let range = GrinderGuide.method(forMethodNamed: methodName).flatMap(guide.range(for:))
+    guard let guide = GrinderGuide.find(name), let finest = guide.settings.first,
+      let coarsest = guide.settings.last
     else { return "Grinder: \(name)" }
-    return "Grinder: \(name) (guide's starting range for this brewer: \(range) \(guide.unitLabel))"
+    let scale = "settings run from \(finest) finest to \(coarsest) coarsest \(guide.unitLabel)"
+    guard let range = GrinderGuide.method(forMethodNamed: methodName).flatMap(guide.range(for:))
+    else { return "Grinder: \(name) (\(scale))" }
+    return "Grinder: \(name) (\(scale); guide's starting range for this brewer: \(range))"
+  }
+
+  /// The AI's grind as a stop on the grinder's wheel ("34 on the dial" finds "34"), or the
+  /// first number it gave when that is off the wheel; nil with no grinder or no number.
+  static func wheelSetting(_ grind: String, grinder: String?) -> String? {
+    guard let grinder, !grinder.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+    let stops = GrinderGuide.find(grinder)?.settings ?? GrinderGuide.otherSettings
+    let tokens = grind.split(whereSeparator: \.isWhitespace).map {
+      $0.trimmingCharacters(in: CharacterSet(charactersIn: ",;:()"))
+    }
+    return tokens.lazy.compactMap { GrinderGuide.setting($0, in: stops) }.first
+      ?? tokens.first { $0.contains(where: \.isNumber) }
   }
 
   /// The tuning note with the AI's grind as its last line, replacing an earlier one. No

@@ -426,6 +426,9 @@ struct RecipeEditorView: View {
     draft.totalTimeS = review.draft.totalTimeS
     draft.tuningNote = RecipeReviewAI.note(
       draft.tuningNote, grind: review.grind, grinder: grinderName)
+    if let setting = RecipeReviewAI.wheelSetting(review.grind, grinder: grinderName) {
+      (draft.grindSetting, draft.grinderName) = (setting, grinderName)
+    }
     fields = RecipeEditorFields(draft: draft, units: units)
     removed = nil
     beforeAI = before
