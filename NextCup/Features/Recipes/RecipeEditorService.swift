@@ -27,6 +27,8 @@ struct RecipeDraft: Hashable {
   var tuningNote: String?
   var includesIce = false
   var iceG: Double?
+  var grindSetting: String?
+  var grinderName: String?
   var steps: [RecipeStepDraft] = []
 }
 
@@ -80,6 +82,7 @@ struct RecipeEditorService {
       doseG: recipe.doseG, waterG: recipe.waterG, tempC: recipe.tempC,
       totalTimeS: recipe.totalTimeS, tuningNote: recipe.tuningNote,
       includesIce: recipe.includesIce, iceG: recipe.iceG,
+      grindSetting: recipe.grindSetting, grinderName: recipe.grinderName,
       steps: recipe.orderedSteps.map {
         RecipeStepDraft(
           kind: $0.kind, startOffsetS: $0.startOffsetS,
@@ -192,6 +195,8 @@ struct RecipeEditorService {
     recipe.tuningNote = Self.cleaned(draft.tuningNote)
     recipe.includesIce = draft.includesIce
     recipe.iceG = draft.includesIce ? draft.iceG : nil
+    recipe.grindSetting = Self.cleaned(draft.grindSetting)
+    recipe.grinderName = recipe.grindSetting == nil ? nil : Self.cleaned(draft.grinderName)
     recipe.updatedAt = Date()
     recipe.steps = Self.sorted(draft.steps).enumerated().map { index, step in
       let model = RecipeStep(order: index, kind: step.kind, startOffsetS: step.startOffsetS)
