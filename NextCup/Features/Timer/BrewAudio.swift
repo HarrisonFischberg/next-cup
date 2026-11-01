@@ -2,7 +2,7 @@ import AVFoundation
 import Observation
 
 /// The brew's sounds: a soft clock tick-tock each second, a chime at a step change or the target,
-/// and café jazz or quiet piano at 20% volume, one bundled track after another. The playback category
+/// and café jazz or quiet piano at 34% volume, one bundled track after another. The playback category
 /// plays them with the ringer switch off, as a music app does, and mixes with other
 /// audio. The `audio` background mode keeps them going while the app is closed and the brew
 /// shows in the Dynamic Island. The tick and chime are made here, so there is no sound file
@@ -12,7 +12,7 @@ final class BrewAudio: NSObject, AVAudioPlayerDelegate {
   static let shared = BrewAudio()
   static let tickKey = "nextcup.timer.tick"
   static let musicKey = "nextcup.timer.music"
-  static let musicVolume: Float = 0.2
+  static let musicVolume: Float = 0.34
   /// The bundled tracks (`brew-music-*.m4a`), each credited in docs/asset-licenses.md.
   static let tracks: [URL] =
     (Bundle.main.urls(forResourcesWithExtension: "m4a", subdirectory: nil)
