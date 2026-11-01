@@ -3,9 +3,9 @@ import SwiftData
 import SwiftUI
 import UIKit
 
-/// The sheet behind "Ask AI for Next Cup" (Past Brews long press) and "Ask AI about this
-/// brew" (saved brew): the provider's notice if it is due, the cup brewing while the AI
-/// works, then what changed with Open in Brew. A failure changes nothing and offers Try again.
+/// The sheet behind "Ask AI for Next Cup" (Past Brews long press and saved brew): the
+/// provider's notice if it is due, the cup brewing while the AI works, then the overview and
+/// what changed with Open in Brew. A failure changes nothing and offers Try again.
 struct NextCupAIView: View {
   let brew: Brew
   let close: () -> Void
@@ -88,8 +88,8 @@ struct NextCupAIView: View {
         Text("Working out your next cup").font(DS.Font.headline).foregroundStyle(DS.ink)
         Text(
           RecipeReviewAI.cloudProviderTitle.map {
-            "Sending this brew to \($0). It may search coffee sites first."
-          } ?? "Reading this brew on this iPhone."
+            "Sending this brew and your similar past brews to \($0). It may search coffee sites first."
+          } ?? "Reading this brew and your similar past brews on this iPhone."
         )
         .font(.body).foregroundStyle(DS.ink2).multilineTextAlignment(.center)
       }
@@ -108,6 +108,9 @@ struct NextCupAIView: View {
         if !outcome.summary.isEmpty {
           Text(outcome.summary).font(.body).foregroundStyle(DS.ink2)
         }
+        Text(basis(outcome.similarCount))
+          .font(.footnote).foregroundStyle(DS.ink2)
+          .accessibilityIdentifier("nextcup.basis")
         ForEach(outcome.changes, id: \.self) { change in
           VStack(alignment: .leading, spacing: 2) {
             Text(change.what).font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
@@ -142,6 +145,14 @@ struct NextCupAIView: View {
       }
       .padding(DS.Space.lg)
       .background(DS.bg, ignoresSafeAreaEdges: .bottom)
+    }
+  }
+
+  private func basis(_ count: Int) -> String {
+    switch count {
+    case 0: "Based on this brew. You have no similar past brews yet."
+    case 1: "Based on this brew and 1 similar past brew."
+    default: "Based on this brew and \(count) similar past brews."
     }
   }
 

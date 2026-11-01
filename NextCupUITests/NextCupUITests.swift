@@ -823,7 +823,7 @@ final class NextCupUITests: XCTestCase {
       journalRow(app, containing: "Washed Ethiopia sweet").exists, "the first is intact")
   }
 
-  /// T033: "Get one AI tip" shows exactly what would be sent, and with no
+  /// T033: Explore's "Ask AI about this coffee" shows exactly what would be sent, and with no
   /// provider, model or key chosen it offers no way to send. Writes screenshots to
   /// `SCREENSHOT_DIR` (set with `TEST_RUNNER_SCREENSHOT_DIR`), else /tmp/next-cup-screenshots.
   @MainActor
@@ -839,24 +839,23 @@ final class NextCupUITests: XCTestCase {
     for variant in variants {
       let app = XCUIApplication()
       app.launchArguments =
-        ["-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft"]
-        + variant.args
+        [
+          "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+          "-perfBrews", "72",
+        ] + variant.args
       app.launch()
       XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-      logBrew(app, note: "Washed Ethiopia sweet")
-      // The Today card for the untasted brew sits above the row.
-      let row = journalRow(app, containing: "Washed Ethiopia sweet")
-      scrollUntilHittable(row, in: app)
-      row.tap()
-      XCTAssertTrue(element(app, "brewform.edit").waitForExistence(timeout: 5))
-      let ask = element(app, "brewform.ai")
+      app.tabBars.buttons["Explore"].tap()
+      let ask = app.descendants(matching: .any).matching(
+        NSPredicate(format: "identifier BEGINSWITH 'explore.insights.'")
+      ).firstMatch
       scrollUntilHittable(ask, in: app)
       ask.tap()
 
       let preview = element(app, "ai.ask.preview")
       XCTAssertTrue(preview.waitForExistence(timeout: 5))
-      XCTAssertTrue(preview.label.contains("notes: Washed Ethiopia sweet"), preview.label)
-      XCTAssertTrue(preview.label.contains("dose 15 g"), preview.label)
+      XCTAssertTrue(preview.label.contains("newest first"), preview.label)
+      XCTAssertTrue(preview.label.contains("dose "), preview.label)
       XCTAssertTrue(element(app, "ai.ask.setup").exists, "setup is named, not hidden")
       XCTAssertFalse(element(app, "ai.ask.send").exists, "no Send without a key and a model")
       let folder = URL(
@@ -866,7 +865,7 @@ final class NextCupUITests: XCTestCase {
       try? XCUIScreen.main.screenshot().pngRepresentation.write(
         to: folder.appendingPathComponent("T033-ask-\(variant.name).png"))
       element(app, "ai.ask.close").tap()
-      XCTAssertTrue(element(app, "brewform.edit").waitForExistence(timeout: 5))
+      XCTAssertTrue(ask.waitForExistence(timeout: 5))
       app.terminate()
     }
   }
