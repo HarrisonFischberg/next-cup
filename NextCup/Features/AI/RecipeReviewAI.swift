@@ -91,8 +91,18 @@ enum RecipeReviewAI {
     sound ratio and temperature for the brewer and roast. name is a short title of two to \
     four words. changes is an empty list. On a switchable dripper the first step is \
     closeValve unless the recipe starts open, and a valve step's instruction only works \
-    the valve.
+    the valve. When notes from coffee sites are given, base the numbers and steps on what \
+    those sources agree on, then fit them to the note.
     """ + "\n" + format
+
+  /// The web search before Create with AI, run only with a keyed provider.
+  static let researchSystem = """
+    You research coffee recipes for a home brewer. Search well-known specialty coffee \
+    sites (for example beanbench.coffee and the brew guides of established roasters and \
+    coffee educators) for popular, well-regarded recipes for the brewer named that fit \
+    what they want. Answer in under 200 words: the dose, water, ratio, temperature, grind, \
+    pour or steep schedule and timing the sources recommend, and where they disagree.
+    """
 
   static var isAvailable: Bool { DirectAI.route != nil }
   /// Who the tap sends the recipe to; nil when Apple's model answers on the iPhone.
@@ -136,6 +146,18 @@ enum RecipeReviewAI {
     return lines.joined(separator: "\n")
   }
 
+  /// The AI's summary followed by the pages its research cited, one per line, so the
+  /// recipe says where it came from.
+  static func summary(_ summary: String, sources: [WebSource]) -> String? {
+    var parts = summary.isEmpty ? [] : [summary]
+    if !sources.isEmpty {
+      parts.append(
+        (["Sources:"] + sources.prefix(5).map { "\($0.title): \($0.url.absoluteString)" })
+          .joined(separator: "\n"))
+    }
+    return parts.isEmpty ? nil : parts.joined(separator: "\n\n")
+  }
+
   /// The recipe as text: brewer, grinder, numbers, the user's note and every step. No
   /// photo, no beans, no brews.
   static func payload(
@@ -163,14 +185,28 @@ enum RecipeReviewAI {
       schemaName: "recipe_review", schema: schema)
   }
 
-  /// A new recipe: only the brewer, the grinder and the note. No beans, brews or photos.
+  /// What the web search is asked: the same brewer, grinder and note Create with AI sends.
+  static func researchQuestion(methodName: String, style: String, note: String, grinder: String?)
+    -> String
+  {
+    [
+      "Brewer: \(methodName) (\(style))",
+      grinder.map { "Grinder: \($0)" },
+      "What they want: \(note.trimmingCharacters(in: .whitespacesAndNewlines))",
+    ].compactMap { $0 }.joined(separator: "\n")
+  }
+
+  /// A new recipe: only the brewer, the grinder, the note and, with a keyed provider, what
+  /// its web search found. No beans, brews or photos.
   static func createPayload(
-    methodName: String, style: String, note: String, grinder: String? = nil
+    methodName: String, style: String, note: String, grinder: String? = nil,
+    research: WebResearch? = nil
   ) -> AIRequestPayload {
     let lines = [
       "Brewer: \(methodName) (\(style))",
       grinderLine(grinder, methodName: methodName),
       "What they want: \(note.trimmingCharacters(in: .whitespacesAndNewlines))",
+      research.map { "What coffee sites recommend:\n\($0.notes)" },
     ].compactMap { $0 }
     return AIRequestPayload(
       system: createSystem, userText: lines.joined(separator: "\n"),

@@ -33,6 +33,28 @@ public struct AIResult: Equatable, Sendable {
   public init(json: Data) { self.json = json }
 }
 
+/// One page a web search answer cites.
+public struct WebSource: Equatable, Hashable, Sendable {
+  public let title: String
+  public let url: URL
+
+  public init(title: String, url: URL) {
+    self.title = title
+    self.url = url
+  }
+}
+
+/// What a provider found on the web: its summary and the pages it cites.
+public struct WebResearch: Equatable, Sendable {
+  public let notes: String
+  public let sources: [WebSource]
+
+  public init(notes: String, sources: [WebSource]) {
+    self.notes = notes
+    self.sources = sources
+  }
+}
+
 public enum AIError: Error, Equatable, LocalizedError, Sendable {
   case disclosureNotAccepted
   case noKey
@@ -114,7 +136,26 @@ public struct AIClient: Sendable {
     guard let apiKey = key(provider), !apiKey.isEmpty else { throw AIError.noKey }
     let request = try Self.request(
       payload, provider: provider, model: model, key: apiKey, effort: effort)
+    return try Self.parse(try await perform(request), payload: payload, provider: provider)
+  }
 
+  /// Searches the web for `question` and returns what the provider found, in its own words,
+  /// with the pages its answer cites. Only `question` and `system` are sent. Anthropic uses
+  /// its web search tool (billed per search on the user's key); OpenAI its web_search tool.
+  public func research(
+    _ question: String, system: String, provider: AIProviderKind, model: String,
+    maxSearches: Int = 3
+  ) async throws -> WebResearch {
+    guard disclosureAccepted(provider) else { throw AIError.disclosureNotAccepted }
+    guard let apiKey = key(provider), !apiKey.isEmpty else { throw AIError.noKey }
+    let request = try Self.researchRequest(
+      question, system: system, provider: provider, model: model, key: apiKey,
+      maxSearches: maxSearches)
+    return try Self.parseResearch(try await perform(request), provider: provider)
+  }
+
+  /// Sends one request with retries and returns the body of a 2xx answer.
+  private func perform(_ request: URLRequest) async throws -> Data {
     for attempt in 1...Self.maxAttempts {
       let result: HTTPResult
       do {
@@ -134,7 +175,7 @@ public struct AIClient: Sendable {
         continue
       }
       switch result.status {
-      case 200..<300: return try Self.parse(result.body, payload: payload, provider: provider)
+      case 200..<300: return result.body
       case 401: throw AIError.keyRejected
       case 429, 500...599:
         if attempt == Self.maxAttempts { throw AIError.unavailable(result.status) }
@@ -250,6 +291,75 @@ public struct AIClient: Sendable {
     request.setValue("application/json", forHTTPHeaderField: "content-type")
     request.httpBody = try JSONSerialization.data(withJSONObject: body, options: .sortedKeys)
     return request
+  }
+
+  static func researchRequest(
+    _ question: String, system: String, provider: AIProviderKind, model: String, key: String,
+    maxSearches: Int
+  ) throws -> URLRequest {
+    var request: URLRequest
+    let body: [String: Any]
+    switch provider {
+    case .anthropic:
+      request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
+      request.setValue(key, forHTTPHeaderField: "x-api-key")
+      request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+      // The basic tool works on every model a key may pick; no structured output here,
+      // because web search answers always carry citations.
+      body = [
+        "model": model, "max_tokens": 8000, "system": system,
+        "messages": [["role": "user", "content": question]],
+        "tools": [["type": "web_search_20250305", "name": "web_search", "max_uses": maxSearches]],
+      ]
+    case .openAI:
+      request = URLRequest(url: URL(string: "https://api.openai.com/v1/responses")!)
+      request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+      body = [
+        "model": model, "instructions": system, "input": question,
+        "tools": [["type": "web_search"]], "max_tool_calls": maxSearches,
+      ]
+    }
+    request.httpMethod = "POST"
+    request.timeoutInterval = 120
+    request.setValue("application/json", forHTTPHeaderField: "content-type")
+    request.httpBody = try JSONSerialization.data(withJSONObject: body, options: .sortedKeys)
+    return request
+  }
+
+  /// The answer's text and the pages it cites, in order, without repeats. Sources come
+  /// only from the provider's citations, never from the model's own text, so every one is
+  /// a page the search returned.
+  static func parseResearch(_ data: Data, provider: AIProviderKind) throws -> WebResearch {
+    guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+      throw AIError.invalidResponse
+    }
+    let blocks: [[String: Any]]
+    let citationKey: String
+    switch provider {
+    case .anthropic:
+      blocks = (root["content"] as? [[String: Any]] ?? []).filter {
+        $0["type"] as? String == "text"
+      }
+      citationKey = "citations"
+    case .openAI:
+      blocks = (root["output"] as? [[String: Any]] ?? [])
+        .filter { $0["type"] as? String == "message" }
+        .flatMap { $0["content"] as? [[String: Any]] ?? [] }
+        .filter { $0["type"] as? String == "output_text" }
+      citationKey = "annotations"
+    }
+    var sources: [WebSource] = []
+    for citation in blocks.flatMap({ $0[citationKey] as? [[String: Any]] ?? [] }) {
+      guard let raw = citation["url"] as? String, let url = URL(string: raw),
+        url.scheme == "https", !sources.contains(where: { $0.url == url })
+      else { continue }
+      let title = (citation["title"] as? String ?? "").trimmingCharacters(in: .whitespaces)
+      sources.append(WebSource(title: title.isEmpty ? url.host() ?? raw : title, url: url))
+    }
+    let text = blocks.compactMap { $0["text"] as? String }.joined()
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !text.isEmpty else { throw AIError.invalidResponse }
+    return WebResearch(notes: text, sources: sources)
   }
 
   // MARK: Responses

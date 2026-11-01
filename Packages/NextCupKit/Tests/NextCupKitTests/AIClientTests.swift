@@ -238,6 +238,64 @@ struct AIClientTests {
     #expect(decoded.imageJPEG == nil)
     #expect(decoded.schema == original.schema)
   }
+
+  @Test func anthropicResearchSearchesAndKeepsOnlyCitedPages() async throws {
+    let body = #"""
+      {"stop_reason":"end_turn","content":[
+      {"type":"text","text":"I'll look that up."},
+      {"type":"server_tool_use","id":"s1","name":"web_search","input":{"query":"v60 recipe"}},
+      {"type":"web_search_tool_result","tool_use_id":"s1","content":[
+        {"type":"web_search_result","url":"https://uncited.example","title":"Not used"}]},
+      {"type":"text","text":" Most use 15 g to 250 g.","citations":[
+        {"type":"web_search_result_location","url":"https://beanbench.coffee/v60","title":"V60"},
+        {"type":"web_search_result_location","url":"https://beanbench.coffee/v60","title":"V60"}]},
+      {"type":"text","text":" Pour in pulses.","citations":[
+        {"type":"web_search_result_location","url":"http://plain.example","title":"Plain"},
+        {"type":"web_search_result_location","url":"https://b.example/x","title":""}]}]}
+      """#
+    let stub = StubTransport([ok(body)])
+    let research = try await client(stub).research(
+      "Brewer: V60", system: "sys", provider: .anthropic, model: "model-a")
+    #expect(research.notes == "I'll look that up. Most use 15 g to 250 g. Pour in pulses.")
+    #expect(
+      research.sources.map(\.url.absoluteString) == [
+        "https://beanbench.coffee/v60", "https://b.example/x",
+      ])
+    #expect(research.sources.last?.title == "b.example", "a missing title falls back to the host")
+    let sent = String(decoding: try #require(await stub.requests.first?.httpBody), as: UTF8.self)
+    #expect(sent.contains("\"web_search_20250305\""))
+    #expect(sent.contains("\"max_uses\":3"))
+    #expect(!sent.contains("json_schema"), "citations and structured output do not mix")
+  }
+
+  @Test func openAIResearchReadsURLCitations() async throws {
+    let body = #"""
+      {"output":[{"type":"web_search_call"},{"type":"message","content":[
+        {"type":"output_text","text":"Use 1:16.","annotations":[
+          {"type":"url_citation","url":"https://beanbench.coffee/ratio","title":"Ratio"}]}]}]}
+      """#
+    let stub = StubTransport([ok(body)])
+    let research = try await client(stub).research(
+      "Brewer: V60", system: "sys", provider: .openAI, model: "gpt-x")
+    #expect(research.notes == "Use 1:16.")
+    #expect(
+      research.sources == [
+        WebSource(title: "Ratio", url: URL(string: "https://beanbench.coffee/ratio")!)
+      ])
+    let sent = String(decoding: try #require(await stub.requests.first?.httpBody), as: UTF8.self)
+    #expect(sent.contains("\"web_search\""))
+  }
+
+  @Test func researchWithoutTextIsDiscardedAndNeedsDisclosure() async {
+    let stub = StubTransport([ok(#"{"content":[{"type":"server_tool_use"}]}"#)])
+    await #expect(throws: AIError.invalidResponse) {
+      try await client(stub).research("q", system: "s", provider: .anthropic, model: "m")
+    }
+    await #expect(throws: AIError.disclosureNotAccepted) {
+      try await client(stub, disclosed: []).research(
+        "q", system: "s", provider: .openAI, model: "m")
+    }
+  }
 }
 
 private actor Waits {
