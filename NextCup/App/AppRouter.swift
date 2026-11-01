@@ -25,6 +25,12 @@ final class AppRouter {
     }
   }
 
+  /// The Brew tab, on this recipe.
+  func showRecipe(_ id: UUID) {
+    recipesPath = [.recipe(id)]
+    UserDefaults.standard.set(AppTab.recipes.rawValue, forKey: AppTab.storageKey)
+  }
+
   /// After a brew is saved: every tab back to its root, with the Journal on screen.
   func showJournal(savedLater: String? = nil) {
     self.savedLater = savedLater
