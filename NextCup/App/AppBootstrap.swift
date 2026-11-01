@@ -37,6 +37,9 @@ enum AppBootstrap {
         // Screenshots only: a few sample brews in the throwaway in-memory store.
         if inMemory, ProcessInfo.processInfo.arguments.contains("-demoBrews") {
           DemoBrews.insert(into: container.mainContext)
+          if ProcessInfo.processInfo.arguments.contains("-fakeNextCupAI") {
+            DemoBrews.addGrinder(into: container.mainContext)
+          }
         }
         if inMemory, ProcessInfo.processInfo.arguments.contains("-demoBeans") {
           DemoBrews.insertBeans(into: container.mainContext)
@@ -92,6 +95,17 @@ struct StartupError: Error, Equatable {
 
 #if DEBUG
   enum DemoBrews {
+    /// A grinder on every demo brew, so a Next Cup screenshot shows its grind carried in.
+    @MainActor static func addGrinder(into context: ModelContext) {
+      let grinder = Grinder(name: "Baratza Encore")
+      context.insert(grinder)
+      UserDefaults.standard.set(grinder.id.uuidString, forKey: BrewFormModel.lastGrinderKey)
+      for brew in (try? context.fetch(FetchDescriptor<Brew>())) ?? [] {
+        brew.grinder = grinder
+        brew.grindSetting = "18"
+      }
+    }
+
     static func insert(into context: ModelContext) {
       let methods = (try? context.fetch(FetchDescriptor<BrewMethod>())) ?? []
       let samples: [(String, Int, Double, Double, Int, Int, Verdict)] = [

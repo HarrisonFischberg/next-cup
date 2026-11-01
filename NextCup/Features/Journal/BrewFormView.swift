@@ -33,6 +33,7 @@ struct BrewFormView: View {
   @Query(sort: \Suggestion.createdAt, order: .reverse) private var suggestions: [Suggestion]
   @Query(sort: \WaterProfile.name) private var waters: [WaterProfile]
   @State private var askingAI = false
+  @State private var askingNextCup = false
   @State private var addingWater = false
   @State private var newWaterName = ""
   @State private var newWaterHardness = ""
@@ -211,6 +212,11 @@ struct BrewFormView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: DS.Space.lg) {
         header(model)
+        if locked {
+          SteelButton(title: "Ask AI about this brew", kind: .secondary) { askingNextCup = true }
+            .accessibilityHint("Puts an improved recipe called Next Cup on the Brew tab")
+            .accessibilityIdentifier("brewform.askNextCup")
+        }
         brewedRow(binding.draft.date).disabled(locked)
         if let notice = model.notice { noticeBanner(notice, model) }
         if let error = model.saveError {
@@ -269,7 +275,7 @@ struct BrewFormView: View {
         .disabled(locked)
         if let editing {
           SuggestionHistory(brew: editing, units: units)
-          SteelButton(title: "Ask AI about this brew", kind: .secondary) { askingAI = true }
+          SteelButton(title: "Get one AI tip", kind: .secondary) { askingAI = true }
             .accessibilityIdentifier("brewform.ai")
         }
       }
@@ -282,6 +288,11 @@ struct BrewFormView: View {
       }
     }
     .scrollDismissesKeyboard(.interactively)
+    .sheet(isPresented: $askingNextCup) {
+      if let editing {
+        NextCupAIView(brew: editing) { askingNextCup = false }
+      }
+    }
     .sheet(isPresented: $askingAI) {
       if let editing {
         AIAskView(

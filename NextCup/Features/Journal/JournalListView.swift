@@ -20,6 +20,8 @@ struct JournalListView: View {
   @State private var deleteTimer: Task<Void, Never>?
   @State private var deleteError: String?
   @State private var showImport = false
+  /// The past brew "Ask AI for Next Cup" is working on.
+  @State private var askingNextCup: Brew?
   /// Brews started or edited and left without saving, read from the draft files.
   @State private var unsaved: [SavedDraft] = []
   @AppStorage(JournalStorage.methodKey) private var methodFilter = ""
@@ -140,6 +142,9 @@ struct JournalListView: View {
     .sheet(isPresented: $showImport) {
       PaperImportView(context: context) { showImport = false }
     }
+    .sheet(item: $askingNextCup) { brew in
+      NextCupAIView(brew: brew) { askingNextCup = nil }
+    }
     .onChange(of: scenePhase) { _, phase in
       if phase != .active { commitPendingDelete() } else { loadUnsaved() }
     }
@@ -229,6 +234,12 @@ struct JournalListView: View {
             Label("Brew again", systemImage: "arrow.counterclockwise")
           }
           Button {
+            askingNextCup = brew
+          } label: {
+            Label("Ask AI for Next Cup", systemImage: "sparkles")
+          }
+          .accessibilityIdentifier("journal.askNextCup")
+          Button {
             router.journalPath.append(.brew(brew.id))
           } label: {
             Label("Edit", systemImage: "pencil")
@@ -240,6 +251,7 @@ struct JournalListView: View {
           }
         }
         .accessibilityAction(named: "Brew again") { brewAgain(brew) }
+        .accessibilityAction(named: "Ask AI for Next Cup") { askingNextCup = brew }
         .accessibilityAction(named: "Delete") { delete(brew) }
         .accessibilityIdentifier("journal.row.\(brew.id.uuidString)")
       }
