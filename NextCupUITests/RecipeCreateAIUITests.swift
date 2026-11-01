@@ -30,3 +30,30 @@ final class RecipeCreateAIUITests: XCTestCase {
     add(shot)
   }
 }
+
+/// Shoots the brewing screen when docs/design/brewing-cup/.capture exists.
+final class BrewingCupCaptureUITests: XCTestCase {
+  @MainActor
+  func testCaptureBrewingScreen() throws {
+    let marker = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+      .appendingPathComponent("../docs/design/brewing-cup/.capture").standardized
+    try XCTSkipUnless(FileManager.default.fileExists(atPath: marker.path), "no capture marker")
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-inMemoryStore", "-resetNavigationState", "-resetDraft", "-appStyle",
+      ProcessInfo.processInfo.environment["CAPTURE_STYLE"] ?? "sundayStudio", "-brewingPreview",
+    ]
+    app.launch()
+    XCTAssertTrue(app.tabBars.buttons["Brew"].waitForExistence(timeout: 10))
+    app.tabBars.buttons["Brew"].tap()
+    app.descendants(matching: .any)["recipes.add"].firstMatch.tap()
+    app.buttons["Create with AI"].firstMatch.tap()
+    XCTAssertTrue(app.staticTexts["Reading coffee sites"].waitForExistence(timeout: 5))
+    // Long enough to record the cup filling and the steam rising.
+    sleep(UInt32(ProcessInfo.processInfo.environment["CAPTURE_HOLD"] ?? "2") ?? 2)
+    let shot = XCTAttachment(screenshot: app.screenshot())
+    shot.name = "brewing-cup"
+    shot.lifetime = .keepAlways
+    add(shot)
+  }
+}
