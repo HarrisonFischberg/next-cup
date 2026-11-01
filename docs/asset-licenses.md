@@ -55,7 +55,7 @@ The brewer drawings on the active brew screen and the method tiles remain origin
 
 ## Brew music
 
-Tracks in `NextCup/Resources/Music/`, played at 20% volume during a brew (Settings > Brewing >
+Tracks in `NextCup/Resources/Music/`, played at 34% volume during a brew (Settings > Brewing >
 Music while brewing). Downloaded 2026-10-27 from Wikimedia Commons as its MP3 transcodes and
 re-encoded to 64 kbps AAC. Only public domain or CC0 recordings are bundled; nothing needs credit,
 but each is listed here.
