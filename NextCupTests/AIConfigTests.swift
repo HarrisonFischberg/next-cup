@@ -76,10 +76,8 @@ struct AIConfigTests {
       brew.notes = "note-\(index)"
       return brew
     }
-    let single = AISuggestions.payload(diagnosing: brews[9])
     let many = AISuggestions.payload(insightsFrom: brews)
-    #expect(single.imageJPEG == nil && many.imageJPEG == nil)
-    #expect(single.userText.contains("note-9"))
+    #expect(many.imageJPEG == nil)
     #expect(AIFeature.diagnosis.sends.contains("your notes"))
     #expect(!AIFeature.diagnosis.sends.lowercased().contains("photo"))
     #expect(many.userText.components(separatedBy: "\n- ").count - 1 == 8)

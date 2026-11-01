@@ -3,7 +3,7 @@ import NextCupKit
 import Observation
 import SwiftData
 
-/// State for "Ask AI about this brew" and Explore insights (T033). The sheet shows
+/// State for Explore insights (T033; brew diagnosis has no screen of its own now). The sheet shows
 /// the exact text that would be sent; nothing is queued until a key, a chosen model,
 /// an accepted disclosure and a tap are all in place. A finished answer is stored as
 /// a `Suggestion` by `AISuggestions.ingest`, so it reaches the next brew through the
