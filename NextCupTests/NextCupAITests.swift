@@ -76,13 +76,126 @@ struct NextCupAITests {
     let base = NextCupAI.base(for: harness.brew, store: harness.store)
     let text = NextCupAI.payload(for: harness.brew, base: base).userText
     for expected in [
-      "Bean: Geometry from Onyx, light roast, Ethiopia, bag says peach", "Grind used: 18",
+      "Brewed: ", "Bean: Geometry from Onyx, light roast, Ethiopia, bag says peach",
+      "Grind used: 18",
       "Rating: 6.5 out of 10", "Taste: sour, weak", "Their notes on this cup: Thin and sharp",
       "on a Test Dripper", "Dose: 18 g, total water: 300 g", "93 °C", "180 s",
-      "Grinder: Baratza Encore",
+      "Grinder: Baratza Encore", "Their other similar brews, newest first: none yet",
     ] {
       #expect(text.contains(expected), "\(expected) in \(text)")
     }
+  }
+
+  /// Another brew, by default with this one's method and amounts.
+  @discardableResult private func other(
+    _ harness: Harness, daysAgo: Int = 1, dose: Double? = 18, water: Double? = 300,
+    method: BrewMethod? = nil, bean: Bean? = nil
+  ) -> Brew {
+    let brew = Brew(date: Date(timeIntervalSinceNow: Double(-daysAgo) * 86_400))
+    brew.method = method ?? harness.method
+    brew.doseG = dose
+    brew.waterG = water
+    if let bean {
+      let part = BrewBean(grams: 18, beanNameSnapshot: bean.name)
+      part.bean = bean
+      brew.beans = [part]
+    }
+    harness.container.mainContext.insert(brew)
+    return brew
+  }
+
+  @Test func similarBrewsAreSameMethodNotThisOneRankedByBeanThenAmountsThenDate() throws {
+    let harness = try Harness()
+    let bean = try #require(harness.brew.beans?.first?.bean)
+    let otherMethod = BrewMethod(name: "Other Brewer")
+    harness.container.mainContext.insert(otherMethod)
+    let elsewhere = other(harness, daysAgo: 1, method: otherMethod, bean: bean)
+    let far = other(harness, daysAgo: 1, dose: 40, water: 600)
+    let nearOld = other(harness, daysAgo: 9, dose: 21, water: 250)
+    let nearNew = other(harness, daysAgo: 2, dose: 18, water: 300)
+    let unrecorded = other(harness, daysAgo: 3, dose: nil, water: 0)
+    let halfFar = other(harness, daysAgo: 1, dose: 18, water: 400)
+    let beanFarOld = other(harness, daysAgo: 30, dose: 40, water: 600, bean: bean)
+    let beanFarNew = other(harness, daysAgo: 20, dose: 40, water: 600, bean: bean)
+    let all = [
+      harness.brew, elsewhere, far, nearOld, nearNew, unrecorded, halfFar, beanFarOld, beanFarNew,
+    ]
+    let expected = [beanFarNew, beanFarOld, nearNew, unrecorded, nearOld, far, halfFar]
+    let found = NextCupAI.similarBrews(to: harness.brew, in: all, limit: 8)
+    #expect(!found.contains { $0.id == harness.brew.id || $0.id == elsewhere.id })
+    #expect(Array(found.prefix(5)).map(\.id) == Array(expected.prefix(5)).map(\.id))
+    #expect(Set(found.suffix(2).map(\.id)) == Set([far.id, halfFar.id]))
+    #expect(
+      NextCupAI.similarBrews(to: harness.brew, in: all, limit: 3).map(\.id)
+        == [beanFarNew, beanFarOld, nearNew].map(\.id))
+  }
+
+  @Test func aBrewWithNoMethodHasNoSimilarBrews() throws {
+    let harness = try Harness()
+    let loose = Brew()
+    #expect(NextCupAI.similarBrews(to: loose, in: [harness.brew], limit: 8).isEmpty)
+  }
+
+  @Test func thePromptListsEachSimilarBrewOnOneLineWithAShortenedNote() throws {
+    let harness = try Harness()
+    let bean = try #require(harness.brew.beans?.first?.bean)
+    let past = other(harness, bean: bean)
+    past.recipe = Recipe(name: "Hoffmann", doseG: 15, waterG: 250)
+    past.grinder = harness.brew.grinder
+    past.grindSetting = "20"
+    past.tempC = 94
+    past.totalTimeS = 200
+    past.ratingTenths = 82
+    past.verdict = .balanced
+    past.notes = "Line one\n" + String(repeating: "x", count: 300)
+    let unrated = other(harness, daysAgo: 2)
+    let base = NextCupAI.base(for: harness.brew, store: harness.store)
+    let text = NextCupAI.payload(
+      for: harness.brew, base: base, similar: [past, unrated], noteCharacters: 240
+    ).userText
+    let lines = text.components(separatedBy: "\n")
+    let start = try #require(lines.firstIndex(of: "Their other similar brews, newest first:"))
+    #expect(lines.count == start + 3, "one line a brew")
+    let line = lines[start + 1]
+    for expected in [
+      past.date.formatted(date: .abbreviated, time: .omitted), "Hoffmann",
+      "bean Geometry from Onyx, light roast", "dose 18 g", "water 300 g", "ratio 1:16.7",
+      "grinder Baratza Encore at 20", "94 °C", "200 s", "taste balanced", "rated 8.2 out of 10",
+      "notes: Line one xxx",
+    ] {
+      #expect(line.contains(expected), "\(expected) in \(line)")
+    }
+    #expect(line.hasSuffix("…"))
+    #expect(!line.contains(String(repeating: "x", count: 240)), "the note stops at the limit")
+    #expect(lines[start + 2].contains("not rated") && lines[start + 2].contains("taste not noted"))
+  }
+
+  @Test func askSendsHistoryWithTheProvidersLimitAndReportsTheCount() async throws {
+    let harness = try Harness()
+    for day in 1...6 { other(harness, daysAgo: day).notes = String(repeating: "y", count: 200) }
+    try harness.container.mainContext.save()
+    for (onDevice, count, full) in [(true, 4, false), (false, 6, true)] {
+      var sent = ""
+      let reply = answer()
+      let outcome = try await NextCupAI.ask(
+        about: harness.brew, store: harness.store, onDevice: onDevice, research: { _ in nil },
+        send: { payload in
+          sent = payload.userText
+          return (reply, "Anthropic")
+        })
+      #expect(outcome.similarCount == count)
+      #expect(sent.components(separatedBy: "\n- ").count - 1 == count)
+      #expect(sent.contains(String(repeating: "y", count: 200)) == full)
+    }
+  }
+
+  @Test func theSystemPromptAsksForAnOverviewReadingTheTrend() throws {
+    let harness = try Harness()
+    let system = NextCupAI.payload(
+      for: harness.brew, base: NextCupAI.base(for: harness.brew, store: harness.store)
+    ).system
+    #expect(system.contains("3 to 6"))
+    #expect(system.contains("as the trend"))
   }
 
   @Test func theRecipesStepsAreSentWithTheNumbersActuallyBrewed() throws {
@@ -174,5 +287,7 @@ struct NextCupAITests {
   @Test func theDisclosureListsWhatThisSends() {
     let sends = AIFeature.diagnosis.sends
     #expect(sends.contains("Ask AI for Next Cup") && sends.contains("bean name, roaster, roast"))
+    #expect(sends.contains("up to \(NextCupAI.cloudHistory.brews) of your other brews"))
+    #expect(!sends.contains("Ask AI about this brew"))
   }
 }

@@ -41,6 +41,7 @@ final class NextCupAIUITests: XCTestCase {
   private func finishAndOpen() {
     XCTAssertTrue(element("nextcup.done").waitForExistence(timeout: 15))
     XCTAssertTrue(app.staticTexts["Grind 18 to 16"].exists)
+    XCTAssertTrue(element("nextcup.basis").label.contains("similar past brew"))
     shoot("result")
     element("nextcup.open").tap()
     let note = element("recipe.nextCupNote")
@@ -73,7 +74,8 @@ final class NextCupAIUITests: XCTestCase {
     firstRow.tap()
     let ask = element("brewform.askNextCup")
     XCTAssertTrue(ask.waitForExistence(timeout: 5))
-    XCTAssertEqual(ask.label, "Ask AI about this brew")
+    XCTAssertEqual(ask.label, "Ask AI for Next Cup")
+    XCTAssertFalse(app.staticTexts["Get one AI tip"].exists)
     XCTAssertTrue(element("brewform.unlock").exists, "still locked")
     shoot("saved-brew")
     ask.tap()
