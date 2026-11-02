@@ -2,9 +2,10 @@ import Foundation
 import NextCupKit
 import SwiftData
 
-/// "Ask AI for Next Cup" on a past brew: the AI reads the brew and how it tasted and rewrites
-/// it as an improved recipe, saved as the user's own "Next Cup" on the Brew tab. There is one
-/// rolling Next Cup per method; renaming it keeps it, and the next ask makes a new one.
+/// "Ask AI for Next Cup" on a past brew: the AI reads the brew, how it tasted and the user's
+/// similar past brews, gives an overview and rewrites the brew as an improved recipe, saved as
+/// the user's own "Next Cup" on the Brew tab. There is one rolling Next Cup per method;
+/// renaming it keeps it, and the next ask makes a new one.
 @MainActor
 enum NextCupAI {
   nonisolated static let recipeName = "Next Cup"
@@ -19,6 +20,8 @@ enum NextCupAI {
     var source: String
     /// The earlier Next Cup this one replaced, so it can be put back.
     var replaced: RecipeDraft?
+    /// How many of the user's other brews the AI read.
+    var similarCount = 0
   }
 
   private static let system =
@@ -34,8 +37,19 @@ enum NextCupAI {
     dose or water of 0 was not recorded. When notes from coffee sites are given, use them \
     only where they fit this cup. changes lists each change, as what (a few words with the \
     old and new value, for example "Grind 18 to 16") and why (one sentence). Keep the \
-    recipe's name.
-    """ + "\n" + RecipeReviewAI.format
+    recipe's name. Read their other similar brews as the trend: which settings got the best \
+    ratings and tastes, what changed between cups and what that did. Keep what worked, do not \
+    repeat what failed, and allow for differences in bean.
+    """ + "\n" + RecipeReviewAI.format + "\n"
+      + """
+      For this answer, summary is not one or two sentences: it is a full overview of 3 to 6 \
+      plain sentences covering what this cup says, what their similar brews show, and the plan \
+      for the next cup.
+      """
+
+  /// How much history fits: Apple's on-device model has a small context.
+  nonisolated static let cloudHistory = (brews: 8, noteCharacters: 240)
+  nonisolated static let onDeviceHistory = (brews: 4, noteCharacters: 120)
 
   /// The brew as a recipe to improve: its own recipe's steps with the numbers it was
   /// actually brewed at.
@@ -54,10 +68,87 @@ enum NextCupAI {
     return draft
   }
 
-  /// The brew, its beans and how it tasted, then the recipe the way Improve with AI sends it.
-  /// No photo and no other brews.
-  static func payload(for brew: Brew, base: RecipeDraft) -> AIRequestPayload {
-    var lines = (brew.beans ?? []).map(beanLine)
+  /// The user's other brews with this brew's method, any date: those sharing a bean first,
+  /// then those with a similar dose and water, then the rest, newest first within each.
+  static func similarBrews(to brew: Brew, in brews: [Brew], limit: Int) -> [Brew] {
+    guard let method = brew.method?.id else { return [] }
+    let beans = Set((brew.beans ?? []).map(beanKey))
+    func tier(_ other: Brew) -> Int {
+      if !beans.isDisjoint(with: (other.beans ?? []).map(beanKey)) { return 0 }
+      return isNear(other.doseG, brew.doseG) && isNear(other.waterG, brew.waterG) ? 1 : 2
+    }
+    let others = brews.filter { $0.id != brew.id && $0.method?.id == method }
+    let ranked: [(tier: Int, brew: Brew)] = others.map { (tier($0), $0) }
+    let sorted = ranked.sorted { (first, second) -> Bool in
+      first.tier == second.tier ? first.brew.date > second.brew.date : first.tier < second.tier
+    }
+    return sorted.prefix(limit).map { $0.brew }
+  }
+
+  /// A bean deleted since the brew is known only by the name the brew kept.
+  private static func beanKey(_ part: BrewBean) -> String {
+    part.bean?.id.uuidString ?? part.beanNameSnapshot
+  }
+
+  /// Within 20% of `value`. A missing or 0 amount was not recorded, so it matches.
+  private static func isNear(_ other: Double?, _ value: Double?) -> Bool {
+    guard let other, let value, other > 0, value > 0 else { return true }
+    return abs(other - value) <= value * 0.2
+  }
+
+  /// One past brew on one line. No photo.
+  private static func historyLine(_ brew: Brew, noteCharacters: Int) -> String {
+    var parts = [brew.date.formatted(date: .abbreviated, time: .omitted)]
+    if let recipe = brew.recipe?.name { parts.append(recipe) }
+    for part in brew.beans ?? [] {
+      var bean = "bean \(part.bean?.name ?? part.beanNameSnapshot)"
+      if let roaster = part.bean?.roaster?.name { bean += " from \(roaster)" }
+      if let roast = part.bean?.roastLevel { bean += ", \(roast.rawValue) roast" }
+      parts.append(bean)
+    }
+    if let dose = brew.doseG, dose > 0 {
+      parts.append("dose \(SuggestionApplication.number(dose)) g")
+    }
+    if let water = brew.waterG, water > 0 {
+      parts.append("water \(SuggestionApplication.number(water)) g")
+    }
+    if let ratio = BrewMath.ratioLabel(BrewMath.ratio(doseG: brew.doseG, waterG: brew.waterG)) {
+      parts.append("ratio \(ratio)")
+    }
+    let grind = brew.grindSetting.flatMap { $0.isEmpty ? nil : $0 }
+    if let grinder = brew.grinder?.name {
+      parts.append("grinder \(grinder)" + (grind.map { " at \($0)" } ?? ""))
+    } else if let grind {
+      parts.append("grind \(grind)")
+    }
+    if let temp = brew.tempC { parts.append("\(SuggestionApplication.number(temp)) °C") }
+    if let time = brew.totalTimeS { parts.append("\(time) s") }
+    parts.append(
+      "taste "
+        + (brew.verdicts.isEmpty
+          ? "not noted" : brew.verdicts.map(\.rawValue).joined(separator: ", ")))
+    parts.append(ratingText(brew))
+    let notes = brew.notes.components(separatedBy: .newlines).joined(separator: " ")
+      .trimmingCharacters(in: .whitespaces)
+    if !notes.isEmpty {
+      parts.append(
+        "notes: \(notes.prefix(noteCharacters))" + (notes.count > noteCharacters ? "…" : ""))
+    }
+    return "- " + parts.joined(separator: "; ")
+  }
+
+  private static func ratingText(_ brew: Brew) -> String {
+    brew.ratingTenths.flatMap { $0 > 0 ? "rated \(Rating.text($0)) out of 10" : nil } ?? "not rated"
+  }
+
+  /// The brew, its beans and how it tasted, the recipe the way Improve with AI sends it, then
+  /// the user's similar past brews. No photos.
+  static func payload(
+    for brew: Brew, base: RecipeDraft, similar: [Brew] = [],
+    noteCharacters: Int = cloudHistory.noteCharacters
+  ) -> AIRequestPayload {
+    var lines = ["Brewed: \(brew.date.formatted(date: .abbreviated, time: .omitted))"]
+    lines += (brew.beans ?? []).map(beanLine)
     if let grind = brew.grindSetting, !grind.isEmpty { lines.append("Grind used: \(grind)") }
     let rating = brew.ratingTenths.flatMap { $0 > 0 ? Rating.text($0) : nil }
     lines.append("Rating: " + (rating.map { "\($0) out of 10" } ?? "not rated"))
@@ -70,6 +161,8 @@ enum NextCupAI {
     let recipe = RecipeReviewAI.payload(
       base, methodName: brew.method?.name, note: "", grinder: base.grinderName)
     lines.append(recipe.userText)
+    lines.append("Their other similar brews, newest first:" + (similar.isEmpty ? " none yet" : ""))
+    lines += similar.map { historyLine($0, noteCharacters: noteCharacters) }
     return AIRequestPayload(
       system: system, userText: lines.joined(separator: "\n"), schemaName: "next_cup",
       schema: RecipeReviewAI.schema)
@@ -154,7 +247,7 @@ enum NextCupAI {
   /// Asks the AI about `brew` and saves the answer. Nothing is stored unless the answer makes
   /// a recipe the editor itself would save. A failed web search never blocks the recipe.
   static func ask(
-    about brew: Brew, store: Store,
+    about brew: Brew, store: Store, onDevice: Bool = DirectAI.cloudProviderTitle == nil,
     research: (String) async throws -> WebResearch? = {
       try await DirectAI.research($0, system: RecipeReviewAI.researchSystem)
     },
@@ -165,7 +258,12 @@ enum NextCupAI {
     let start = base(for: brew, store: store)
     let found = await searchResult(for: brew, grinder: start.grinderName, research: research)
     try Task.checkCancellation()
-    let (answer, source) = try await send(payload(for: brew, base: start))
+    let history = onDevice ? onDeviceHistory : cloudHistory
+    let similar = similarBrews(
+      to: brew, in: (try? store.context.fetch(FetchDescriptor<Brew>())) ?? [],
+      limit: history.brews)
+    let (answer, source) = try await send(
+      payload(for: brew, base: start, similar: similar, noteCharacters: history.noteCharacters))
     try Task.checkCancellation()
     guard let review = RecipeReviewAI.parse(answer, base: start, source: source) else {
       throw AIError.invalidResponse
@@ -174,7 +272,7 @@ enum NextCupAI {
     case .success(let saved):
       return Outcome(
         recipeID: saved.recipe.id, summary: review.summary, changes: review.changes,
-        source: source, replaced: saved.replaced)
+        source: source, replaced: saved.replaced, similarCount: similar.count)
     case .failure(let failure):
       throw failure
     }
@@ -193,7 +291,9 @@ enum NextCupAI {
     static let fakesAnswer = ProcessInfo.processInfo.arguments.contains("-fakeNextCupAI")
     static func fakeAnswer(for base: RecipeDraft) -> [String: Any] {
       [
-        "summary": "A finer grind and hotter water pull more sweetness from this coffee.",
+        "summary":
+          "This cup tasted sour, so it needs more extraction. Your similar brews rated higher "
+          + "when they were ground finer. Next time, go finer and hotter to pull more sweetness.",
         "changes": [
           ["what": "Grind 18 to 16", "why": "A finer grind extracts more and fixes the sourness."],
           ["what": "Temperature 93 to 95 °C", "why": "Hotter water helps a light roast."],

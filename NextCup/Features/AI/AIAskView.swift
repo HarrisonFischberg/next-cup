@@ -2,7 +2,7 @@ import NextCupKit
 import SwiftData
 import SwiftUI
 
-/// The sheet behind "Get one AI tip" on a saved brew and Explore's insights. It first shows
+/// The sheet behind Explore's insights. It first shows
 /// exactly what would be sent, then waits for a tap. Setup problems say where to fix
 /// them; offline waits and failures keep Cancel and Try again in reach.
 struct AIAskView: View {

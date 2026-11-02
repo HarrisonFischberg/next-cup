@@ -32,7 +32,6 @@ struct BrewFormView: View {
   @Query(sort: \Grinder.name) private var grinders: [Grinder]
   @Query(sort: \Suggestion.createdAt, order: .reverse) private var suggestions: [Suggestion]
   @Query(sort: \WaterProfile.name) private var waters: [WaterProfile]
-  @State private var askingAI = false
   @State private var askingNextCup = false
   @State private var addingWater = false
   @State private var newWaterName = ""
@@ -213,7 +212,7 @@ struct BrewFormView: View {
       VStack(alignment: .leading, spacing: DS.Space.lg) {
         header(model)
         if locked {
-          SteelButton(title: "Ask AI about this brew", kind: .secondary) { askingNextCup = true }
+          SteelButton(title: "Ask AI for Next Cup", kind: .secondary) { askingNextCup = true }
             .accessibilityHint("Puts an improved recipe called Next Cup on the Brew tab")
             .accessibilityIdentifier("brewform.askNextCup")
         }
@@ -275,8 +274,6 @@ struct BrewFormView: View {
         .disabled(locked)
         if let editing {
           SuggestionHistory(brew: editing, units: units)
-          SteelButton(title: "Get one AI tip", kind: .secondary) { askingAI = true }
-            .accessibilityIdentifier("brewform.ai")
         }
       }
       .padding(DS.Space.lg)
@@ -291,13 +288,6 @@ struct BrewFormView: View {
     .sheet(isPresented: $askingNextCup) {
       if let editing {
         NextCupAIView(brew: editing) { askingNextCup = false }
-      }
-    }
-    .sheet(isPresented: $askingAI) {
-      if let editing {
-        AIAskView(
-          model: AIAskModel(feature: .diagnosis, brews: [editing], context: context),
-          close: { askingAI = false })
       }
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
