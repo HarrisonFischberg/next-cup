@@ -17,6 +17,7 @@ struct AISettingsView: View {
   @State private var provider: AIProvider
   @State private var model: String
   @State private var effort: String
+  @AppStorage(NextCupAuto.enabledKey) private var autoNextCup = true
 
   init() {
     let preferences = AIPreferences()
@@ -41,6 +42,16 @@ struct AISettingsView: View {
       }
       ForEach(AIProvider.keyed) { card($0) }
       if preferences.appleAvailable { appleCard }
+      Section {
+        Toggle("Write my Next Cup when I save a brew", isOn: $autoNextCup)
+          .listRowBackground(DS.paper)
+          .accessibilityIdentifier("ai.nextCup.auto")
+          .onChange(of: autoNextCup) { _, on in if !on { NextCupAuto.shared.cancel() } }
+      } footer: {
+        Text(
+          "After you save a brew with a taste or rating, the AI writes the Next Cup recipe on the Brew tab. With a key, this sends the brew and your similar rated brews to your provider, which may charge your account."
+        )
+      }
     }
     .listStyle(.insetGrouped)
     .scrollContentBackground(.hidden)

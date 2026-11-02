@@ -151,7 +151,7 @@ final class BrewSetupUITests: XCTestCase {
 
     element("brewform.verdict.balanced").tap()
     XCTAssertTrue(element("brewform.verdict.balanced").isSelected)
-    XCTAssertFalse(sour.isSelected, "Balanced clears the faults")
+    XCTAssertTrue(sour.isSelected, "Balanced goes with the other tastes")
   }
 
   /// The Journal lists older brews under their own Past Brews header.

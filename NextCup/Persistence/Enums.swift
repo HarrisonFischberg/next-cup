@@ -16,14 +16,12 @@ enum Verdict: String, Codable, CaseIterable, Sendable {
     verdicts.isEmpty ? nil : verdicts.map(\.rawValue).joined(separator: ",")
   }
 
-  /// Picking or unpicking one taste. Balanced stands alone: it clears the faults, and a
-  /// fault clears it.
+  /// Picking or unpicking one taste. Any tastes can go together, Balanced included.
   static func toggled(_ option: Verdict, in raw: String?) -> String? {
     var tastes = picked(raw)
     if let index = tastes.firstIndex(of: option) {
       tastes.remove(at: index)
     } else {
-      tastes.removeAll { option == .balanced || $0 == .balanced }
       tastes.append(option)
     }
     return joined(tastes)

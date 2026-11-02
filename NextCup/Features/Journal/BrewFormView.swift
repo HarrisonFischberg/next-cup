@@ -127,6 +127,9 @@ struct BrewFormView: View {
     .onChange(of: model.draft) { _, _ in model.draftChanged() }
     // Once the save completes, back to the Journal, where the new cup sits at the top.
     .onChange(of: model.savedBrewID) { _, id in
+      if let id, model.reviewChanged {
+        NextCupAuto.shared.brewReviewed(id, store: Store(context: context))
+      }
       guard id != nil, let router else { return }
       onSaved?()
       router.showJournal()

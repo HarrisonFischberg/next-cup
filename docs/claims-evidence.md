@@ -4,7 +4,7 @@ Every material claim the app or its drafts make, with what supports it. Updated 
 
 | Claim (where) | Support | Status |
 | --- | --- | --- |
-| "Nothing is sent until you tap, and never without a key" (AI disclosure) | Unit test `noDisclosureMeansNoCall`; the only network code is `URLSessionTransport` in `NextCupKit/AI/AIClient.swift`, used by `AIQueue` | Verified in tests with a stub transport; no real call made |
+| "Nothing else is sent, and never without a key" (AI disclosure; the only send without a tap is Next Cup on save, which is off without an accepted notice and has its own switch) | Unit tests `noDisclosureMeansNoCall`, `anUnacceptedNoticeSendsNothingUntilItIsAccepted`, `theSwitchOffOrNoAISendsNothing`; the only network code is `URLSessionTransport` in `NextCupKit/AI/AIClient.swift`, used by `AIQueue` | Verified in tests with a stub transport; no real call made |
 | "Next Cup has no server and sees none of it" (AI disclosure, privacy draft) | No server code, no non-Apple network endpoints other than the two provider URLs in `AIClient.swift` | Verified by code search |
 | "A photo is sent without location or camera metadata" | `sanitizedPhotoHasNoGPSExifOrTIFFMetadata` | Verified for the sanitizer; the send path uses it per code review, not a network capture |
 | Keys are kept only on this device | Keychain `WhenUnlockedThisDeviceOnly`; `keychainRoundTrip`; no key in `UserDefaults` (T021 test) | Verified |

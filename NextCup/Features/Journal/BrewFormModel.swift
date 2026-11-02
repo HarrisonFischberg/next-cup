@@ -31,6 +31,8 @@ final class BrewFormModel {
   private(set) var saveError: String?
   private(set) var isSaving = false
   private(set) var savedBrewID: UUID?
+  /// A new brew, or an edit that changed its taste, rating or notes.
+  private(set) var reviewChanged = false
   private(set) var photoError: String?
   /// The suggestion the user has answered on this form, so its card stays visible
   /// with Undo after it leaves the waiting list.
@@ -501,6 +503,7 @@ final class BrewFormModel {
     saveError = nil
     autosave?.cancel()
     defer { isSaving = false }
+    let reviewBefore = (try? store.find(Brew.self, id: draft.id))?.reviewKey
 
     do {
       try store.upsert(Brew.self, id: draft.id, make: { Brew(id: draft.id) }, update: apply)
@@ -519,6 +522,7 @@ final class BrewFormModel {
     if let grinderID = draft.grinderID {
       defaults.set(grinderID.uuidString, forKey: Self.lastGrinderKey)
     }
+    reviewChanged = (try? store.find(Brew.self, id: draft.id))?.reviewKey != reviewBefore
     savedBrewID = draft.id
     if !isEditing, draft.verdict == nil, Self.remindsToTaste {
       TasteReminder.schedule(

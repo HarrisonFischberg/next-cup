@@ -59,6 +59,28 @@ final class NextCupAIUITests: XCTestCase {
     shoot("recipe")
   }
 
+  /// Saving a new taste writes the recipe with no sheet and no further tap.
+  func testSavingATasteLeavesTheNextCupOnTheBrewTab() throws {
+    launch()
+    XCTAssertTrue(firstRow.waitForExistence(timeout: 5))
+    firstRow.tap()
+    let unlock = element("brewform.unlock")
+    XCTAssertTrue(unlock.waitForExistence(timeout: 5))
+    unlock.tap()
+    let sour = element("brewform.verdict.sour")
+    let balanced = element("brewform.verdict.balanced")
+    for _ in 0..<8 where !balanced.isHittable { app.swipeUp() }
+    for taste in [sour, balanced] where !taste.isSelected { taste.tap() }
+    XCTAssertTrue(sour.isSelected && balanced.isSelected)
+    shoot("tastes")
+    element("brewform.save").tap()
+    XCTAssertTrue(firstRow.waitForExistence(timeout: 5))
+    app.tabBars.buttons["Brew"].tap()
+    XCTAssertTrue(nextCupHeader.waitForExistence(timeout: 15))
+    XCTAssertFalse(element("nextcup.sheet").exists)
+    shoot("saved-on-save")
+  }
+
   func testLongPressAsksAIAndTheNextCupIsPinnedOnTheBrewTab() throws {
     launch()
     // Leave the Brew tab scrolled down: saving must still land on the card.

@@ -200,7 +200,7 @@ struct TasteView: View {
   let brew: Brew
   @Environment(\.modelContext) private var context
   @Environment(\.dismiss) private var dismiss
-  @State private var verdict: Verdict?
+  @State private var tastes: [Verdict] = []
   @State private var tenths = 0
   @State private var notes = ""
   @FocusState private var notesFocused: Bool
@@ -241,7 +241,7 @@ struct TasteView: View {
       }
     }
     .onAppear {
-      verdict = brew.verdict
+      tastes = brew.verdicts
       tenths = brew.ratingTenths ?? 0
       notes = brew.notes
     }
@@ -255,11 +255,12 @@ struct TasteView: View {
         detail: "Brewed at \(brew.date.formatted(date: .omitted, time: .shortened)).")
       Text("How does it taste?").font(DS.Font.display).foregroundStyle(DS.ink)
         .dynamicTypeSize(...DS.displayCap).accessibilityAddTraits(.isHeader)
+      Text("Pick all that apply.").font(.footnote).foregroundStyle(DS.ink2)
       VStack(spacing: 0) {
         ForEach(Self.words, id: \.0) { option, words in
-          let on = verdict == option
+          let on = tastes.contains(option)
           Button {
-            verdict = on ? nil : option
+            tastes = Verdict.picked(Verdict.toggled(option, in: Verdict.joined(tastes)))
           } label: {
             HStack(spacing: DS.Space.md) {
               VStack(alignment: .leading, spacing: 2) {
@@ -298,7 +299,7 @@ struct TasteView: View {
   @ViewBuilder private func next(_ outcome: DialInOutcome) -> some View {
     LoopStrip(
       at: .next,
-      detail: "You said \(verdict?.rawValue ?? "–")"
+      detail: "You said \(tastes.isEmpty ? "–" : tastes.map(\.rawValue).joined(separator: ", "))"
         + (tenths > 0 ? ", \(Rating.text(tenths)) of 10." : "."))
     VStack(alignment: .leading, spacing: DS.Space.lg) {
       switch outcome {
@@ -334,7 +335,7 @@ struct TasteView: View {
       : AnyLayout(HStackLayout(spacing: DS.Space.md))) {
         if outcome == nil {
           SteelButton(title: "See tomorrow's change") { save() }
-            .disabled(verdict == nil)
+            .disabled(tastes.isEmpty)
             .accessibilityIdentifier("taste.save")
         } else {
           if let proposal {
@@ -351,7 +352,8 @@ struct TasteView: View {
 
   private func save() {
     let store = Store(context: context)
-    brew.verdict = verdict
+    brew.verdict = tastes.first
+    brew.alsoTasted = tastes.count > 1 ? tastes.dropFirst().map(\.rawValue) : nil
     brew.ratingTenths = tenths > 0 ? tenths : nil
     brew.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
     brew.updatedAt = Date()
@@ -360,6 +362,7 @@ struct TasteView: View {
       return
     }
     TasteReminder.cancel(brewID: brew.id)
+    NextCupAuto.shared.brewReviewed(brew.id, store: store)
     switch SuggestionService(store: store).propose(for: brew) {
     case .success(let result):
       withAnimation(.smooth(duration: 0.35)) { outcome = result }

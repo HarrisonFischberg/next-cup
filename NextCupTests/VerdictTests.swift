@@ -4,15 +4,17 @@ import Testing
 
 @Suite("How it tasted")
 struct VerdictTests {
-  @Test func faultsAddUpAndBalancedStandsAlone() {
+  @Test func tastesAddUpBalancedIncluded() {
     var raw = Verdict.toggled(.sour, in: nil)
     raw = Verdict.toggled(.weak, in: raw)
     #expect(Verdict.picked(raw) == [.sour, .weak])
     raw = Verdict.toggled(.balanced, in: raw)
-    #expect(Verdict.picked(raw) == [.balanced])
+    #expect(Verdict.picked(raw) == [.sour, .weak, .balanced])
     raw = Verdict.toggled(.bitter, in: raw)
-    #expect(Verdict.picked(raw) == [.bitter])
-    #expect(Verdict.toggled(.bitter, in: raw) == nil)
+    #expect(Verdict.picked(raw) == [.sour, .weak, .balanced, .bitter])
+    raw = Verdict.toggled(.balanced, in: raw)
+    #expect(Verdict.picked(raw) == [.sour, .weak, .bitter])
+    #expect(Verdict.toggled(.sour, in: "sour") == nil)
   }
 
   @Test func aSingleTasteSavedBeforeReadsTheSame() {
