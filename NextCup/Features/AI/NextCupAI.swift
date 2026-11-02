@@ -3,8 +3,8 @@ import NextCupKit
 import SwiftData
 
 /// "Ask AI for Next Cup" on a past brew: the AI reads the brew, how it tasted and the user's
-/// similar past brews, gives an overview and rewrites the brew as an improved recipe, saved as
-/// the user's own "Next Cup" on the Brew tab. There is one rolling Next Cup per method;
+/// similar past brews, gives an overview and rewrites the brew as an improved recipe, which the
+/// user can save as their own "Next Cup" on the Brew tab. There is one rolling Next Cup per method;
 /// renaming it keeps it, and the next ask makes a new one.
 @MainActor
 enum NextCupAI {
@@ -14,12 +14,13 @@ enum NextCupAI {
   nonisolated static let credit = "AI, from your brew"
 
   struct Outcome: Equatable {
-    var recipeID: UUID
+    /// The recipe to save. Nothing is stored until the user saves it.
+    var draft: RecipeDraft
     var summary: String
     var changes: [RecipeReviewAI.Change]
     var source: String
-    /// The earlier Next Cup this one replaced, so it can be put back.
-    var replaced: RecipeDraft?
+    /// Saving this overwrites an earlier Next Cup for the method.
+    var replacesEarlier: Bool
     /// How many of the user's other brews the AI read.
     var similarCount = 0
   }
@@ -232,20 +233,19 @@ enum NextCupAI {
   }
 
   /// Saves `draft` over this method's Next Cup, or as a new recipe when it has none.
-  static func save(_ draft: RecipeDraft, store: Store) -> Result<
-    (recipe: Recipe, replaced: RecipeDraft?), RecipeEditorError
-  > {
-    let service = RecipeEditorService(store: store)
-    let recipes = (try? store.context.fetch(FetchDescriptor<Recipe>())) ?? []
-    let existing = recipes.first { $0.isNextCup && $0.method?.id == draft.methodID }
+  static func save(_ draft: RecipeDraft, store: Store) -> Result<Recipe, RecipeEditorError> {
     var draft = draft
-    draft.sourceID = existing?.id
-    let replaced = existing.map { service.draft(from: $0, asCopy: false) }
-    return service.save(draft).map { ($0, replaced) }
+    draft.sourceID = existing(for: draft, store: store)?.id
+    return RecipeEditorService(store: store).save(draft)
   }
 
-  /// Asks the AI about `brew` and saves the answer. Nothing is stored unless the answer makes
-  /// a recipe the editor itself would save. A failed web search never blocks the recipe.
+  private static func existing(for draft: RecipeDraft, store: Store) -> Recipe? {
+    let recipes = (try? store.context.fetch(FetchDescriptor<Recipe>())) ?? []
+    return recipes.first { $0.isNextCup && $0.method?.id == draft.methodID }
+  }
+
+  /// Asks the AI about `brew` and returns the recipe to save. An answer that does not make a
+  /// recipe the editor itself would save throws. A failed web search never blocks the recipe.
   static func ask(
     about brew: Brew, store: Store, onDevice: Bool = DirectAI.cloudProviderTitle == nil,
     research: (String) async throws -> WebResearch? = {
@@ -268,14 +268,11 @@ enum NextCupAI {
     guard let review = RecipeReviewAI.parse(answer, base: start, source: source) else {
       throw AIError.invalidResponse
     }
-    switch save(finished(review, brew: brew, sources: found?.sources ?? []), store: store) {
-    case .success(let saved):
-      return Outcome(
-        recipeID: saved.recipe.id, summary: review.summary, changes: review.changes,
-        source: source, replaced: saved.replaced, similarCount: similar.count)
-    case .failure(let failure):
-      throw failure
-    }
+    let draft = finished(review, brew: brew, sources: found?.sources ?? [])
+    if let problem = RecipeEditorService.validate(draft) { throw problem }
+    return Outcome(
+      draft: draft, summary: review.summary, changes: review.changes, source: source,
+      replacesEarlier: existing(for: draft, store: store) != nil, similarCount: similar.count)
   }
 
   private static func searchResult(

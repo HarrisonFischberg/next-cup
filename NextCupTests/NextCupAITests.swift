@@ -71,6 +71,13 @@ struct NextCupAITests {
       send: { _ in (reply, "Anthropic") })
   }
 
+  /// Asks, then taps Save Next Cup.
+  @discardableResult
+  private func askAndSave(_ harness: Harness, _ reply: [String: Any]) async throws -> Recipe {
+    let outcome = try await ask(harness, reply)
+    return try NextCupAI.save(outcome.draft, store: harness.store).get()
+  }
+
   @Test func thePromptCarriesTheBrewTheBeanAndHowItTasted() throws {
     let harness = try Harness()
     let base = NextCupAI.base(for: harness.brew, store: harness.store)
@@ -218,11 +225,16 @@ struct NextCupAITests {
     #expect(!question.contains("Geometry") && !question.contains("Thin and sharp"))
   }
 
-  @Test func theAnswerIsSavedAsNextCupWithTheChangesAndGrind() async throws {
+  @Test func nothingIsStoredUntilTheUserSaves() async throws {
     let harness = try Harness()
     let outcome = try await ask(harness, answer())
+    #expect(try harness.recipes().isEmpty && !outcome.replacesEarlier)
+  }
+
+  @Test func theAnswerIsSavedAsNextCupWithTheChangesAndGrind() async throws {
+    let harness = try Harness()
+    try await askAndSave(harness, answer())
     let recipe = try #require(harness.recipes().first)
-    #expect(recipe.id == outcome.recipeID && outcome.replaced == nil)
     #expect(recipe.name == "Next Cup" && recipe.method?.id == harness.method.id)
     #expect(recipe.tempC == 95 && recipe.totalTimeS == 200 && recipe.orderedSteps.count == 2)
     #expect(recipe.grindSetting == "16" && recipe.grinderName == "Baratza Encore")
@@ -234,7 +246,7 @@ struct NextCupAITests {
 
   @Test func noGrindFromTheAIKeepsTheBrews() async throws {
     let harness = try Harness()
-    _ = try await ask(harness, answer(grind: ""))
+    try await askAndSave(harness, answer(grind: ""))
     #expect(try harness.recipes().first?.grindSetting == "18")
   }
 
@@ -248,16 +260,14 @@ struct NextCupAITests {
     #expect(NextCupAIView.message(for: AIError.invalidResponse).contains("nothing was changed"))
   }
 
-  @Test func askingAgainReplacesThatMethodsNextCupAndCanBePutBack() async throws {
+  @Test func savingAgainReplacesThatMethodsNextCupAndAskingAloneKeepsIt() async throws {
     let harness = try Harness()
-    let first = try await ask(harness, answer(grind: "16"))
+    let recipe = try await askAndSave(harness, answer(grind: "16"))
     let second = try await ask(harness, answer(grind: "14"))
-    #expect(try harness.recipes().count == 1 && first.recipeID == second.recipeID)
-    let recipe = try #require(harness.recipes().first)
-    #expect(recipe.grindSetting == "14" && recipe.orderedSteps.count == 2)
-    let old = try #require(second.replaced)
-    _ = RecipeEditorService(store: harness.store).save(old)
-    #expect(recipe.grindSetting == "16" && recipe.isNextCup)
+    #expect(second.replacesEarlier && recipe.grindSetting == "16")
+    _ = try NextCupAI.save(second.draft, store: harness.store).get()
+    #expect(try harness.recipes().count == 1)
+    #expect(recipe.grindSetting == "14" && recipe.orderedSteps.count == 2 && recipe.isNextCup)
   }
 
   @Test func eachMethodKeepsItsOwnAndAUsersOwnRecipeIsLeftAlone() async throws {
@@ -266,22 +276,23 @@ struct NextCupAITests {
     let mine = Recipe(name: "Next Cup", doseG: 10, waterG: 160)
     mine.method = harness.method
     context.insert(mine)
-    _ = try await ask(harness, answer())
+    try await askAndSave(harness, answer())
     #expect(mine.doseG == 10 && !mine.isNextCup, "hand-named recipe untouched")
 
     let other = BrewMethod(name: "Other Brewer")
     context.insert(other)
     harness.brew.method = other
-    _ = try await ask(harness, answer())
+    try await askAndSave(harness, answer())
     #expect(try harness.recipes().count == 2)
   }
 
   @Test func renamedItIsTheUsersAndTheNextAskMakesANewOne() async throws {
     let harness = try Harness()
-    let first = try await ask(harness, answer())
-    try #require(harness.recipes().first).name = "Keeper"
+    let first = try await askAndSave(harness, answer())
+    first.name = "Keeper"
     let second = try await ask(harness, answer())
-    #expect(first.recipeID != second.recipeID && second.replaced == nil)
+    #expect(!second.replacesEarlier)
+    #expect(try NextCupAI.save(second.draft, store: harness.store).get().id != first.id)
   }
 
   @Test func theDisclosureListsWhatThisSends() {
