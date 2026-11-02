@@ -20,6 +20,8 @@ struct RecipeLibraryView: View {
   @State private var deleting: Recipe?
   @State private var deleteError: String?
   @State private var scrollPosition = ScrollPosition(edge: .top)
+  /// The provider's notice, opened from the automatic Next Cup's banner.
+  @State private var notice: AIProvider?
   @Environment(AppRouter.self) private var router: AppRouter?
   @Environment(\.modelContext) private var context
   @Environment(\.dynamicTypeSize) private var dts
@@ -96,6 +98,7 @@ struct RecipeLibraryView: View {
         } else if searching {
           ForEach(groups, id: \.title) { group in section(group.title, group.recipes) }
         } else {
+          autoNextCup
           if !nextCups.isEmpty { section("Recipe to try for your Next Cup", nextCups) }
           methods
           SectionRule("Your recipes")
@@ -105,6 +108,17 @@ struct RecipeLibraryView: View {
       .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.lg)
     }
     .scrollPosition($scrollPosition)
+    .onAppear { NextCupAuto.shared.resume(store: Store(context: context)) }
+    .sheet(item: $notice) { provider in
+      AIDisclosureView(provider: provider) {
+        AIPreferences().acceptDisclosure(for: provider)
+        notice = nil
+        NextCupAuto.shared.retry(store: Store(context: context))
+      } cancel: {
+        notice = nil
+        NextCupAuto.shared.cancel()
+      }
+    }
     .onChange(of: router?.brewTopRequests) {
       search = ""
       scrollPosition.scrollTo(edge: .top)
@@ -143,6 +157,33 @@ struct RecipeLibraryView: View {
       Text("Brews you logged with it stay in your journal.")
     }
     .accessibilityIdentifier("tab.root.recipes")
+  }
+
+  /// How the Next Cup made on save is getting on. Nothing shows once it is on the card.
+  @ViewBuilder private var autoNextCup: some View {
+    switch NextCupAuto.shared.status {
+    case .idle: EmptyView()
+    case .working:
+      StateBanner(kind: .info, message: "Working out your next cup from your latest brew.")
+        .accessibilityIdentifier("recipes.nextCup.working")
+    case .failed(let message):
+      StateBanner(
+        kind: .error, message: "Your Next Cup was not updated. \(message)",
+        actionTitle: "Try again"
+      ) {
+        NextCupAuto.shared.retry(store: Store(context: context))
+      }
+      .accessibilityIdentifier("recipes.nextCup.failed")
+    case .needsNotice(let provider):
+      StateBanner(
+        kind: .info,
+        message: "Saving a brew can write your Next Cup with \(provider.title). See what it sends.",
+        actionTitle: "Review"
+      ) {
+        notice = provider
+      }
+      .accessibilityIdentifier("recipes.nextCup.notice")
+    }
   }
 
   private func delete(_ recipe: Recipe) {

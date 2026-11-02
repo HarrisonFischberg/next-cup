@@ -425,6 +425,7 @@ struct DataEraser {
   }
 
   func eraseAll(reseeding content: BuiltInContent) -> Result<DataArchive, StoreError> {
+    NextCupAuto.shared.cancel()
     do {
       let snapshot = try DataExporter(store: store).archive()
       let context = store.context

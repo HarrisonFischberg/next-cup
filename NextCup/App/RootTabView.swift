@@ -10,6 +10,7 @@ struct RootTabView: View {
   @State private var router = AppRouter()
   @AppStorage(OnboardingView.doneKey) private var onboarded = false
   @Environment(\.modelContext) private var context
+  @Environment(\.scenePhase) private var scenePhase
   /// Set once onboarding finishes; until then the first-run check decides, so a fresh
   /// install opens straight on Step 1 with no frame of the tabs behind it.
   @State private var onboardingFinished = false
@@ -46,6 +47,10 @@ struct RootTabView: View {
       }
     }
     .onOpenURL { handle($0) }
+    // Picks up a Next Cup that iOS stopped in the background or that had no connection.
+    .onChange(of: scenePhase) { _, phase in
+      if phase == .active { NextCupAuto.shared.resume(store: Store(context: context)) }
+    }
     .onAppear {
       // Someone upgrading with brews already logged counts as set up, so the check stops.
       if !onboarded, !showsOnboarding, !AppBootstrap.usesInMemoryStore { onboarded = true }

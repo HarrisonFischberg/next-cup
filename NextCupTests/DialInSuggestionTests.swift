@@ -98,6 +98,12 @@ struct DialInSuggestionTests {
     }
   }
 
+  @Test func aFaultPickedWithBalancedDecidesTheChange() throws {
+    let harness = try Harness()
+    try harness.log(.balanced, also: [.sour])
+    #expect(try harness.suggestions().first?.toValue == "19")
+  }
+
   @Test func aFaultPickedWithBrightDecidesTheChange() throws {
     let harness = try Harness()
     try harness.log(.bright, also: [.sour])

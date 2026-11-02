@@ -13,7 +13,7 @@ YOUR BEANS, ORGANIZED
 Keep each bag with its roaster, origin, process, roast date and flavor notes. Scan the bag's barcode or take a photo to fill in the details, see how much is left, and find coffee roasters near you on the map.
 
 AI THAT STAYS OPTIONAL
-With no key, AI features use the on-device model where your phone has one, and nothing leaves your phone. You can add your own OpenAI or Anthropic key instead; Next Cup shows what each action sends before the first request and sends nothing until you tap.
+With no key, AI features use the on-device model where your phone has one, and nothing leaves your phone. You can add your own OpenAI or Anthropic key instead; Next Cup shows what each action sends before the first request and sends nothing until you tap, or until you save a brew you tasted or rated, which writes your Next Cup recipe (you can turn that off in Settings).
 
 PRIVATE BY DESIGN
 No account, no ads, no analytics and no server of ours. Your journal stays on your phone, with daily backups, export to CSV or JSON, and one place to delete everything.

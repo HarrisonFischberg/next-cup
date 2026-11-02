@@ -86,6 +86,14 @@ enum NextCupAI {
     return sorted.prefix(limit).map { $0.brew }
   }
 
+  /// The pool for the automatic Next Cup: brews already rated or tasted, with the same method
+  /// (checked by `similarBrews`) and a dose and water within 20% of this brew's.
+  static func sameCategory(as brew: Brew, in brews: [Brew]) -> [Brew] {
+    brews.filter {
+      $0.isReviewed && isNear($0.doseG, brew.doseG) && isNear($0.waterG, brew.waterG)
+    }
+  }
+
   /// A bean deleted since the brew is known only by the name the brew kept.
   private static func beanKey(_ part: BrewBean) -> String {
     part.bean?.id.uuidString ?? part.beanNameSnapshot
@@ -247,7 +255,8 @@ enum NextCupAI {
   /// Asks the AI about `brew` and returns the recipe to save. An answer that does not make a
   /// recipe the editor itself would save throws. A failed web search never blocks the recipe.
   static func ask(
-    about brew: Brew, store: Store, onDevice: Bool = DirectAI.cloudProviderTitle == nil,
+    about brew: Brew, store: Store, sameCategoryOnly: Bool = false,
+    onDevice: Bool = DirectAI.cloudProviderTitle == nil,
     research: (String) async throws -> WebResearch? = {
       try await DirectAI.research($0, system: RecipeReviewAI.researchSystem)
     },
@@ -258,13 +267,16 @@ enum NextCupAI {
     let start = base(for: brew, store: store)
     let found = await searchResult(for: brew, grinder: start.grinderName, research: research)
     try Task.checkCancellation()
+    try checkStillThere(brew)
     let history = onDevice ? onDeviceHistory : cloudHistory
+    let all = (try? store.context.fetch(FetchDescriptor<Brew>())) ?? []
     let similar = similarBrews(
-      to: brew, in: (try? store.context.fetch(FetchDescriptor<Brew>())) ?? [],
+      to: brew, in: sameCategoryOnly ? sameCategory(as: brew, in: all) : all,
       limit: history.brews)
     let (answer, source) = try await send(
       payload(for: brew, base: start, similar: similar, noteCharacters: history.noteCharacters))
     try Task.checkCancellation()
+    try checkStillThere(brew)
     guard let review = RecipeReviewAI.parse(answer, base: start, source: source) else {
       throw AIError.invalidResponse
     }
@@ -273,6 +285,12 @@ enum NextCupAI {
     return Outcome(
       draft: draft, summary: review.summary, changes: review.changes, source: source,
       replacesEarlier: existing(for: draft, store: store) != nil, similarCount: similar.count)
+  }
+
+  /// The automatic run has no sheet in front of the Journal, so the brew can be deleted while
+  /// the AI works, and reading a deleted brew can crash.
+  private static func checkStillThere(_ brew: Brew) throws {
+    if brew.isDeleted || brew.modelContext == nil { throw CancellationError() }
   }
 
   private static func searchResult(
@@ -311,6 +329,13 @@ enum NextCupAI {
       ]
     }
   #endif
+}
+
+extension Brew {
+  /// Rated or tasted. Notes alone say too little to change a recipe.
+  var isReviewed: Bool { !verdicts.isEmpty || (ratingTenths ?? 0) > 0 }
+  /// What the AI reads as the review, to tell whether an edit changed it.
+  var reviewKey: String { "\(verdicts)|\(ratingTenths ?? 0)|\(notes)" }
 }
 
 extension Recipe {

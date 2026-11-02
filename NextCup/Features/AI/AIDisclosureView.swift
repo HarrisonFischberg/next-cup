@@ -12,10 +12,10 @@ struct AIDisclosureView: View {
       List {
         Section {
           Text(
-            "When you tap an AI action, Next Cup sends the data below to \(provider.title), using your own key."
+            "When you tap an AI action, or save a brew you tasted or rated, Next Cup sends the data below to \(provider.title), using your own key."
           )
           Text(
-            "Nothing is sent until you tap, and never without a key. \(provider.title) handles the request under its own terms. Next Cup has no server and sees none of it."
+            "Nothing else is sent, and never without a key. You can stop sending on save in Settings → AI. \(provider.title) handles the request under its own terms. Next Cup has no server and sees none of it."
           )
           Text(
             "Next Cup deletes its own copy of the photo and the request as soon as the request ends, whether it worked, failed or was cancelled."
