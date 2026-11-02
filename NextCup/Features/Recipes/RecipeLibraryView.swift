@@ -19,6 +19,8 @@ struct RecipeLibraryView: View {
   /// The recipe waiting on the Delete confirmation.
   @State private var deleting: Recipe?
   @State private var deleteError: String?
+  @State private var scrollPosition = ScrollPosition(edge: .top)
+  @Environment(AppRouter.self) private var router: AppRouter?
   @Environment(\.modelContext) private var context
   @Environment(\.dynamicTypeSize) private var dts
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
@@ -94,13 +96,18 @@ struct RecipeLibraryView: View {
         } else if searching {
           ForEach(groups, id: \.title) { group in section(group.title, group.recipes) }
         } else {
-          if !nextCups.isEmpty { section("Improved from your brews", nextCups) }
+          if !nextCups.isEmpty { section("Recipe to try for your Next Cup", nextCups) }
           methods
           SectionRule("Your recipes")
           ForEach(groups, id: \.title) { group in section(group.title, group.recipes) }
         }
       }
       .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.lg)
+    }
+    .scrollPosition($scrollPosition)
+    .onChange(of: router?.brewTopRequests) {
+      search = ""
+      scrollPosition.scrollTo(edge: .top)
     }
     .background(DS.bg)
     .scrollDismissesKeyboard(.immediately)

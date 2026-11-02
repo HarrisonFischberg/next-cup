@@ -5,7 +5,8 @@ import UIKit
 
 /// The sheet behind "Ask AI for Next Cup" (Past Brews long press and saved brew): the
 /// provider's notice if it is due, the cup brewing while the AI works, then the overview and
-/// what changed with Open in Brew. A failure changes nothing and offers Try again.
+/// what changed with Save Next Cup, which lands on the Brew tab. Nothing is stored before that
+/// tap. A failure changes nothing and offers Try again.
 struct NextCupAIView: View {
   let brew: Brew
   let close: () -> Void
@@ -22,7 +23,7 @@ struct NextCupAIView: View {
   @Environment(AppRouter.self) private var router: AppRouter?
   @State private var phase: Phase?
   @State private var job: Task<Void, Never>?
-  @State private var undoError: String?
+  @State private var saveError: String?
 
   var body: some View {
     Group {
@@ -42,7 +43,7 @@ struct NextCupAIView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
               ToolbarItem(placement: .cancellationAction) {
-                Button(phase == .working ? "Cancel" : "Close") {
+                Button(closeTitle) {
                   job?.cancel()
                   close()
                 }
@@ -52,10 +53,21 @@ struct NextCupAIView: View {
         }
       }
     }
-    .interactiveDismissDisabled(phase == .working)
+    // A finished answer is unsaved, so a stray swipe must not throw it away.
+    .interactiveDismissDisabled(phase == .working || isDone)
     .onAppear { if phase == nil { start() } }
     .onDisappear { job?.cancel() }
     .accessibilityIdentifier("nextcup.sheet")
+  }
+
+  private var isDone: Bool {
+    if case .done = phase { return true }
+    return false
+  }
+
+  private var closeTitle: String {
+    if isDone { return "Discard" }
+    return phase == .working ? "Cancel" : "Close"
   }
 
   @ViewBuilder private var content: some View {
@@ -102,7 +114,7 @@ struct NextCupAIView: View {
   private func done(_ outcome: NextCupAI.Outcome) -> some View {
     ScrollView {
       VStack(alignment: .leading, spacing: DS.Space.md) {
-        Text("Your Next Cup is on the Brew tab").font(DS.Font.headline).foregroundStyle(DS.ink)
+        Text("Your Next Cup is ready").font(DS.Font.headline).foregroundStyle(DS.ink)
           .accessibilityAddTraits(.isHeader)
           .accessibilityIdentifier("nextcup.done")
         if !outcome.summary.isEmpty {
@@ -120,31 +132,23 @@ struct NextCupAIView: View {
           }
           .accessibilityElement(children: .combine)
         }
-        if outcome.replaced != nil {
-          Text("It replaced your earlier Next Cup for this method.")
+        if outcome.replacesEarlier {
+          Text("Saving replaces your earlier Next Cup for this method.")
             .font(.footnote).foregroundStyle(DS.ink2)
+            .accessibilityIdentifier("nextcup.replaces")
         }
-        if let undoError {
-          StateBanner(kind: .error, message: undoError)
+        if let saveError {
+          StateBanner(kind: .error, message: saveError)
         }
       }
       .padding(DS.Space.lg)
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
-      VStack(spacing: DS.Space.sm) {
-        SteelButton(title: "Open in Brew") {
-          router?.showRecipe(outcome.recipeID)
-          close()
-        }
-        .accessibilityIdentifier("nextcup.open")
-        if let replaced = outcome.replaced {
-          SteelButton(title: "Put the old one back", kind: .secondary) { putBack(replaced) }
-            .accessibilityIdentifier("nextcup.undo")
-        }
-      }
-      .padding(DS.Space.lg)
-      .background(DS.bg, ignoresSafeAreaEdges: .bottom)
+      SteelButton(title: "Save Next Cup") { save(outcome.draft) }
+        .accessibilityIdentifier("nextcup.save")
+        .padding(DS.Space.lg)
+        .background(DS.bg, ignoresSafeAreaEdges: .bottom)
     }
   }
 
@@ -205,12 +209,13 @@ struct NextCupAIView: View {
     return try await NextCupAI.ask(about: brew, store: store)
   }
 
-  private func putBack(_ replaced: RecipeDraft) {
-    let service = RecipeEditorService(store: Store(context: context))
-    if case .failure(let failure) = service.save(replaced) {
-      undoError = failure.message
-    } else {
+  private func save(_ draft: RecipeDraft) {
+    switch NextCupAI.save(draft, store: Store(context: context)) {
+    case .success:
+      router?.showBrewTop()
       close()
+    case .failure(let failure):
+      saveError = failure.message
     }
   }
 
