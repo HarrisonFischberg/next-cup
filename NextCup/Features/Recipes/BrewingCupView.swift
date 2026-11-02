@@ -42,14 +42,7 @@ struct BrewingCupView: View {
     coffee.closeSubpath()
     ctx.drawLayer { layer in
       layer.clip(to: cup)
-      layer.fill(coffee, with: .color(DS.accent.opacity(0.85)))
-    }
-    // A thin stream pours in while the cup fills.
-    if !still, cycle < 4 {
-      var stream = Path()
-      stream.move(to: CGPoint(x: 94, y: 30))
-      stream.addLine(to: CGPoint(x: 94, y: level))
-      ctx.stroke(stream, with: .color(DS.accent.opacity(0.85)), lineWidth: 3)
+      layer.fill(coffee, with: .color(DS.accent))
     }
     let ink = GraphicsContext.Shading.color(DS.ink)
     ctx.stroke(cup, with: ink, lineWidth: 4)

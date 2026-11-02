@@ -37,13 +37,20 @@ final class NextCupAIUITests: XCTestCase {
     app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'journal.row.'")).firstMatch
   }
 
-  /// The sheet works, reports, and Open in Brew lands on the recipe with its changes.
-  private func finishAndOpen() {
+  private var nextCupHeader: XCUIElement { app.staticTexts["RECIPE TO TRY FOR YOUR NEXT CUP"] }
+
+  /// The sheet works, reports, and Save Next Cup lands on the Brew tab with the card on screen,
+  /// which opens the recipe with its changes.
+  private func finishAndSave() {
     XCTAssertTrue(element("nextcup.done").waitForExistence(timeout: 15))
     XCTAssertTrue(app.staticTexts["Grind 18 to 16"].exists)
     XCTAssertTrue(element("nextcup.basis").label.contains("similar past brew"))
     shoot("result")
-    element("nextcup.open").tap()
+    element("nextcup.save").tap()
+    XCTAssertTrue(nextCupHeader.waitForExistence(timeout: 5))
+    XCTAssertTrue(nextCupHeader.isHittable, "scrolled to the card")
+    shoot("brew-tab")
+    app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Next Cup'")).firstMatch.tap()
     let note = element("recipe.nextCupNote")
     XCTAssertTrue(note.waitForExistence(timeout: 5))
     XCTAssertTrue(note.label.contains("AI changes:"), note.label)
@@ -54,21 +61,20 @@ final class NextCupAIUITests: XCTestCase {
 
   func testLongPressAsksAIAndTheNextCupIsPinnedOnTheBrewTab() throws {
     launch()
+    // Leave the Brew tab scrolled down: saving must still land on the card.
+    app.tabBars.buttons["Brew"].tap()
+    app.swipeUp()
+    app.tabBars.buttons["Journal"].tap()
     XCTAssertTrue(firstRow.waitForExistence(timeout: 5))
     firstRow.press(forDuration: 1.2)
     let ask = app.buttons["Ask AI for Next Cup"].firstMatch
     XCTAssertTrue(ask.waitForExistence(timeout: 5))
     shoot("long-press")
     ask.tap()
-    finishAndOpen()
-    app.navigationBars.buttons.element(boundBy: 0).tap()
-    XCTAssertTrue(app.staticTexts["IMPROVED FROM YOUR BREWS"].waitForExistence(timeout: 5))
-    XCTAssertTrue(
-      app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Next Cup'")).firstMatch.exists)
-    shoot("brew-tab")
+    finishAndSave()
   }
 
-  func testSavedBrewAsksAIWithoutTappingEditAndAskingAgainReplaces() throws {
+  func testSavedBrewAsksAIWithoutTappingEditDiscardKeepsNothingAndSavingAgainReplaces() throws {
     launch()
     XCTAssertTrue(firstRow.waitForExistence(timeout: 5))
     firstRow.tap()
@@ -80,11 +86,21 @@ final class NextCupAIUITests: XCTestCase {
     shoot("saved-brew")
     ask.tap()
     XCTAssertTrue(element("nextcup.done").waitForExistence(timeout: 15))
-    XCTAssertFalse(element("nextcup.undo").exists, "nothing replaced yet")
+    XCTAssertFalse(element("nextcup.replaces").exists, "nothing to replace yet")
+    XCTAssertEqual(element("nextcup.close").label, "Discard")
     element("nextcup.close").tap()
+    app.tabBars.buttons["Brew"].tap()
+    XCTAssertTrue(element("recipes.add").waitForExistence(timeout: 5))
+    XCTAssertFalse(nextCupHeader.exists, "discarded, so no card")
+    app.tabBars.buttons["Journal"].tap()
 
+    XCTAssertTrue(ask.waitForExistence(timeout: 5))
     ask.tap()
-    XCTAssertTrue(element("nextcup.undo").waitForExistence(timeout: 15), "second ask replaces")
-    finishAndOpen()
+    finishAndSave()
+    app.tabBars.buttons["Journal"].tap()
+
+    XCTAssertTrue(ask.waitForExistence(timeout: 5))
+    ask.tap()
+    XCTAssertTrue(element("nextcup.replaces").waitForExistence(timeout: 15), "second save replaces")
   }
 }

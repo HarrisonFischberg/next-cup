@@ -13,6 +13,8 @@ final class AppRouter {
   var explorePath: [DeepLink] = []
   /// The draft a finished brew was just saved to for rating later, for the Journal's toast.
   var savedLater: String?
+  /// Counts requests for the top of the Brew tab, which the tab's page watches.
+  var brewTopRequests = 0
 
   /// Replaces the destination tab's stack with the linked screen, so opening the
   /// same link twice never stacks duplicates.
@@ -25,9 +27,10 @@ final class AppRouter {
     }
   }
 
-  /// The Brew tab, on this recipe.
-  func showRecipe(_ id: UUID) {
-    recipesPath = [.recipe(id)]
+  /// The top of the Brew tab, where a new Next Cup's card is pinned.
+  func showBrewTop() {
+    recipesPath = []
+    brewTopRequests += 1
     UserDefaults.standard.set(AppTab.recipes.rawValue, forKey: AppTab.storageKey)
   }
 
