@@ -30,6 +30,9 @@ struct BeanEditorView: View {
   var start: BeanCaptureStart?
   /// Hears about the bean once it is saved, e.g. so a brew being logged can use it.
   var onSaved: ((Bean) -> Void)?
+  /// Hears about a new bean saved after a photo, barcode or QR scan filled it, so the Beans
+  /// tab can ask how the user wants it to taste.
+  var afterScan: ((Bean) -> Void)?
   let close: () -> Void
 
   @Environment(\.modelContext) private var context
@@ -69,6 +72,7 @@ struct BeanEditorView: View {
   @State private var fillStages: [String]?
   @State private var fillStage = 0
   @State private var filledMessage: String?
+  @State private var filledByScan = false
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -635,6 +639,7 @@ struct BeanEditorView: View {
     await StagedProgress.hold(since: start)
     let before = fields
     fill()
+    filledByScan = true
     let count = before.changedCount(to: fields)
     UINotificationFeedbackGenerator().notificationOccurred(.success)
     await StagedProgress.hold(since: Date())
@@ -665,6 +670,7 @@ struct BeanEditorView: View {
     case .success(let saved):
       if bean == nil { BeanDetailsAI.fill([saved], in: context) }
       onSaved?(saved)
+      if bean == nil, filledByScan { afterScan?(saved) }
       close()
     case .failure(let failure): error = failure.message
     }

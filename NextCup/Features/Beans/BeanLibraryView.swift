@@ -15,6 +15,9 @@ struct BeanLibraryView: View {
   @Query(sort: \Bean.createdAt, order: .reverse) private var beans: [Bean]
   @State private var search = ""
   @State private var editor: BeanEditorTarget?
+  /// A bean just saved from a scan; its taste question opens once the editor has gone.
+  @State private var scannedBean: Bean?
+  @State private var adviceBean: Bean?
   @State private var pendingDelete: UUID?
   @State private var deleteTimer: Task<Void, Never>?
   @State private var error: String?
@@ -80,8 +83,11 @@ struct BeanLibraryView: View {
         .accessibilityIdentifier("beans.add")
       }
     }
-    .sheet(item: $editor) { target in
-      BeanEditorView(target: target) { editor = nil }
+    .sheet(item: $editor, onDismiss: showAdvice) { target in
+      BeanEditorView(target: target, afterScan: { scannedBean = $0 }) { editor = nil }
+    }
+    .sheet(item: $adviceBean) { bean in
+      BeanBrewAdviceView(bean: bean) { adviceBean = nil }
     }
     .navigationTitle("Beans")
     .toolbar(removing: .title)
@@ -200,6 +206,11 @@ struct BeanLibraryView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(DS.bg)
     .overlay(alignment: .bottom) { Hairline() }
+  }
+
+  private func showAdvice() {
+    adviceBean = scannedBean
+    scannedBean = nil
   }
 
   private func clearFilters() {
