@@ -14,7 +14,7 @@ One command, from the repo root on the Mac:
 Without `--live` nothing leaves the Mac. Android is skipped until the `android/` folder is on the branch.
 Next Cup has no browser extension, so there is no `chrome` or `firefox` target.
 
-The iOS submit leaves the version on **Manually release**: after Apple approves, press Release in App Store Connect.
+The iOS submit sets the version to release automatically as soon as Apple approves it.
 
 ## Where things live
 
