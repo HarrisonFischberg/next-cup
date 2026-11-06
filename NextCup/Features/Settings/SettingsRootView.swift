@@ -11,6 +11,7 @@ struct SettingsRootView: View {
   @AppStorage(BrewAudio.tickKey) private var tick = true
   @AppStorage(BrewAudio.musicKey) private var music = true
   @AppStorage(AppearanceMode.storageKey) private var appearance = AppearanceMode.system.rawValue
+  @State private var showsExperiments = false
 
   private var appVersion: String {
     let info = Bundle.main.infoDictionary
@@ -153,6 +154,12 @@ struct SettingsRootView: View {
         LabeledContent("Version", value: appVersion)
           .listRowBackground(DS.paper)
           .accessibilityIdentifier("settings.about.version")
+          // Debug and TestFlight only: a long press opens the hidden Experiments screen.
+          .contentShape(Rectangle())
+          .onLongPressGesture { if Experiments.canOverride { showsExperiments = true } }
+          .accessibilityActions {
+            if Experiments.canOverride { Button("Experiments") { showsExperiments = true } }
+          }
       } header: {
         Text("About")
       } footer: {
@@ -164,6 +171,7 @@ struct SettingsRootView: View {
     .background(DS.bg)
     .navigationTitle("Settings")
     .navigationBarTitleDisplayMode(.inline)
+    .navigationDestination(isPresented: $showsExperiments) { ExperimentsView() }
     .accessibilityIdentifier("tab.root.settings")
   }
 }
