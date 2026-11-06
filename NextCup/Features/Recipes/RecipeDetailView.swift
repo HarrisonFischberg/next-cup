@@ -49,6 +49,7 @@ private struct RecipeDetailContent: View {
     .rawValue
   @Environment(\.dynamicTypeSize) private var dts
   @Environment(\.modelContext) private var modelContext
+  @Environment(AppRouter.self) private var router: AppRouter?
   @Query private var grinders: [Grinder]
   @Query(sort: \Bean.name) private var allBeans: [Bean]
   @State private var beanID: UUID?
@@ -250,7 +251,12 @@ private struct RecipeDetailContent: View {
       BeanEditorView(target: .new, onSaved: { choose($0) }) { addingBean = false }
     }
     .onAppear {
-      if beanID == nil, let first = beans.first { choose(first) }
+      if let id = router?.startBeanID, let bean = beans.first(where: { $0.id == id }) {
+        router?.startBeanID = nil
+        choose(bean)
+      } else if beanID == nil, let first = beans.first {
+        choose(first)
+      }
     }
   }
 
