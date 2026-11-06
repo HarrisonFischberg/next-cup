@@ -37,3 +37,19 @@ loop. Verify each before claiming use: `docs/tool-environment.md`.
 `claims-evidence.md`, `launch-blockers.md`, `tool-environment.md`.
 
 Gate A (engineering complete) is not Gate B (ready for release).
+
+## Releasing to the App Store
+
+When Harold says the build is good for release ("push it to Apple", "ship it", "release it"),
+that message is his approval for the whole release. Do it end to end without asking:
+
+1. Merge the open PRs he named into main (only the ones he named), and work in a fresh worktree off origin/main.
+2. Pick the next version (minor for features, patch for fixes) and write
+   `store/ios/metadata/en-US/release_notes.txt` from the PRs merged since the last version.
+   Update `description.txt` if a feature in the description changed.
+3. Check the published privacy policy and `docs/app-store/listing.md` App Privacy answers
+   still cover any new data flow; if not, stop and tell him, because the policy needs his OK.
+4. `./release.sh ios --live --track production --version X.Y` retakes the screenshots, archives,
+   uploads, pushes the listing and submits for review with automatic release.
+5. Commit the version, notes and screenshots, open a PR and merge it. Tell him one line: the
+   version, the build number, and that it's waiting for review.

@@ -19,24 +19,29 @@ platform :ios do
   end
 
   # Build number is a UTC timestamp, same as scripts/archive-testflight.sh, so every upload is higher.
-  private_lane :archive do
+  # Live runs sign with the App Store Connect key, so a lapsed Xcode account sign-in doesn't stop them.
+  private_lane :archive do |options|
+    key = live?(options) ?
+      " -authenticationKeyPath #{File.expand_path(ENV.fetch('ASC_KEY_PATH'))}" \
+      " -authenticationKeyID #{ENV.fetch('ASC_KEY_ID')} -authenticationKeyIssuerID #{ENV.fetch('ASC_ISSUER_ID')}" : ""
     build_app(
       project: "NextCup.xcodeproj",
       scheme: "NextCup",
       export_method: "app-store",
       output_directory: "build",
-      xcargs: "CURRENT_PROJECT_VERSION=#{Time.now.utc.strftime('%Y%m%d.%H%M')} -allowProvisioningUpdates"
+      xcargs: "CURRENT_PROJECT_VERSION=#{Time.now.utc.strftime('%Y%m%d.%H%M')} -allowProvisioningUpdates#{key}",
+      export_xcargs: "-allowProvisioningUpdates#{key}"
     )
   end
 
   lane :beta do |options|
-    archive
+    archive(options)
     next UI.important("Dry run: archived, nothing uploaded. Add --live to upload to TestFlight.") unless live?(options)
     upload_to_testflight(skip_waiting_for_build_processing: true)
   end
 
   lane :release do |options|
-    archive
+    archive(options)
     next UI.important("Dry run: archived, nothing uploaded. Add --live to upload and submit for review.") unless live?(options)
     deliver(
       metadata_path: "store/ios/metadata",
