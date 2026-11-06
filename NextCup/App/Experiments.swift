@@ -3,14 +3,27 @@ import Foundation
 /// Features being tried behind a flag (evolve cycles). Each case is one flag; its raw value is
 /// its key in the experiments store, so it must not change while the flag ships.
 enum Experiment: String, CaseIterable, Identifiable {
-  /// Placeholder so the registry and its screen have a row; it gates nothing.
-  case example
+  // Cycle 001 (2026-11-06). Raw values are the stored keys; see evolve/cycles/001/cards/.
+  /// Timer: a pour step shows how much to pour now, with the running total second.
+  case pourAmount = "exp_pour_amount"
+  /// Beans tab: how much coffee is on hand across open bags.
+  case beansOnHand = "exp_beans_on_hand"
+  /// Recipe setup: last time with this bean (rating, taste, note) before you brew.
+  case lastTimeNote = "exp_last_time_note"
+  /// Bean detail: a small chart of ratings across this bean's brews.
+  case beanTrend = "exp_bean_trend"
+  /// Recipe setup: the bean menu shows grams left and freshness, least left first.
+  case beanPickerDetail = "exp_bean_picker_detail"
 
   var id: String { rawValue }
 
   var title: String {
     switch self {
-    case .example: "Example (does nothing)"
+    case .pourAmount: "Timer: this pour's amount"
+    case .beansOnHand: "Beans: coffee on hand"
+    case .lastTimeNote: "Recipe setup: last time with this bean"
+    case .beanTrend: "Bean detail: rating trend"
+    case .beanPickerDetail: "Recipe setup: bean menu with grams left"
     }
   }
 }
