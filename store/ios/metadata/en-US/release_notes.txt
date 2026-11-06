@@ -1,0 +1,7 @@
+- Ask AI for Next Cup: turn a past brew into an improved recipe, pinned at the top of the Brew tab. It reads your similar brews, and can write your Next Cup each time you save a tasted brew (turn that off in Settings > AI).
+- Create with AI: describe the cup you want and get a full recipe, with a suggested grind for your grinder. Improve with AI rewrites a recipe's steps for your note.
+- Change steps on Start brew, and delete your own recipes from the Brew tab.
+- − / + steppers for grind, amount and dose. Hold one for a fine dial.
+- Scan the QR code on a coffee bag to fill in the bean.
+- Brew music keeps playing when you leave the app, at a gentler volume.
+- Every look is now in Settings > Appearance.

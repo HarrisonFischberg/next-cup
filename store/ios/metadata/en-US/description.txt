@@ -1,16 +1,19 @@
 Next Cup is a coffee brew journal for people who brew with a scale and a kettle and want tomorrow's cup to be better than today's.
 
 BREW WITH A TIMER THAT KNOWS THE RECIPE
-Pick a brewer and a style, set how much coffee you want, and the dose and water follow the recipe's ratio. The timer walks you through each pour and wait, with chimes, an optional soundtrack, and the current step on your Lock Screen and in the Dynamic Island.
+Pick a brewer and a style, set how much coffee you want with simple − / + steppers (hold one for a dial), and the dose and water follow the recipe's ratio. The timer walks you through each pour and wait, with chimes, an optional soundtrack that keeps playing when you leave the app, and the current step on your Lock Screen and in the Dynamic Island.
 
 THIRTEEN WAYS TO BREW
 Cone and flat-bed drippers, switchable immersion, press pot and inverted press, espresso, iced pour over, cold brew, moka pot, AeroPress, Chemex, drip machine and Nespresso, each with its own styles and starting recipes.
 
 A JOURNAL THAT LEARNS YOUR TASTE
-Save each brew with its dose, water, grind, temperature, time, taste and a photo. Tell Next Cup how the cup tasted, and it suggests one change for next time, built from the recipe and your recent brews of the same coffee. A suggestion only changes your recipe when you tap to use it.
+Save each brew with its dose, water, grind, temperature, time, taste and a photo. Tell Next Cup how the cup tasted, and it suggests one change for next time, built from the recipe and your recent brews of the same coffee. A suggestion only changes your recipe when you tap to use it. Ask AI for Next Cup turns a past brew and your similar brews into an improved recipe, pinned at the top of the Brew tab.
 
 YOUR BEANS, ORGANIZED
-Keep each bag with its roaster, origin, process, roast date and flavor notes. Scan the bag's barcode or take a photo to fill in the details, see how much is left, and find coffee roasters near you on the map.
+Keep each bag with its roaster, origin, process, roast date and flavor notes. Scan the bag's barcode or QR code, or take a photo, to fill in the details, see how much is left, and find coffee roasters near you on the map.
+
+RECIPES YOU CAN CHANGE
+Change a recipe's steps before you brew, delete the ones you no longer use, or describe a cup and let Create with AI write the recipe, with a grind to start from on your grinder.
 
 AI THAT STAYS OPTIONAL
 With no key, AI features use Apple's on-device model where it is available, and nothing leaves your iPhone. You can add your own OpenAI or Anthropic key instead; Next Cup shows what each action sends before the first request and sends nothing until you tap, or until you save a brew you tasted or rated, which writes your Next Cup recipe (you can turn that off in Settings).
