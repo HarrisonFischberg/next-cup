@@ -52,27 +52,30 @@ enum BeanBrewAI {
     plan.
     """ + "\n" + RecipeReviewAI.format
 
-  static let schema = JSONSchema.object([
-    "summary": .string(),
-    "picks": .array(
-      .object([
-        "method": .string(),
-        "why": .string(),
-        "name": .string(),
-        "doseG": .number,
-        "waterG": .number,
-        "tempC": .number,
-        "totalTimeS": .integer,
-        "grind": .string(),
-        "steps": .array(
-          .object([
-            "kind": .string(allowed: StepKind.allCases.map(\.rawValue)),
-            "atS": .integer,
-            "waterG": .number,
-            "instruction": .string(),
-          ])),
-      ])),
-  ])
+  /// method is limited to the user's brewer names, so no model can name one they lack.
+  static func schema(methodNames: [String]) -> JSONSchema {
+    .object([
+      "summary": .string(),
+      "picks": .array(
+        .object([
+          "method": .string(allowed: methodNames),
+          "why": .string(),
+          "name": .string(),
+          "doseG": .number,
+          "waterG": .number,
+          "tempC": .number,
+          "totalTimeS": .integer,
+          "grind": .string(),
+          "steps": .array(
+            .object([
+              "kind": .string(allowed: StepKind.allCases.map(\.rawValue)),
+              "atS": .integer,
+              "waterG": .number,
+              "instruction": .string(),
+            ])),
+        ])),
+    ])
+  }
 
   /// The brewers the AI may choose from: the user's methods that are not hidden.
   static func methods(store: Store) -> [BrewMethod] {
@@ -96,7 +99,7 @@ enum BeanBrewAI {
     if let line = RecipeReviewAI.grinderLine(grinder, methodName: nil) { lines.append(line) }
     return AIRequestPayload(
       system: system, userText: lines.joined(separator: "\n"), schemaName: "bean_brew",
-      schema: schema)
+      schema: schema(methodNames: methods.map(\.name)))
   }
 
   private static func beanLine(_ bean: Bean) -> String {
@@ -111,10 +114,14 @@ enum BeanBrewAI {
     return line
   }
 
-  /// Keeps each pick that names one of the user's brewers (once) and makes a recipe the
-  /// editor would save, best first, at most three. Nil when none survive.
+  /// Keeps each pick that names one of the user's brewers (once), best first, at most three.
+  /// The AI's own recipe is used when the editor would save it and its ratio is sound for the
+  /// brewer; otherwise (Apple's small model often gets the numbers wrong) the brewer's built-in
+  /// recipe from `fallback` is used with the AI's name, temperature and grind. Nil when none
+  /// survive.
   static func parse(
-    _ answer: [String: Any], methods: [BrewMethod], grinder: String?, bean: Bean, source: String
+    _ answer: [String: Any], methods: [BrewMethod], grinder: String?, bean: Bean, source: String,
+    fallback: (BrewMethod) -> RecipeDraft? = { _ in nil }
   ) -> Outcome? {
     var picks: [Pick] = []
     var used = Set<UUID>()
@@ -130,22 +137,65 @@ enum BeanBrewAI {
       base.methodID = method.id
       base.name = "\(bean.name) on \(method.name)"
       base.grinderName = grinder
-      guard let review = RecipeReviewAI.parse(raw, base: base, source: source, mode: .create)
-      else { continue }
+      let grind = String(
+        (raw["grind"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+      var draft: RecipeDraft
+      if let review = RecipeReviewAI.parse(raw, base: base, source: source, mode: .create),
+        isSound(review.draft, style: method.style)
+      {
+        draft = review.draft
+      } else if var builtIn = fallback(method) {
+        builtIn.name = aiName(raw) ?? base.name
+        builtIn.methodID = method.id
+        builtIn.grinderName = grinder
+        if method.style != .cold, let temp = (raw["tempC"] as? NSNumber)?.doubleValue,
+          (80...100).contains(temp)
+        {
+          builtIn.tempC = temp.rounded()
+        }
+        draft = builtIn
+      } else {
+        continue
+      }
       used.insert(method.id)
-      var draft = review.draft
+      draft.sourceID = nil
       draft.credit = credit
+      draft.creditURL = nil
       let why = (raw["why"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
       draft.tuningNote = RecipeReviewAI.note(
         ["For \(bean.name).", why].filter { !$0.isEmpty }.joined(separator: " "),
-        grind: review.grind, grinder: grinder)
-      draft.grindSetting = RecipeReviewAI.wheelSetting(review.grind, grinder: grinder)
-      picks.append(Pick(methodName: method.name, why: why, draft: draft, grind: review.grind))
+        grind: grind, grinder: grinder)
+      draft.grindSetting = RecipeReviewAI.wheelSetting(grind, grinder: grinder)
+      picks.append(Pick(methodName: method.name, why: why, draft: draft, grind: grind))
     }
     guard !picks.isEmpty else { return nil }
     let summary = (answer["summary"] as? String ?? "")
       .trimmingCharacters(in: .whitespacesAndNewlines)
     return Outcome(summary: summary, picks: picks, source: source)
+  }
+
+  private static func aiName(_ raw: [String: Any]) -> String? {
+    let name = (raw["name"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    return name.isEmpty ? nil : String(name.prefix(60))
+  }
+
+  /// Water for the coffee in a range real recipes use for the brewer: espresso and moka
+  /// about 1:1.5 to 1:10, cold brew (often a concentrate) 1:4 to 1:20, the rest 1:10 to 1:20.
+  static func isSound(_ draft: RecipeDraft, style: BrewStyle) -> Bool {
+    guard draft.doseG > 0 else { return false }
+    let ratio = draft.waterG / draft.doseG
+    switch style {
+    case .espresso: return (1.5...10).contains(ratio)
+    case .cold: return (4...20).contains(ratio)
+    default: return (10...20).contains(ratio)
+    }
+  }
+
+  /// The brewer's first built-in recipe, as a copy to fall back on.
+  static func builtInDraft(for method: BrewMethod, store: Store) -> RecipeDraft? {
+    let recipes = (method.recipes ?? []).filter { $0.builtInKey != nil }
+    guard let recipe = recipes.min(by: { $0.name < $1.name }) else { return nil }
+    return RecipeEditorService(store: store).draft(from: recipe, asCopy: true)
   }
 
   /// Saves the pick over the one this feature saved before with the same name and brewer.
@@ -171,7 +221,9 @@ enum BeanBrewAI {
       payload(bean: bean, goal: goal, methods: methods, grinder: grinder))
     try Task.checkCancellation()
     guard
-      let outcome = parse(answer, methods: methods, grinder: grinder, bean: bean, source: source)
+      let outcome = parse(
+        answer, methods: methods, grinder: grinder, bean: bean, source: source,
+        fallback: { builtInDraft(for: $0, store: store) })
     else { throw AIError.invalidResponse }
     return outcome
   }

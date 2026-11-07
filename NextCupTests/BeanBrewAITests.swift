@@ -93,6 +93,41 @@ struct BeanBrewAITests {
         ["picks": []], methods: rig.methods, grinder: nil, bean: rig.bean, source: "") == nil)
   }
 
+  /// Apple's small model answers with nonsense amounts (12 g of water): the brewer's
+  /// built-in recipe stands in, keeping the AI's name, temperature and grind.
+  @Test func anUnsoundRecipeFallsBackToTheBrewersBuiltInOne() throws {
+    let rig = try Harness()
+    var builtIn = RecipeDraft()
+    builtIn.name = "Classic"
+    builtIn.doseG = 15
+    builtIn.waterG = 250
+    builtIn.tempC = 94
+    builtIn.steps = [RecipeStepDraft(kind: .pour, startOffsetS: 0, targetCumulativeWaterG: 250)]
+    var tiny = pick("V60", water: 12)
+    tiny["tempC"] = 91
+    let outcome = try #require(
+      BeanBrewAI.parse(
+        ["picks": [tiny, pick("AeroPress", water: 30)]], methods: rig.methods, grinder: nil,
+        bean: rig.bean, source: "Test",
+        fallback: { $0.name == "V60" ? builtIn : nil }))
+    #expect(outcome.picks.map(\.methodName) == ["V60"], "AeroPress has no built-in to fall back on")
+    let draft = try #require(outcome.picks.first?.draft)
+    #expect(draft.waterG == 250 && draft.doseG == 15)
+    #expect(draft.name == "Rich cup" && draft.tempC == 91)
+    #expect(draft.credit == BeanBrewAI.credit && draft.methodID == rig.methods[0].id)
+  }
+
+  @Test func soundRatiosDependOnTheBrewer() {
+    var draft = RecipeDraft()
+    draft.doseG = 18
+    draft.waterG = 36
+    #expect(BeanBrewAI.isSound(draft, style: .espresso))
+    #expect(!BeanBrewAI.isSound(draft, style: .pourOver))
+    draft.waterG = 288
+    #expect(BeanBrewAI.isSound(draft, style: .pourOver))
+    #expect(!BeanBrewAI.isSound(draft, style: .espresso))
+  }
+
   @Test func savingTheSamePickAgainReplacesIt() throws {
     let rig = try Harness()
     let outcome = try #require(
