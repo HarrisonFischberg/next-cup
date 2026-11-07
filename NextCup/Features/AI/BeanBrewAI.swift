@@ -40,8 +40,8 @@ enum BeanBrewAI {
     """
     You are an expert specialty coffee barista helping a home brewer brew a coffee they \
     just bought. From the bean's roaster, origin, process, roast and bag flavors, and what \
-    they want the cup to taste like, pick the 3 best ways to brew it, best first, each on a \
-    different brewer from their list. Choose brewers that suit the goal: a full-bodied, \
+    they want the cup to taste like, pick the 3 best ways to brew it, as first, second and third, \
+    each on a different brewer from their list. Choose brewers that suit the goal: a full-bodied, \
     chocolatey cup favors immersion, metal filters or a finer grind and slightly longer \
     contact; a bright, clean cup favors paper-filtered pour over and hotter water for light \
     roasts. When no goal is given, pick what brings out the best in this bean. method is \
@@ -53,29 +53,30 @@ enum BeanBrewAI {
     """ + "\n" + RecipeReviewAI.format
 
   /// method is limited to the user's brewer names, so no model can name one they lack.
+  /// Three fixed slots, not a list: Apple's small model often lists only two. method is
+  /// limited to the user's brewer names, so no model can name one they lack.
   static func schema(methodNames: [String]) -> JSONSchema {
-    .object([
-      "summary": .string(),
-      "picks": .array(
+    let pick = JSONSchema.object([
+      "method": .string(allowed: methodNames),
+      "why": .string(),
+      "name": .string(),
+      "doseG": .number,
+      "waterG": .number,
+      "tempC": .number,
+      "totalTimeS": .integer,
+      "grind": .string(),
+      "steps": .array(
         .object([
-          "method": .string(allowed: methodNames),
-          "why": .string(),
-          "name": .string(),
-          "doseG": .number,
+          "kind": .string(allowed: StepKind.allCases.map(\.rawValue)),
+          "atS": .integer,
           "waterG": .number,
-          "tempC": .number,
-          "totalTimeS": .integer,
-          "grind": .string(),
-          "steps": .array(
-            .object([
-              "kind": .string(allowed: StepKind.allCases.map(\.rawValue)),
-              "atS": .integer,
-              "waterG": .number,
-              "instruction": .string(),
-            ])),
+          "instruction": .string(),
         ])),
     ])
+    return .object(["summary": .string(), "first": pick, "second": pick, "third": pick])
   }
+
+  private static let slots = ["first", "second", "third"]
 
   /// The brewers the AI may choose from: the user's methods that are not hidden.
   static func methods(store: Store) -> [BrewMethod] {
@@ -125,7 +126,9 @@ enum BeanBrewAI {
   ) -> Outcome? {
     var picks: [Pick] = []
     var used = Set<UUID>()
-    for raw in answer["picks"] as? [[String: Any]] ?? [] {
+    let raws =
+      answer["picks"] as? [[String: Any]] ?? slots.compactMap { answer[$0] as? [String: Any] }
+    for raw in raws {
       guard picks.count < pickCount,
         let name = (raw["method"] as? String)?.trimmingCharacters(in: .whitespaces),
         let method = methods.first(where: {
@@ -149,7 +152,7 @@ enum BeanBrewAI {
         builtIn.methodID = method.id
         builtIn.grinderName = grinder
         if method.style != .cold, let temp = (raw["tempC"] as? NSNumber)?.doubleValue,
-          (80...100).contains(temp)
+          (85...96).contains(temp)
         {
           builtIn.tempC = temp.rounded()
         }
@@ -169,6 +172,22 @@ enum BeanBrewAI {
       picks.append(Pick(methodName: method.name, why: why, draft: draft, grind: grind))
     }
     guard !picks.isEmpty else { return nil }
+    // A repeated or unusable slot is filled with another brewer's built-in recipe, a brewer of
+    // the same style as the picks first, so there are always three to choose from.
+    let styles = Set(
+      picks.compactMap { pick in methods.first { $0.name == pick.methodName }?.style })
+    let spares = methods.filter { !used.contains($0.id) }
+      .sorted { styles.contains($0.style) && !styles.contains($1.style) }
+    for method in spares where picks.count < pickCount {
+      guard var draft = fallback(method) else { continue }
+      draft.methodID = method.id
+      draft.grinderName = grinder
+      draft.sourceID = nil
+      draft.credit = credit
+      draft.creditURL = nil
+      draft.tuningNote = "For \(bean.name)."
+      picks.append(Pick(methodName: method.name, why: "", draft: draft, grind: ""))
+    }
     let summary = (answer["summary"] as? String ?? "")
       .trimmingCharacters(in: .whitespacesAndNewlines)
     return Outcome(summary: summary, picks: picks, source: source)
@@ -179,15 +198,18 @@ enum BeanBrewAI {
     return name.isEmpty ? nil : String(name.prefix(60))
   }
 
-  /// Water for the coffee in a range real recipes use for the brewer: espresso and moka
-  /// about 1:1.5 to 1:10, cold brew (often a concentrate) 1:4 to 1:20, the rest 1:10 to 1:20.
+  /// Water for the coffee in a range real recipes use for the brewer (espresso and moka
+  /// about 1:1.5 to 1:10, cold brew, often a concentrate, 1:4 to 1:20, the rest 1:12 to 1:20),
+  /// and for pour over and immersion at least two steps and 1.5 to 10 minutes.
   static func isSound(_ draft: RecipeDraft, style: BrewStyle) -> Bool {
     guard draft.doseG > 0 else { return false }
     let ratio = draft.waterG / draft.doseG
     switch style {
     case .espresso: return (1.5...10).contains(ratio)
     case .cold: return (4...20).contains(ratio)
-    default: return (10...20).contains(ratio)
+    default:
+      return (12...20).contains(ratio) && draft.steps.count >= 2
+        && (90...600).contains(draft.totalTimeS ?? 0)
     }
   }
 
@@ -195,7 +217,9 @@ enum BeanBrewAI {
   static func builtInDraft(for method: BrewMethod, store: Store) -> RecipeDraft? {
     let recipes = (method.recipes ?? []).filter { $0.builtInKey != nil }
     guard let recipe = recipes.min(by: { $0.name < $1.name }) else { return nil }
-    return RecipeEditorService(store: store).draft(from: recipe, asCopy: true)
+    var draft = RecipeEditorService(store: store).draft(from: recipe, asCopy: true)
+    draft.name = recipe.name
+    return draft
   }
 
   /// Saves the pick over the one this feature saved before with the same name and brewer.
@@ -217,15 +241,25 @@ enum BeanBrewAI {
   ) async throws -> Outcome {
     let methods = methods(store: store)
     guard !methods.isEmpty else { throw AIError.invalidResponse }
-    let (answer, source) = try await send(
-      payload(bean: bean, goal: goal, methods: methods, grinder: grinder))
-    try Task.checkCancellation()
-    guard
-      let outcome = parse(
-        answer, methods: methods, grinder: grinder, bean: bean, source: source,
-        fallback: { builtInDraft(for: $0, store: store) })
-    else { throw AIError.invalidResponse }
-    return outcome
+    let request = payload(bean: bean, goal: goal, methods: methods, grinder: grinder)
+    // Apple's small model sometimes fails outright; one more try usually answers.
+    var lastError: Error = AIError.invalidResponse
+    for _ in 0..<2 {
+      do {
+        let (answer, source) = try await send(request)
+        try Task.checkCancellation()
+        if let outcome = parse(
+          answer, methods: methods, grinder: grinder, bean: bean, source: source,
+          fallback: { builtInDraft(for: $0, store: store) })
+        {
+          return outcome
+        }
+      } catch let error where !(error is CancellationError) && !Task.isCancelled {
+        if case AIError.cancelled = error { throw error }
+        lastError = error
+      }
+    }
+    throw lastError
   }
 
   #if DEBUG

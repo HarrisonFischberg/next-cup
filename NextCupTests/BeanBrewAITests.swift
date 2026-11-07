@@ -117,6 +117,28 @@ struct BeanBrewAITests {
     #expect(draft.credit == BeanBrewAI.credit && draft.methodID == rig.methods[0].id)
   }
 
+  /// The small model repeats a brewer: the spare slot is a built-in recipe of another
+  /// brewer, the same style as the picks first, so there are always three.
+  @Test func aRepeatedBrewerIsToppedUpFromAnotherBuiltIn() throws {
+    let rig = try Harness()
+    var builtIn = RecipeDraft()
+    builtIn.name = "House"
+    builtIn.doseG = 15
+    builtIn.waterG = 240
+    builtIn.steps = [RecipeStepDraft(kind: .pour, startOffsetS: 0, targetCumulativeWaterG: 240)]
+    let answer: [String: Any] = [
+      "summary": "", "first": pick("French Press"), "second": pick("French Press"),
+      "third": pick("V60"),
+    ]
+    let outcome = try #require(
+      BeanBrewAI.parse(
+        answer, methods: rig.methods.filter { !$0.isHidden }, grinder: nil, bean: rig.bean,
+        source: "Test", fallback: { _ in builtIn }))
+    #expect(outcome.picks.map(\.methodName) == ["French Press", "V60", "AeroPress"])
+    #expect(outcome.picks[2].draft.name == "House" && outcome.picks[2].why.isEmpty)
+    #expect(outcome.picks[2].draft.credit == BeanBrewAI.credit)
+  }
+
   @Test func soundRatiosDependOnTheBrewer() {
     var draft = RecipeDraft()
     draft.doseG = 18
@@ -124,6 +146,12 @@ struct BeanBrewAITests {
     #expect(BeanBrewAI.isSound(draft, style: .espresso))
     #expect(!BeanBrewAI.isSound(draft, style: .pourOver))
     draft.waterG = 288
+    #expect(!BeanBrewAI.isSound(draft, style: .pourOver), "no steps or time")
+    draft.totalTimeS = 210
+    draft.steps = [
+      RecipeStepDraft(kind: .bloom, startOffsetS: 0, targetCumulativeWaterG: 50),
+      RecipeStepDraft(kind: .pour, startOffsetS: 45, targetCumulativeWaterG: 288),
+    ]
     #expect(BeanBrewAI.isSound(draft, style: .pourOver))
     #expect(!BeanBrewAI.isSound(draft, style: .espresso))
   }
