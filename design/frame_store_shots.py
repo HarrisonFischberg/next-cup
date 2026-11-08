@@ -19,22 +19,22 @@ W, H = 1320, 2868
 
 # (raw name, headline, subtitle), in store order.
 SHOTS = [
-    ("01-next-cup", "Your next cup,\nalready planned.",
-     "Ask AI for Next Cup turns your brews into a better recipe, pinned on the Brew tab."),
-    ("02-ask-ai", "One clear change\nfor tomorrow.",
-     "It reads your similar brews and explains each change."),
-    ("03-start-brew", "Set the amount.\nThe recipe follows.",
-     "Simple − and + steppers for amount and dose. Hold one for a dial."),
-    ("04-timer", "A timer that knows\nevery pour.",
-     "Each step on screen, on your Lock Screen and in the Dynamic Island."),
-    ("06-taste", "Tell it how\nit tasted.",
-     "Pick the taste and Next Cup suggests what to change."),
-    ("05-journal", "Every brew,\nremembered.",
-     "Dose, water, grind, time, taste and rating in one journal."),
-    ("07-beans", "Your beans,\norganized.",
-     "Scan a bag's barcode or QR code to fill in the details."),
-    ("08-privacy", "Private\nby design.",
-     "No account, no ads, no analytics. Your journal stays on your iPhone."),
+    ("01-next-cup", "Your next cup is\nalready planned",
+     "Ask AI for Next Cup looks at your brews, writes a better recipe and pins it to the Brew tab."),
+    ("02-ask-ai", "Try a finer grind\nand hotter water",
+     "It compares this cup with your similar brews and tells you why each change should help."),
+    ("03-start-brew", "Say how much\ncoffee you want",
+     "The dose and water scale to fit. Tap − or + to adjust, or hold one for a dial."),
+    ("04-timer", "The timer tells\nyou when to pour",
+     "You'll see the current step on screen, on your Lock Screen and in the Dynamic Island."),
+    ("06-taste", "How did this\ncup taste?",
+     "Tick what you noticed, like sour or watery, and Next Cup works out what to change."),
+    ("05-journal", "Look back at\nevery brew",
+     "Each one keeps its dose, water, grind, time, taste and rating."),
+    ("07-beans", "Scan the bag to\nadd your beans",
+     "A barcode or QR code fills in the details, and you can see how much is left."),
+    ("08-privacy", "Your journal stays\non your iPhone",
+     "There's no account to make, and no ads or analytics."),
 ]
 SIZES = {"6.9": (1320, 2868), "6.9-alt": (1290, 2796), "6.5": (1284, 2778), "6.5-small": (1242, 2688)}
 IN_STORE = {"6.9", "6.5"}
