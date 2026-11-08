@@ -149,6 +149,7 @@ struct SettingsRootView: View {
       } header: {
         Text("Privacy")
       }
+      SendDebugLogsSection()
       Section {
         LabeledContent("Version", value: appVersion)
           .listRowBackground(DS.paper)
