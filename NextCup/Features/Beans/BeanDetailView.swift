@@ -39,6 +39,7 @@ struct BeanDetailView: View {
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
   @State private var editor: BeanEditorTarget?
+  @State private var adviceShown = false
   @State private var correcting = false
   @State private var correctionText = ""
   @State private var error: String?
@@ -77,12 +78,20 @@ struct BeanDetailView: View {
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {
       ToolbarItem(placement: .primaryAction) {
+        Button("Brew advice", systemImage: "sparkles") { adviceShown = true }
+          .accessibilityHint("Pick how you want it to taste and get three ways to brew it")
+          .accessibilityIdentifier("bean.advice")
+      }
+      ToolbarItem(placement: .primaryAction) {
         Button("Edit") { editor = .edit(bean.id) }
           .accessibilityIdentifier("bean.edit")
       }
     }
     .sheet(item: $editor) { target in
       BeanEditorView(target: target) { editor = nil }
+    }
+    .sheet(isPresented: $adviceShown) {
+      BeanBrewAdviceView(bean: bean) { adviceShown = false }
     }
     .alert("Correct the amount left", isPresented: $correcting) {
       TextField("Amount left", text: $correctionText).keyboardType(.decimalPad)

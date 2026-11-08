@@ -19,24 +19,31 @@ enum AppleIntelligence {
     do {
       var prompt = payload.userText
       var lines: [String]?
+      var read: [PaperLine] = []
       if let photo = payload.imageJPEG {
-        lines = try await PaperScanner.lines(in: photo).map(\.text)
-        let text = lines!.joined(separator: "\n")
+        read = try await PaperScanner.lines(in: photo)
+        lines = read.map(\.text)
+        // A bag's brand and coffee name are its biggest type; plain text loses that.
+        let text =
+          (payload.schemaName == BagRecognition.schemaName
+          ? BagRecognition.sized(read) : lines!).joined(separator: "\n")
         prompt +=
           "\n\nText read from the photo, top to bottom:\n" + (text.isEmpty ? "(none)" : text)
       }
-      let schema = try JSONSerialization.data(
-        withJSONObject: payload.schema.jsonObject, options: .sortedKeys)
-      let session = LanguageModelSession(
-        instructions: payload.system
-          + "\n\nAnswer with one JSON object that matches this JSON Schema, and nothing else:\n"
-          + String(decoding: schema, as: UTF8.self))
-      let answer = try await session.respond(to: prompt).content
-      // shortcut: the schema is checked after the fact, not guided; upgrade to
-      // DynamicGenerationSchema if answers often come back invalid.
-      guard let start = answer.firstIndex(of: "{"), let end = answer.lastIndex(of: "}"),
-        let object = try? JSONSerialization.jsonObject(with: Data(answer[start...end].utf8)),
-        payload.schema.validates(object),
+      // Guided generation: the model fills the schema's exact keys and allowed values, which
+      // the small model otherwise often gets wrong (missing keys, invented enum values).
+      let schema = try GenerationSchema(
+        root: guided(payload.schema, name: payload.schemaName), dependencies: [])
+      let session = LanguageModelSession(instructions: payload.system)
+      let answer = try await session.respond(to: prompt, schema: schema).content.jsonString
+      guard var object = try? JSONSerialization.jsonObject(with: Data(answer.utf8)),
+        payload.schema.validates(object)
+      else { throw AIError.invalidResponse }
+      if payload.schemaName == BagRecognition.schemaName, var bag = object as? [String: Any] {
+        BagRecognition.fixName(&bag, from: read)
+        object = bag
+      }
+      guard
         let json = try? JSONSerialization.data(
           withJSONObject: checked(object, lines: lines, schema: payload.schema),
           options: .sortedKeys)
@@ -49,6 +56,26 @@ enum AppleIntelligence {
     } catch {
       lastFailure = String(describing: error)
       throw AIError.unavailable(nil)
+    }
+  }
+
+  /// The app's schema as Foundation Models' guide. Nested objects need unique names.
+  static func guided(_ schema: JSONSchema, name: String) -> DynamicGenerationSchema {
+    switch schema {
+    case .object(let properties):
+      return DynamicGenerationSchema(
+        name: name,
+        properties: properties.keys.sorted().map {
+          .init(name: $0, schema: guided(properties[$0]!, name: "\(name)_\($0)"))
+        })
+    case .array(let items):
+      return DynamicGenerationSchema(arrayOf: guided(items, name: "\(name)_item"))
+    case .string(let allowed):
+      guard let allowed else { return DynamicGenerationSchema(type: String.self) }
+      return DynamicGenerationSchema(name: name, anyOf: allowed)
+    case .number: return DynamicGenerationSchema(type: Double.self)
+    case .integer: return DynamicGenerationSchema(type: Int.self)
+    case .boolean: return DynamicGenerationSchema(type: Bool.self)
     }
   }
 

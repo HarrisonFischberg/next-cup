@@ -65,7 +65,7 @@ struct KeychainStore: Sendable {
 /// the provider and model chosen for each feature. Never holds a key.
 struct AIPreferences {
   /// Bump when the disclosure text changes so it is shown again.
-  static let disclosureVersion = 10
+  static let disclosureVersion = 11
   /// Acceptance is per provider: the text names who receives the data.
   static func disclosureKey(_ provider: AIProvider) -> String {
     "ai.disclosure.\(provider.rawValue).version"
@@ -110,6 +110,25 @@ struct AIPreferences {
       ?? (appleAvailable ? .apple : nil)
   }
 
+  /// Whether the user ever picked a provider; until then a saved key takes over.
+  var hasChosenProvider: Bool { defaults.string(forKey: Self.providerKey(.diagnosis)) != nil }
+
+  /// The model a newly saved key starts on, from the provider's own list (never a guessed
+  /// id): Anthropic's newest Sonnet, else its newest model (the list is newest first); for
+  /// OpenAI the highest-numbered general GPT chat model.
+  static func defaultModel(from list: [String], for provider: AIProvider) -> String? {
+    switch provider {
+    case .anthropic: return list.first { $0.contains("sonnet") } ?? list.first
+    case .openAI:
+      let skip = [
+        "audio", "realtime", "transcribe", "tts", "search", "image", "instruct", "mini", "nano",
+      ]
+      return list.filter { id in id.hasPrefix("gpt-") && !skip.contains { id.contains($0) } }
+        .sorted { $0.localizedStandardCompare($1) == .orderedDescending }.first ?? list.first
+    case .apple: return nil
+    }
+  }
+
   func setChoice(_ provider: AIProvider, model: String, for feature: AIFeature) {
     defaults.set(provider.rawValue, forKey: Self.providerKey(feature))
     defaults.set(
@@ -136,7 +155,7 @@ extension AIFeature {
   var sends: String {
     switch self {
     case .diagnosis:
-      "When you tap Tune on Start brew, the recipe name, brewer and that batch's dose, water, temperature and time. When you tap Improve with AI on a recipe, its name, brewer, the name of the grinder you used last, dose, water, temperature, time, every step with its instruction, and your note. When you tap Create with AI, the brewer and grinder you pick and what you type; first the provider searches the web with those words for popular recipes, which it may charge as searches. When you tap Ask AI for Next Cup, that brew's date, method, recipe name and steps, bean name, roaster, roast, origin, process and bag flavors, dose, water, grinder and grind, temperature, time, taste, rating and your notes, plus up to 8 of your other brews with the same method (same bean or similar dose and water first), each with its date, recipe name, bean name, roaster and roast, dose, water, grinder and grind, temperature, time, taste, rating and notes; first the provider searches the web with the brewer, grinder, roast and taste only. When you save a brew with a taste or rating, and it is your newest with that method, the same is sent without a tap, with only your rated or tasted brews of that method and a similar dose and water, to write your Next Cup on the Brew tab. You can turn this off in Settings → AI."
+      "When you tap Tune on Start brew, the recipe name, brewer and that batch's dose, water, temperature and time. When you tap Improve with AI on a recipe, its name, brewer, the name of the grinder you used last, dose, water, temperature, time, every step with its instruction, and your note. When you tap Create with AI, the brewer and grinder you pick and what you type; first the provider searches the web with those words for popular recipes, which it may charge as searches. When you tap Ask AI for Next Cup, that brew's date, method, recipe name and steps, bean name, roaster, roast, origin, process and bag flavors, dose, water, grinder and grind, temperature, time, taste, rating and your notes, plus up to 8 of your other brews with the same method (same bean or similar dose and water first), each with its date, recipe name, bean name, roaster and roast, dose, water, grinder and grind, temperature, time, taste, rating and notes; first the provider searches the web with the brewer, grinder, roast and taste only. When you save a brew with a taste or rating, and it is your newest with that method, the same is sent without a tap, with only your rated or tasted brews of that method and a similar dose and water, to write your Next Cup on the Brew tab. You can turn this off in Settings → AI. When you ask for brew advice on a bean (offered after you scan a bag), the bean's name, roaster, roast, origin, process and bag flavors, what you want it to taste like, the names and styles of your brewers, and the name and settings of the grinder you used last."
     case .insights:
       "Up to the 8 most recent brews of one coffee, each with its date, method, bean origin, process and roast, dose, water, grind, temperature, time, taste, rating and your notes."
     case .bagRecognition:

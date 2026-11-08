@@ -15,6 +15,8 @@ final class AppRouter {
   var savedLater: String?
   /// Counts requests for the top of the Brew tab, which the tab's page watches.
   var brewTopRequests = 0
+  /// The bean Start brew picks when the recipe page opens, then cleared (Brew advice).
+  var startBeanID: UUID?
 
   /// Replaces the destination tab's stack with the linked screen, so opening the
   /// same link twice never stacks duplicates.
@@ -31,6 +33,13 @@ final class AppRouter {
   func showBrewTop() {
     recipesPath = []
     brewTopRequests += 1
+    UserDefaults.standard.set(AppTab.recipes.rawValue, forKey: AppTab.storageKey)
+  }
+
+  /// A recipe's Start brew page on the Brew tab, with this bean already chosen.
+  func startBrew(recipe: UUID, bean: UUID?) {
+    startBeanID = bean
+    recipesPath = [.recipe(recipe)]
     UserDefaults.standard.set(AppTab.recipes.rawValue, forKey: AppTab.storageKey)
   }
 
