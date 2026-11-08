@@ -1,7 +1,3 @@
-- Ask AI for Next Cup: turn a past brew into an improved recipe, pinned at the top of the Brew tab. It reads your similar brews, and can write your Next Cup each time you save a tasted brew (turn that off in Settings > AI).
-- Create with AI: describe the cup you want and get a full recipe, with a suggested grind for your grinder. Improve with AI rewrites a recipe's steps for your note.
-- Change steps on Start brew, and delete your own recipes from the Brew tab.
-- − / + steppers for grind, amount and dose. Hold one for a fine dial.
-- Scan the QR code on a coffee bag to fill in the bean.
-- Brew music keeps playing when you leave the app, at a gentler volume.
-- Every look is now in Settings > Appearance.
+- Brew advice for your beans: after you scan a bag, tell Next Cup how you want it to taste (chocolatey and full-bodied, bright and fruity, or your own words), or just ask for its picks. You get three ranked ways to brew it on your brewers, each with grind, ratio, temperature and time, and Start brew opens the one you choose with the bean already picked. Find it again under the sparkles on any bean.
+- Better bag reading with Apple's on-device model: the coffee's name and roaster come out right far more often.
+- A saved OpenAI or Anthropic key now takes over every AI feature as soon as you add it.

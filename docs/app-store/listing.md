@@ -118,6 +118,12 @@ the developer collects nothing new. A QR link is opened from the phone like a
 browser would; the site sees the request, the developer collects nothing.
 Nothing to change in App Store Connect.
 
+Rechecked 2026-11-08 for 1.2 against Brew advice for a bean (PR #83): the bean's
+details, the typed taste goal and the brewer names are Other User Content sent
+only to the user's own provider on a tap; Apple's model keeps it on the phone.
+**No change to the answers.** The published policy has the matching bullet
+(studio-site PR #42).
+
 ## Export compliance
 
 `ITSAppUsesNonExemptEncryption = false` is already in `Config/NextCup-Info.plist`,
