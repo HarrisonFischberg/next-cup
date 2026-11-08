@@ -10,7 +10,7 @@ A JOURNAL THAT LEARNS YOUR TASTE
 Save each brew with its dose, water, grind, temperature, time, taste and a photo. Tell Next Cup how the cup tasted, and it suggests one change for next time, built from the recipe and your recent brews of the same coffee. A suggestion only changes your recipe when you tap to use it. Ask AI for Next Cup turns a past brew and your similar brews into an improved recipe, pinned at the top of the Brew tab.
 
 YOUR BEANS, ORGANIZED
-Keep each bag with its roaster, origin, process, roast date and flavor notes. Scan the bag's barcode or QR code, or take a photo, to fill in the details, see how much is left, and find coffee roasters near you on the map.
+Keep each bag with its roaster, origin, process, roast date and flavor notes. Scan the bag's barcode or QR code, or take a photo, to fill in the details, then say how you want it to taste and get three ways to brew it on your brewers. See how much is left, and find coffee roasters near you on the map.
 
 RECIPES YOU CAN CHANGE
 Change a recipe's steps before you brew, delete the ones you no longer use, or describe a cup and let Create with AI write the recipe, with a grind to start from on your grinder.
