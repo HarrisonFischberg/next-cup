@@ -19,9 +19,14 @@ enum AppleIntelligence {
     do {
       var prompt = payload.userText
       var lines: [String]?
+      var read: [PaperLine] = []
       if let photo = payload.imageJPEG {
-        lines = try await PaperScanner.lines(in: photo).map(\.text)
-        let text = lines!.joined(separator: "\n")
+        read = try await PaperScanner.lines(in: photo)
+        lines = read.map(\.text)
+        // A bag's brand and coffee name are its biggest type; plain text loses that.
+        let text =
+          (payload.schemaName == BagRecognition.schemaName
+          ? BagRecognition.sized(read) : lines!).joined(separator: "\n")
         prompt +=
           "\n\nText read from the photo, top to bottom:\n" + (text.isEmpty ? "(none)" : text)
       }
@@ -31,8 +36,14 @@ enum AppleIntelligence {
         root: guided(payload.schema, name: payload.schemaName), dependencies: [])
       let session = LanguageModelSession(instructions: payload.system)
       let answer = try await session.respond(to: prompt, schema: schema).content.jsonString
-      guard let object = try? JSONSerialization.jsonObject(with: Data(answer.utf8)),
-        payload.schema.validates(object),
+      guard var object = try? JSONSerialization.jsonObject(with: Data(answer.utf8)),
+        payload.schema.validates(object)
+      else { throw AIError.invalidResponse }
+      if payload.schemaName == BagRecognition.schemaName, var bag = object as? [String: Any] {
+        BagRecognition.fixName(&bag, from: read)
+        object = bag
+      }
+      guard
         let json = try? JSONSerialization.data(
           withJSONObject: checked(object, lines: lines, schema: payload.schema),
           options: .sortedKeys)

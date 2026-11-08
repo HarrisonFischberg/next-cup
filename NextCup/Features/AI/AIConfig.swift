@@ -110,6 +110,25 @@ struct AIPreferences {
       ?? (appleAvailable ? .apple : nil)
   }
 
+  /// Whether the user ever picked a provider; until then a saved key takes over.
+  var hasChosenProvider: Bool { defaults.string(forKey: Self.providerKey(.diagnosis)) != nil }
+
+  /// The model a newly saved key starts on, from the provider's own list (never a guessed
+  /// id): Anthropic's newest Sonnet, else its newest model (the list is newest first); for
+  /// OpenAI the highest-numbered general GPT chat model.
+  static func defaultModel(from list: [String], for provider: AIProvider) -> String? {
+    switch provider {
+    case .anthropic: return list.first { $0.contains("sonnet") } ?? list.first
+    case .openAI:
+      let skip = [
+        "audio", "realtime", "transcribe", "tts", "search", "image", "instruct", "mini", "nano",
+      ]
+      return list.filter { id in id.hasPrefix("gpt-") && !skip.contains { id.contains($0) } }
+        .sorted { $0.localizedStandardCompare($1) == .orderedDescending }.first ?? list.first
+    case .apple: return nil
+    }
+  }
+
   func setChoice(_ provider: AIProvider, model: String, for feature: AIFeature) {
     defaults.set(provider.rawValue, forKey: Self.providerKey(feature))
     defaults.set(

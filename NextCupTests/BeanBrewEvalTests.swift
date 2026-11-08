@@ -43,6 +43,8 @@ struct BeanBrewEvalTests {
         let image = try #require(PhotoSanitizer.sanitized(try Data(contentsOf: photo)))
         let read = try await AppleIntelligence.send(
           BagRecognition.payload(photo: image, feature: .bagRecognition))
+        let raw = (try? JSONSerialization.jsonObject(with: read.json)) as? [String: Any]
+        row["raw"] = "\(raw?["name"] ?? "") | \(raw?["roaster"] ?? "")"
         let request = AIRequest()
         request.feature = .bagRecognition
         request.status = .done
@@ -53,7 +55,10 @@ struct BeanBrewEvalTests {
         let bean = try BeanService(store: store).save(fields).get()
         row["bean"] =
           "\(bean.name) | \(bean.roaster?.name ?? "-") | \(bean.roastLevel?.rawValue ?? "-")"
-        for goal in ["", "chocolatey and full-bodied"] {
+        let goals =
+          ProcessInfo.processInfo.environment["BREW_EVAL_SCAN_ONLY"] == nil
+          ? ["", "chocolatey and full-bodied"] : []
+        for goal in goals {
           let key = goal.isEmpty ? "recommend3" : "chocolatey"
           do {
             let outcome = try await BeanBrewAI.ask(

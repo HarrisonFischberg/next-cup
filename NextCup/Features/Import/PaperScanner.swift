@@ -18,7 +18,9 @@ enum PaperScanner {
       .sorted { $0.boundingBox.cgRect.midY > $1.boundingBox.cgRect.midY }
       .compactMap { observation in
         observation.topCandidates(1).first.map {
-          PaperLine(text: $0.string, confidence: Double($0.confidence))
+          PaperLine(
+            text: $0.string, confidence: Double($0.confidence),
+            height: Double(observation.boundingBox.cgRect.height))
         }
       }
   }

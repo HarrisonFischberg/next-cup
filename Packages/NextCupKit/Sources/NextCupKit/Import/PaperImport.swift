@@ -5,10 +5,13 @@ import Foundation
 public struct PaperLine: Equatable, Sendable {
   public var text: String
   public var confidence: Double
+  /// The line's height as a fraction of the image height; 0 when unknown.
+  public var height: Double
 
-  public init(text: String, confidence: Double) {
+  public init(text: String, confidence: Double, height: Double = 0) {
     self.text = text
     self.confidence = confidence
+    self.height = height
   }
 }
 

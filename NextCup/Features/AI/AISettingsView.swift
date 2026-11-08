@@ -60,6 +60,12 @@ struct AISettingsView: View {
     .navigationBarTitleDisplayMode(.inline)
     .task {
       saved = Set(AIProvider.keyed.filter(keychain.hasKey))
+      // A key saved before a model was picked never took over from Apple's model: it does now.
+      if !preferences.hasChosenProvider || (provider.kind != nil && model.isEmpty),
+        let keyed = AIProvider.keyed.first(where: saved.contains)
+      {
+        provider = keyed
+      }
       for provider in saved { await loadModels(provider) }
     }
     .onChange(of: provider) {
@@ -214,6 +220,16 @@ struct AISettingsView: View {
     guard let kind = provider.kind else { return }
     let key = (try? keychain.key(for: provider)) ?? nil
     models[provider] = try? await client(key).models(kind)
+    pickDefaultModel(provider)
+  }
+
+  /// A key in use with no model chosen starts on the provider's default, so every feature
+  /// uses the key at once instead of quietly staying on Apple's model.
+  private func pickDefaultModel(_ provider: AIProvider) {
+    guard self.provider == provider, model.isEmpty || models[provider]?.contains(model) == false,
+      let list = models[provider], let pick = AIPreferences.defaultModel(from: list, for: provider)
+    else { return }
+    model = pick
   }
 
   private func requestSave(_ provider: AIProvider) {
@@ -239,6 +255,7 @@ struct AISettingsView: View {
         models[provider] = list
         errorMessage = nil
         if self.provider == .apple || !choices.contains(self.provider) { self.provider = provider }
+        pickDefaultModel(provider)
       } catch AIError.keyRejected {
         errorMessage = "\(provider.title) did not accept this key. Check it and try again."
       } catch let error as AIError {
