@@ -152,12 +152,15 @@ enum BagRecognition {
   }
 
   /// `photo` must already be sanitized (no metadata); the queue sends it as-is.
-  static func payload(photo: Data, feature: AIFeature) -> AIRequestPayload {
+  /// `sides` 2: the front of the bag on top and its back below, in one picture.
+  static func payload(photo: Data, feature: AIFeature, sides: Int = 1) -> AIRequestPayload {
     AIRequestPayload(
       system: system,
-      userText: feature == .bagRecognition
-        ? "Read the label on this bag of coffee."
-        : "Describe the coffee in this photo as a bean entry.",
+      userText: sides > 1
+        ? "This picture shows one bag of coffee: its front on top and its back below. Read every detail printed on both sides."
+        : feature == .bagRecognition
+          ? "Read the label on this bag of coffee."
+          : "Describe the coffee in this photo as a bean entry.",
       schemaName: schemaName, schema: schema, imageJPEG: photo)
   }
 
@@ -213,8 +216,14 @@ enum BagRecognition {
   static func draft(from request: AIRequest) -> Result<BeanFields, AIError> {
     guard features.contains(request.feature), request.status == .done,
       let data = request.resultJSON,
-      let object = try? JSONSerialization.jsonObject(with: data), schema.validates(object),
-      let answer = object as? [String: Any]
+      let object = try? JSONSerialization.jsonObject(with: data)
+    else { return .failure(.invalidResponse) }
+    return draft(answer: object)
+  }
+
+  /// The draft for an answer, discarded unless it matches the schema. Blank answers stay blank.
+  static func draft(answer object: Any) -> Result<BeanFields, AIError> {
+    guard schema.validates(object), let answer = object as? [String: Any]
     else { return .failure(.invalidResponse) }
 
     func text(_ key: String) -> String {

@@ -45,15 +45,18 @@ struct RecipeLibraryView: View {
 
   private var matches: [Recipe] {
     let term = search.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !term.isEmpty else { return recipes.filter { !$0.isVersion && !$0.isNextCup } }
+    guard !term.isEmpty else {
+      return recipes.filter { !$0.isVersion && !$0.isNextCup && !$0.isToTry }
+    }
     return recipes.filter { recipe in
       [recipe.name, recipe.method?.name, recipe.credit, RecipeFormat.groupTitle(for: recipe)]
         .contains { $0?.localizedStandardContains(term) == true }
     }
   }
 
-  /// What the AI made from past brews, pinned on top, even for a method left out of the page.
-  private var nextCups: [Recipe] { allRecipes.filter(\.isNextCup) }
+  /// What the AI made from past brews, and brew-advice picks saved to try, pinned on top, even
+  /// for a method left out of the page.
+  private var nextCups: [Recipe] { allRecipes.filter { $0.isNextCup || $0.isToTry } }
 
   private var groups: [(title: String, recipes: [Recipe])] {
     let grouped = Dictionary(grouping: matches, by: RecipeFormat.groupOrder(for:))
