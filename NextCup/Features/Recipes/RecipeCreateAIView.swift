@@ -23,6 +23,7 @@ struct RecipeCreateAIView: View {
   @State private var job: Task<Void, Never>?
   @State private var error: String?
   @State private var disclosure: AIProvider?
+  @State private var sizeQuestion: BrewMethod?
   @FocusState private var typing: Bool
 
   private static let otherTag = "__other__"
@@ -135,12 +136,23 @@ struct RecipeCreateAIView: View {
           disclosure = nil
         }
       }
+      .sheet(item: $sizeQuestion) { method in
+        BrewerSizeQuestion(method: method) {
+          sizeQuestion = nil
+          create()
+        }
+      }
       .onAppear {
         #if DEBUG
           // Holds the brewing screen for screenshots and recordings.
           if ProcessInfo.processInfo.arguments.contains("-brewingPreview") {
             working = true
             researching = true
+          }
+          // Opens the brewer size question for screenshots and UI tests.
+          if ProcessInfo.processInfo.arguments.contains("-brewerSizeQuestion") {
+            sizeQuestion = methods.first { $0.builtInKey == "switchable-dripper" }
+            methodID = sizeQuestion?.id
           }
         #endif
         if methodID == nil { methodID = methods.first { !$0.isHidden }?.id }
@@ -198,6 +210,11 @@ struct RecipeCreateAIView: View {
       return
     }
     guard let method else { return }
+    if BrewerCapacity.needsAsking(method.builtInKey) {
+      sizeQuestion = method
+      return
+    }
+    let brewer = BrewerFit.current(method.builtInKey)
     var base = RecipeDraft()
     base.name = "\(method.name) (AI)"
     base.methodID = method.id
@@ -218,11 +235,14 @@ struct RecipeCreateAIView: View {
       researching = false
       guard !Task.isCancelled else { return }
       let payload = RecipeReviewAI.createPayload(
-        methodName: method.name, style: style, note: note, grinder: grinder, research: research)
+        methodName: method.name, style: style, note: note, grinder: grinder, research: research,
+        brewer: brewer)
       do {
-        let review = try await RecipeReviewAI.review(payload, base: base, mode: .create)
+        let review = try await RecipeReviewAI.review(
+          payload, base: base, mode: .create, brewer: brewer)
         guard !Task.isCancelled else { return }
         var draft = review.draft
+        draft.credit = "AI, from your note"
         draft.tuningNote = RecipeReviewAI.note(
           RecipeReviewAI.summary(review.summary, sources: research?.sources ?? []),
           grind: review.grind, grinder: grinderName)

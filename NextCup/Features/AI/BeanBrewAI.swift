@@ -97,6 +97,11 @@ enum BeanBrewAI {
     lines.append(
       "Their brewers: "
         + methods.map { "\($0.name) (\(RecipeFormat.title($0.style)))" }.joined(separator: "; "))
+    for method in methods {
+      if let brewer = BrewerFit.current(method.builtInKey) {
+        lines.append("\(method.name): \(brewer.promptLine)")
+      }
+    }
     if let line = RecipeReviewAI.grinderLine(grinder, methodName: nil) { lines.append(line) }
     return AIRequestPayload(
       system: system, userText: lines.joined(separator: "\n"), schemaName: "bean_brew",
@@ -160,13 +165,19 @@ enum BeanBrewAI {
       } else {
         continue
       }
+      // Never a pick that overfills the brewer: its pours are split, or it is scaled, to fit.
+      var fitNote: String?
+      if let fitted = BrewerFit.current(method.builtInKey)?.fitted(draft) {
+        draft = fitted.draft
+        fitNote = fitted.note
+      }
       used.insert(method.id)
       draft.sourceID = nil
       draft.credit = credit
       draft.creditURL = nil
       let why = (raw["why"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
       draft.tuningNote = RecipeReviewAI.note(
-        ["For \(bean.name).", why].filter { !$0.isEmpty }.joined(separator: " "),
+        ["For \(bean.name).", why, fitNote ?? ""].filter { !$0.isEmpty }.joined(separator: " "),
         grind: grind, grinder: grinder)
       draft.grindSetting = RecipeReviewAI.wheelSetting(grind, grinder: grinder)
       picks.append(Pick(methodName: method.name, why: why, draft: draft, grind: grind))

@@ -67,7 +67,8 @@ enum RecipeReviewAI {
     asks for a coarser or finer grind than usual, go past that end of the range as far as \
     it asks (very coarse sits near the coarsest setting), never past the grinder's own \
     settings. Empty when no grinder is named. summary is one or two plain sentences on how \
-    the recipe works.
+    the recipe works. When a brewer size is given, the brewer must never hold more \
+    water than it says, at any moment: split pours or open the valve earlier instead.
     """
 
   private static let improveSystem = """
@@ -161,7 +162,8 @@ enum RecipeReviewAI {
   /// The recipe as text: brewer, grinder, numbers, the user's note and every step. No
   /// photo, no beans, no brews.
   static func payload(
-    _ draft: RecipeDraft, methodName: String?, note: String, grinder: String? = nil
+    _ draft: RecipeDraft, methodName: String?, note: String, grinder: String? = nil,
+    brewer: BrewerFit? = nil
   ) -> AIRequestPayload {
     var lines = [
       "Recipe: \(draft.name)" + (methodName.map { " on a \($0)" } ?? ""),
@@ -171,6 +173,7 @@ enum RecipeReviewAI {
         + ", total time: " + (draft.totalTimeS.map { "\($0) s" } ?? "not set"),
     ]
     if let line = grinderLine(grinder, methodName: methodName) { lines.append(line) }
+    if let brewer { lines.append(brewer.promptLine) }
     let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
     if !trimmed.isEmpty { lines.append("Their note: \(trimmed)") }
     lines.append("Steps:")
@@ -200,10 +203,11 @@ enum RecipeReviewAI {
   /// its web search found. No beans, brews or photos.
   static func createPayload(
     methodName: String, style: String, note: String, grinder: String? = nil,
-    research: WebResearch? = nil
+    research: WebResearch? = nil, brewer: BrewerFit? = nil
   ) -> AIRequestPayload {
     let lines = [
       "Brewer: \(methodName) (\(style))",
+      brewer?.promptLine,
       grinderLine(grinder, methodName: methodName),
       "What they want: \(note.trimmingCharacters(in: .whitespacesAndNewlines))",
       research.map { "What coffee sites recommend:\n\($0.notes)" },
@@ -213,14 +217,44 @@ enum RecipeReviewAI {
       schemaName: "recipe_create", schema: schema)
   }
 
-  static func review(_ payload: AIRequestPayload, base: RecipeDraft, mode: Mode = .improve)
-    async throws -> Review
-  {
+  static func review(
+    _ payload: AIRequestPayload, base: RecipeDraft, mode: Mode = .improve,
+    brewer: BrewerFit? = nil
+  ) async throws -> Review {
     let (answer, source) = try await DirectAI.send(payload)
     guard let review = parse(answer, base: base, source: source, mode: mode) else {
       throw AIError.invalidResponse
     }
-    return review
+    return try await fit(
+      review, brewer: brewer, payload: payload, base: base, mode: mode,
+      send: { try await DirectAI.send($0) })
+  }
+
+  /// Never hands back a recipe that overfills the brewer. One that does is asked for again
+  /// once, with the problem spelled out; if the second answer still overfills (or fails), the
+  /// first one's pours are split to fit and its summary says so.
+  static func fit(
+    _ review: Review, brewer: BrewerFit?, payload: AIRequestPayload, base: RecipeDraft,
+    mode: Mode,
+    send: (AIRequestPayload) async throws -> (answer: [String: Any], source: String)
+  ) async throws -> Review {
+    guard let brewer, let problem = brewer.problem(review.draft) else { return review }
+    var again = payload
+    again.userText += "\n\n" + problem
+    if let reply = try? await send(again),
+      let second = parse(reply.answer, base: base, source: reply.source, mode: mode),
+      brewer.problem(second.draft) == nil
+    {
+      return second
+    }
+    try Task.checkCancellation()
+    guard let fitted = brewer.fitted(review.draft), brewer.problem(fitted.draft) == nil,
+      RecipeEditorService.validate(fitted.draft) == nil
+    else { throw AIError.invalidResponse }
+    var fixed = review
+    fixed.draft = fitted.draft
+    fixed.summary = [review.summary, fitted.note].filter { !$0.isEmpty }.joined(separator: " ")
+    return fixed
   }
 
   /// Keeps an answer only when it makes a recipe the editor itself would save and its pours
