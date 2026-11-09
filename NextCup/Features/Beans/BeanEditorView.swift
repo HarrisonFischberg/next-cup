@@ -60,6 +60,19 @@ struct BeanEditorView: View {
   var afterScan: ((Bean) -> Void)?
   let close: () -> Void
 
+  init(
+    target: BeanEditorTarget, start: BeanCaptureStart? = nil, onSaved: ((Bean) -> Void)? = nil,
+    afterScan: ((Bean) -> Void)? = nil, close: @escaping () -> Void
+  ) {
+    self.target = target
+    self.start = start
+    self.onSaved = onSaved
+    self.afterScan = afterScan
+    self.close = close
+    // Opened for the AI flow: its steps are on screen from the first frame, never the plain form.
+    _flow = State(initialValue: start == .aiFlow ? .barcode : nil)
+  }
+
   @Environment(\.modelContext) private var context
   @Query(sort: \Roaster.name) private var roasters: [Roaster]
   @Query private var beans: [Bean]
@@ -170,9 +183,9 @@ struct BeanEditorView: View {
             .bagRecognition, camera: UIImagePickerController.isSourceTypeAvailable(.camera))
         case .barcode: startBarcode()
         case .aiFlow:
-          // A card can't come up while this sheet is still sliding in; it would be dropped.
-          try? await Task.sleep(for: .milliseconds(600))
-          startFlow()
+          // The step card can only come up once this sheet has finished sliding in.
+          try? await Task.sleep(for: .milliseconds(450))
+          if flow == .barcode { flowPrompt = .barcode }
         case .manual, nil: break
         }
       }
