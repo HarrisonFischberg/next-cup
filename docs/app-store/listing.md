@@ -124,6 +124,11 @@ only to the user's own provider on a tap; Apple's model keeps it on the phone.
 **No change to the answers.** The published policy has the matching bullet
 (studio-site PR #42).
 
+Rechecked 2026-11-08 for 1.3 against Send Debug Logs (PR #86): the app only
+opens a draft in the user's own email app, which they read and send
+themselves; the app sends nothing. **No change to the answers.** The published
+policy already covers it ("If you email us, we receive what you choose to send").
+
 ## Export compliance
 
 `ITSAppUsesNonExemptEncryption = false` is already in `Config/NextCup-Info.plist`,

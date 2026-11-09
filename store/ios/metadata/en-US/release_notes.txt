@@ -1,3 +1,1 @@
-- Brew advice for your beans: after you scan a bag, tell Next Cup how you want it to taste (chocolatey and full-bodied, bright and fruity, or your own words), or just ask for its picks. You get three ranked ways to brew it on your brewers, each with grind, ratio, temperature and time, and Start brew opens the one you choose with the bean already picked. Find it again under the sparkles on any bean.
-- Better bag reading with Apple's on-device model: the coffee's name and roaster come out right far more often.
-- A saved OpenAI or Anthropic key now takes over every AI feature as soon as you add it.
+- Send Debug Logs: if something goes wrong, open Settings, say what happened, and Next Cup starts an email to support with the details needed to fix it. You see the whole email and send it yourself.
