@@ -13,6 +13,8 @@ struct NextCupAIView: View {
 
   private enum Phase: Equatable {
     case disclosure(AIProvider)
+    /// The first AI recipe for a brewer with sizes asks which size it is.
+    case size(BrewMethod)
     case unavailable
     case working
     case failed(String)
@@ -34,6 +36,8 @@ struct NextCupAIView: View {
         } cancel: {
           close()
         }
+      } else if case .size(let method) = phase {
+        BrewerSizeQuestion(method: method) { start() }
       } else {
         NavigationStack {
           content
@@ -89,7 +93,7 @@ struct NextCupAIView: View {
         )
       }
       .accessibilityIdentifier("nextcup.unavailable")
-    case .disclosure, .none: EmptyView()
+    case .disclosure, .size, .none: EmptyView()
     }
   }
 
@@ -123,6 +127,7 @@ struct NextCupAIView: View {
         Text(basis(outcome.similarCount))
           .font(.footnote).foregroundStyle(DS.ink2)
           .accessibilityIdentifier("nextcup.basis")
+        BrewerFitLine(draft: outcome.draft, methodKey: brew.method?.builtInKey, isAI: true)
         ForEach(outcome.changes, id: \.self) { change in
           VStack(alignment: .leading, spacing: 2) {
             Text(change.what).font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
@@ -175,6 +180,10 @@ struct NextCupAIView: View {
     }
     guard fakes || RecipeReviewAI.isAvailable else {
       phase = .unavailable
+      return
+    }
+    if !fakes, let method = brew.method, BrewerCapacity.needsAsking(method.builtInKey) {
+      phase = .size(method)
       return
     }
     phase = .working

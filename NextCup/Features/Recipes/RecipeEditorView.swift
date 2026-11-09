@@ -60,6 +60,7 @@ struct RecipeEditorView: View {
   @State private var beforeAI: RecipeEditorFields?
   /// The keyed provider's notice, shown before its first recipe request.
   @State private var disclosure: AIProvider?
+  @State private var sizeQuestion: BrewMethod?
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -134,6 +135,12 @@ struct RecipeEditorView: View {
             self.beforeAI = nil
           }
           .accessibilityIdentifier("recipe.editor.ai.undo")
+        }
+      }
+      .sheet(item: $sizeQuestion) { method in
+        BrewerSizeQuestion(method: method) {
+          sizeQuestion = nil
+          requestReview()
         }
       }
       .sheet(item: $disclosure) { provider in
@@ -240,7 +247,14 @@ struct RecipeEditorView: View {
     } header: {
       Text("Steps")
     } footer: {
-      Text("Steps run in time order. Leave water empty for steps that pour nothing.")
+      VStack(alignment: .leading, spacing: DS.Space.sm) {
+        Text("Steps run in time order. Leave water empty for steps that pour nothing.")
+        if case .success(let draft) = fields.draft(units: units) {
+          BrewerFitLine(
+            draft: draft, methodKey: methods.first { $0.id == draft.methodID }?.builtInKey,
+            isAI: target.isPrepared || BrewerFitLine.isAI(name: draft.name, credit: draft.credit))
+        }
+      }
     }
     .listRowBackground(DS.paper)
   }
@@ -399,14 +413,19 @@ struct RecipeEditorView: View {
       return
     case .success(let read): draft = read
     }
-    let methodName = methods.first { $0.id == draft.methodID }?.name
+    let method = methods.first { $0.id == draft.methodID }
+    if let method, BrewerCapacity.needsAsking(method.builtInKey) {
+      sizeQuestion = method
+      return
+    }
+    let brewer = BrewerFit.current(method?.builtInKey)
     let payload = RecipeReviewAI.payload(
-      draft, methodName: methodName, note: aiNote, grinder: grinderName)
+      draft, methodName: method?.name, note: aiNote, grinder: grinderName, brewer: brewer)
     reviewing = true
     Task {
       defer { reviewing = false }
       do {
-        review = try await RecipeReviewAI.review(payload, base: draft)
+        review = try await RecipeReviewAI.review(payload, base: draft, brewer: brewer)
       } catch {
         reviewError =
           "The AI could not suggest steps that add up for this recipe. Your steps are unchanged."

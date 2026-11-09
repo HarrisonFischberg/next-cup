@@ -88,6 +88,18 @@ struct SettingsRootView: View {
         }
         .listRowBackground(DS.paper)
         .accessibilityIdentifier("settings.methods")
+        NavigationLink {
+          BrewerSizesView()
+        } label: {
+          VStack(alignment: .leading, spacing: 2) {
+            Text("Brewer sizes").font(DS.Font.headline).foregroundStyle(DS.ink)
+            Text("So AI recipes never overfill your brewer").font(.footnote)
+              .foregroundStyle(DS.ink2)
+          }
+          .frame(minHeight: DS.Size.control, alignment: .leading)
+        }
+        .listRowBackground(DS.paper)
+        .accessibilityIdentifier("settings.brewerSizes")
         Toggle("Brew sounds", isOn: $sound)
           .listRowBackground(DS.paper).accessibilityIdentifier("settings.sound")
         if sound {

@@ -154,7 +154,7 @@ enum NextCupAI {
   /// the user's similar past brews. No photos.
   static func payload(
     for brew: Brew, base: RecipeDraft, similar: [Brew] = [],
-    noteCharacters: Int = cloudHistory.noteCharacters
+    noteCharacters: Int = cloudHistory.noteCharacters, brewer: BrewerFit? = nil
   ) -> AIRequestPayload {
     var lines = ["Brewed: \(brew.date.formatted(date: .abbreviated, time: .omitted))"]
     lines += (brew.beans ?? []).map(beanLine)
@@ -168,7 +168,7 @@ enum NextCupAI {
     let notes = brew.notes.trimmingCharacters(in: .whitespacesAndNewlines)
     if !notes.isEmpty { lines.append("Their notes on this cup: \(notes)") }
     let recipe = RecipeReviewAI.payload(
-      base, methodName: brew.method?.name, note: "", grinder: base.grinderName)
+      base, methodName: brew.method?.name, note: "", grinder: base.grinderName, brewer: brewer)
     lines.append(recipe.userText)
     lines.append("Their other similar brews, newest first:" + (similar.isEmpty ? " none yet" : ""))
     lines += similar.map { historyLine($0, noteCharacters: noteCharacters) }
@@ -273,13 +273,19 @@ enum NextCupAI {
     let similar = similarBrews(
       to: brew, in: sameCategoryOnly ? sameCategory(as: brew, in: all) : all,
       limit: history.brews)
-    let (answer, source) = try await send(
-      payload(for: brew, base: start, similar: similar, noteCharacters: history.noteCharacters))
+    let brewer = BrewerFit.current(brew.method?.builtInKey)
+    let request = payload(
+      for: brew, base: start, similar: similar, noteCharacters: history.noteCharacters,
+      brewer: brewer)
+    let (answer, source) = try await send(request)
     try Task.checkCancellation()
     try checkStillThere(brew)
-    guard let review = RecipeReviewAI.parse(answer, base: start, source: source) else {
+    guard let parsed = RecipeReviewAI.parse(answer, base: start, source: source) else {
       throw AIError.invalidResponse
     }
+    let review = try await RecipeReviewAI.fit(
+      parsed, brewer: brewer, payload: request, base: start, mode: .improve, send: send)
+    try checkStillThere(brew)
     let draft = finished(review, brew: brew, sources: found?.sources ?? [])
     if let problem = RecipeEditorService.validate(draft) { throw problem }
     return Outcome(
