@@ -66,8 +66,6 @@ struct BeanEditorView: View {
   @State private var scannedLink: URL?
   /// The site the QR link ended on, used as the roaster's website on save if it has none.
   @State private var linkSite: URL?
-  /// Set when a barcode was not found, so the AI photo route is offered next.
-  @State private var offerPhotoRoute = false
   /// The last two stages of a scan, shown while the result goes into the fields.
   @State private var fillStages: [String]?
   @State private var fillStage = 0
@@ -210,6 +208,19 @@ struct BeanEditorView: View {
       } else if lookingUp {
         StagedProgress(stages: lookupStages, current: 0)
       } else {
+        // The AI photo read is always on offer: first, and after a barcode or QR scan to fill
+        // what the code's page left out.
+        Button {
+          chooseScan(.bagRecognition, camera: Camera.isAvailable)
+        } label: {
+          Label(
+            filledByScan
+              ? "Read the rest of the bag with AI" : "Take a photo of the bag for AI to read",
+            systemImage: "sparkles"
+          )
+          .frame(minHeight: DS.Size.control, alignment: .leading)
+        }
+        .accessibilityIdentifier("beans.editor.photoRoute")
         Button(action: startBarcode) {
           Label("Scan the barcode or QR code", systemImage: "qrcode.viewfinder")
             .frame(minHeight: DS.Size.control, alignment: .leading)
@@ -219,19 +230,10 @@ struct BeanEditorView: View {
           Section("Read the bag label") { sourceButtons(.bagRecognition) }
           Section("Describe a coffee photo") { sourceButtons(.photoInterpretation) }
         } label: {
-          Label("Fill from a photo", systemImage: "camera.viewfinder")
+          Label("More photo options", systemImage: "camera.viewfinder")
             .frame(minHeight: DS.Size.control, alignment: .leading)
         }
         .accessibilityIdentifier("beans.editor.scan")
-        if offerPhotoRoute {
-          Button {
-            chooseScan(.bagRecognition, camera: Camera.isAvailable)
-          } label: {
-            Label("Read the bag label with AI instead", systemImage: "sparkles")
-              .frame(minHeight: DS.Size.control, alignment: .leading)
-          }
-          .accessibilityIdentifier("beans.editor.photoRoute")
-        }
       }
       if let scannedLink {
         Link(destination: scannedLink) {
@@ -421,18 +423,15 @@ struct BeanEditorView: View {
   private func chooseScan(_ feature: AIFeature, camera: Bool) {
     scanFeature = feature
     scanMessage = nil
-    offerPhotoRoute = false
     if camera { cameraShown = true } else { pickerShown = true }
   }
 
   private func startBarcode() {
     scanMessage = nil
-    offerPhotoRoute = false
     Task {
       guard await BarcodeScanner.requestIfNeeded() else {
         scanMessage =
           "Scanning needs the camera on an iPhone that supports it, with camera access allowed. Try a photo of the bag instead."
-        offerPhotoRoute = true
         return
       }
       scannerShown = true
@@ -454,7 +453,6 @@ struct BeanEditorView: View {
     guard let link = QRBeanLink.link(from: payload) else {
       let draft = QRBeanLink.parse(text: payload)
       if draft.isEmpty {
-        offerPhotoRoute = true
         scanMessage = "That QR code has no web link or coffee details to read."
         return
       }
@@ -519,7 +517,6 @@ struct BeanEditorView: View {
         }
         if product.brand != nil { matchShown = true }
       case .failure(let failure):
-        offerPhotoRoute = true
         scanMessage =
           switch failure {
           case .notFound: "That barcode is not in Open Food Facts yet."
@@ -571,8 +568,8 @@ struct BeanEditorView: View {
   }
 
   /// With no AI model (Apple Intelligence off or unsupported, no key set), the label is still
-  /// read on this iPhone with Vision, and only what `LabelEvidence` reads plainly (roast
-  /// date, weight) is filled for review. Nothing leaves the device.
+  /// read on this iPhone with Vision, and only what the label states plainly (roast date,
+  /// roast, weight, tasting notes) is filled for review. Nothing leaves the device.
   private func readLabelWithoutAI(_ load: @escaping () async -> Data?) {
     Task {
       let started = Date()
@@ -586,12 +583,14 @@ struct BeanEditorView: View {
       var draft = BeanFields()
       draft.roastDate = LabelEvidence.roastDate(in: lines).flatMap(BagRecognition.date)
       draft.bagWeightG = LabelEvidence.bagWeightGrams(in: lines)
+      draft.roastLevel = BagRecognition.roastLevel(in: lines)
+      draft.flavorNotes = BagRecognition.flavorNotes(in: lines, taxonomy: ExploreModel.taxonomy)
       await showFilling(["Label read on this iPhone", "Filling the fields"], since: started) {
         fill(with: draft)
       }
       filledMessage =
         (filledMessage ?? "")
-        + " Without an AI model only the roast date and weight are read; choose one in Settings → AI to read more."
+        + " Without an AI model only the roast date, roast, weight and tasting notes are read; choose one in Settings → AI to read more."
     }
   }
 

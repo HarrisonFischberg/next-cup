@@ -222,15 +222,14 @@ enum BeanBrewAI {
     return draft
   }
 
-  /// Saves the pick over the one this feature saved before with the same name and brewer.
-  static func save(_ draft: RecipeDraft, store: Store) -> Result<Recipe, RecipeEditorError> {
+  /// Saves the pick as its brewer's Next Cup on the Brew tab, over the Next Cup it had, so it
+  /// is ready to brew now or next time. Its note still names the bean it is for.
+  static func saveAsNextCup(_ draft: RecipeDraft, store: Store) -> Result<Recipe, RecipeEditorError>
+  {
     var draft = draft
-    let recipes = (try? store.context.fetch(FetchDescriptor<Recipe>())) ?? []
-    draft.sourceID =
-      recipes.first {
-        $0.credit == credit && $0.name == draft.name && $0.method?.id == draft.methodID
-      }?.id
-    return RecipeEditorService(store: store).save(draft)
+    draft.name = NextCupAI.recipeName
+    draft.credit = NextCupAI.credit
+    return NextCupAI.save(draft, store: store)
   }
 
   static func ask(

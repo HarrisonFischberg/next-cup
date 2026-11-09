@@ -156,19 +156,21 @@ struct BeanBrewAITests {
     #expect(!BeanBrewAI.isSound(draft, style: .espresso))
   }
 
-  @Test func savingTheSamePickAgainReplacesIt() throws {
+  @Test func savedPickBecomesTheBrewersNextCup() throws {
     let rig = try Harness()
     let outcome = try #require(
       BeanBrewAI.parse(
-        ["picks": [pick("V60")]], methods: rig.methods, grinder: nil, bean: rig.bean,
-        source: "Test"))
-    let draft = try #require(outcome.picks.first?.draft)
-    let first = try BeanBrewAI.save(draft, store: rig.store).get()
-    let second = try BeanBrewAI.save(draft, store: rig.store).get()
-    #expect(first.id == second.id)
-    let saved = try rig.container.mainContext.fetch(FetchDescriptor<Recipe>())
-      .filter { $0.credit == BeanBrewAI.credit }
-    #expect(saved.count == 1)
+        ["picks": [pick("V60"), pick("AeroPress")]], methods: rig.methods, grinder: nil,
+        bean: rig.bean, source: "Test"))
+    let first = try BeanBrewAI.saveAsNextCup(outcome.picks[0].draft, store: rig.store).get()
+    let again = try BeanBrewAI.saveAsNextCup(outcome.picks[0].draft, store: rig.store).get()
+    let other = try BeanBrewAI.saveAsNextCup(outcome.picks[1].draft, store: rig.store).get()
+    #expect(first.isNextCup && first.id == again.id)
+    #expect(other.isNextCup && other.id != first.id)
+    #expect(first.tuningNote?.contains("Southern Weather") == true)
+    let nextCups = try rig.container.mainContext.fetch(FetchDescriptor<Recipe>()).filter(
+      \.isNextCup)
+    #expect(nextCups.count == 2)
   }
 
   @Test func disclosureListsBrewAdvice() {

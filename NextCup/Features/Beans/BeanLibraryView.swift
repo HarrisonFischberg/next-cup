@@ -15,8 +15,11 @@ struct BeanLibraryView: View {
   @Query(sort: \Bean.createdAt, order: .reverse) private var beans: [Bean]
   @State private var search = ""
   @State private var editor: BeanEditorTarget?
-  /// A bean just saved from a scan; its taste question opens once the editor has gone.
+  /// A bean just saved from a scan; once the editor has gone, a toast offers its three brews
+  /// without making the user wait for them (they also wait on the bean's page).
   @State private var scannedBean: Bean?
+  @State private var savedBean: Bean?
+  @State private var savedTimer: Task<Void, Never>?
   @State private var adviceBean: Bean?
   @State private var pendingDelete: UUID?
   @State private var deleteTimer: Task<Void, Never>?
@@ -83,7 +86,7 @@ struct BeanLibraryView: View {
         .accessibilityIdentifier("beans.add")
       }
     }
-    .sheet(item: $editor, onDismiss: showAdvice) { target in
+    .sheet(item: $editor, onDismiss: offerAdvice) { target in
       BeanEditorView(target: target, afterScan: { scannedBean = $0 }) { editor = nil }
     }
     .sheet(item: $adviceBean) { bean in
@@ -208,9 +211,16 @@ struct BeanLibraryView: View {
     .overlay(alignment: .bottom) { Hairline() }
   }
 
-  private func showAdvice() {
-    adviceBean = scannedBean
+  private func offerAdvice() {
+    guard let bean = scannedBean else { return }
     scannedBean = nil
+    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { savedBean = bean }
+    savedTimer?.cancel()
+    savedTimer = Task {
+      try? await Task.sleep(for: .seconds(8))
+      guard !Task.isCancelled else { return }
+      withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { savedBean = nil }
+    }
   }
 
   private func clearFilters() {
@@ -236,6 +246,15 @@ struct BeanLibraryView: View {
         .padding(.horizontal, DS.Space.lg).padding(.bottom, DS.Space.sm)
         .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
         .accessibilityIdentifier("beans.toast")
+    } else if let savedBean {
+      SteelToast(message: "\(savedBean.name) saved", actionTitle: "Get 3 brews") {
+        savedTimer?.cancel()
+        self.savedBean = nil
+        adviceBean = savedBean
+      }
+      .padding(.horizontal, DS.Space.lg).padding(.bottom, DS.Space.sm)
+      .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+      .accessibilityIdentifier("beans.savedToast")
     }
   }
 

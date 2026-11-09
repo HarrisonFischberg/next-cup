@@ -5,8 +5,8 @@ import UIKit
 
 /// Opens after a scanned bag is saved, and from a bean's page: "How do you want it to
 /// taste?" with quick picks and free text, or three picks with no goal. The AI then ranks
-/// three ways to brew it on the user's brewers, each with Start brew. Nothing is stored
-/// until that tap.
+/// three ways to brew it on the user's brewers. Save makes a pick its brewer's Next Cup on the
+/// Brew tab, to brew now or later. Nothing is stored until that tap.
 struct BeanBrewAdviceView: View {
   let bean: Bean
   let close: () -> Void
@@ -31,6 +31,8 @@ struct BeanBrewAdviceView: View {
   @State private var goal = ""
   @State private var job: Task<Void, Never>?
   @State private var saveError: String?
+  /// Picks saved as a Next Cup, with the recipe each became.
+  @State private var saved: [UUID: UUID] = [:]
   @FocusState private var typing: Bool
 
   private var units: UnitPreferences {
@@ -241,8 +243,22 @@ struct BeanBrewAdviceView: View {
       if !pick.why.isEmpty {
         Text(pick.why).font(.subheadline).foregroundStyle(DS.ink2)
       }
-      SteelButton(title: "Start brew", kind: rank == 1 ? .primary : .secondary) { start(pick) }
-        .accessibilityIdentifier("beanbrew.start.\(rank)")
+      if let recipe = saved[pick.id] {
+        Label("Saved as your \(pick.methodName) Next Cup", systemImage: "checkmark.circle.fill")
+          .font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
+          .accessibilityIdentifier("beanbrew.saved.\(rank)")
+        SteelButton(title: "Brew it now") {
+          router?.startBrew(recipe: recipe, bean: bean.id)
+          close()
+        }
+        .accessibilityIdentifier("beanbrew.brew.\(rank)")
+      } else {
+        SteelButton(title: "Save as Next Cup", kind: rank == 1 ? .primary : .secondary) {
+          save(pick)
+        }
+        .accessibilityHint("Keeps it on the Brew tab to brew now or later")
+        .accessibilityIdentifier("beanbrew.save.\(rank)")
+      }
     }
     .padding(DS.Space.md)
     .panel(DS.paper)
@@ -302,14 +318,22 @@ struct BeanBrewAdviceView: View {
     }
   }
 
-  /// Saves the pick as a recipe and opens its Start brew page with this bean chosen.
-  private func start(_ pick: BeanBrewAI.Pick) {
-    switch BeanBrewAI.save(pick.draft, store: Store(context: context)) {
+  /// Saves the pick as its brewer's Next Cup; the card then offers to brew it now.
+  private func save(_ pick: BeanBrewAI.Pick) {
+    switch BeanBrewAI.saveAsNextCup(pick.draft, store: Store(context: context)) {
     case .success(let recipe):
-      router?.startBrew(recipe: recipe.id, bean: bean.id)
-      close()
+      saveError = nil
+      // A pick for the same brewer saved before now points at the replaced Next Cup.
+      let sameBrewer = phaseOutcome?.picks.filter { $0.draft.methodID == pick.draft.methodID } ?? []
+      for other in sameBrewer { saved[other.id] = nil }
+      saved[pick.id] = recipe.id
+      UINotificationFeedbackGenerator().notificationOccurred(.success)
     case .failure(let failure):
       saveError = failure.message
     }
+  }
+
+  private var phaseOutcome: BeanBrewAI.Outcome? {
+    if case .done(let outcome) = phase { outcome } else { nil }
   }
 }
