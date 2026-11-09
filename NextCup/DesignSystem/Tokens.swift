@@ -35,6 +35,14 @@ enum DS {
   static var onKraft: Color { Color(palette.onKraft) }
   static var error: Color { Color(palette.error) }
   static var ok: Color { Color(palette.ok) }
+  /// The favorite star: the accent, except where the accent is brown, brass, amber or copper
+  /// (the owner dislikes those), which use the ink instead.
+  static var favorite: Color {
+    switch AppStyle.current {
+    case .daily, .bloom, .charcoalCrema, .morningEdition, .precisionAtelier: ink
+    default: accent
+    }
+  }
 
   // MARK: Space (4-pt base, scaled by the flavor's density)
 
