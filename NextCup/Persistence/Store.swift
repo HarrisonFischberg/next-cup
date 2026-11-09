@@ -44,6 +44,17 @@ struct Store {
     return model
   }
 
+  /// Stars or unstars a recipe or brew and saves. A failed save puts the star back.
+  func toggleFavorite<T: Identified>(_ model: T, _ flag: ReferenceWritableKeyPath<T, Bool>)
+    -> Result<Void, StoreError>
+  {
+    model[keyPath: flag].toggle()
+    model.updatedAt = Date()
+    let result = save()
+    if case .failure = result { context.rollback() }
+    return result
+  }
+
   /// Saves pending changes. A failure is returned, never swallowed, so callers
   /// keep the draft and show the error (X5).
   func save() -> Result<Void, StoreError> {
