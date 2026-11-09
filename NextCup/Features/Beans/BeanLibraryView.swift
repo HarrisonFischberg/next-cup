@@ -15,6 +15,7 @@ struct BeanLibraryView: View {
   @Query(sort: \Bean.createdAt, order: .reverse) private var beans: [Bean]
   @State private var search = ""
   @State private var editor: BeanEditorTarget?
+  @State private var editorStart: BeanCaptureStart?
   /// A bean just saved from a scan; its taste question opens once the editor has gone.
   @State private var scannedBean: Bean?
   @State private var adviceBean: Bean?
@@ -52,10 +53,11 @@ struct BeanLibraryView: View {
       if library.isEmpty {
         ScrollView {
           PageHeader("Beans").padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.sm)
+          aiCallout.padding(.horizontal, DS.Space.lg)
           EmptyState(
             title: "No beans yet",
             message: "Add a bag to track its freshness and how much is left.",
-            actionTitle: "Add a bean", action: { editor = .new })
+            actionTitle: "Add a bean", action: addBean)
         }
       } else if shown.isEmpty {
         ScrollView {
@@ -74,9 +76,7 @@ struct BeanLibraryView: View {
     .toolbar {
       ToolbarItem(placement: .primaryAction) { SettingsGear(id: "beans.settings") }
       ToolbarItem(placement: .primaryAction) {
-        Button {
-          editor = .new
-        } label: {
+        Button(action: addBean) {
           Image(systemName: "plus")
         }
         .accessibilityLabel("Add a bean")
@@ -84,7 +84,9 @@ struct BeanLibraryView: View {
       }
     }
     .sheet(item: $editor, onDismiss: showAdvice) { target in
-      BeanEditorView(target: target, afterScan: { scannedBean = $0 }) { editor = nil }
+      BeanEditorView(target: target, start: editorStart, afterScan: { scannedBean = $0 }) {
+        editor = nil
+      }
     }
     .sheet(item: $adviceBean) { bean in
       BeanBrewAdviceView(bean: bean) { adviceBean = nil }
@@ -108,6 +110,12 @@ struct BeanLibraryView: View {
       PageHeader("Beans")
         .padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.sm)
         .listRowInsets(EdgeInsets()).listRowBackground(DS.bg).listRowSeparator(.hidden)
+      aiCallout
+        .listRowInsets(
+          EdgeInsets(
+            top: DS.Space.xs, leading: DS.Space.lg, bottom: DS.Space.sm, trailing: DS.Space.lg)
+        )
+        .listRowBackground(DS.bg).listRowSeparator(.hidden)
       if let error {
         StateBanner(kind: .error, message: error, actionTitle: "Dismiss") { self.error = nil }
           .accessibilityIdentifier("beans.error")
@@ -206,6 +214,23 @@ struct BeanLibraryView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(DS.bg)
     .overlay(alignment: .bottom) { Hairline() }
+  }
+
+  /// The quickest way in: straight into the AI flow (barcode, QR, both sides of the bag).
+  private var aiCallout: some View {
+    SteelButton(title: "Use AI for adding your beans") {
+      editorStart = .aiFlow
+      editor = .new
+    }
+    .accessibilityHint(
+      "Scan the barcode, QR code and both sides of the bag, and AI fills in the bean"
+    )
+    .accessibilityIdentifier("beans.aiAdd")
+  }
+
+  private func addBean() {
+    editorStart = nil
+    editor = .new
   }
 
   private func showAdvice() {

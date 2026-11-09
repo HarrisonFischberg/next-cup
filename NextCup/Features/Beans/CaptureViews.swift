@@ -128,3 +128,98 @@ private struct ScannerRepresentable: UIViewControllerRepresentable {
     }
   }
 }
+
+/// One step of the AI flow, shown before its scanner or camera opens: what to point at, with
+/// Continue, Skip and Stop.
+struct FlowPromptView: View {
+  let step: BeanFlowStep
+  let onContinue: () -> Void
+  let onSkip: () -> Void
+  let onStop: () -> Void
+
+  private var content: (symbol: String, title: String, detail: String, skip: String) {
+    switch step {
+    case .barcode:
+      (
+        "barcode.viewfinder", "Scan the barcode", "Point the camera at the barcode on the bag.",
+        "No barcode, skip"
+      )
+    case .qr:
+      (
+        "qrcode.viewfinder", "Scan the QR code",
+        "Many roasters print one that links to the coffee's page.",
+        "No QR code, skip"
+      )
+    case .front:
+      (
+        "camera.viewfinder", "Scan the front of the bag", "Fit the whole label in the photo.",
+        "Skip"
+      )
+    case .back, .reading:
+      (
+        "camera.viewfinder", "Scan the back of the bag",
+        "Tasting notes, origin and roast date are often printed here.", "Skip"
+      )
+    }
+  }
+
+  var body: some View {
+    let c = content
+    VStack(spacing: DS.Space.lg) {
+      Text("Step \(step.rawValue + 1) of 4").font(DS.Font.label).foregroundStyle(DS.ink2)
+      Image(systemName: c.symbol).font(.system(size: 56)).foregroundStyle(DS.signal)
+        .accessibilityHidden(true)
+      VStack(spacing: DS.Space.xs) {
+        Text(c.title).font(DS.Font.headline).foregroundStyle(DS.ink)
+          .accessibilityAddTraits(.isHeader)
+        Text(c.detail).font(.body).foregroundStyle(DS.ink2).multilineTextAlignment(.center)
+      }
+      VStack(spacing: DS.Space.sm) {
+        SteelButton(title: "Continue", action: onContinue)
+          .accessibilityIdentifier("beans.flow.continue")
+        SteelButton(title: c.skip, kind: .secondary, action: onSkip)
+          .accessibilityIdentifier("beans.flow.skip")
+        Button("Stop the AI flow", action: onStop)
+          .frame(minHeight: DS.Size.minTap)
+          .accessibilityIdentifier("beans.flow.stop")
+      }
+    }
+    .padding(DS.Space.lg)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(DS.bg)
+    .presentationDetents([.medium, .large])
+    .interactiveDismissDisabled()
+    .accessibilityElement(children: .contain)
+    .accessibilityIdentifier("beans.flow.prompt")
+  }
+}
+
+/// While the AI flow reads the bag: the brewing cup and what is happening, with Cancel.
+struct BrewingBeansView: View {
+  let cancel: () -> Void
+
+  var body: some View {
+    VStack(spacing: DS.Space.lg) {
+      Spacer()
+      BrewingCupView().frame(maxWidth: 200)
+      VStack(spacing: DS.Space.xs) {
+        Text("Brewing up your fresh beans").font(DS.Font.headline).foregroundStyle(DS.ink)
+        Text(
+          DirectAI.cloudProviderTitle.map { "Reading your bag with \($0)." }
+            ?? "Reading your bag on this iPhone."
+        )
+        .font(.body).foregroundStyle(DS.ink2)
+      }
+      .multilineTextAlignment(.center)
+      .accessibilityElement(children: .combine)
+      Spacer()
+      Button("Cancel", action: cancel).frame(minHeight: DS.Size.minTap)
+        .accessibilityIdentifier("beans.flow.brewing.cancel")
+    }
+    .padding(DS.Space.lg)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(DS.bg)
+    .accessibilityElement(children: .contain)
+    .accessibilityIdentifier("beans.flow.brewing")
+  }
+}

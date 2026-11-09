@@ -372,7 +372,7 @@ struct BeanBrewAdviceView: View {
 
   /// Saves the pick as a recipe to try.
   private func save(_ pick: BeanBrewAI.Pick) {
-    switch BeanBrewAI.save(pick.draft, store: Store(context: context)) {
+    switch BeanBrewAI.save(pick.draft, bean: bean, store: Store(context: context)) {
     case .success:
       saveError = nil
       decided[pick.id] = true

@@ -156,22 +156,25 @@ struct BeanBrewAITests {
     #expect(!BeanBrewAI.isSound(draft, style: .espresso))
   }
 
-  @Test func savedPickWaitsToTryAndSavingAgainReplacesIt() throws {
+  @Test func savedPickWaitsUnderItsBeanUntilRated() throws {
     let rig = try Harness()
     let outcome = try #require(
       BeanBrewAI.parse(
         ["picks": [pick("V60")]], methods: rig.methods, grinder: nil, bean: rig.bean,
         source: "Test"))
     let draft = try #require(outcome.picks.first?.draft)
-    let first = try BeanBrewAI.save(draft, store: rig.store).get()
-    let second = try BeanBrewAI.save(draft, store: rig.store).get()
+    let first = try BeanBrewAI.save(draft, bean: rig.bean, store: rig.store).get()
+    let second = try BeanBrewAI.save(draft, bean: rig.bean, store: rig.store).get()
     #expect(first.id == second.id && first.isToTry && !first.isNextCup)
+    #expect(first.adviceBeanID == rig.bean.id)
     #expect(first.tuningNote?.contains("Southern Weather") == true)
     let brew = Brew()
     rig.container.mainContext.insert(brew)
     brew.recipe = first
     try rig.container.mainContext.save()
-    #expect(!first.isToTry, "a brewed pick joins the user's recipes")
+    #expect(first.isToTry, "brewed but not rated yet")
+    brew.ratingTenths = 80
+    #expect(!first.isToTry && first.isBrewAdvice, "a rated pick moves to the Next Cup list")
   }
 
   @Test func eachTasteGetsOneRecipe() async throws {

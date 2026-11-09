@@ -67,10 +67,12 @@ final class BeanBrewAdviceUITests: XCTestCase {
 
     // Every recipe decided: back to the Brew tab with the saved ones to try.
     let kicker = app.staticTexts.matching(
-      NSPredicate(format: "label CONTAINS[c] 'recipe to try for your next cup'")
+      NSPredicate(format: "label CONTAINS[c] 'recipes for southern weather'")
     ).firstMatch
     XCTAssertTrue(kicker.waitForExistence(timeout: 8))
-    XCTAssertFalse(element("beanbrew.sheet").exists)
+    let gone = expectation(
+      for: NSPredicate(format: "exists == false"), evaluatedWith: element("beanbrew.sheet"))
+    wait(for: [gone], timeout: 5)
     shoot("next-cup")
   }
 
@@ -85,25 +87,16 @@ final class BeanBrewAdviceUITests: XCTestCase {
     app.launch()
     XCTAssertTrue(element("tab.root.journal").waitForExistence(timeout: 10))
     app.tabBars.buttons["Beans"].tap()
+    XCTAssertTrue(element("beans.aiAdd").waitForExistence(timeout: 5))
+    shoot("beans-callout")
     app.buttons["Add a bean"].firstMatch.tap()
     XCTAssertTrue(element("beans.editor.aiFlow").waitForExistence(timeout: 5))
     shoot("add")
-    // The flow opens the next capture screen on its own; close it to see the steps.
+    // The flow starts with a card for its first step, not the scanner.
     element("beans.editor.aiFlow").tap()
-    let shutter = app.buttons.matching(
-      NSPredicate(format: "identifier == 'PhotoCapture' OR label == 'Take Picture'")
-    ).firstMatch
-    let stop = element("beans.editor.flow.stop")
-    for _ in 0..<3 {
-      if shutter.waitForExistence(timeout: 4) {
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.14, dy: 0.935)).tap()
-      }
-      if stop.waitForExistence(timeout: 3), stop.isHittable { break }
-      if element("beans.scanner.cancel").exists { element("beans.scanner.cancel").tap() }
-    }
-    XCTAssertTrue(stop.isHittable)
+    XCTAssertTrue(element("beans.flow.prompt").waitForExistence(timeout: 5))
     shoot("flow")
-    stop.tap()
+    element("beans.flow.stop").tap()
     let name = element("beans.editor.name")
     name.tap()
     name.typeText("Shelf Find")

@@ -244,9 +244,13 @@ enum BeanBrewAI {
   }
 
   /// Saves the pick as a recipe to try, over the one this feature saved before with the same
-  /// name and brewer. It shows under "Recipe to try for your Next Cup" until it is brewed.
-  static func save(_ draft: RecipeDraft, store: Store) -> Result<Recipe, RecipeEditorError> {
+  /// name and brewer. It shows under "Recipes for [bean]" on the Brew tab until it is brewed
+  /// and rated. Its credit links to the bean (`nextcup://bean/<id>`), which groups it there.
+  static func save(_ draft: RecipeDraft, bean: Bean?, store: Store) -> Result<
+    Recipe, RecipeEditorError
+  > {
     var draft = draft
+    draft.creditURL = bean.flatMap { URL(string: "\(DeepLink.scheme)://bean/\($0.id)") }
     let recipes = (try? store.context.fetch(FetchDescriptor<Recipe>())) ?? []
     draft.sourceID =
       recipes.first {
@@ -334,9 +338,16 @@ enum BeanBrewAI {
 }
 
 extension Recipe {
-  /// A brew-advice pick the user saved and has not brewed yet: it waits on the Brew tab under
-  /// "Recipe to try for your Next Cup", then joins their recipes once brewed.
-  var isToTry: Bool {
-    builtInKey == nil && credit == BeanBrewAI.credit && (brews ?? []).isEmpty
+  /// A brew-advice pick: it waits on the Brew tab under "Recipes for [bean]" until a brew of it
+  /// is rated or tasted, then shows under "Recipes for your Next Cup" and in the user's recipes.
+  var isBrewAdvice: Bool { builtInKey == nil && credit == BeanBrewAI.credit }
+  var isToTry: Bool { isBrewAdvice && !(brews ?? []).contains(where: \.isReviewed) }
+
+  /// The bean a brew-advice pick was made for.
+  var adviceBeanID: UUID? {
+    guard isBrewAdvice, let url = creditURL, case .bean(let id)? = DeepLink(url: url) else {
+      return nil
+    }
+    return id
   }
 }

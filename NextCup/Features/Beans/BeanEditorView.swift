@@ -21,7 +21,7 @@ enum BeanEditorTarget: Identifiable, Hashable {
 /// grams. An unsaved change blocks swipe-to-dismiss; Cancel discards it.
 /// How the editor starts: straight into a bag photo or a barcode or QR scan (set-up offers both).
 enum BeanCaptureStart: String, Identifiable {
-  case photo, barcode, manual
+  case photo, barcode, manual, aiFlow
   var id: String { rawValue }
 }
 
@@ -101,6 +101,8 @@ struct BeanEditorView: View {
   @State private var flowPhotos: [Data] = []
   @State private var flowJob: Task<Void, Never>?
   @State private var flowWaitingForNotice = false
+  /// The step whose "what to do next" card is up; its Continue opens the scanner or camera.
+  @State private var flowPrompt: BeanFlowStep?
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -167,6 +169,7 @@ struct BeanEditorView: View {
           chooseScan(
             .bagRecognition, camera: UIImagePickerController.isSourceTypeAvailable(.camera))
         case .barcode: startBarcode()
+        case .aiFlow: startFlow()
         case .manual, nil: break
         }
       }
@@ -184,7 +187,7 @@ struct BeanEditorView: View {
         CameraPicker { data in
           cameraShown = false
           if flow == .front || flow == .back {
-            if data != nil { photoForFlow(data) }
+            if data != nil { photoForFlow(data) } else { flowPrompt = flow }
           } else if let data {
             startScan { data }
           }
@@ -192,9 +195,38 @@ struct BeanEditorView: View {
         .ignoresSafeArea()
       }
       .fullScreenCover(isPresented: $scannerShown) {
-        BarcodeScannerView(onCode: scanned, onCancel: { scannerShown = false })
+        BarcodeScannerView(
+          onCode: scanned,
+          onCancel: {
+            scannerShown = false
+            // Back to the step's card, to try again or skip.
+            if flow == .barcode || flow == .qr { flowPrompt = flow }
+          })
       }
       .onChange(of: scan?.status) { _, status in if status != nil { finishScan() } }
+      .sheet(item: $flowPrompt) { step in
+        FlowPromptView(
+          step: step,
+          onContinue: {
+            flowPrompt = nil
+            Task {
+              // The card's dismissal has to finish before the camera can come up.
+              try? await Task.sleep(for: .milliseconds(500))
+              launch(step)
+            }
+          },
+          onSkip: {
+            flowPrompt = nil
+            advanceFlow()
+          },
+          onStop: {
+            flowPrompt = nil
+            stopFlow()
+          })
+      }
+      .fullScreenCover(isPresented: .constant(flowJob != nil)) {
+        BrewingBeansView { flowJob?.cancel() }
+      }
       .sheet(isPresented: $matchShown) {
         RoasterMatchView(
           name: fields.roasterName.trimmingCharacters(in: .whitespaces),
@@ -273,8 +305,8 @@ struct BeanEditorView: View {
           .accessibilityIdentifier("beans.editor.scan")
           Button(action: startFlow) {
             VStack(alignment: .leading, spacing: 2) {
-              Label("Use the AI flow for best results", systemImage: "sparkles")
-              Text("Barcode, QR code, front and back of the bag, read with your AI key")
+              Label("Use AI flow (Recommended)", systemImage: "sparkles")
+              Text("Barcode, QR code, then the front and back of the bag. AI fills in the rest.")
                 .font(.footnote).foregroundStyle(DS.ink2)
             }
             .frame(minHeight: DS.Size.control, alignment: .leading)
@@ -508,7 +540,7 @@ struct BeanEditorView: View {
     scanMessage = nil
     flowPhotos = []
     flow = .barcode
-    launch(.barcode)
+    flowPrompt = .barcode
   }
 
   private func stopFlow() {
@@ -518,7 +550,8 @@ struct BeanEditorView: View {
     flowPhotos = []
   }
 
-  /// The next step opens on its own a moment later, once the last screen has gone.
+  /// The next step's card comes up a moment later, once the last screen has gone; after the
+  /// back of the bag, the read starts on its own.
   private func advanceFlow() {
     guard let current = flow, let next = BeanFlowStep(rawValue: current.rawValue + 1) else {
       return
@@ -526,8 +559,8 @@ struct BeanEditorView: View {
     flow = next
     Task {
       try? await Task.sleep(for: .milliseconds(600))
-      guard flow == next, !scannerShown, !cameraShown, !pickerShown, !matchShown else { return }
-      launch(next)
+      guard flow == next, !scannerShown, !cameraShown, !pickerShown else { return }
+      if next == .reading { readFlow() } else { flowPrompt = next }
     }
   }
 
@@ -551,8 +584,8 @@ struct BeanEditorView: View {
     advanceFlow()
   }
 
-  /// Sends both sides as one picture to the keyed provider (the best read); Apple's small
-  /// model is not used here.
+  /// Sends both sides as one picture to the keyed provider (the best read), or to Apple's
+  /// model on this iPhone when there is no key.
   private func readFlow() {
     guard !flowPhotos.isEmpty else {
       scanMessage = "Take a photo of the front or back of the bag first."
@@ -564,9 +597,10 @@ struct BeanEditorView: View {
       disclosureProvider = pending
       return
     }
-    guard DirectAI.cloudProviderTitle != nil else {
+    // A keyed provider reads best; without one, Apple's model on this iPhone reads the label.
+    guard DirectAI.route != nil else {
       scanMessage =
-        "The AI flow reads the bag with your Anthropic or OpenAI key. Add one in Settings → AI, then tap Read the bag."
+        "Turn on Apple Intelligence, or add an Anthropic or OpenAI key in Settings → AI, then tap Read the bag."
       return
     }
     guard let photo = BeanEditorView.stacked(flowPhotos) else {
@@ -581,6 +615,7 @@ struct BeanEditorView: View {
         let (answer, _) = try await DirectAI.send(
           BagRecognition.payload(photo: photo, feature: .bagRecognition, sides: sides))
         try Task.checkCancellation()
+        flowJob = nil
         switch BagRecognition.draft(answer: answer) {
         case .success(let draft):
           await showFilling(["Bag read", "Filling the fields"], since: started) {
@@ -702,7 +737,7 @@ struct BeanEditorView: View {
         await showFilling(["Page read", "Filling the fields"], since: started) {
           fill(with: QRBeanLink.fields(draft))
         }
-        if !draft.roaster.isEmpty, fields.roasterCity.isEmpty { matchShown = true }
+        if flow == nil, !draft.roaster.isEmpty, fields.roasterCity.isEmpty { matchShown = true }
       case .failure(let failure):
         scanMessage =
           switch failure {
@@ -735,7 +770,7 @@ struct BeanEditorView: View {
         await showFilling(["Barcode found", "Filling the fields"], since: started) {
           BagRecognition.fill(&fields, with: BarcodeLookup.draft(product))
         }
-        if product.brand != nil { matchShown = true }
+        if flow == nil, product.brand != nil { matchShown = true }
       case .failure(let failure):
         scanMessage =
           switch failure {
