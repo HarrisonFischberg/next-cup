@@ -25,6 +25,7 @@ struct RecipeLibraryView: View {
   @Environment(AppRouter.self) private var router: AppRouter?
   @Environment(\.modelContext) private var context
   @Environment(\.dynamicTypeSize) private var dts
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -291,6 +292,7 @@ struct RecipeLibraryView: View {
         NavigationLink(value: DeepLink.recipe(recipe.id)) { card(recipe) }
           .buttonStyle(.plain)
           .contextMenu {
+            favoriteButton(recipe)
             if recipe.builtInKey == nil {
               Button("Edit", systemImage: "pencil") { editor = .edit(recipe.id) }
             }
@@ -304,8 +306,32 @@ struct RecipeLibraryView: View {
                 .accessibilityIdentifier("recipe.delete")
             }
           }
+          .accessibilityAction(named: recipe.isFavorite ? "Unfavorite" : "Favorite") {
+            toggleFavorite(recipe)
+          }
           .accessibilityIdentifier("recipe.row.\(recipe.id.uuidString)")
       }
+    }
+  }
+
+  private func favoriteButton(_ recipe: Recipe) -> some View {
+    Button(
+      recipe.isFavorite ? "Unfavorite" : "Favorite",
+      systemImage: recipe.isFavorite ? "star.slash" : "star"
+    ) { toggleFavorite(recipe) }
+    .accessibilityIdentifier("recipe.favorite")
+  }
+
+  private func toggleFavorite(_ recipe: Recipe) {
+    var result: Result<Void, StoreError> = .success(())
+    withAnimation(reduceMotion ? nil : .spring(duration: 0.25)) {
+      result = Store(context: context).toggleFavorite(recipe, \.isFavorite)
+    }
+    if case .failure(.saveFailed(let message)) = result {
+      UINotificationFeedbackGenerator().notificationOccurred(.error)
+      deleteError = "The favorite was not saved. \(message)"
+    } else {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
   }
 
@@ -341,6 +367,9 @@ struct RecipeLibraryView: View {
       .padding(DS.Space.lg)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
+    .overlay(alignment: .topTrailing) {
+      if recipe.isFavorite { FavoriteStar().padding(DS.Space.md) }
+    }
     .panel(DS.paper)
     .contentShape(Rectangle())
     .accessibilityElement(children: .combine)

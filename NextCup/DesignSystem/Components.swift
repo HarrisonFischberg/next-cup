@@ -408,6 +408,21 @@ struct GradeBadge: View {
   static func text(_ tenths: Int) -> String { Rating.text(tenths) }
 }
 
+// MARK: Favorite
+
+/// The star on a favorite recipe or brew card, on a small paper disc so it reads on photos.
+struct FavoriteStar: View {
+  var body: some View {
+    Image(systemName: "star.fill").font(.system(size: 15, weight: .semibold))
+      .foregroundStyle(DS.favorite)
+      .frame(width: 28, height: 28)
+      .background(DS.paper, in: Circle())
+      .accessibilityLabel("Favorite")
+      .accessibilityIdentifier("favorite.star")
+      .transition(.scale(scale: 0.5).combined(with: .opacity))
+  }
+}
+
 // MARK: Notes
 
 /// Kraft-paper label with a dashed edge: tuning notes, the tasting note field.

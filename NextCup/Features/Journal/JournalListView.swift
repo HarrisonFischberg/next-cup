@@ -229,6 +229,14 @@ struct JournalListView: View {
         }
         .contextMenu {
           Button {
+            toggleFavorite(brew)
+          } label: {
+            Label(
+              brew.isFavorite ? "Unfavorite" : "Favorite",
+              systemImage: brew.isFavorite ? "star.slash" : "star")
+          }
+          .accessibilityIdentifier("journal.favorite")
+          Button {
             brewAgain(brew)
           } label: {
             Label("Brew again", systemImage: "arrow.counterclockwise")
@@ -249,6 +257,9 @@ struct JournalListView: View {
           } label: {
             Label("Delete", systemImage: "trash")
           }
+        }
+        .accessibilityAction(named: brew.isFavorite ? "Unfavorite" : "Favorite") {
+          toggleFavorite(brew)
         }
         .accessibilityAction(named: "Brew again") { brewAgain(brew) }
         .accessibilityAction(named: "Ask AI for Next Cup") { askingNextCup = brew }
@@ -399,6 +410,19 @@ struct JournalListView: View {
   private func discard(_ entry: SavedDraft) {
     _ = entry.store.clear()
     loadUnsaved()
+  }
+
+  private func toggleFavorite(_ brew: Brew) {
+    var result: Result<Void, StoreError> = .success(())
+    withAnimation(reduceMotion ? nil : .spring(duration: 0.25)) {
+      result = Store(context: context).toggleFavorite(brew, \.isFavorite)
+    }
+    if case .failure(.saveFailed(let message)) = result {
+      UINotificationFeedbackGenerator().notificationOccurred(.error)
+      deleteError = "The favorite was not saved. \(message)"
+    } else {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
   }
 
   private func brewAgain(_ brew: Brew) {
@@ -596,6 +620,7 @@ private struct BrewRow: View {
           .accessibilityElement(children: .ignore)
           .accessibilityLabel("Rated \(Rating.text(grade)) of 10")
         }
+        if brew.isFavorite { FavoriteStar() }
       }
       if !stats.isEmpty {
         HStack(alignment: .top, spacing: DS.Space.lg) {
