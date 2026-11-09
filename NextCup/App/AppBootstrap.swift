@@ -33,6 +33,9 @@ enum AppBootstrap {
       if !inMemory, case .failure(let error) = RatingMigration.run(container.mainContext) {
         return .failure(.init(message: describe(error)))
       }
+      if !inMemory, case .failure(let error) = RecipeSnapshotBackfill.run(container.mainContext) {
+        return .failure(.init(message: describe(error)))
+      }
       #if DEBUG
         // Screenshots only: a few sample brews in the throwaway in-memory store.
         if inMemory, ProcessInfo.processInfo.arguments.contains("-demoBrews") {
@@ -106,7 +109,7 @@ struct StartupError: Error, Equatable {
       }
     }
 
-    static func insert(into context: ModelContext) {
+    @MainActor static func insert(into context: ModelContext) {
       let methods = (try? context.fetch(FetchDescriptor<BrewMethod>())) ?? []
       let samples: [(String, Int, Double, Double, Int, Int, Verdict)] = [
         ("Geometry", 0, 15, 250, 185, 88, .balanced),
@@ -129,6 +132,11 @@ struct StartupError: Error, Equatable {
         brew.beans = [part]
         context.insert(brew)
       }
+      linkRecipes(into: context, methods: methods)
+      try? context.save()
+      _ = RecipeSnapshotBackfill.run(
+        context, defaults: UserDefaults(suiteName: "nextcup.demo.\(UUID().uuidString)") ?? .standard
+      )
       // A dark bag in use, so Explore has a card; `-demoOnlyMethod <key>` keeps one method shown.
       let bag = Bean(name: "Southern Weather")
       bag.roastLevel = .dark
@@ -139,6 +147,25 @@ struct StartupError: Error, Equatable {
         for method in methods { method.isHidden = method.builtInKey != arguments[index + 1] }
       }
       try? context.save()
+    }
+
+    /// Recipe lines on the journal cards: of the three newest brews, two used a built-in recipe
+    /// and one a recipe the user has since deleted. The older two are left to the backfill.
+    @MainActor private static func linkRecipes(into context: ModelContext, methods: [BrewMethod]) {
+      let brews = ((try? context.fetch(FetchDescriptor<Brew>())) ?? []).sorted { $0.date > $1.date }
+      // The first method in the list that has recipes, so every launch shows the same cards.
+      let builtIn = ((try? context.fetch(FetchDescriptor<Recipe>())) ?? [])
+        .filter { $0.method != nil }
+        .min { ($0.method!.sortOrder, $0.name) < ($1.method!.sortOrder, $1.name) }
+      let gone = Recipe(name: "Sunday bloom", doseG: 18, waterG: 300)
+      context.insert(gone)
+      gone.method = builtIn?.method
+      for (index, brew) in brews.prefix(3).enumerated() {
+        brew.recipe = index == 1 ? gone : builtIn
+        brew.method = builtIn?.method ?? brew.method
+        brew.snapshotRecipe()
+      }
+      context.delete(gone)
     }
 
     /// A few bags with roasters, origins, roast dates and weights, for Beans screenshots.

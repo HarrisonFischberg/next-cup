@@ -218,6 +218,7 @@ struct BrewFormView: View {
           SteelButton(title: "Ask AI for Next Cup", kind: .secondary) { askingNextCup = true }
             .accessibilityHint("Puts an improved recipe called Next Cup on the Brew tab")
             .accessibilityIdentifier("brewform.askNextCup")
+          if let editing { BrewRecipeSection(brew: editing) }
         }
         brewedRow(binding.draft.date).disabled(locked)
         if let notice = model.notice { noticeBanner(notice, model) }

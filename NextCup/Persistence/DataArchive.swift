@@ -357,6 +357,8 @@ struct BrewRecord: ArchiveRecord {
   var isDraft: Bool
   /// Optional so archives from before favorites still read.
   var isFavorite: Bool?
+  /// Optional so archives from before recipe snapshots still read.
+  var recipeSnapshotJSON: Data?
   var methodID: UUID?
   var recipeID: UUID?
   var grinderID: UUID?
@@ -373,6 +375,7 @@ struct BrewRecord: ArchiveRecord {
     (tds, ratingTenths, verdict, notes) = (b.tds, b.ratingTenths, b.verdict, b.notes)
     alsoTasted = b.alsoTasted
     (photo, targetsJSON, isDraft, isFavorite) = (b.photo, b.targetsJSON, b.isDraft, b.isFavorite)
+    recipeSnapshotJSON = b.recipeSnapshotJSON
     (methodID, recipeID, grinderID) = (b.method?.id, b.recipe?.id, b.grinder?.id)
     (waterProfileID, suggestionFollowedID) = (b.waterProfile?.id, b.suggestionFollowed?.id)
   }
@@ -390,6 +393,7 @@ struct BrewRecord: ArchiveRecord {
     b.alsoTasted = alsoTasted
     (b.photo, b.targetsJSON, b.isDraft) = (photo, targetsJSON, isDraft)
     b.isFavorite = isFavorite ?? false
+    b.recipeSnapshotJSON = recipeSnapshotJSON
   }
 
   func link(_ b: Brew, _ lookup: ModelLookup) {

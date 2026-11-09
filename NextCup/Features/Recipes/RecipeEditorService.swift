@@ -173,6 +173,8 @@ struct RecipeEditorService {
   /// from it keep their numbers; only their link to the recipe is cleared (nullify rule).
   func delete(_ recipe: Recipe) -> Result<Void, RecipeEditorError> {
     guard recipe.builtInKey == nil else { return .failure(.builtIn) }
+    // Brews keep what the recipe was, so the journal can still name it and save it again.
+    for brew in recipe.brews ?? [] { brew.snapshotRecipe() }
     context.delete(recipe)
     switch store.save() {
     case .success:
