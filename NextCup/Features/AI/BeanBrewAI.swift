@@ -2,10 +2,10 @@ import Foundation
 import NextCupKit
 import SwiftData
 
-/// "How do you want it to taste?" after a bag is scanned: the AI reads the bean and the
-/// user's taste goal (or none, for its own best picks) and ranks three ways to brew it on the
-/// user's brewers, each a whole recipe with a grind. Nothing is stored until the user taps
-/// Start brew on one, which saves it as a recipe and opens it on the Brew tab.
+/// "Ways to brew [bean]" after a bag is scanned: the AI reads the bean and up to three tastes
+/// the user picked (one recipe for each), or none for its own three best, each on a different
+/// brewer of the user's with a grind. Nothing is stored until the user taps Save on one, which
+/// keeps it under "Recipe to try for your Next Cup" on the Brew tab until it is brewed.
 @MainActor
 enum BeanBrewAI {
   /// With a pick's name, marks a recipe this feature saved, so starting the same pick again
@@ -16,7 +16,7 @@ enum BeanBrewAI {
   /// Quick picks under the text field; any free text works too.
   nonisolated static let goals = [
     "Chocolatey and full-bodied", "Bright and fruity", "Sweet and balanced",
-    "Clean and tea-like", "Strong and bold",
+    "Clean and tea-like", "Strong and bold", "Floral and delicate",
   ]
 
   struct Pick: Equatable, Identifiable {
@@ -27,6 +27,8 @@ enum BeanBrewAI {
     /// The recipe to save: method, numbers, steps and grind.
     var draft: RecipeDraft
     var grind: String
+    /// The taste this recipe was made for; empty for the AI's own picks.
+    var goal = ""
   }
 
   struct Outcome: Equatable {
@@ -44,7 +46,9 @@ enum BeanBrewAI {
     each on a different brewer from their list. Choose brewers that suit the goal: a full-bodied, \
     chocolatey cup favors immersion, metal filters or a finer grind and slightly longer \
     contact; a bright, clean cup favors paper-filtered pour over and hotter water for light \
-    roasts. When no goal is given, pick what brings out the best in this bean. method is \
+    roasts. When several tastes are listed, the first recipe reaches the first taste, the \
+    second the second, and so on. When no goal is given, pick what brings out the best in \
+    this bean. method is \
     the brewer's name exactly as listed. why is one or two sentences on how this recipe \
     reaches their goal with this bean. Keep each recipe simple, at most 8 steps, with a \
     sound ratio and temperature for the brewer and roast. name is a short title of two to \
@@ -88,12 +92,23 @@ enum BeanBrewAI {
   static func payload(bean: Bean, goal: String, methods: [BrewMethod], grinder: String?)
     -> AIRequestPayload
   {
+    payload(bean: bean, goals: [goal], methods: methods, grinder: grinder)
+  }
+
+  static func payload(bean: Bean, goals: [String], methods: [BrewMethod], grinder: String?)
+    -> AIRequestPayload
+  {
     var lines = [beanLine(bean)]
-    let goal = goal.trimmingCharacters(in: .whitespacesAndNewlines)
-    lines.append(
-      goal.isEmpty
-        ? "What they want: no preference, recommend the best for this bean"
-        : "What they want it to taste like: \(String(goal.prefix(300)))")
+    let goals = clean(goals)
+    switch goals.count {
+    case 0: lines.append("What they want: no preference, recommend the best for this bean")
+    case 1: lines.append("What they want it to taste like: \(goals[0])")
+    default:
+      lines.append(
+        "One recipe for each taste, in this order: "
+          + goals.enumerated().map { "\(slots[$0.offset]): \($0.element)" }
+          .joined(separator: "; "))
+    }
     lines.append(
       "Their brewers: "
         + methods.map { "\($0.name) (\(RecipeFormat.title($0.style)))" }.joined(separator: "; "))
@@ -106,6 +121,12 @@ enum BeanBrewAI {
     return AIRequestPayload(
       system: system, userText: lines.joined(separator: "\n"), schemaName: "bean_brew",
       schema: schema(methodNames: methods.map(\.name)))
+  }
+
+  /// Trimmed, non-empty, at most three, each at most 300 characters.
+  static func clean(_ goals: [String]) -> [String] {
+    goals.map { String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(300)) }
+      .filter { !$0.isEmpty }.prefix(pickCount).map { $0 }
   }
 
   private static func beanLine(_ bean: Bean) -> String {
@@ -233,9 +254,14 @@ enum BeanBrewAI {
     return draft
   }
 
-  /// Saves the pick over the one this feature saved before with the same name and brewer.
-  static func save(_ draft: RecipeDraft, store: Store) -> Result<Recipe, RecipeEditorError> {
+  /// Saves the pick as a recipe to try, over the one this feature saved before with the same
+  /// name and brewer. It shows under "Recipes for [bean]" on the Brew tab until it is brewed
+  /// and rated. Its credit links to the bean (`nextcup://bean/<id>`), which groups it there.
+  static func save(_ draft: RecipeDraft, bean: Bean?, store: Store) -> Result<
+    Recipe, RecipeEditorError
+  > {
     var draft = draft
+    draft.creditURL = bean.flatMap { URL(string: "\(DeepLink.scheme)://bean/\($0.id)") }
     let recipes = (try? store.context.fetch(FetchDescriptor<Recipe>())) ?? []
     draft.sourceID =
       recipes.first {
@@ -244,15 +270,28 @@ enum BeanBrewAI {
     return RecipeEditorService(store: store).save(draft)
   }
 
+  /// Three picks for one goal (or none).
   static func ask(
     bean: Bean, goal: String, store: Store, grinder: String?,
     send: (AIRequestPayload) async throws -> (answer: [String: Any], source: String) = {
       try await DirectAI.send($0)
     }
   ) async throws -> Outcome {
+    try await ask(
+      bean: bean, goals: [goal], onePerGoal: false, store: store, grinder: grinder, send: send)
+  }
+
+  /// One pick per taste in `goals` (up to three), or three when there are none.
+  static func ask(
+    bean: Bean, goals: [String], onePerGoal: Bool = true, store: Store, grinder: String?,
+    send: (AIRequestPayload) async throws -> (answer: [String: Any], source: String) = {
+      try await DirectAI.send($0)
+    }
+  ) async throws -> Outcome {
+    let goals = clean(goals)
     let methods = methods(store: store)
     guard !methods.isEmpty else { throw AIError.invalidResponse }
-    let request = payload(bean: bean, goal: goal, methods: methods, grinder: grinder)
+    let request = payload(bean: bean, goals: goals, methods: methods, grinder: grinder)
     // Apple's small model sometimes fails outright; one more try usually answers.
     var lastError: Error = AIError.invalidResponse
     for _ in 0..<2 {
@@ -263,7 +302,11 @@ enum BeanBrewAI {
           answer, methods: methods, grinder: grinder, bean: bean, source: source,
           fallback: { builtInDraft(for: $0, store: store) })
         {
-          return outcome
+          guard onePerGoal, !goals.isEmpty else { return outcome }
+          var trimmed = outcome
+          trimmed.picks = Array(outcome.picks.prefix(goals.count))
+          for index in trimmed.picks.indices { trimmed.picks[index].goal = goals[index] }
+          return trimmed
         }
       } catch let error where !(error is CancellationError) && !Task.isCancelled {
         if case AIError.cancelled = error { throw error }
@@ -303,4 +346,19 @@ enum BeanBrewAI {
       ]
     }
   #endif
+}
+
+extension Recipe {
+  /// A brew-advice pick: it waits on the Brew tab under "Recipes for [bean]" until a brew of it
+  /// is rated or tasted, then shows under "Recipes for your Next Cup" and in the user's recipes.
+  var isBrewAdvice: Bool { builtInKey == nil && credit == BeanBrewAI.credit }
+  var isToTry: Bool { isBrewAdvice && !(brews ?? []).contains(where: \.isReviewed) }
+
+  /// The bean a brew-advice pick was made for.
+  var adviceBeanID: UUID? {
+    guard isBrewAdvice, let url = creditURL, case .bean(let id)? = DeepLink(url: url) else {
+      return nil
+    }
+    return id
+  }
 }

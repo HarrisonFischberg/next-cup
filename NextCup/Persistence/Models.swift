@@ -37,6 +37,8 @@ final class Brew: Identified {
   var targetsJSON: Data?
   /// Unused: drafts live in files (`DraftStore`). Kept so the schema and old archives stay valid.
   var isDraft: Bool = false
+  /// Starred from the journal's long-press menu; shows a star on the card.
+  var isFavorite: Bool = false
 
   /// Every taste picked, the first one first.
   var verdicts: [Verdict] {
@@ -177,6 +179,8 @@ final class Recipe: Identified {
   /// Where to start on `grinderName`, in its own notation ("34"); Start brew pre-fills it.
   var grindSetting: String?
   var grinderName: String?
+  /// Starred from the Brew tab's long-press menu; shows a star on the card.
+  var isFavorite: Bool = false
 
   var method: BrewMethod?
   @Relationship(deleteRule: .cascade, inverse: \RecipeStep.recipe) var steps: [RecipeStep]?

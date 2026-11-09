@@ -156,19 +156,38 @@ struct BeanBrewAITests {
     #expect(!BeanBrewAI.isSound(draft, style: .espresso))
   }
 
-  @Test func savingTheSamePickAgainReplacesIt() throws {
+  @Test func savedPickWaitsUnderItsBeanUntilRated() throws {
     let rig = try Harness()
     let outcome = try #require(
       BeanBrewAI.parse(
         ["picks": [pick("V60")]], methods: rig.methods, grinder: nil, bean: rig.bean,
         source: "Test"))
     let draft = try #require(outcome.picks.first?.draft)
-    let first = try BeanBrewAI.save(draft, store: rig.store).get()
-    let second = try BeanBrewAI.save(draft, store: rig.store).get()
-    #expect(first.id == second.id)
-    let saved = try rig.container.mainContext.fetch(FetchDescriptor<Recipe>())
-      .filter { $0.credit == BeanBrewAI.credit }
-    #expect(saved.count == 1)
+    let first = try BeanBrewAI.save(draft, bean: rig.bean, store: rig.store).get()
+    let second = try BeanBrewAI.save(draft, bean: rig.bean, store: rig.store).get()
+    #expect(first.id == second.id && first.isToTry && !first.isNextCup)
+    #expect(first.adviceBeanID == rig.bean.id)
+    #expect(first.tuningNote?.contains("Southern Weather") == true)
+    let brew = Brew()
+    rig.container.mainContext.insert(brew)
+    brew.recipe = first
+    try rig.container.mainContext.save()
+    #expect(first.isToTry, "brewed but not rated yet")
+    brew.ratingTenths = 80
+    #expect(!first.isToTry && first.isBrewAdvice, "a rated pick moves to the Next Cup list")
+  }
+
+  @Test func eachTasteGetsOneRecipe() async throws {
+    let rig = try Harness()
+    let goals = ["Chocolatey and full-bodied", " ", "Bright and fruity"]
+    let text = BeanBrewAI.payload(bean: rig.bean, goals: goals, methods: rig.methods, grinder: nil)
+      .userText
+    #expect(
+      text.contains("first: Chocolatey and full-bodied; second: Bright and fruity"))
+    let outcome = try await BeanBrewAI.ask(
+      bean: rig.bean, goals: goals, store: rig.store, grinder: nil,
+      send: { _ in (["picks": [pick("V60"), pick("French Press"), pick("AeroPress")]], "Test") })
+    #expect(outcome.picks.map(\.goal) == ["Chocolatey and full-bodied", "Bright and fruity"])
   }
 
   @Test func disclosureListsBrewAdvice() {

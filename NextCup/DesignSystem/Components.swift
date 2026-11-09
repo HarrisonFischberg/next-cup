@@ -107,7 +107,10 @@ struct SteelButton: View {
         if isLoading { ProgressView().tint(kind == .primary ? DS.onSignal : DS.onSteel) }
         Text(title.dsTitle).font(DS.Font.din(kind == .primary ? 26 : 22, relativeTo: .title2))
           .tracking(1)
+          // A long title (a bean's name in it) shrinks instead of running off the button.
+          .lineLimit(1).minimumScaleFactor(0.6)
       }
+      .padding(.horizontal, DS.Space.md)
       .dynamicTypeSize(...DS.displayCap)
       .frame(
         maxWidth: .infinity, minHeight: kind == .primary ? DS.Size.primary : DS.Size.timerControl)
@@ -406,6 +409,21 @@ struct GradeBadge: View {
   }
 
   static func text(_ tenths: Int) -> String { Rating.text(tenths) }
+}
+
+// MARK: Favorite
+
+/// The star on a favorite recipe or brew card, on a small paper disc so it reads on photos.
+struct FavoriteStar: View {
+  var body: some View {
+    Image(systemName: "star.fill").font(.system(size: 15, weight: .semibold))
+      .foregroundStyle(DS.favorite)
+      .frame(width: 28, height: 28)
+      .background(DS.paper, in: Circle())
+      .accessibilityLabel("Favorite")
+      .accessibilityIdentifier("favorite.star")
+      .transition(.scale(scale: 0.5).combined(with: .opacity))
+  }
 }
 
 // MARK: Notes

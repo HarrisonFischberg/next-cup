@@ -3,10 +3,10 @@ import SwiftData
 import SwiftUI
 import UIKit
 
-/// Opens after a scanned bag is saved, and from a bean's page: "How do you want it to
-/// taste?" with quick picks and free text, or three picks with no goal. The AI then ranks
-/// three ways to brew it on the user's brewers, each with Start brew. Nothing is stored
-/// until that tap.
+/// Opens after a scanned bag is saved, and from a bean's page: "Ways to brew [bean]" with a
+/// grid of tastes (up to three, one recipe each, plus free text) or "Recommend 3 recipes".
+/// Each recipe is then saved or composted; once all are decided, the Brew tab opens with the
+/// saved ones under "Recipe to try for your Next Cup". Nothing is stored until Save.
 struct BeanBrewAdviceView: View {
   let bean: Bean
   let close: () -> Void
@@ -22,15 +22,21 @@ struct BeanBrewAdviceView: View {
 
   @Environment(\.modelContext) private var context
   @Environment(AppRouter.self) private var router: AppRouter?
+  @Environment(\.dynamicTypeSize) private var dts
   @Query private var grinders: [Grinder]
   @AppStorage(BrewFormModel.lastGrinderKey) private var lastGrinderID = ""
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
   @State private var phase = Phase.asking
+  @State private var chosen: [String] = []
   @State private var goal = ""
+  /// The tastes the last request was made for, for the results heading.
+  @State private var asked: [String] = []
   @State private var job: Task<Void, Never>?
   @State private var saveError: String?
+  /// What the user did with each pick: true saved, false composted.
+  @State private var decided: [UUID: Bool] = [:]
   @FocusState private var typing: Bool
 
   private var units: UnitPreferences {
@@ -106,20 +112,23 @@ struct BeanBrewAdviceView: View {
 
   // MARK: Asking
 
+  /// The tastes to send: the chosen tiles, then the typed one, at most three.
+  private var goals: [String] { BeanBrewAI.clean(chosen + [goal]) }
+
   private var asking: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: DS.Space.md) {
-        Text("How do you want it to taste?").font(DS.Font.headline).foregroundStyle(DS.ink)
+        Text("Ways to brew \(bean.name)").font(DS.Font.headline).foregroundStyle(DS.ink)
           .accessibilityAddTraits(.isHeader)
-        Text("Pick one or describe it. You'll get three ways to brew this bean on your brewers.")
+        Text("Pick up to 3 tastes and get one recipe for each on your brewers.")
           .font(.body).foregroundStyle(DS.ink2)
-        TextField("For example: chocolatey and full-bodied", text: $goal, axis: .vertical)
+        grid
+        TextField("Or describe your own", text: $goal, axis: .vertical)
           .lineLimit(1...4).focused($typing).submitLabel(.go)
-          .onSubmit(ask)
+          .onSubmit { if !goals.isEmpty { ask() } }
           .padding(DS.Space.md).frame(minHeight: DS.Size.control)
           .panel(DS.paper)
           .accessibilityIdentifier("beanbrew.goal")
-        chips
       }
       .padding(DS.Space.lg)
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -127,10 +136,14 @@ struct BeanBrewAdviceView: View {
     .scrollDismissesKeyboard(.interactively)
     .safeAreaInset(edge: .bottom, spacing: 0) {
       VStack(spacing: DS.Space.sm) {
-        SteelButton(title: "Get 3 brews for this taste", action: ask)
-          .disabled(goal.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-          .accessibilityIdentifier("beanbrew.ask")
-        SteelButton(title: "Just recommend 3", kind: .secondary) {
+        let count = max(goals.count, 1)
+        SteelButton(
+          title: "\(count) \(count == 1 ? "recipe" : "recipes") for \(bean.name)", action: ask
+        )
+        .disabled(goals.isEmpty)
+        .accessibilityIdentifier("beanbrew.ask")
+        SteelButton(title: "Recommend 3 recipes", kind: .secondary) {
+          chosen = []
           goal = ""
           ask()
         }
@@ -142,24 +155,35 @@ struct BeanBrewAdviceView: View {
     }
   }
 
-  private var chips: some View {
-    ScrollView(.horizontal, showsIndicators: false) {
-      HStack(spacing: DS.Space.sm) {
-        ForEach(BeanBrewAI.goals, id: \.self) { option in
-          let chosen = goal == option
-          Button(option) { goal = chosen ? "" : option }
-            .buttonStyle(.plain)
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(chosen ? DS.onSignal : DS.ink)
-            .padding(.horizontal, DS.Space.md).frame(minHeight: DS.Size.control)
-            .background(Capsule().fill(chosen ? DS.signal : DS.paper))
-            .overlay(Capsule().strokeBorder(DS.line, lineWidth: chosen ? 0 : 1))
-            .accessibilityAddTraits(chosen ? .isSelected : [])
+  /// Every taste at once, two across (one across at large text sizes).
+  private var grid: some View {
+    let full = goals.count >= BeanBrewAI.pickCount
+    let columns = Array(
+      repeating: GridItem(.flexible(), spacing: DS.Space.sm),
+      count: dts.isAccessibilitySize ? 1 : 2)
+    return LazyVGrid(columns: columns, spacing: DS.Space.sm) {
+      ForEach(BeanBrewAI.goals, id: \.self) { option in
+        let on = chosen.contains(option)
+        Button {
+          if on { chosen.removeAll { $0 == option } } else { chosen.append(option) }
+        } label: {
+          Text(option)
+            .font(.subheadline.weight(.medium)).multilineTextAlignment(.leading)
+            .foregroundStyle(on ? DS.onSignal : DS.ink)
+            .padding(DS.Space.md)
+            .frame(maxWidth: .infinity, minHeight: DS.Size.primary, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: DS.radius).fill(on ? DS.signal : DS.paper))
+            .overlay(
+              RoundedRectangle(cornerRadius: DS.radius)
+                .strokeBorder(DS.line, lineWidth: on ? 0 : 1))
         }
+        .buttonStyle(.plain)
+        .disabled(full && !on)
+        .opacity(full && !on ? 0.5 : 1)
+        .accessibilityAddTraits(on ? .isSelected : [])
       }
     }
-    .scrollClipDisabled()
-    .sensoryFeedback(.selection, trigger: goal)
+    .sensoryFeedback(.selection, trigger: chosen)
     .accessibilityIdentifier("beanbrew.chips")
   }
 
@@ -186,10 +210,14 @@ struct BeanBrewAdviceView: View {
   private func done(_ outcome: BeanBrewAI.Outcome) -> some View {
     ScrollView {
       VStack(alignment: .leading, spacing: DS.Space.md) {
-        Text(goal.isEmpty ? "Three ways to brew it" : "Three ways to get \(goal.lowercased())")
-          .font(DS.Font.headline).foregroundStyle(DS.ink)
-          .accessibilityAddTraits(.isHeader)
-          .accessibilityIdentifier("beanbrew.done")
+        Text(
+          asked.count > 1
+            ? "A recipe for each taste"
+            : asked.first.map { "Ways to get \($0.lowercased())" } ?? "Three ways to brew it"
+        )
+        .font(DS.Font.headline).foregroundStyle(DS.ink)
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityIdentifier("beanbrew.done")
         if !outcome.summary.isEmpty {
           Text(outcome.summary).font(.body).foregroundStyle(DS.ink2)
         }
@@ -197,7 +225,7 @@ struct BeanBrewAdviceView: View {
         ForEach(Array(outcome.picks.enumerated()), id: \.element.id) { index, pick in
           card(pick, rank: index + 1)
         }
-        Button("Try a different taste") { phase = .asking }
+        Button("Try different tastes") { phase = .asking }
           .frame(maxWidth: .infinity, minHeight: DS.Size.control)
           .accessibilityIdentifier("beanbrew.again")
       }
@@ -223,6 +251,10 @@ struct BeanBrewAdviceView: View {
         Spacer()
         Text(draft.name).font(.subheadline).foregroundStyle(DS.ink2).lineLimit(1)
       }
+      if !pick.goal.isEmpty {
+        Text("For \(pick.goal.lowercased())").font(.subheadline.weight(.semibold))
+          .foregroundStyle(DS.accent)
+      }
       Text(
         "\(RecipeFormat.weight(draft.doseG, units)) coffee · \(RecipeFormat.weight(draft.waterG, units)) water"
       )
@@ -241,8 +273,29 @@ struct BeanBrewAdviceView: View {
       if !pick.why.isEmpty {
         Text(pick.why).font(.subheadline).foregroundStyle(DS.ink2)
       }
-      SteelButton(title: "Start brew", kind: rank == 1 ? .primary : .secondary) { start(pick) }
-        .accessibilityIdentifier("beanbrew.start.\(rank)")
+      switch decided[pick.id] {
+      case true?:
+        Label("Saved to try on the Brew tab", systemImage: "checkmark.circle.fill")
+          .font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
+          .frame(minHeight: DS.Size.minTap)
+          .accessibilityIdentifier("beanbrew.saved.\(rank)")
+      case false?:
+        HStack {
+          Label("In the compost bin", systemImage: "leaf")
+            .font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink2)
+          Spacer()
+          Button("Undo") { decided[pick.id] = nil }
+            .frame(minWidth: DS.Size.minTap, minHeight: DS.Size.minTap)
+            .accessibilityIdentifier("beanbrew.undo.\(rank)")
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("beanbrew.composted.\(rank)")
+      case nil:
+        ViewThatFits(in: .horizontal) {
+          HStack(spacing: DS.Space.sm) { actions(pick, rank: rank) }
+          VStack(spacing: DS.Space.sm) { actions(pick, rank: rank) }
+        }
+      }
     }
     .padding(DS.Space.md)
     .panel(DS.paper)
@@ -272,7 +325,9 @@ struct BeanBrewAdviceView: View {
     }
     phase = .working
     saveError = nil
-    let goal = goal
+    let goals = goals
+    asked = goals
+    decided = [:]
     job = Task {
       do {
         let store = Store(context: context)
@@ -289,7 +344,7 @@ struct BeanBrewAdviceView: View {
           }
         #endif
         let outcome = try await BeanBrewAI.ask(
-          bean: bean, goal: goal, store: store, grinder: grinderName, send: send)
+          bean: bean, goals: goals, store: store, grinder: grinderName, send: send)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         phase = .done(outcome)
       } catch is CancellationError {
@@ -302,14 +357,44 @@ struct BeanBrewAdviceView: View {
     }
   }
 
-  /// Saves the pick as a recipe and opens its Start brew page with this bean chosen.
-  private func start(_ pick: BeanBrewAI.Pick) {
-    switch BeanBrewAI.save(pick.draft, store: Store(context: context)) {
-    case .success(let recipe):
-      router?.startBrew(recipe: recipe.id, bean: bean.id)
-      close()
+  @ViewBuilder private func actions(_ pick: BeanBrewAI.Pick, rank: Int) -> some View {
+    SteelButton(title: "Save") { save(pick) }
+      .accessibilityHint("Keeps it on the Brew tab under Recipe to try for your Next Cup")
+      .accessibilityIdentifier("beanbrew.save.\(rank)")
+    SteelButton(title: "Compost bin", kind: .secondary) {
+      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      decided[pick.id] = false
+      finishIfDecided()
+    }
+    .accessibilityHint("Drops this recipe")
+    .accessibilityIdentifier("beanbrew.compost.\(rank)")
+  }
+
+  /// Saves the pick as a recipe to try.
+  private func save(_ pick: BeanBrewAI.Pick) {
+    switch BeanBrewAI.save(pick.draft, bean: bean, store: Store(context: context)) {
+    case .success:
+      saveError = nil
+      decided[pick.id] = true
+      UINotificationFeedbackGenerator().notificationOccurred(.success)
+      finishIfDecided()
     case .failure(let failure):
       saveError = failure.message
+    }
+  }
+
+  /// Once every recipe is saved or composted, the Brew tab opens on the saved ones (a moment
+  /// later, so the last choice and its Undo can be seen).
+  private func finishIfDecided() {
+    guard case .done(let outcome) = phase,
+      outcome.picks.allSatisfy({ decided[$0.id] != nil })
+    else { return }
+    let snapshot = decided
+    Task {
+      try? await Task.sleep(for: .seconds(1.2))
+      guard decided == snapshot else { return }
+      if decided.values.contains(true) { router?.showBrewTop() }
+      close()
     }
   }
 }
