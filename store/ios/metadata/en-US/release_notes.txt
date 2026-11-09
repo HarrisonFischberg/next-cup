@@ -1,1 +1,5 @@
+- Your recipe on every journal card: each brew shows the recipe it was made with. Long-press to favorite that recipe, or save it again if you deleted it.
+- Favorites: star recipes and brews from the long-press menu, and a star marks them.
+- A guided AI flow for new beans reads the front and back of the bag, then suggests ways to brew it. Save the recipes you want to try.
+- AI recipes now fit the size of your brewer, so they never overfill it.
 - Send Debug Logs: if something goes wrong, open Settings, say what happened, and Next Cup starts an email to support with the details needed to fix it. You see the whole email and send it yourself.
