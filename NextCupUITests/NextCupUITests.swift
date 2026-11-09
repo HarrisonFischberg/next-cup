@@ -1517,7 +1517,7 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(barcode.waitForExistence(timeout: 5))
     barcode.tap()
     XCTAssertTrue(element(app, "beans.editor.scan.error").waitForExistence(timeout: 5))
-    XCTAssertTrue(app.buttons["beans.editor.photoRoute"].exists)
+    XCTAssertTrue(element(app, "beans.editor.scan").exists)
     app.buttons["beans.editor.cancel"].tap()
     XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 5))
   }

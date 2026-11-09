@@ -61,6 +61,8 @@ struct BeanDetailView: View {
         }
         header
         readouts
+        // A bean saved from the shop shelf: the three brews wait here until it is first brewed.
+        if (bean.brewUses ?? []).isEmpty { adviceCard }
         if let trend { trendLine(trend) }
         BestSoFarCard(summary: bean.bestSoFar, units: units)
         attributes
@@ -104,6 +106,23 @@ struct BeanDetailView: View {
   }
 
   // MARK: Brew this bean
+
+  private var adviceCard: some View {
+    VStack(alignment: .leading, spacing: DS.Space.sm) {
+      Label("Three ways to brew it", systemImage: "sparkles")
+        .font(DS.Font.headline).foregroundStyle(DS.ink)
+        .accessibilityAddTraits(.isHeader)
+      Text(
+        "Say how you want it to taste and get three brews for your brewers. Save one as your Next Cup to brew now or later."
+      )
+      .font(.subheadline).foregroundStyle(DS.ink2)
+      SteelButton(title: "Get 3 brews", kind: .secondary) { adviceShown = true }
+        .accessibilityIdentifier("bean.adviceCard")
+    }
+    .padding(DS.Space.md)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .panel(DS.paper)
+  }
 
   /// The brew to repeat: the best graded one (newest on a tie), else the newest.
   private var bestBrew: Brew? {

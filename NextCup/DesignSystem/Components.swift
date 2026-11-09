@@ -107,7 +107,10 @@ struct SteelButton: View {
         if isLoading { ProgressView().tint(kind == .primary ? DS.onSignal : DS.onSteel) }
         Text(title.dsTitle).font(DS.Font.din(kind == .primary ? 26 : 22, relativeTo: .title2))
           .tracking(1)
+          // A long title (a bean's name in it) shrinks instead of running off the button.
+          .lineLimit(1).minimumScaleFactor(0.6)
       }
+      .padding(.horizontal, DS.Space.md)
       .dynamicTypeSize(...DS.displayCap)
       .frame(
         maxWidth: .infinity, minHeight: kind == .primary ? DS.Size.primary : DS.Size.timerControl)

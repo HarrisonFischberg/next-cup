@@ -41,6 +41,16 @@ enum AppleIntelligence {
       else { throw AIError.invalidResponse }
       if payload.schemaName == BagRecognition.schemaName, var bag = object as? [String: Any] {
         BagRecognition.fixName(&bag, from: read)
+        // The small model often skips notes and roast that the label prints plainly.
+        let text = read.map(\.text)
+        if (bag["flavorNotes"] as? String ?? "").isEmpty {
+          bag["flavorNotes"] = BagRecognition.flavorNotes(in: text, taxonomy: ExploreModel.taxonomy)
+        }
+        if (bag["roastLevel"] as? String ?? "").isEmpty,
+          let level = BagRecognition.roastLevel(in: text)
+        {
+          bag["roastLevel"] = level.rawValue
+        }
         object = bag
       }
       guard

@@ -17,6 +17,23 @@ struct BagRecognitionTests {
     return container.mainContext
   }
 
+  @Test func tastingNotesAndRoastAreReadOffTheLabel() throws {
+    let taxonomy = try Taxonomy(bundle: .main)
+    #expect(
+      BagRecognition.flavorNotes(
+        in: ["NORTHWIND", "DARK CHOCOLATE • CHERRY • CARAMEL", "12 OZ"], taxonomy: taxonomy)
+        == "dark chocolate, cherry, caramel")
+    #expect(
+      BagRecognition.flavorNotes(in: ["Tasting notes: peach and jasmine"], taxonomy: taxonomy)
+        == "peach, jasmine")
+    #expect(
+      BagRecognition.flavorNotes(
+        in: ["100% ARABICA • WHOLE BEAN • 12 OZ", "Notes: store in a cool place"],
+        taxonomy: taxonomy) == "")
+    #expect(BagRecognition.roastLevel(in: ["SUNRISE", "Medium-Dark Roast"]) == .mediumDark)
+    #expect(BagRecognition.roastLevel(in: ["DARK CHOCOLATE • CHERRY"]) == nil)
+  }
+
   private func done(
     _ json: String, feature: AIFeature = .bagRecognition, in context: ModelContext
   ) -> AIRequest {

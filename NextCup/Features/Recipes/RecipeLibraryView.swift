@@ -8,6 +8,7 @@ import UIKit
 /// Searching lists matching recipes by brew style.
 struct RecipeLibraryView: View {
   @Query(sort: \Recipe.name) private var allRecipes: [Recipe]
+  @Query private var beans: [Bean]
   @Query(filter: #Predicate<BrewMethod> { $0.isHidden }) private var hiddenMethods: [BrewMethod]
   @Query(filter: #Predicate<BrewMethod> { !$0.isHidden }, sort: \BrewMethod.sortOrder)
   private var shownMethods: [BrewMethod]
@@ -45,15 +46,33 @@ struct RecipeLibraryView: View {
 
   private var matches: [Recipe] {
     let term = search.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !term.isEmpty else { return recipes.filter { !$0.isVersion && !$0.isNextCup } }
+    guard !term.isEmpty else {
+      return recipes.filter { !$0.isVersion && !$0.isNextCup && !$0.isToTry }
+    }
     return recipes.filter { recipe in
       [recipe.name, recipe.method?.name, recipe.credit, RecipeFormat.groupTitle(for: recipe)]
         .contains { $0?.localizedStandardContains(term) == true }
     }
   }
 
-  /// What the AI made from past brews, pinned on top, even for a method left out of the page.
-  private var nextCups: [Recipe] { allRecipes.filter(\.isNextCup) }
+  /// What the AI made from past brews, and brew-advice picks saved to try, pinned on top, even
+  /// for a method left out of the page.
+  private var nextCups: [Recipe] {
+    allRecipes.filter { $0.isNextCup || ($0.isBrewAdvice && !$0.isToTry) }
+  }
+
+  /// Brew-advice picks not rated yet, one group per bean, newest bean first.
+  private var toTry: [(title: String, recipes: [Recipe])] {
+    let grouped = Dictionary(grouping: allRecipes.filter(\.isToTry), by: \.adviceBeanID)
+    return grouped.map { id, recipes in
+      let bean = beans.first { $0.id == id }
+      return (
+        bean.map { "Recipes for \($0.name)" } ?? "Recipes for your beans",
+        recipes.sorted { $0.createdAt < $1.createdAt }, bean?.createdAt ?? .distantPast
+      )
+    }
+    .sorted { $0.2 > $1.2 }.map { ($0.0, $0.1) }
+  }
 
   private var groups: [(title: String, recipes: [Recipe])] {
     let grouped = Dictionary(grouping: matches, by: RecipeFormat.groupOrder(for:))
@@ -99,7 +118,11 @@ struct RecipeLibraryView: View {
           ForEach(groups, id: \.title) { group in section(group.title, group.recipes) }
         } else {
           autoNextCup
-          if !nextCups.isEmpty { section("Recipe to try for your Next Cup", nextCups) }
+          ForEach(toTry, id: \.title) { group in section(group.title, group.recipes) }
+          if !nextCups.isEmpty {
+            SectionRule("Recipes for your Next Cup")
+            section("", nextCups)
+          }
           methods
           SectionRule("Your recipes")
           ForEach(groups, id: \.title) { group in section(group.title, group.recipes) }
@@ -286,7 +309,7 @@ struct RecipeLibraryView: View {
 
   private func section(_ title: String, _ members: [Recipe]) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.md) {
-      Kicker(title, color: DS.ink2).accessibilityAddTraits(.isHeader)
+      if !title.isEmpty { Kicker(title, color: DS.ink2).accessibilityAddTraits(.isHeader) }
       ForEach(members) { recipe in
         NavigationLink(value: DeepLink.recipe(recipe.id)) { card(recipe) }
           .buttonStyle(.plain)
