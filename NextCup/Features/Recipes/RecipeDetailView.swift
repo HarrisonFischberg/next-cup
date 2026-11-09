@@ -101,12 +101,27 @@ private struct RecipeDetailContent: View {
     try? RecipeScaler.scale(recipe.scalable, toDose: doseG)
   }
 
+  /// The recipe at the dose chosen here, to check it against the user's brewer size.
+  private var fitDraft: RecipeDraft {
+    var draft = RecipeEditorService(store: Store(context: modelContext))
+      .draft(from: recipe, asCopy: false)
+    let factor = scaledDoseG == nil ? 1 : (scaled?.factor ?? 1)
+    for index in draft.steps.indices {
+      draft.steps[index].targetCumulativeWaterG =
+        draft.steps[index].targetCumulativeWaterG.map { $0 * factor }
+    }
+    return draft
+  }
+
   var body: some View {
     let steps = recipe.orderedSteps
     ScrollView {
       VStack(alignment: .leading, spacing: DS.Space.lg) {
         hero
         nextCupNote
+        BrewerFitLine(
+          draft: fitDraft, methodKey: recipe.method?.builtInKey,
+          isAI: BrewerFitLine.isAI(name: recipe.name, credit: recipe.credit))
         if startFailed {
           StateBanner(kind: .error, message: "This recipe cannot be timed. Check its steps.")
         }
