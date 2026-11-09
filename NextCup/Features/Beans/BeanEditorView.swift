@@ -516,17 +516,19 @@ struct BeanEditorView: View {
           "Reading the bag with \(DirectAI.cloudProviderTitle ?? "AI")", "Filling the fields",
         ], current: 1)
     } else {
-      HStack(spacing: DS.Space.md) {
-        Button(current.action) { launch(current) }
-          .buttonStyle(.borderedProminent).tint(DS.signal)
-          .accessibilityIdentifier("beans.editor.flow.go")
+      // The app's own button, so it reads in every look and in dark mode.
+      SteelButton(title: current.action) { launch(current) }
+        .accessibilityIdentifier("beans.editor.flow.go")
+      HStack {
         if current != .reading {
           Button("Skip", action: advanceFlow).accessibilityIdentifier("beans.editor.flow.skip")
         }
         Spacer()
-        Button("Stop", role: .cancel) { stopFlow() }
+        Button("Stop the AI flow", role: .cancel) { stopFlow() }
           .accessibilityIdentifier("beans.editor.flow.stop")
       }
+      // Borderless, so a tap on the row does not fire both buttons.
+      .buttonStyle(.borderless).foregroundStyle(DS.ink)
       .frame(minHeight: DS.Size.control)
     }
   }
