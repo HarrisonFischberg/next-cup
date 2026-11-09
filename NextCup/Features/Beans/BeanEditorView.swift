@@ -169,7 +169,10 @@ struct BeanEditorView: View {
           chooseScan(
             .bagRecognition, camera: UIImagePickerController.isSourceTypeAvailable(.camera))
         case .barcode: startBarcode()
-        case .aiFlow: startFlow()
+        case .aiFlow:
+          // A card can't come up while this sheet is still sliding in; it would be dropped.
+          try? await Task.sleep(for: .milliseconds(600))
+          startFlow()
         case .manual, nil: break
         }
       }
@@ -303,15 +306,6 @@ struct BeanEditorView: View {
             .frame(minHeight: DS.Size.control, alignment: .leading)
           }
           .accessibilityIdentifier("beans.editor.scan")
-          Button(action: startFlow) {
-            VStack(alignment: .leading, spacing: 2) {
-              Label("Use AI flow (Recommended)", systemImage: "sparkles")
-              Text("Barcode, QR code, then the front and back of the bag. AI fills in the rest.")
-                .font(.footnote).foregroundStyle(DS.ink2)
-            }
-            .frame(minHeight: DS.Size.control, alignment: .leading)
-          }
-          .accessibilityIdentifier("beans.editor.aiFlow")
         }
       }
       if let scannedLink {

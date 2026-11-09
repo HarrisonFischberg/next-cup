@@ -15,7 +15,9 @@ struct BeanLibraryView: View {
   @Query(sort: \Bean.createdAt, order: .reverse) private var beans: [Bean]
   @State private var search = ""
   @State private var editor: BeanEditorTarget?
-  @State private var editorStart: BeanCaptureStart?
+  /// The editor opened straight into a capture (the AI flow), its own sheet so the start is
+  /// never read stale.
+  @State private var captureStart: BeanCaptureStart?
   /// A bean just saved from a scan; its taste question opens once the editor has gone.
   @State private var scannedBean: Bean?
   @State private var adviceBean: Bean?
@@ -84,8 +86,11 @@ struct BeanLibraryView: View {
       }
     }
     .sheet(item: $editor, onDismiss: showAdvice) { target in
-      BeanEditorView(target: target, start: editorStart, afterScan: { scannedBean = $0 }) {
-        editor = nil
+      BeanEditorView(target: target, afterScan: { scannedBean = $0 }) { editor = nil }
+    }
+    .sheet(item: $captureStart, onDismiss: showAdvice) { start in
+      BeanEditorView(target: .new, start: start, afterScan: { scannedBean = $0 }) {
+        captureStart = nil
       }
     }
     .sheet(item: $adviceBean) { bean in
@@ -219,8 +224,7 @@ struct BeanLibraryView: View {
   /// The quickest way in: straight into the AI flow (barcode, QR, both sides of the bag).
   private var aiCallout: some View {
     SteelButton(title: "Use AI for adding your beans") {
-      editorStart = .aiFlow
-      editor = .new
+      captureStart = .aiFlow
     }
     .accessibilityHint(
       "Scan the barcode, QR code and both sides of the bag, and AI fills in the bean"
@@ -229,7 +233,6 @@ struct BeanLibraryView: View {
   }
 
   private func addBean() {
-    editorStart = nil
     editor = .new
   }
 

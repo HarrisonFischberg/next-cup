@@ -89,14 +89,13 @@ final class BeanBrewAdviceUITests: XCTestCase {
     app.tabBars.buttons["Beans"].tap()
     XCTAssertTrue(element("beans.aiAdd").waitForExistence(timeout: 5))
     shoot("beans-callout")
-    app.buttons["Add a bean"].firstMatch.tap()
-    XCTAssertTrue(element("beans.editor.aiFlow").waitForExistence(timeout: 5))
-    shoot("add")
-    // The flow starts with a card for its first step, not the scanner.
-    element("beans.editor.aiFlow").tap()
+    // The Beans page button goes straight to the AI flow's first step card.
+    element("beans.aiAdd").tap()
     XCTAssertTrue(element("beans.flow.prompt").waitForExistence(timeout: 5))
     shoot("flow")
     element("beans.flow.stop").tap()
+    XCTAssertFalse(element("beans.editor.aiFlow").exists, "the flow lives on the Beans page")
+    shoot("add")
     let name = element("beans.editor.name")
     name.tap()
     name.typeText("Shelf Find")
