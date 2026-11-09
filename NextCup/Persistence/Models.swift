@@ -39,6 +39,9 @@ final class Brew: Identified {
   var isDraft: Bool = false
   /// Starred from the journal's long-press menu; shows a star on the card.
   var isFavorite: Bool = false
+  /// The recipe as it was brewed (`RecipeSnapshot` as JSON), so the journal still names it,
+  /// and can save it again, after the recipe is deleted.
+  var recipeSnapshotJSON: Data?
 
   /// Every taste picked, the first one first.
   var verdicts: [Verdict] {

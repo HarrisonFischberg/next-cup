@@ -580,7 +580,12 @@ final class BrewFormModel {
   private func apply(to brew: Brew) {
     brew.date = draft.date
     brew.method = draft.methodID.flatMap { try? store.find(BrewMethod.self, id: $0) }
-    brew.recipe = draft.recipeID.flatMap { try? store.find(Recipe.self, id: $0) }
+    // The form has no recipe picker, so a brew keeps the recipe it has (one saved again from
+    // the brew's page while the form was open included).
+    if let recipe = draft.recipeID.flatMap({ try? store.find(Recipe.self, id: $0) }) {
+      brew.recipe = recipe
+    }
+    brew.snapshotRecipe()
     brew.doseG = draft.doseG
     brew.waterG = draft.waterG
     brew.tempC = draft.tempC

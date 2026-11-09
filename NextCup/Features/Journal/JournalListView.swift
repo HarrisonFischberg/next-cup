@@ -236,6 +236,14 @@ struct JournalListView: View {
               systemImage: brew.isFavorite ? "star.slash" : "star")
           }
           .accessibilityIdentifier("journal.favorite")
+          if let action = BrewRecipeAction(brew) {
+            Button {
+              perform(action, on: brew)
+            } label: {
+              Label(action.title, systemImage: action.symbol)
+            }
+            .accessibilityIdentifier(action.identifier)
+          }
           Button {
             brewAgain(brew)
           } label: {
@@ -260,6 +268,11 @@ struct JournalListView: View {
         }
         .accessibilityAction(named: brew.isFavorite ? "Unfavorite" : "Favorite") {
           toggleFavorite(brew)
+        }
+        .accessibilityActions {
+          if let action = BrewRecipeAction(brew) {
+            Button(action.title) { perform(action, on: brew) }
+          }
         }
         .accessibilityAction(named: "Brew again") { brewAgain(brew) }
         .accessibilityAction(named: "Ask AI for Next Cup") { askingNextCup = brew }
@@ -422,6 +435,14 @@ struct JournalListView: View {
       deleteError = "The favorite was not saved. \(message)"
     } else {
       UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+  }
+
+  private func perform(_ action: BrewRecipeAction, on brew: Brew) {
+    if let failure = action.perform(
+      on: brew, store: Store(context: context), reduceMotion: reduceMotion)
+    {
+      deleteError = failure
     }
   }
 
@@ -622,6 +643,7 @@ private struct BrewRow: View {
         }
         if brew.isFavorite { FavoriteStar() }
       }
+      if let recipe = BrewRecipeInfo(brew) { BrewRecipeChip(info: recipe) }
       if !stats.isEmpty {
         HStack(alignment: .top, spacing: DS.Space.lg) {
           ForEach(stats, id: \.name) { stat in
