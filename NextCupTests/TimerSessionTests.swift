@@ -221,6 +221,28 @@ struct TimerSessionTests {
     #expect(haptics.played == [.start])
   }
 
+  /// A 10-second stir is shown joined to the pour after it, so the cue comes once, when
+  /// the screen changes, not again when the pour's own time arrives inside it.
+  @Test func aShortStepJoinedOnScreenCuesOnce() throws {
+    let recipe = makeRecipe()
+    recipe.steps?.append(RecipeStep(order: 3, kind: .stir, startOffsetS: 30))
+    let setup = try TimerPlanBuilder.setup(for: recipe, doseG: 15)
+    #expect(setup.plan.displayGroups.count == 3)
+    let haptics = RecordingHaptics()
+    let clock = FakeClock()
+    let session = TimerSession(
+      setup: setup, clock: clock, store: MemoryStore(), haptics: haptics,
+      activity: RecordingActivity())
+    session.start()
+    clock.advance(31)
+    session.tick()
+    #expect(haptics.played == [.start, .stepChange])
+    clock.advance(10)
+    session.tick()
+    #expect(session.state.currentIndex == 2)
+    #expect(haptics.played == [.start, .stepChange], "the pour began inside the shown step")
+  }
+
   // MARK: Restore
 
   @Test func aSessionForTheSamePlanPicksUpWhereTheLastOneStopped() throws {

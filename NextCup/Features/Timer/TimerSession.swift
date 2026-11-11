@@ -25,11 +25,11 @@ struct SystemTimerHaptics: TimerHaptics {
 
   func play(_ haptic: TimerHaptic) {
     switch haptic {
-    case .start, .pauseToggle: UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    case .start, .pauseToggle: Feedback.tap()
     case .stepChange, .targetReached:
-      UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+      Feedback.stepChange()
       BrewAudio.shared.chime()
-    case .finish: UINotificationFeedbackGenerator().notificationOccurred(.success)
+    case .finish: Feedback.success()
     }
   }
 }
@@ -105,6 +105,8 @@ final class TimerSession {
 
   @ObservationIgnored private var engine: TimerEngine
   @ObservationIgnored private let haptics: any TimerHaptics
+  /// The displayed step last cued. Short steps joined into one on screen cue once, when
+  /// the screen changes, not again as each passes inside it.
   @ObservationIgnored private var lastIndex: Int?
   @ObservationIgnored private let activity: any TimerActivityControlling
 
@@ -137,7 +139,7 @@ final class TimerSession {
       engine = TimerEngine(plan: setup.plan, clock: clock, store: store)
     }
     state = engine.state()
-    lastIndex = state.currentIndex
+    lastIndex = group(state)
     if case .finished = state.phase {
       complete(state)
     } else if state.phase != .notStarted {
@@ -152,7 +154,7 @@ final class TimerSession {
     engine.start()
     haptics.play(.start)
     refresh()
-    lastIndex = state.currentIndex
+    lastIndex = group(state)
   }
 
   func pause() {
@@ -195,13 +197,13 @@ final class TimerSession {
       return
     }
     if cues, state.phase != .notStarted {
-      if let index = latest.currentIndex, index != lastIndex, lastIndex != nil {
+      if let index = group(latest), index != lastIndex, lastIndex != nil {
         haptics.play(.stepChange)
       } else if latest.targetReached, !state.targetReached {
         haptics.play(.targetReached)
       }
     }
-    lastIndex = latest.currentIndex
+    lastIndex = group(latest)
     publish(latest)
   }
 
@@ -219,6 +221,10 @@ final class TimerSession {
   }
 
   // MARK: Private
+
+  private func group(_ state: TimerState) -> Int? {
+    state.currentIndex.flatMap { setup.plan.groupIndex(ofStep: $0) }
+  }
 
   private func refresh() {
     let latest = engine.state()

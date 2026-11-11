@@ -21,6 +21,9 @@ struct TimerView: View {
   @State private var muted = false
   /// Bumped five seconds before each step change, for the get-ready haptic.
   @State private var readyCue = 0
+  /// When the big button was last pressed: a second tap right behind it is a slip of a wet
+  /// thumb, not a wish to pause the brew just started or to leave the finish unread.
+  @State private var lastPrimaryTap = Date.distantPast
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -159,16 +162,16 @@ struct TimerView: View {
       session.tick(cues: false)
       if state.phase == .running { BrewAudio.shared.resume() }
     }
-    .onChange(of: state.currentIndex) { _, index in announce(stepAt: index) }
+    .onChange(of: currentGroup) { _, group in announce(group: group) }
     .onChange(of: state.targetReached) { _, reached in
-      if reached, running { AccessibilityNotification.Announcement("Target time reached").post() }
+      if reached, running { AccessibilityNotification.Announcement.urgent("Target time reached") }
     }
     // Five seconds out: a chime, a tap and a spoken heads-up, so no step arrives unannounced.
     .onChange(of: soon) { _, now in
       guard now, scenePhase == .active else { return }
       readyCue += 1
       BrewAudio.shared.chime()
-      AccessibilityNotification.Announcement("Get ready: \(upcoming.action)").post()
+      AccessibilityNotification.Announcement.urgent("Get ready: \(upcoming.action)")
     }
     .sensoryFeedback(.warning, trigger: readyCue)
     // A tick each running second; the music follows the brew: playing, paused, over.
@@ -248,7 +251,7 @@ struct TimerView: View {
             .accessibilityIdentifier("timer.music.next")
         }
         .labelStyle(.iconOnly).font(.footnote).foregroundStyle(DS.ink)
-        .frame(width: DS.Size.minTap - 6, height: DS.Size.minTap).contentShape(Rectangle())
+        .frame(width: DS.Size.minTap, height: DS.Size.minTap).contentShape(Rectangle())
         .buttonStyle(.borderless)
       }
       .padding(.leading, DS.Space.md).padding(.trailing, DS.Space.xs)
@@ -294,7 +297,7 @@ struct TimerView: View {
       )
       .contentShape(Rectangle())
     }
-    .buttonStyle(.plain)
+    .buttonStyle(PressableStyle())
     .accessibilityElement(children: .combine)
     .accessibilityHint("Turns on timer sounds and music")
     .accessibilityIdentifier("timer.sound.prompt")
@@ -514,20 +517,31 @@ struct TimerView: View {
         .padding(.horizontal, DS.Space.md).padding(.vertical, DS.Space.xs)
         .background(hot ? DS.fieldSoft : DS.tile, in: Capsule())
         .contentTransition(.opacity)
-      Text(title)
-        .font(DS.Font.pageTitle).foregroundStyle(fg)
-        .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.6).lineLimit(3)
-        .accessibilityAddTraits(.isHeader)
-      if let detail {
-        Text(detail).font(.body.weight(.medium)).foregroundStyle(soft)
+      // A new step rises into place while the old one lifts away, so the change reads as
+      // a move forward and not as words quietly swapping. Reduce Motion cross-fades.
+      VStack(spacing: DS.Space.sm) {
+        Text(title)
+          .font(DS.Font.pageTitle).foregroundStyle(fg)
+          .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.6).lineLimit(3)
+          .accessibilityAddTraits(.isHeader)
+        if let detail {
+          Text(detail).font(.body.weight(.medium)).foregroundStyle(soft)
+        }
       }
+      .id(currentGroup)
+      .transition(
+        reduceMotion
+          ? .opacity
+          : .asymmetric(
+            insertion: .offset(y: 28).combined(with: .opacity),
+            removal: .offset(y: -28).combined(with: .opacity)))
       if let open = cue?.valveOpen, !doing, !state.targetReached { valveBadge(open: open) }
     }
     .multilineTextAlignment(.center)
     .fixedSize(horizontal: false, vertical: true)
     .frame(maxWidth: .infinity)
     .contentTransition(.opacity)
-    .animation(textMotion, value: state.currentIndex)
+    .animation(reduceMotion ? .easeOut(duration: DS.Motion.local) : textMotion, value: currentGroup)
     .accessibilityElement(children: .contain)
     .accessibilityIdentifier("timer.current")
   }
@@ -686,6 +700,8 @@ struct TimerView: View {
   }
 
   private func primaryAction() {
+    guard Date().timeIntervalSince(lastPrimaryTap) > 0.5 else { return }
+    lastPrimaryTap = Date()
     switch state.phase {
     case .notStarted: session.start()
     case .running: state.targetReached ? session.finish() : session.pause()
@@ -716,16 +732,13 @@ struct TimerView: View {
 
   // MARK: Accessibility
 
-  /// Tells VoiceOver which step began, since the screen changes without a tap.
-  private func announce(stepAt index: Int?) {
-    guard let index, index < plan.steps.count, state.phase == .running else { return }
-    let step = plan.steps[index]
-    var words = step.label
-    if let target = step.targetCumulativeWaterG {
-      let unit = units.weight == .grams ? "grams" : "ounces"
-      words += ", to \(RecipeFormat.weight(target, units, withSymbol: false)) \(unit)"
-    }
-    AccessibilityNotification.Announcement(words).post()
+  /// Tells VoiceOver which step began, in the words on the screen, since it changes
+  /// without a tap. Spoken ahead of the ticking clock so the step is never talked over.
+  private func announce(group: Int?) {
+    guard let group, cues.indices.contains(group), state.phase == .running else { return }
+    let words = ["Step \(group + 1) of \(groups.count)", cues[group].title, cues[group].detail]
+    AccessibilityNotification.Announcement.urgent(
+      words.compactMap { $0 }.joined(separator: ". "))
   }
 }
 
