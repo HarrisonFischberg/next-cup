@@ -14,6 +14,7 @@ struct ExploreView: View {
   @Query(sort: \BrewMethod.sortOrder) private var methods: [BrewMethod]
   @Environment(\.modelContext) private var context
   @State private var insightsBean: Bean?
+  @State private var adviceBean: Bean?
   @State private var taxonomy = ExploreModel.taxonomy
   @State private var addingBean = false
   @State private var showsRoasters = false
@@ -175,7 +176,7 @@ struct ExploreView: View {
                 Recommender.recommend(for: refs, history: history), to: methods),
               units: units,
               canAsk: brewedBeanIDs.contains(bean.id), featured: bean.id == planned.first?.id,
-              link: link(for:), onAsk: { insightsBean = bean })
+              link: link(for:), onAsk: { insightsBean = bean }, onOtherWays: { adviceBean = bean })
           }
           moreSections
         }
@@ -189,6 +190,8 @@ struct ExploreView: View {
             close: { insightsBean = nil })
         }
       }
+      // The same three-brews sheet as the bean's own page.
+      .sheet(item: $adviceBean) { bean in BeanBrewAdviceView(bean: bean) { adviceBean = nil } }
       .accessibilityIdentifier("explore.list")
     }
   }
@@ -205,6 +208,20 @@ private struct BeanRecommendationCard: View {
   let featured: Bool
   let link: (Recommendation) -> DeepLink?
   let onAsk: () -> Void
+  /// Opens the AI's other brews for this bean.
+  let onOtherWays: () -> Void
+  @Environment(AppRouter.self) private var router: AppRouter?
+
+  /// Where "Brew <bean>" goes: the top suggestion's Start brew page.
+  private var brewLink: DeepLink? { result.items.first.flatMap(link) }
+
+  /// "Brew Counter Culture 46", or "Brew this bean" when the name does not fit on a line.
+  private func brewLabel(_ font: Font) -> some View {
+    ViewThatFits(in: .horizontal) {
+      Text("Brew \(bean.name)".dsTitle).font(font).lineLimit(1)
+      Text("Brew this bean".dsTitle).font(font).lineLimit(1)
+    }
+  }
 
   var body: some View {
     // Like the Journal's Past Brews: the bean is a heading and each suggestion is its own
@@ -222,42 +239,56 @@ private struct BeanRecommendationCard: View {
               RecommendationRow(item: item, rank: rank, units: units, opens: true)
             }
             .buttonStyle(PressableStyle())
+            .simultaneousGesture(TapGesture().onEnded { router?.startBeanID = bean.id })
             .accessibilityIdentifier("explore.pick.\(bean.name).\(index + 1)")
           } else {
             RecommendationRow(item: item, rank: rank, units: units)
           }
         }
       }
-      if featured {
-        NavigationLink(value: DeepLink.newBrew) {
-          Text("Log a brew".dsTitle).font(DS.Font.din(24, relativeTo: .title2)).tracking(1)
+      // The page recommends a brew for this bean, so the button starts it: Start brew opens
+      // on the top suggestion with this bean chosen. Logging a brew already made is the Journal's job.
+      if featured, let brewLink {
+        NavigationLink(value: brewLink) {
+          brewLabel(DS.Font.din(24, relativeTo: .title2)).tracking(1)
             .frame(maxWidth: .infinity, minHeight: DS.Size.primary)
         }
         .buttonStyle(SteelButtonStyle())
+        .simultaneousGesture(TapGesture().onEnded { router?.startBeanID = bean.id })
         .padding(.top, DS.Space.xs)
+        .accessibilityLabel("Brew \(bean.name)")
         .accessibilityIdentifier("explore.brew.\(bean.name)")
       }
-      if !featured || canAsk {
-        PaperBox {
-          VStack(alignment: .leading, spacing: 0) {
-            if !featured {
-              NavigationLink(value: DeepLink.newBrew) {
-                Text("Log a brew".dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
-                  .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
-                  .padding(.horizontal, DS.Space.md)
-              }
-              .accessibilityIdentifier("explore.brew.\(bean.name)")
+      PaperBox {
+        VStack(alignment: .leading, spacing: 0) {
+          if !featured, let brewLink {
+            NavigationLink(value: brewLink) {
+              brewLabel(DS.Font.headline).foregroundStyle(DS.ink)
+                .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
+                .padding(.horizontal, DS.Space.md)
             }
-            if !featured && canAsk { Hairline() }
-            if canAsk {
-              Button(action: onAsk) {
-                Text("Ask AI about this coffee".dsTitle).font(DS.Font.headline)
-                  .foregroundStyle(DS.ink)
-                  .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
-                  .padding(.horizontal, DS.Space.md)
-              }
-              .accessibilityIdentifier("explore.insights.\(bean.name)")
+            .simultaneousGesture(TapGesture().onEnded { router?.startBeanID = bean.id })
+            .accessibilityLabel("Brew \(bean.name)")
+            .accessibilityIdentifier("explore.brew.\(bean.name)")
+            Hairline()
+          }
+          Button(action: onOtherWays) {
+            Text("Other ways to brew this bean".dsTitle).font(DS.Font.headline)
+              .foregroundStyle(DS.ink)
+              .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
+              .padding(.horizontal, DS.Space.md)
+          }
+          .accessibilityHint("Asks AI for three brews for this bean")
+          .accessibilityIdentifier("explore.otherWays.\(bean.name)")
+          if canAsk {
+            Hairline()
+            Button(action: onAsk) {
+              Text("Ask AI about this coffee".dsTitle).font(DS.Font.headline)
+                .foregroundStyle(DS.ink)
+                .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
+                .padding(.horizontal, DS.Space.md)
             }
+            .accessibilityIdentifier("explore.insights.\(bean.name)")
           }
         }
       }
