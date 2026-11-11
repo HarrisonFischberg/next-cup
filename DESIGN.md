@@ -199,7 +199,7 @@ Navigation is the system tab bar, navigation stacks and sheets. iPhone portrait 
 look and stays sharp. `BrewHero` and `HeroBanner` show the method's photograph
 (`method.<key>` in the asset catalog) and fall back to the drawing as a small still
 life. `PourCup` is the timer's cup: outline in the text colour. In Sunday Studio, the
-default look, the liquid and steam are the orange accent on cobalt or navy (the owner's
+default look, the liquid and steam are orange in light and dark (the owner's
 pick). In every other look the liquid is the plain contrasting colour: `liquid` off the
 field and `onField` on it, standing a little off the wall so the cup reads when both
 match. Nothing drawn as a liquid, drip, stream or pool may use butter or any yellow,
