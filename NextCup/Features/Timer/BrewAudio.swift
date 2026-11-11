@@ -25,7 +25,37 @@ final class BrewAudio: NSObject, AVAudioPlayerDelegate {
     "brew-music-army-blues-not-on-the-bus": "Not On The Bus · U.S. Army Blues",
     "brew-music-satie-gymnopedie-1": "Gymnopédie No. 1 · Satie",
     "brew-music-chopin-nocturne-op55-1": "Nocturne Op. 55 No. 1 · Chopin",
+    "brew-music-dixie-panama": "Panama · U.S. Air Force Dixie Players",
+    "brew-music-dixie-clarinet-marmalade": "Clarinet Marmalade · U.S. Air Force Dixie Players",
+    "brew-music-dixie-da-da-strain": "That Da-Da Strain · U.S. Air Force Dixie Players",
+    "brew-music-dixie-tiger-rag": "Tiger Rag · U.S. Air Force Dixie Players",
+    "brew-music-joplin-sunflower-slow-drag": "Sunflower Slow Drag · U.S. Marine Band",
+    "brew-music-bach-goldberg-aria": "Goldberg Variations, Aria · Bach",
+    "brew-music-bach-prelude-c": "Prelude No. 1 in C · Bach",
+    "brew-music-bach-air": "Air on the G String · Bach",
+    "brew-music-chopin-nocturne-op9-2": "Nocturne Op. 9 No. 2 · Chopin",
+    "brew-music-schumann-traumerei": "Träumerei · Schumann",
+    "brew-music-beethoven-moonlight": "Moonlight Sonata, Adagio · Beethoven",
+    "brew-music-grieg-holberg-sarabande": "Holberg Suite, Sarabande · Grieg",
+    "brew-music-debussy-danse-sacree": "Danse sacrée · Debussy",
   ]
+
+  /// Band recordings mastered about 14 dB louder than the solo piano ones; they play
+  /// quieter so the volume does not jump between songs.
+  static let loud: Set<String> = [
+    "brew-music-army-blues-kellis-number", "brew-music-army-blues-not-on-the-bus",
+    "brew-music-bach-air", "brew-music-chopin-nocturne-op9-2",
+    "brew-music-dixie-clarinet-marmalade", "brew-music-dixie-da-da-strain",
+    "brew-music-dixie-panama", "brew-music-dixie-tiger-rag",
+  ]
+
+  /// The playing song's volume: `musicVolume`, or about 8 dB under it for a loud master.
+  private var songVolume: Float {
+    guard let name = music?.url?.deletingPathExtension().lastPathComponent else {
+      return Self.musicVolume
+    }
+    return Self.loud.contains(name) ? Self.musicVolume * 0.4 : Self.musicVolume
+  }
 
   /// The song playing or paused, for the now-playing bar; nil when there is no music.
   private(set) var nowPlaying: String?
@@ -116,7 +146,7 @@ final class BrewAudio: NSObject, AVAudioPlayerDelegate {
       load(at: 0, fadeIn: true)
     }
     music?.play()
-    music?.setVolume(Self.musicVolume, fadeDuration: 1.5)
+    music?.setVolume(songVolume, fadeDuration: 1.5)
   }
 
   /// The pause button: holds the song until the user plays it again.
@@ -144,7 +174,7 @@ final class BrewAudio: NSObject, AVAudioPlayerDelegate {
     let url = playlist[index]
     music = try? AVAudioPlayer(contentsOf: url)
     music?.delegate = self
-    music?.volume = fadeIn ? 0 : Self.musicVolume
+    music?.volume = fadeIn ? 0 : songVolume
     let name = url.deletingPathExtension().lastPathComponent
     nowPlaying = music == nil ? nil : Self.titles[name] ?? name
   }

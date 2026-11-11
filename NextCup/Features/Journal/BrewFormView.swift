@@ -30,7 +30,6 @@ struct BrewFormView: View {
   @Query(sort: \BrewMethod.sortOrder) private var methods: [BrewMethod]
   @Query(sort: \Bean.name) private var allBeans: [Bean]
   @Query(sort: \Grinder.name) private var grinders: [Grinder]
-  @Query(sort: \Suggestion.createdAt, order: .reverse) private var suggestions: [Suggestion]
   @Query(sort: \WaterProfile.name) private var waters: [WaterProfile]
   @State private var askingNextCup = false
   @State private var addingWater = false
@@ -237,7 +236,6 @@ struct BrewFormView: View {
           methodPicker(binding.draft, model)
           beansSection(model)
           if fields.contains(.grind) { grinderPicker(model) }
-          suggestionSection(model)
           if let amount = (BrewYield(rawValue: yieldUnit) ?? .ml).amountText(
             doseG: model.draft.doseG, waterG: model.draft.waterG)
           {
@@ -499,32 +497,6 @@ struct BrewFormView: View {
         .contentShape(Rectangle())
     }
     .accessibilityLabel(label)
-  }
-
-  /// The dial-in card from the last brew of these beans. Only a new brew shows
-  /// it; an answered card stays, with Undo, until the form is closed.
-  @ViewBuilder
-  private func suggestionSection(_ model: BrewFormModel) -> some View {
-    if !model.isEditing {
-      let handled = suggestions.first { $0.id == model.handledSuggestionID }
-      let waiting = SuggestionService.match(
-        in: suggestions, beanIDs: Set((model.draft.beans ?? []).compactMap(\.beanID)),
-        methodID: model.draft.methodID, excluding: model.draft.id)
-      if let suggestion = handled ?? waiting {
-        SuggestionCard(
-          suggestion: suggestion, units: units, error: model.suggestionError,
-          onAccept: { model.applySuggestion(suggestion) },
-          onEdit: { typed in
-            if let value = SuggestionFormat.canonical(typed, for: suggestion.field, units) {
-              model.applySuggestion(suggestion, editedTo: value)
-            } else {
-              model.applySuggestion(suggestion, editedTo: "")
-            }
-          },
-          onDismiss: { model.dismissSuggestion(suggestion) },
-          onUndo: { model.undoSuggestionAnswer(suggestion) })
-      }
-    }
   }
 
   private func grinderPicker(_ model: BrewFormModel) -> some View {

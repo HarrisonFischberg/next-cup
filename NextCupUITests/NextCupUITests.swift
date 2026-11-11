@@ -1709,7 +1709,7 @@ final class NextCupUITests: XCTestCase {
   // MARK: Dial-in suggestions (T018)
 
   /// Logs a sour cup of a bean, reads the suggestion on the saved screen and in
-  /// the journal, then starts the next brew of that bean, where the card waits.
+  /// the journal, then starts the next brew of that bean, which shows no card.
   /// `shot` is called with a name at each screen worth capturing.
   @MainActor
   private func runDialInFlow(_ app: XCUIApplication, shot: (String) throws -> Void) throws {
@@ -1746,38 +1746,17 @@ final class NextCupUITests: XCTestCase {
       .firstMatch
     XCTAssertTrue(row.waitForExistence(timeout: 5), "journal row shows the suggestion")
 
-    // The next brew of the same bean carries the card.
+    // The next brew of the same bean shows no card: the advice lives on the saved brew and
+    // in Ask AI, not on the form you are filling in.
     app.buttons["Log a brew"].firstMatch.tap()
     XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 5))
-    XCTAssertFalse(element(app, "suggestion.card").exists, "no bean yet, so no card")
     element(app, "brewform.beans.add").tap()
     app.buttons["Washed Ethiopia"].tap()
-    let card = element(app, "suggestion.card")
-    XCTAssertTrue(card.waitForExistence(timeout: 5))
-    XCTAssertTrue(element(app, "suggestion.headline").label == "Grind from 20 to 19")
-    try shot("dialin-card")
-
-    // Accepting puts the new grind in the form; Undo takes it back.
-    element(app, "suggestion.accept").tap()
-    XCTAssertTrue(element(app, "suggestion.undo").waitForExistence(timeout: 5))
-    let nextGrind = grindWheel(app, "brewform.grind")
-    scrollUntilHittable(nextGrind, in: app)
-    XCTAssertEqual(nextGrind.value as? String, "19")
-    try shot("dialin-accepted")
-    scrollUntilHittable(element(app, "suggestion.undo"), in: app)
-    element(app, "suggestion.undo").tap()
-    XCTAssertTrue(element(app, "suggestion.accept").waitForExistence(timeout: 5))
-    XCTAssertFalse((grindWheel(app, "brewform.grind").value as? String) == "19")
-
-    // Dismissing keeps the form as it is and can be taken back as well.
-    element(app, "suggestion.dismiss").tap()
-    XCTAssertTrue(element(app, "suggestion.undo").waitForExistence(timeout: 5))
-    element(app, "suggestion.undo").tap()
-    XCTAssertTrue(element(app, "suggestion.accept").waitForExistence(timeout: 5))
+    XCTAssertFalse(element(app, "suggestion.card").waitForExistence(timeout: 2))
   }
 
   @MainActor
-  func testDialInSuggestionShowsOnTheNextBrewOfThatBean() throws {
+  func testDialInSuggestionStaysOffTheNextBrewForm() throws {
     let app = launch()
     try runDialInFlow(app) { _ in }
   }
