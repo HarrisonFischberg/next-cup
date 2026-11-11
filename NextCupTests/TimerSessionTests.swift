@@ -240,6 +240,24 @@ struct TimerSessionTests {
     #expect(second.state.currentIndex == 1)
   }
 
+  @Test func aTimerLeftRunningYesterdayIsNotPickedUp() throws {
+    let clock = FakeClock()
+    let store = MemoryStore()
+    let setup = try TimerPlanBuilder.setup(for: makeRecipe(), doseG: 15)
+    let first = TimerSession(
+      setup: setup, clock: clock, store: store, haptics: RecordingHaptics(),
+      activity: RecordingActivity())
+    first.start()
+    clock.advance(86_400)
+
+    let activity = RecordingActivity()
+    let second = TimerSession(
+      setup: setup, clock: clock, store: store, haptics: RecordingHaptics(), activity: activity)
+    #expect(second.state.phase == .notStarted)
+    #expect(store.load() == nil)
+    #expect(activity.endCount == 1)
+  }
+
   @Test func aSavedTimerForAnotherPlanIsNotAdopted() throws {
     let clock = FakeClock()
     let store = MemoryStore()
