@@ -578,7 +578,9 @@ extension EnvironmentValues {
   /// Three candidate directions (branch design/explore, never shipped), picked with the
   /// launch argument `-design A|B|C`. Here because the Live Activity compiles this file alone.
   enum DesignExplore: String {
-    case A, B, C
+    case a = "A"
+    case b = "B"
+    case c = "C"
 
     static func argument(_ name: String) -> String? {
       let arguments = ProcessInfo.processInfo.arguments
@@ -589,7 +591,45 @@ extension EnvironmentValues {
     }
     static let current = argument("-design").flatMap(DesignExplore.init)
 
-    var palette: Palette { AppStyle.sundayStudio.palette }
-    var flavor: Flavor { AppStyle.sundayStudio.flavor }
+    var palette: Palette {
+      switch self {
+      // Pour Chart: cool graph paper, navy ink, the cobalt as the one accent.
+      case .a:
+        Palette(
+          bg: P(0xF3F5F8, 0x0E1230), paper: P(0xFFFFFF, 0x171D45), steel: P(0x14213D, 0x2448C8),
+          onSteel: P(0xF3F5F8, 0xFFFDF3), ink: P(0x14213D, 0xFFFDF3), ink2: P(0x55607A, 0xC9CCE6),
+          line: P(0x8791A8, 0x7B82B8), signal: P(0x2448C8, 0xFFFDF3),
+          onSignal: P(0xFFFFFF, 0x0E1230), signalOnSteel: P(0xDCE5FB, 0xDCE5FB),
+          kraft: P(0xDCE5FB, 0x14204F), onKraft: P(0x14213D, 0xFFFDF3),
+          error: P(0x9A1B0A, 0xFFA08C), ok: P(0x2A6A2A, 0x9FE0A8),
+          accent: P(0x2448C8, 0x9DB4FF))
+      // Fill the Cup: Sunday Studio's butter, cream and cobalt, used as whole fields.
+      case .b: AppStyle.sundayStudio.palette
+      // Recipe Card: an oat desk, a cream card, espresso ink, pen blue.
+      case .c:
+        Palette(
+          bg: P(0xEDE5D6, 0x17110D), paper: P(0xFFFCF4, 0x221A14), steel: P(0x2B1A12, 0x2E241C),
+          onSteel: P(0xFFFCF4, 0xF3EADF), ink: P(0x2B1A12, 0xF3EADF), ink2: P(0x625046, 0xB8A898),
+          line: P(0x8A7A6E, 0x7A6B5E), signal: P(0x2B1A12, 0xF3EADF),
+          onSignal: P(0xFFFCF4, 0x17110D), signalOnSteel: P(0xC9D6F2, 0xC9D6F2),
+          kraft: P(0xE3D8C3, 0x2E241C), onKraft: P(0x2B1A12, 0xF3EADF),
+          error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A),
+          accent: P(0x23408E, 0x9DB4FF))
+      }
+    }
+
+    var flavor: Flavor {
+      switch self {
+      case .a:
+        Flavor(
+          displayDesign: .default, displayWeight: .semibold, radius: 8, density: .regular,
+          control: .square, numbers: .monospaced, caps: false, motion: .crisp)
+      case .b: AppStyle.sundayStudio.flavor
+      case .c:
+        Flavor(
+          displayDesign: .serif, displayWeight: .medium, radius: 4, density: .regular,
+          control: .square, numbers: .serif, caps: false, motion: .quiet)
+      }
+    }
   }
 #endif

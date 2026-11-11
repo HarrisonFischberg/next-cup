@@ -9,6 +9,8 @@ struct GrindWheel: View {
   @Binding var setting: String
   let grinderName: String?
   let identifier: String
+  var caption = "Hold for dial"
+  var stacked = false
 
   private var guide: GrinderGuide? { GrinderGuide.find(grinderName) }
 
@@ -34,6 +36,6 @@ struct GrindWheel: View {
       selection: Binding(
         get: { GrinderGuide.setting(setting, in: stops) ?? "" },
         set: { setting = $0 }),
-      unit: unit, identifier: identifier)
+      unit: unit, identifier: identifier, caption: caption, stacked: stacked)
   }
 }

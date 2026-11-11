@@ -51,6 +51,109 @@ struct TimerView: View {
   private var textMotion: Animation? { reduceMotion ? nil : DS.flavor.motion.text }
 
   var body: some View {
+    screen
+      .navigationTitle("Brew")
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbarVisibility(.hidden, for: .tabBar)
+      .toolbar {
+        ToolbarItem(placement: .topBarTrailing) {
+          Button {
+            sound.toggle()
+          } label: {
+            Label(
+              sound ? "Sound on" : "Sound off",
+              systemImage: sound ? "speaker.wave.2.fill" : "speaker.slash.fill")
+          }
+          .accessibilityHint("Plays a soft tick, a chime at each step, and music")
+          .accessibilityIdentifier("timer.sound")
+        }
+      }
+      .navigationDestination(item: $seed) { seed in
+        BrewFormView(seed: seed, onSaved: { logged = true })
+      }
+      .confirmationDialog(
+        "End this brew early?", isPresented: $confirmsEnd, titleVisibility: .visible
+      ) {
+        Button("End and log it", role: .destructive) { session.endEarly() }
+        Button("Keep brewing", role: .cancel) {}
+      } message: {
+        Text("The time reached so far is kept and goes into the journal entry.")
+      }
+      .accessibilityIdentifier("timer.screen")
+      .task {
+        while !Task.isCancelled {
+          session.tick()
+          muted = BrewAudio.isMuted
+          try? await Task.sleep(for: .seconds(session.nextTickDelay()), tolerance: .milliseconds(5))
+        }
+      }
+      // Coming back catches up without replaying the cues that were missed, and picks the
+      // music back up if the system stopped it while the app was closed.
+      .onChange(of: scenePhase) { _, phase in
+        guard phase == .active else { return }
+        session.tick(cues: false)
+        if state.phase == .running { BrewAudio.shared.resume() }
+      }
+      .onChange(of: state.currentIndex) { _, index in announce(stepAt: index) }
+      .onChange(of: state.targetReached) { _, reached in
+        if reached, running { AccessibilityNotification.Announcement("Target time reached").post() }
+      }
+      // Five seconds out: a chime, a tap and a spoken heads-up, so no step arrives unannounced.
+      .onChange(of: soon) { _, now in
+        guard now, scenePhase == .active else { return }
+        readyCue += 1
+        BrewAudio.shared.chime()
+        AccessibilityNotification.Announcement("Get ready: \(upcoming.action)").post()
+      }
+      .sensoryFeedback(.warning, trigger: readyCue)
+      // A tick each running second; the music follows the brew: playing, paused, over.
+      .onChange(of: Int(state.elapsedS)) { _, _ in
+        if state.phase == .running { BrewAudio.shared.tick() }
+      }
+      .onChange(of: state.phase, initial: true) { _, phase in
+        switch phase {
+        case .running: BrewAudio.shared.playMusic()
+        case .paused: BrewAudio.shared.pauseMusic()
+        case .finished: BrewAudio.shared.stop()
+        case .notStarted: break
+        }
+      }
+      .onChange(of: sound) { _, on in
+        if on, state.phase == .running {
+          BrewAudio.shared.playMusic()
+        } else if !on {
+          BrewAudio.shared.stop()
+        }
+      }
+      .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+      #if DEBUG
+        .onAppear {
+          if let at = DesignExplore.timerAt, state.phase == .notStarted {
+            session.start()
+            DesignClock.offset = at
+            session.tick(cues: false)
+          }
+        }
+      #endif
+      .onDisappear {
+        UIApplication.shared.isIdleTimerDisabled = false
+        BrewAudio.shared.stop()
+      }
+  }
+
+  @ViewBuilder private var screen: some View {
+    #if DEBUG
+      if let design = DesignExplore.current {
+        designScreen(design)
+      } else {
+        standardScreen
+      }
+    #else
+      standardScreen
+    #endif
+  }
+
+  private var standardScreen: some View {
     // The music and progress stay put and the rest scrolls under them; at accessibility
     // sizes they would fill the screen, so there everything scrolls together.
     VStack(alignment: .leading, spacing: DS.Space.md) {
@@ -85,94 +188,7 @@ struct TimerView: View {
     // A container, so the screen's identifier does not replace its children's.
     .accessibilityElement(children: .contain)
     .background(DS.bg)
-    .safeAreaInset(edge: .bottom, spacing: 0) { controls }
-    .navigationTitle("Brew")
-    .navigationBarTitleDisplayMode(.inline)
-    .toolbarVisibility(.hidden, for: .tabBar)
-    .toolbar {
-      ToolbarItem(placement: .topBarTrailing) {
-        Button {
-          sound.toggle()
-        } label: {
-          Label(
-            sound ? "Sound on" : "Sound off",
-            systemImage: sound ? "speaker.wave.2.fill" : "speaker.slash.fill")
-        }
-        .accessibilityHint("Plays a soft tick, a chime at each step, and music")
-        .accessibilityIdentifier("timer.sound")
-      }
-    }
-    .navigationDestination(item: $seed) { seed in
-      BrewFormView(seed: seed, onSaved: { logged = true })
-    }
-    .confirmationDialog(
-      "End this brew early?", isPresented: $confirmsEnd, titleVisibility: .visible
-    ) {
-      Button("End and log it", role: .destructive) { session.endEarly() }
-      Button("Keep brewing", role: .cancel) {}
-    } message: {
-      Text("The time reached so far is kept and goes into the journal entry.")
-    }
-    .accessibilityIdentifier("timer.screen")
-    .task {
-      while !Task.isCancelled {
-        session.tick()
-        muted = BrewAudio.isMuted
-        try? await Task.sleep(for: .seconds(session.nextTickDelay()), tolerance: .milliseconds(5))
-      }
-    }
-    // Coming back catches up without replaying the cues that were missed, and picks the
-    // music back up if the system stopped it while the app was closed.
-    .onChange(of: scenePhase) { _, phase in
-      guard phase == .active else { return }
-      session.tick(cues: false)
-      if state.phase == .running { BrewAudio.shared.resume() }
-    }
-    .onChange(of: state.currentIndex) { _, index in announce(stepAt: index) }
-    .onChange(of: state.targetReached) { _, reached in
-      if reached, running { AccessibilityNotification.Announcement("Target time reached").post() }
-    }
-    // Five seconds out: a chime, a tap and a spoken heads-up, so no step arrives unannounced.
-    .onChange(of: soon) { _, now in
-      guard now, scenePhase == .active else { return }
-      readyCue += 1
-      BrewAudio.shared.chime()
-      AccessibilityNotification.Announcement("Get ready: \(upcoming.action)").post()
-    }
-    .sensoryFeedback(.warning, trigger: readyCue)
-    // A tick each running second; the music follows the brew: playing, paused, over.
-    .onChange(of: Int(state.elapsedS)) { _, _ in
-      if state.phase == .running { BrewAudio.shared.tick() }
-    }
-    .onChange(of: state.phase, initial: true) { _, phase in
-      switch phase {
-      case .running: BrewAudio.shared.playMusic()
-      case .paused: BrewAudio.shared.pauseMusic()
-      case .finished: BrewAudio.shared.stop()
-      case .notStarted: break
-      }
-    }
-    .onChange(of: sound) { _, on in
-      if on, state.phase == .running {
-        BrewAudio.shared.playMusic()
-      } else if !on {
-        BrewAudio.shared.stop()
-      }
-    }
-    .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
-    #if DEBUG
-      .onAppear {
-        if let at = DesignExplore.timerAt, state.phase == .notStarted {
-          session.start()
-          DesignClock.offset = at
-          session.tick(cues: false)
-        }
-      }
-    #endif
-    .onDisappear {
-      UIApplication.shared.isIdleTimerDisabled = false
-      BrewAudio.shared.stop()
-    }
+    .safeAreaInset(edge: .bottom, spacing: 0) { controls() }
   }
 
   private var header: some View {
@@ -380,28 +396,37 @@ struct TimerView: View {
   // MARK: Ring and instruction
 
   /// The countdown to the next step on a ring that fills clockwise over the step.
-  private var dial: some View {
-    let active = handsOn || soon
-    let chip: String =
-      switch state.phase {
-      case .notStarted: "Ready"
-      case .paused: "Paused"
-      default:
-        state.targetReached
-          ? "Target reached"
-          : soon
-            ? "Get ready" : handsOn ? cue?.nowChip ?? "Do it now" : "Hands off"
-      }
-    let number =
-      state.phase == .notStarted
+  private var dialChip: String {
+    switch state.phase {
+    case .notStarted: "Ready"
+    case .paused: "Paused"
+    default:
+      state.targetReached
+        ? "Target reached"
+        : soon
+          ? "Get ready" : handsOn ? cue?.nowChip ?? "Do it now" : "Hands off"
+    }
+  }
+
+  private var dialNumber: String {
+    state.phase == .notStarted
       ? RecipeFormat.clock(plan.totalDurationS)
       : state.targetReached ? "+" + RecipeFormat.clock(Int(state.overtimeS)) : countdown
-    let caption =
-      state.phase == .notStarted
+  }
+
+  private var dialCaption: String {
+    state.phase == .notStarted
       ? "total brew time"
       : state.targetReached
         ? "past the target"
         : (currentGroup ?? 0) + 1 < groups.count ? "until next step" : "until done"
+  }
+
+  private var dial: some View {
+    let active = handsOn || soon
+    let chip = dialChip
+    let number = dialNumber
+    let caption = dialCaption
     return ZStack {
       StepRing(fraction: stepFraction, color: active ? DS.accent : DS.ink2)
         .animation(reduceMotion ? nil : .linear(duration: 0.25), value: stepFraction)
@@ -430,15 +455,22 @@ struct TimerView: View {
     .accessibilityIdentifier("timer.countdown")
   }
 
-  private var instruction: some View {
-    // Ready and the hands-on part say what to do; after it, what to leave alone.
-    let doing = state.phase == .notStarted || handsOn
-    let title =
-      state.targetReached
+  /// Ready and the hands-on part say what to do; after it, what to leave alone.
+  private var doing: Bool { state.phase == .notStarted || handsOn }
+
+  private var instructionTitle: String {
+    state.targetReached
       ? "Let it finish draining" : (doing ? cue?.title : cue?.waitTitle) ?? ""
-    let detail =
-      state.targetReached
+  }
+
+  private var instructionDetail: String? {
+    state.targetReached
       ? "Finish brew when the last drops are through." : doing ? cue?.detail : cue?.waitDetail
+  }
+
+  private var instruction: some View {
+    let title = instructionTitle
+    let detail = instructionDetail
     return VStack(spacing: DS.Space.sm) {
       Text(title)
         .font(DS.Font.instruction).foregroundStyle(handsOn ? DS.accent : DS.ink)
@@ -551,10 +583,10 @@ struct TimerView: View {
 
   // MARK: Controls
 
-  private var controls: some View {
+  private func controls(next: Bool = true) -> some View {
     VStack(spacing: DS.Space.sm) {
       // Pinned above the controls, so the next step is always in view ahead of time.
-      if session.outcome == nil { nextUp }
+      if next, session.outcome == nil { nextUp }
       SteelButton(title: primaryTitle, action: primaryAction)
         .disabled(logged)
         .accessibilityIdentifier("timer.primary")
@@ -584,9 +616,11 @@ struct TimerView: View {
     .animation(motion, value: state.targetReached)
   }
 
-  private func textButton(_ title: String, id: String, action: @escaping () -> Void) -> some View {
+  private func textButton(
+    _ title: String, id: String, _ color: Color = DS.ink, action: @escaping () -> Void
+  ) -> some View {
     Button(title, action: action)
-      .font(.body.weight(.semibold)).foregroundStyle(DS.ink)
+      .font(.body.weight(.semibold)).foregroundStyle(color)
       .frame(maxWidth: .infinity, minHeight: DS.Size.minTap)
       .accessibilityIdentifier(id)
   }
@@ -690,3 +724,410 @@ private struct Equalizer: View {
     .accessibilityHidden(true)
   }
 }
+
+// MARK: Design exploration
+
+#if DEBUG
+  /// The running brew three ways (branch design/explore, never shipped). The session, the
+  /// words and the actions are the standard screen's; only the presentation differs.
+  extension TimerView {
+    @ViewBuilder fileprivate func designScreen(_ design: DesignExplore) -> some View {
+      switch design {
+      case .a: timerA
+      case .b: timerB
+      case .c: timerC
+      }
+    }
+
+    // MARK: Shared pieces
+
+    /// One entry per displayed step, worded as the timer words it.
+    private var dxSteps: [DXStep] {
+      let cues = cues
+      return groups.indices.map { group in
+        let steps = groups[group].map { plan.steps[$0] }
+        let grams = steps.compactMap(\.targetCumulativeWaterG).last
+        return DXStep(
+          id: group, startS: steps[0].startOffsetS,
+          name: cues.indices.contains(group) ? cues[group].title : steps[0].label,
+          targetG: grams, target: grams.map { RecipeFormat.weight($0, units) },
+          instruction: cues.indices.contains(group) ? cues[group].detail ?? "" : "")
+      }
+    }
+
+    /// The step under way: -1 before the start, past the end once the target is reached.
+    private var dxCurrent: Int {
+      currentGroup ?? (state.phase == .notStarted ? -1 : groups.count)
+    }
+
+    private var dxElapsed: String {
+      "\(RecipeFormat.clock(Int(state.elapsedS))) / \(RecipeFormat.clock(plan.totalDurationS))"
+    }
+
+    private var dxStatus: some View {
+      HStack(alignment: .firstTextBaseline) {
+        Text(statusLine).fixedSize(horizontal: false, vertical: true)
+          .accessibilityIdentifier("timer.status")
+        Spacer(minLength: DS.Space.sm)
+        Text(dxElapsed).monospacedDigit()
+          .accessibilityLabel("Elapsed time")
+          .accessibilityValue(RecipeFormat.spokenTime(Int(state.elapsedS)))
+          .accessibilityAddTraits(.updatesFrequently)
+          .accessibilityIdentifier("timer.elapsed")
+      }
+      .font(.footnote.weight(.medium))
+    }
+
+    @ViewBuilder private var dxBanners: some View {
+      if !sound, session.outcome == nil { soundPrompt }
+      if muted, sound, session.outcome == nil {
+        StateBanner(
+          kind: .info,
+          message: "Your volume is all the way down. Turn it up to hear the ticks and music."
+        )
+        .accessibilityIdentifier("timer.muted")
+      }
+      if let laterError {
+        StateBanner(kind: .error, message: laterError).accessibilityIdentifier("timer.laterError")
+      }
+      if let song = BrewAudio.shared.nowPlaying, session.outcome == nil { musicBar(song) }
+    }
+
+    @ViewBuilder private var dxValve: some View {
+      if let open = cue?.valveOpen, !doing, !state.targetReached { valveBadge(open: open) }
+    }
+
+    // MARK: A, Pour Chart
+
+    private var timerA: some View {
+      let steps = dxSteps
+      let next = upcoming
+      let edge = RoundedRectangle(cornerRadius: DS.radius, style: .continuous)
+      let active = handsOn || soon
+      return ScrollView {
+        VStack(alignment: .leading, spacing: DS.Space.lg) {
+          dxBanners
+          if session.outcome != nil {
+            finishedBanner
+          } else {
+            VStack(alignment: .leading, spacing: DS.Space.sm) {
+              dxStatus.foregroundStyle(DS.ink2)
+              // The whole brew, with the marker on where the scale should be now.
+              PourChart(
+                steps: steps, totalS: plan.totalDurationS,
+                elapsed: state.phase == .notStarted ? nil : state.elapsedS
+              )
+              .frame(height: 232)
+              .animation(reduceMotion ? nil : .linear(duration: 0.25), value: state.elapsedS)
+            }
+            .padding(DS.Space.md)
+            .background(DS.paper, in: edge)
+            .overlay(edge.strokeBorder(DS.line.opacity(0.35)))
+            VStack(alignment: .leading, spacing: DS.Space.sm) {
+              Text(dialChip).font(.footnote.weight(.semibold))
+                .foregroundStyle(active ? DS.onSignal : DS.ink2)
+                .padding(.horizontal, DS.Space.sm).padding(.vertical, 3)
+                .background(
+                  active ? DS.accent : DS.line.opacity(0.2), in: RoundedRectangle(cornerRadius: 4)
+                )
+                .contentTransition(.opacity)
+              Text(instructionTitle).font(.largeTitle.weight(.semibold)).foregroundStyle(DS.ink)
+                .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.7).lineLimit(3)
+                .accessibilityAddTraits(.isHeader)
+              if let detail = instructionDetail {
+                Text(detail).font(.body).foregroundStyle(DS.ink2)
+              }
+              dxValve
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .contentTransition(.opacity)
+            .animation(textMotion, value: state.currentIndex)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("timer.current")
+            // Time left and what it leads to, as one readout.
+            HStack(spacing: 0) {
+              VStack(alignment: .leading, spacing: 0) {
+                Text(dialCaption).font(.caption).foregroundStyle(soon ? DS.onSignal : DS.ink2)
+                Text(dialNumber).font(.system(size: 52, weight: .bold, design: .monospaced))
+                  .foregroundStyle(soon ? DS.onSignal : DS.ink)
+                  .minimumScaleFactor(0.5).lineLimit(1)
+                  .dynamicTypeSize(...DS.readoutCap)
+                  .contentTransition(.numericText(countsDown: true))
+              }
+              .padding(DS.Space.md)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .background(soon ? DS.accent : .clear)
+              .accessibilityElement(children: .ignore)
+              .accessibilityLabel("\(dialChip), \(dialCaption)")
+              .accessibilityValue(dialNumber)
+              .accessibilityIdentifier("timer.countdown")
+              Rectangle().fill(DS.line.opacity(0.35)).frame(width: 1)
+              VStack(alignment: .leading, spacing: DS.Space.xs) {
+                Text(next.kicker).font(.caption).foregroundStyle(DS.ink2)
+                Text(next.action).font(.body.weight(.semibold)).foregroundStyle(DS.ink)
+                  .fixedSize(horizontal: false, vertical: true)
+                  .contentTransition(.opacity)
+              }
+              .padding(DS.Space.md)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .accessibilityElement(children: .combine)
+              .accessibilityIdentifier("timer.next")
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .background(DS.paper)
+            .clipShape(edge)
+            .overlay(edge.strokeBorder(DS.line.opacity(0.35)))
+            .animation(motion, value: soon)
+          }
+        }
+        .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.sm)
+      }
+      .scrollBounceBehavior(.basedOnSize)
+      .accessibilityElement(children: .contain)
+      .background(DS.bg)
+      .safeAreaInset(edge: .bottom, spacing: 0) { controls(next: false) }
+    }
+
+    // MARK: B, Fill the Cup
+
+    private var timerB: some View {
+      let steps = dxSteps
+      // The whole screen turns cobalt while your hands are needed, cream while they are not.
+      let hot = (handsOn || soon) && session.outcome == nil
+      let field = hot ? DS.signal : DS.bg
+      let fg = hot ? DS.bg : DS.ink
+      let soft = hot ? DS.kraft : DS.ink2
+      let next = upcoming
+      let water = max(steps.compactMap(\.targetG).max() ?? 1, 1)
+      let poured = DXPour.grams(at: state.elapsedS, steps, totalS: plan.totalDurationS)
+      return ScrollView {
+        VStack(spacing: DS.Space.md) {
+          VStack(spacing: DS.Space.xs) {
+            DXSegments(
+              steps: steps, totalS: plan.totalDurationS, current: dxCurrent,
+              fraction: stepFraction, on: hot ? DS.kraft : DS.accent, off: fg.opacity(0.22),
+              height: 8)
+            dxStatus.foregroundStyle(soft)
+          }
+          dxBanners
+          if session.outcome != nil {
+            finishedBanner
+          } else {
+            VStack(spacing: DS.Space.sm) {
+              Text(dialChip).font(.subheadline.weight(.heavy))
+                .foregroundStyle(hot ? DS.onKraft : DS.ink2)
+                .padding(.horizontal, DS.Space.md).padding(.vertical, DS.Space.xs)
+                .background(hot ? DS.kraft : DS.kraft.opacity(0.5), in: Capsule())
+                .contentTransition(.opacity)
+              Text(instructionTitle).font(.system(size: 44, weight: .heavy, design: .rounded))
+                .foregroundStyle(fg)
+                .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.6).lineLimit(3)
+                .accessibilityAddTraits(.isHeader)
+              if let detail = instructionDetail {
+                Text(detail).font(.body.weight(.medium)).foregroundStyle(soft)
+              }
+              dxValve
+            }
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .contentTransition(.opacity)
+            .animation(textMotion, value: state.currentIndex)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("timer.current")
+            HStack(alignment: .center, spacing: DS.Space.lg) {
+              PourCup(
+                fraction: state.phase == .notStarted ? 0 : poured / water, line: fg,
+                fill: hot ? DS.kraft : DS.accent
+              )
+              .frame(width: 168, height: 168)
+              .animation(reduceMotion ? nil : .linear(duration: 0.25), value: state.elapsedS)
+              VStack(alignment: .leading, spacing: 0) {
+                Text(dialNumber).font(DS.flavor.timerReadout).monospacedDigit()
+                  .foregroundStyle(fg).minimumScaleFactor(0.5).lineLimit(1)
+                  .dynamicTypeSize(...DS.readoutCap)
+                  .contentTransition(.numericText(countsDown: true))
+                Text(dialCaption).font(.subheadline.weight(.semibold)).foregroundStyle(soft)
+              }
+              .accessibilityElement(children: .ignore)
+              .accessibilityLabel("\(dialChip), \(dialCaption)")
+              .accessibilityValue(dialNumber)
+              .accessibilityIdentifier("timer.countdown")
+            }
+            .padding(.top, DS.Space.xl)
+          }
+        }
+        .padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.xl).padding(.bottom, DS.Space.sm)
+        .frame(maxWidth: .infinity)
+      }
+      .scrollBounceBehavior(.basedOnSize)
+      .accessibilityElement(children: .contain)
+      .safeAreaInset(edge: .bottom, spacing: 0) {
+        VStack(spacing: DS.Space.sm) {
+          if session.outcome == nil {
+            HStack(spacing: DS.Space.md) {
+              Text(next.kicker).font(.subheadline.weight(.heavy)).foregroundStyle(soft)
+              Text(next.action).font(DS.Font.headline).foregroundStyle(fg)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+              if let countdown = next.countdown {
+                Text("in \(countdown)").font(DS.Font.headline).monospacedDigit()
+                  .foregroundStyle(fg)
+              }
+            }
+            .padding(.horizontal, DS.Space.lg).frame(minHeight: 56)
+            .background(fg.opacity(hot ? 0.14 : 0.06), in: Capsule())
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("timer.next")
+          }
+          Button(primaryTitle, action: primaryAction)
+            .buttonStyle(
+              DXFieldButton(fill: hot ? DS.bg : DS.signal, label: hot ? DS.signal : DS.onSignal)
+            )
+            .disabled(logged)
+            .accessibilityIdentifier("timer.primary")
+          if session.outcome != nil, !logged {
+            SteelButton(title: "Rate while sippin’", kind: .secondary, action: rateNow)
+              .accessibilityIdentifier("timer.rateNow")
+          }
+          if running {
+            HStack(spacing: DS.Space.sm) {
+              if state.targetReached {
+                textButton(state.phase == .paused ? "Resume" : "Pause", id: "timer.pause", fg) {
+                  state.phase == .paused ? session.resume() : session.pause()
+                }
+              } else {
+                textButton("Skip step", id: "timer.skip", fg) { session.skipToNextStep() }
+                textButton("End brew", id: "timer.end", fg) { confirmsEnd = true }
+              }
+            }
+          }
+        }
+        .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.md)
+      }
+      // The field starts under the bar with the poster's round corners, so the status bar
+      // and the bar's buttons stay dark on cream.
+      .background {
+        UnevenRoundedRectangle(topLeadingRadius: 36, topTrailingRadius: 36, style: .continuous)
+          .fill(field).ignoresSafeArea(edges: .bottom)
+      }
+      .background(DS.bg)
+      .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: hot)
+    }
+
+    // MARK: C, Recipe Card
+
+    private var timerC: some View {
+      let steps = dxSteps
+      let current = dxCurrent
+      let next = upcoming
+      let margin: CGFloat = 62
+      return ScrollView {
+        VStack(alignment: .leading, spacing: DS.Space.lg) {
+          dxBanners
+          if session.outcome != nil {
+            finishedBanner
+          } else {
+            VStack(alignment: .leading, spacing: 0) {
+              VStack(alignment: .leading, spacing: DS.Space.xs) {
+                Text(setup.recipeName).font(DS.Font.display).foregroundStyle(DS.ink)
+                  .dynamicTypeSize(...DS.displayCap)
+                dxStatus.foregroundStyle(DS.ink2)
+              }
+              .padding(DS.Space.lg)
+              DXRule(color: DXCardRule.red)
+              VStack(alignment: .leading, spacing: 0) {
+                ForEach(steps) { step in
+                  let done = step.id < current
+                  let live = step.id == current
+                  HStack(alignment: .firstTextBaseline, spacing: 0) {
+                    Text(RecipeFormat.clock(step.startS))
+                      .font(DS.Font.mono(.subheadline, .semibold))
+                      .foregroundStyle(live ? DS.accent : DS.ink2)
+                      .frame(width: margin - DS.Space.sm, alignment: .trailing)
+                      .padding(.trailing, DS.Space.sm)
+                    Group {
+                      if live {
+                        cardLiveStep
+                      } else {
+                        HStack(alignment: .firstTextBaseline, spacing: DS.Space.sm) {
+                          Text(step.name).font(DS.Font.headline)
+                            .foregroundStyle(done ? DS.ink2 : DS.ink)
+                            .strikethrough(done, color: DS.ink2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                          if done {
+                            Image(systemName: "checkmark").font(.footnote.weight(.bold))
+                              .foregroundStyle(DS.ink2).accessibilityLabel("Done")
+                          } else if step.id == current + 1, let countdown = next.countdown {
+                            Text("in \(countdown)").font(DS.Font.mono(.subheadline, .semibold))
+                              .foregroundStyle(soon ? DS.accent : DS.ink2)
+                          }
+                        }
+                      }
+                    }
+                    .padding(.leading, DS.Space.md).padding(.trailing, DS.Space.md)
+                  }
+                  .padding(.vertical, DS.Space.md)
+                  .accessibilityElement(children: .combine)
+                  DXRule()
+                }
+              }
+              .overlay(alignment: .leading) {
+                Rectangle().fill(DXCardRule.red).frame(width: 1).padding(.leading, margin)
+                  .accessibilityHidden(true)
+              }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius, style: .continuous))
+            .modifier(DXCard())
+            .animation(motion, value: current)
+          }
+        }
+        .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.sm)
+      }
+      .scrollBounceBehavior(.basedOnSize)
+      .accessibilityElement(children: .contain)
+      .background(DS.bg)
+      .safeAreaInset(edge: .bottom, spacing: 0) { controls(next: false) }
+    }
+
+    /// The step under way, written out on the card: what to do, then the time left.
+    private var cardLiveStep: some View {
+      VStack(alignment: .leading, spacing: DS.Space.sm) {
+        Text(dialChip).font(.footnote.weight(.semibold))
+          .foregroundStyle(handsOn || soon ? DS.accent : DS.ink2)
+          .contentTransition(.opacity)
+        Text(instructionTitle).font(DS.Font.instruction).foregroundStyle(DS.ink)
+          .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.7).lineLimit(3)
+          .accessibilityAddTraits(.isHeader)
+          .accessibilityIdentifier("timer.current")
+        if let detail = instructionDetail {
+          Text(detail).font(DS.Font.note).foregroundStyle(DS.ink2)
+        }
+        dxValve
+        HStack(alignment: .firstTextBaseline, spacing: DS.Space.sm) {
+          Text(dialNumber).font(.system(size: 64, weight: .medium, design: .serif))
+            .monospacedDigit().foregroundStyle(soon ? DS.accent : DS.ink)
+            .minimumScaleFactor(0.5).lineLimit(1)
+            .dynamicTypeSize(...DS.readoutCap)
+            .contentTransition(.numericText(countsDown: true))
+          Text(dialCaption).font(.footnote).foregroundStyle(DS.ink2)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(dialChip), \(dialCaption)")
+        .accessibilityValue(dialNumber)
+        .accessibilityIdentifier("timer.countdown")
+        // How far through this step, as a pen line across the card.
+        GeometryReader { g in
+          ZStack(alignment: .leading) {
+            Capsule().fill(DXCardRule.blue)
+            Capsule().fill(DS.accent).frame(width: g.size.width * stepFraction)
+          }
+        }
+        .frame(height: 3)
+        .animation(reduceMotion ? nil : .linear(duration: 0.25), value: stepFraction)
+        .accessibilityHidden(true)
+      }
+      .fixedSize(horizontal: false, vertical: true)
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+  }
+#endif

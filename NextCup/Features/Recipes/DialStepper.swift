@@ -12,6 +12,10 @@ struct DialStepper: View {
   @Binding var selection: String
   let unit: String?
   let identifier: String
+  /// The words on the left. The design directions put the row's name here.
+  var caption = "Hold for dial"
+  /// The number over its − and +, for a half-width tile.
+  var stacked = false
 
   @State private var open = false
   /// The stop the hold began on; nil when no finger is down on the number.
@@ -20,16 +24,31 @@ struct DialStepper: View {
   private var index: Int { options.firstIndex(of: selection) ?? 0 }
 
   var body: some View {
-    HStack(spacing: 2) {
-      Text("Hold for dial").font(.footnote).foregroundStyle(DS.ink2).layoutPriority(1)
-      Spacer(minLength: DS.Space.sm)
-      stepButton("minus", label: "Decrease \(title)", id: "decrease") { step(by: -1) }
-        .disabled(index == 0)
-      number
-      stepButton("plus", label: "Increase \(title)", id: "increase") { step(by: 1) }
-        .disabled(index == options.count - 1)
+    let minus = stepButton("minus", label: "Decrease \(title)", id: "decrease") { step(by: -1) }
+      .disabled(index == 0)
+    let plus = stepButton("plus", label: "Increase \(title)", id: "increase") { step(by: 1) }
+      .disabled(index == options.count - 1)
+    return Group {
+      if stacked {
+        VStack(spacing: DS.Space.xs) {
+          number
+          HStack(spacing: DS.Space.md) {
+            minus
+            plus
+          }
+        }
+        .frame(maxWidth: .infinity)
+      } else {
+        HStack(spacing: 2) {
+          Text(caption).font(.footnote).foregroundStyle(DS.ink2).layoutPriority(1)
+          Spacer(minLength: DS.Space.sm)
+          minus
+          number
+          plus
+        }
+        .padding(DS.Space.md)
+      }
     }
-    .padding(DS.Space.md)
     .sensoryFeedback(.selection, trigger: selection)
   }
 
@@ -98,6 +117,47 @@ struct DialStepper: View {
     _ symbol: String, label: String, id: String, action: @escaping () -> Void
   ) -> some View {
     Button(action: action) {
+      #if DEBUG
+        if let design = DesignExplore.current {
+          designGlyph(symbol, design)
+        } else {
+          ringGlyph(symbol)
+        }
+      #else
+        ringGlyph(symbol)
+      #endif
+    }
+    .accessibilityLabel(label)
+    .accessibilityIdentifier("\(identifier).\(id)")
+  }
+
+  #if DEBUG
+    /// The − and + of each design direction; the tap target stays 44 pt.
+    @ViewBuilder private func designGlyph(_ symbol: String, _ design: DesignExplore) -> some View {
+      switch design {
+      // A square key on the instrument.
+      case .a:
+        Image(systemName: symbol).font(.system(size: 14, weight: .semibold))
+          .foregroundStyle(DS.accent).frame(width: 40, height: 36)
+          .background(DS.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
+          .frame(width: DS.Size.minTap, height: DS.Size.minTap).contentShape(Rectangle())
+      // A solid cobalt button.
+      case .b:
+        Image(systemName: symbol).font(.system(size: 16, weight: .heavy))
+          .foregroundStyle(DS.onSignal).frame(width: 40, height: 40)
+          .background(DS.signal, in: Circle())
+          .frame(width: DS.Size.minTap, height: DS.Size.minTap).contentShape(Rectangle())
+      // A pen mark, no button drawn.
+      case .c:
+        Image(systemName: symbol).font(.system(size: 18, weight: .medium))
+          .foregroundStyle(DS.accent)
+          .frame(width: DS.Size.minTap, height: DS.Size.minTap).contentShape(Rectangle())
+      }
+    }
+  #endif
+
+  private func ringGlyph(_ symbol: String) -> some View {
+    Group {
       // A 38 pt ring with a fine glyph, inside the full 44 pt tap target.
       Image(systemName: symbol).font(.system(size: 14, weight: .semibold))
         .foregroundStyle(DS.accent)
@@ -106,8 +166,6 @@ struct DialStepper: View {
         .frame(width: DS.Size.minTap, height: DS.Size.minTap)
         .contentShape(Rectangle())
     }
-    .accessibilityLabel(label)
-    .accessibilityIdentifier("\(identifier).\(id)")
   }
 }
 
