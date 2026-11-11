@@ -80,6 +80,11 @@ struct DialInRulesTests {
     #expect(hot == .keep("No setting for this sour cup can be changed from here."))
     let cool = DialInRules.suggest(for: input(.bitter, tracked: [.temperature], temp: 80))
     #expect(change(cool) == nil)
+    // Already past a limit: never "hotter" by going down, or "cooler" by going up.
+    let boiling = DialInRules.suggest(for: input(.sour, tracked: [.temperature], temp: 100))
+    #expect(change(boiling) == nil)
+    let cold = DialInRules.suggest(for: input(.bitter, tracked: [.temperature], temp: 78))
+    #expect(change(cold) == nil)
   }
 
   @Test func immersionAndColdUseSteepTime() {
