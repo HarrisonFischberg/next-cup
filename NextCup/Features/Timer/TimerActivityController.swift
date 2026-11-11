@@ -4,7 +4,8 @@ import NextCupKit
 
 extension TimerActivityAttributes.ContentState {
   /// `nil` when there is nothing to show: before the start and after the end.
-  init?(state: TimerState, now: Date) {
+  /// With `plan`, steps that start together count as one, as on the timer screen.
+  init?(state: TimerState, plan: TimerPlan? = nil, now: Date) {
     switch state.phase {
     case .notStarted, .finished: return nil
     case .running, .paused: break
@@ -12,7 +13,8 @@ extension TimerActivityAttributes.ContentState {
     let start = now.addingTimeInterval(-state.elapsedS)
     self.init(
       stepLabel: state.current?.label ?? "Ready", nextLabel: state.next?.label,
-      stepNumber: (state.currentIndex ?? -1) + 1, startDate: start,
+      stepNumber: (state.currentIndex.map { plan?.groupIndex(ofStep: $0) ?? $0 } ?? -1) + 1,
+      startDate: start,
       endDate: start.addingTimeInterval(Double(state.totalDurationS)),
       pausedAt: state.phase == .paused ? now : nil)
   }
@@ -21,7 +23,8 @@ extension TimerActivityAttributes.ContentState {
 extension TimerActivityAttributes {
   init(setup: TimerSetup) {
     self.init(
-      recipeName: setup.recipeName, methodName: setup.methodName, stepCount: setup.plan.steps.count,
+      recipeName: setup.recipeName, methodName: setup.methodName,
+      stepCount: setup.plan.displayGroups.count,
       linkURL: DeepLink.timer(recipeID: setup.recipeID, doseG: setup.scaled.doseG).url)
   }
 }
@@ -51,7 +54,10 @@ final class LiveTimerActivity: TimerActivityControlling {
   private var activity: Activity<TimerActivityAttributes>?
 
   func update(setup: TimerSetup, state: TimerState) {
-    guard let content = TimerActivityAttributes.ContentState(state: state, now: Date()) else {
+    guard
+      let content = TimerActivityAttributes.ContentState(
+        state: state, plan: setup.plan, now: Date())
+    else {
       end()
       return
     }
