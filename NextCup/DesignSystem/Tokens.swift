@@ -8,9 +8,19 @@ enum DS {
   // MARK: Color
 
   /// The palette of the style chosen in Settings; read each time so a change shows at once.
-  static var palette: Palette { AppStyle.current.palette }
+  static var palette: Palette {
+    #if DEBUG
+      if let design = DesignExplore.current { return design.palette }
+    #endif
+    return AppStyle.current.palette
+  }
   /// Shape, type and density of that style. Nothing is cached, so a switch shows at once.
-  static var flavor: Flavor { AppStyle.current.flavor }
+  static var flavor: Flavor {
+    #if DEBUG
+      if let design = DesignExplore.current { return design.flavor }
+    #endif
+    return AppStyle.current.flavor
+  }
 
   static var bg: Color { Color(palette.bg) }  // screen: kraft / gunmetal
   static var paper: Color { Color(palette.paper) }  // sheets, tables, tiles
@@ -561,3 +571,25 @@ extension EnvironmentValues {
     set { self[FlavorKey.self] = newValue }
   }
 }
+
+// MARK: Design exploration
+
+#if DEBUG
+  /// Three candidate directions (branch design/explore, never shipped), picked with the
+  /// launch argument `-design A|B|C`. Here because the Live Activity compiles this file alone.
+  enum DesignExplore: String {
+    case A, B, C
+
+    static func argument(_ name: String) -> String? {
+      let arguments = ProcessInfo.processInfo.arguments
+      guard let index = arguments.firstIndex(of: name), index + 1 < arguments.count else {
+        return nil
+      }
+      return arguments[index + 1]
+    }
+    static let current = argument("-design").flatMap(DesignExplore.init)
+
+    var palette: Palette { AppStyle.sundayStudio.palette }
+    var flavor: Flavor { AppStyle.sundayStudio.flavor }
+  }
+#endif

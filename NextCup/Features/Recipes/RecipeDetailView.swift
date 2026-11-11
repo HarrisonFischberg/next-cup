@@ -156,6 +156,14 @@ private struct RecipeDetailContent: View {
       }
     }
     .navigationDestination(item: $timerSetup) { TimerView(setup: $0) }
+    #if DEBUG
+      .task {
+        if DesignExplore.screen == "timer", timerSetup == nil {
+          try? await Task.sleep(for: .milliseconds(600))
+          startBrew()
+        }
+      }
+    #endif
     .toolbar {
       ToolbarItem(placement: .topBarTrailing) {
         Menu {

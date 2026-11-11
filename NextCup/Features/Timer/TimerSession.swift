@@ -40,6 +40,7 @@ struct SystemTimerHaptics: TimerHaptics {
 enum TimerEnvironment {
   static let clock: any TimerClock = {
     #if DEBUG
+      if DesignExplore.timerAt != nil { return DesignClock() }
       let arguments = ProcessInfo.processInfo.arguments
       if let index = arguments.firstIndex(of: "-timerSpeed"), index + 1 < arguments.count,
         let speed = Double(arguments[index + 1]), speed > 0
@@ -65,6 +66,13 @@ enum TimerEnvironment {
 }
 
 #if DEBUG
+  /// Design exploration: a clock that stands still, so a screenshot shows the same second.
+  struct DesignClock: TimerClock {
+    nonisolated(unsafe) static var offset = 0.0
+    private let origin = Date()
+    func now() -> Date { origin.addingTimeInterval(Self.offset) }
+  }
+
   struct AcceleratedTimerClock: TimerClock {
     let speed: Double
     private let origin = Date()

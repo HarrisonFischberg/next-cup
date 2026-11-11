@@ -160,6 +160,15 @@ struct TimerView: View {
       }
     }
     .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+    #if DEBUG
+      .onAppear {
+        if let at = DesignExplore.timerAt, state.phase == .notStarted {
+          session.start()
+          DesignClock.offset = at
+          session.tick(cues: false)
+        }
+      }
+    #endif
     .onDisappear {
       UIApplication.shared.isIdleTimerDisabled = false
       BrewAudio.shared.stop()

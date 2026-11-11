@@ -68,6 +68,14 @@ struct RootTabView: View {
         {
           handle(url)
         }
+        // Design exploration: `-designScreen setup|timer` opens Balanced cone's Start brew.
+        if DesignExplore.screen != nil,
+          let recipe = try? context.fetch(FetchDescriptor<Recipe>()).first(where: {
+            $0.builtInKey == "cone-balanced"
+          })
+        {
+          handle(DeepLink.recipe(recipe.id).url)
+        }
       }
     #endif
   }
