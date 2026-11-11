@@ -402,7 +402,7 @@ final class BrewFormModel {
     undoToValue = original
     followedSuggestionID = suggestion.id
     draft = next
-    UINotificationFeedbackGenerator().notificationOccurred(.success)
+    Feedback.success()
   }
 
   func dismissSuggestion(_ suggestion: Suggestion) {
@@ -413,7 +413,7 @@ final class BrewFormModel {
     guard answered(suggestion, restoring: original) else { return }
     undoDraftValue = nil
     undoToValue = original
-    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    Feedback.tap()
   }
 
   /// Takes the answer back: the draft value returns to what it was and the
@@ -539,7 +539,7 @@ final class BrewFormModel {
       notice = FormNotice(
         kind: .info, message: "Saved. An old draft file could not be removed.")
     }
-    UINotificationFeedbackGenerator().notificationOccurred(.success)
+    Feedback.success()
     return true
   }
 
@@ -578,7 +578,7 @@ final class BrewFormModel {
     store.context.rollback()
     saveError = "Not saved. \(message) Your brew is kept as a draft. Try again."
     flushDraft()
-    UINotificationFeedbackGenerator().notificationOccurred(.error)
+    Feedback.error()
     return false
   }
 

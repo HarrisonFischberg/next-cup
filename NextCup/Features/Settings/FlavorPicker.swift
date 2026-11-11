@@ -97,7 +97,7 @@ struct FlavorTile: View {
         }
       }
     }
-    .buttonStyle(.plain)
+    .buttonStyle(PressableStyle())
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(style.title)
     .accessibilityHint(style.mood)

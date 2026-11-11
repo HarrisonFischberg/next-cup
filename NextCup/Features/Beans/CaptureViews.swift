@@ -121,7 +121,7 @@ private struct ScannerRepresentable: UIViewControllerRepresentable {
         guard let value = code.payloadStringValue else { continue }
         done = true
         scanner.stopScanning()
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Feedback.success()
         onCode(code.observation.symbology == .qr ? .qr(value) : .barcode(value))
         return
       }

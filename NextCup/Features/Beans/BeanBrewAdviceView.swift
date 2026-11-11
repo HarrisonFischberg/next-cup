@@ -177,7 +177,7 @@ struct BeanBrewAdviceView: View {
               RoundedRectangle(cornerRadius: DS.radius)
                 .strokeBorder(DS.line, lineWidth: on ? 0 : 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .disabled(full && !on)
         .opacity(full && !on ? 0.5 : 1)
         .accessibilityAddTraits(on ? .isSelected : [])
@@ -345,13 +345,13 @@ struct BeanBrewAdviceView: View {
         #endif
         let outcome = try await BeanBrewAI.ask(
           bean: bean, goals: goals, store: store, grinder: grinderName, send: send)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Feedback.success()
         phase = .done(outcome)
       } catch is CancellationError {
         return
       } catch {
         guard !Task.isCancelled else { return }
-        UINotificationFeedbackGenerator().notificationOccurred(.error)
+        Feedback.error()
         phase = .failed(NextCupAIView.message(for: error))
       }
     }
@@ -362,7 +362,7 @@ struct BeanBrewAdviceView: View {
       .accessibilityHint("Keeps it on the Brew tab under Recipe to try for your Next Cup")
       .accessibilityIdentifier("beanbrew.save.\(rank)")
     SteelButton(title: "Compost bin", kind: .secondary) {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      Feedback.tap()
       decided[pick.id] = false
       finishIfDecided()
     }
@@ -376,7 +376,7 @@ struct BeanBrewAdviceView: View {
     case .success:
       saveError = nil
       decided[pick.id] = true
-      UINotificationFeedbackGenerator().notificationOccurred(.success)
+      Feedback.success()
       finishIfDecided()
     case .failure(let failure):
       saveError = failure.message

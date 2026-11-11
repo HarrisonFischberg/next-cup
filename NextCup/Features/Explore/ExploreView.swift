@@ -90,7 +90,7 @@ struct ExploreView: View {
           .accessibilityIdentifier("explore.roasters")
         }
       }
-      .buttonStyle(.plain)
+      .buttonStyle(PressableStyle())
     }
     if let taxonomy {
       VStack(alignment: .leading, spacing: DS.Space.sm) {
@@ -102,7 +102,7 @@ struct ExploreView: View {
           } label: {
             sectionRow("Flavor explorer", "Origins, processes and tasting words", "book")
           }
-          .buttonStyle(.plain)
+          .buttonStyle(PressableStyle())
           .accessibilityIdentifier("explore.flavors")
         }
       }
@@ -221,7 +221,7 @@ private struct BeanRecommendationCard: View {
             NavigationLink(value: link) {
               RecommendationRow(item: item, rank: rank, units: units, opens: true)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PressableStyle())
             .accessibilityIdentifier("explore.pick.\(bean.name).\(index + 1)")
           } else {
             RecommendationRow(item: item, rank: rank, units: units)

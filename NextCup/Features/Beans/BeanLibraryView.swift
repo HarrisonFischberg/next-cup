@@ -250,7 +250,7 @@ struct BeanLibraryView: View {
     switch service.setStatus(bean, status) {
     case .success:
       error = nil
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      Feedback.tap()
     case .failure(let failure):
       error = failure.message
     }
@@ -269,7 +269,7 @@ struct BeanLibraryView: View {
 
   private func delete(_ bean: Bean) {
     commitPendingDelete()
-    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    Feedback.lift()
     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { pendingDelete = bean.id }
     deleteTimer = Task {
       try? await Task.sleep(for: .seconds(Self.undoSeconds))
@@ -280,7 +280,7 @@ struct BeanLibraryView: View {
 
   private func undoDelete() {
     deleteTimer?.cancel()
-    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    Feedback.tap()
     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { pendingDelete = nil }
   }
 

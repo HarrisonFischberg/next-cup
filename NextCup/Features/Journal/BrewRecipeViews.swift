@@ -108,10 +108,10 @@ enum BrewRecipeAction {
       }
     }
     guard case .saveFailed(let message) = failure else {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      Feedback.tap()
       return nil
     }
-    UINotificationFeedbackGenerator().notificationOccurred(.error)
+    Feedback.error()
     return "The recipe was not saved. \(message)"
   }
 }
@@ -131,7 +131,7 @@ struct BrewRecipeSection: View {
         HStack(spacing: DS.Space.md) {
           if let recipe = brew.recipe {
             NavigationLink(value: DeepLink.recipe(recipe.id)) { BrewRecipeChip(info: info) }
-              .buttonStyle(.plain)
+              .buttonStyle(PressableStyle())
               .frame(minHeight: DS.Size.minTap)
               .accessibilityHint("Opens the recipe")
               .accessibilityIdentifier("brewform.recipe")

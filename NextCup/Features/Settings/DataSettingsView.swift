@@ -294,7 +294,7 @@ struct DataSettingsView: View {
       externalData: DataEraser.externalDataDirectory(of: context))
     switch eraser.eraseAll(reseeding: content) {
     case .success(let snapshot):
-      UINotificationFeedbackGenerator().notificationOccurred(.success)
+      Feedback.success()
       withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { erasedSnapshot = snapshot }
       message = nil
       prepare()
@@ -322,7 +322,7 @@ struct DataSettingsView: View {
     } catch {
       errorMessage = error.localizedDescription
     }
-    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    Feedback.tap()
     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { erasedSnapshot = nil }
     prepare()
   }

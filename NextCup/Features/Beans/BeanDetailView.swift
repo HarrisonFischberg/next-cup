@@ -426,7 +426,7 @@ struct BeanDetailView: View {
               NavigationLink(value: DeepLink.brew(use.brew.id)) {
                 BrewUseRow(brew: use.brew, grams: use.grams, units: units)
               }
-              .buttonStyle(.plain)
+              .buttonStyle(PressableStyle())
               .accessibilityIdentifier("bean.brew.\(use.brew.id.uuidString)")
             }
           }

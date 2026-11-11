@@ -85,7 +85,7 @@ struct JournalListView: View {
                       RoundedRectangle(cornerRadius: max(DS.radius, 18), style: .continuous)
                         .fill(DS.paper))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableStyle())
                 .padding(.horizontal, DS.Space.lg)
                 .contextMenu { discardButton(entry) }
               }
@@ -289,7 +289,7 @@ struct JournalListView: View {
         } label: {
           UnsavedBrewRow(entry: entry, methods: methods)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableStyle())
         .listRowInsets(
           EdgeInsets(
             top: DS.Space.xs, leading: DS.Space.lg, bottom: DS.Space.xs,
@@ -431,10 +431,10 @@ struct JournalListView: View {
       result = Store(context: context).toggleFavorite(brew, \.isFavorite)
     }
     if case .failure(.saveFailed(let message)) = result {
-      UINotificationFeedbackGenerator().notificationOccurred(.error)
+      Feedback.error()
       deleteError = "The favorite was not saved. \(message)"
     } else {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      Feedback.tap()
     }
   }
 
@@ -484,7 +484,7 @@ struct JournalListView: View {
 
   private func delete(_ brew: Brew) {
     commitPendingDelete()
-    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    Feedback.lift()
     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { pendingDelete = brew.id }
     deleteTimer = Task {
       try? await Task.sleep(for: .seconds(Self.undoSeconds))
@@ -495,7 +495,7 @@ struct JournalListView: View {
 
   private func undoDelete() {
     deleteTimer?.cancel()
-    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    Feedback.tap()
     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { pendingDelete = nil }
   }
 

@@ -217,7 +217,7 @@ struct OnboardingView: View {
             }
             .padding(.horizontal, DS.Space.md).frame(minHeight: 56).contentShape(Rectangle())
           }
-          .buttonStyle(.plain)
+          .buttonStyle(PressableStyle())
           .accessibilityAddTraits(on ? .isSelected : [])
           .accessibilityIdentifier("onboarding.bean.\(entry.coffee)")
           .sensoryFeedback(.selection, trigger: on)
@@ -249,7 +249,7 @@ struct OnboardingView: View {
       .glassEffect(
         .regular.interactive(), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
-    .buttonStyle(.plain)
+    .buttonStyle(PressableStyle())
     .accessibilityIdentifier("onboarding.beans.\(start.rawValue)")
   }
 
@@ -401,7 +401,7 @@ struct MethodChips: View {
             .padding(.top, 4)
             .contentShape(Rectangle())
           }
-          .buttonStyle(.plain)
+          .buttonStyle(PressableStyle())
           .sensoryFeedback(.selection, trigger: on)
           .accessibilityLabel(method.name)
           .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)

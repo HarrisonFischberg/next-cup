@@ -190,13 +190,13 @@ struct NextCupAIView: View {
     job = Task {
       do {
         let outcome = try await ask()
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        Feedback.success()
         phase = .done(outcome)
       } catch is CancellationError {
         return
       } catch {
         guard !Task.isCancelled else { return }
-        UINotificationFeedbackGenerator().notificationOccurred(.error)
+        Feedback.error()
         phase = .failed(Self.message(for: error))
       }
     }
