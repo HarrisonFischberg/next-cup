@@ -1,21 +1,22 @@
 import XCTest
 
-/// Brew steps design options on Start brew (`-stepsLook 0...3`). Screenshots are written while
-/// `docs/design/brew-steps/.capture` exists; look 0 (the current strip) is saved as old_.
+/// The Brew steps card on Start brew. A screenshot is written while
+/// `docs/design/brew-steps/.capture` exists, named with CAPTURE_PREFIX (default new_).
 final class BrewStepsCaptureUITests: XCTestCase {
   @MainActor
-  func testCaptureBrewStepsLooks() throws {
+  func testCaptureBrewStepsCard() throws {
     let folder = URL(fileURLWithPath: #filePath)
       .deletingLastPathComponent().deletingLastPathComponent()
       .appendingPathComponent("docs/design/brew-steps")
     guard FileManager.default.fileExists(atPath: folder.appendingPathComponent(".capture").path)
     else { throw XCTSkip("capture only") }
-    let suffix = ProcessInfo.processInfo.environment["CAPTURE_SUFFIX"] ?? ""
-    for look in 0...3 {
+    let env = ProcessInfo.processInfo.environment
+    let prefix = env["CAPTURE_PREFIX"] ?? "new_"
+    let suffix = env["CAPTURE_SUFFIX"] ?? ""
+    do {
       let app = XCUIApplication()
       app.launchArguments = [
         "-inMemoryStore", "-resetNavigationState", "-resetDraft", "-appStyle", "sundayStudio",
-        "-stepsLook", "\(look)",
       ]
       app.launch()
       XCTAssertTrue(app.tabBars.buttons["Brew"].waitForExistence(timeout: 10))
@@ -35,7 +36,7 @@ final class BrewStepsCaptureUITests: XCTestCase {
             withVelocity: .slow, thenHoldForDuration: 0.2)
       }
       sleep(1)
-      let name = look == 0 ? "old_brew-steps" : "new_brew-steps-option-\(look)"
+      let name = "\(prefix)brew-steps"
       try app.screenshot().pngRepresentation.write(
         to: folder.appendingPathComponent("\(name)\(suffix).png"))
       app.terminate()
