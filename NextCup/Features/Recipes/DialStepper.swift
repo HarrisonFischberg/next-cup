@@ -14,6 +14,7 @@ struct DialStepper: View {
   let identifier: String
 
   @State private var open = false
+  @Environment(\.isEnabled) private var enabled
   /// The stop the hold began on; nil when no finger is down on the number.
   @State private var heldFrom: Int?
 
@@ -21,13 +22,20 @@ struct DialStepper: View {
 
   var body: some View {
     HStack(spacing: 2) {
-      Text("Hold for dial").font(.footnote).foregroundStyle(DS.ink2).layoutPriority(1)
-      Spacer(minLength: DS.Space.sm)
-      stepButton("minus", label: "Decrease \(title)", id: "decrease") { step(by: -1) }
-        .disabled(index == 0)
+      // Disabled (a saved brew before Edit) shows the value alone.
+      if enabled {
+        Text("Hold for dial").font(.footnote).foregroundStyle(DS.ink2).layoutPriority(1)
+        Spacer(minLength: DS.Space.sm)
+        stepButton("minus", label: "Decrease \(title)", id: "decrease") { step(by: -1) }
+          .disabled(index == 0)
+      }
       number
-      stepButton("plus", label: "Increase \(title)", id: "increase") { step(by: 1) }
-        .disabled(index == options.count - 1)
+      if enabled {
+        stepButton("plus", label: "Increase \(title)", id: "increase") { step(by: 1) }
+          .disabled(index == options.count - 1)
+      } else {
+        Spacer(minLength: 0)
+      }
     }
     .padding(DS.Space.md)
     .sensoryFeedback(.selection, trigger: selection)

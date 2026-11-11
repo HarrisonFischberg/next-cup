@@ -375,8 +375,10 @@ struct BrewFormView: View {
             .multilineTextAlignment(.leading)
         }
         Spacer(minLength: DS.Space.sm)
-        Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink)
-          .accessibilityHidden(true)
+        if !locked {
+          Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink)
+            .accessibilityHidden(true)
+        }
       }
       .padding(DS.Space.md).frame(minHeight: DS.Size.control)
       .tile()
@@ -420,22 +422,24 @@ struct BrewFormView: View {
             .font(.footnote).foregroundStyle(DS.ink2)
         }
       }
-      Menu {
-        ForEach(available) { bean in
-          Button(bean.name) { model.addBean(bean) }
+      if !locked {
+        Menu {
+          ForEach(available) { bean in
+            Button(bean.name) { model.addBean(bean) }
+          }
+          if !available.isEmpty { Divider() }
+          Button("New bean…", systemImage: "plus") { addingBean = true }
+            .accessibilityIdentifier("brewform.beans.new")
+        } label: {
+          Text((chosen.isEmpty ? "Add a bean" : "Add another bean").dsTitle)
+            .font(DS.Font.din(22, relativeTo: .title3))
+            .frame(maxWidth: .infinity, minHeight: DS.Size.control)
+            .foregroundStyle(DS.ink)
+            .panel(DS.paper)
         }
-        if !available.isEmpty { Divider() }
-        Button("New bean…", systemImage: "plus") { addingBean = true }
-          .accessibilityIdentifier("brewform.beans.new")
-      } label: {
-        Text((chosen.isEmpty ? "Add a bean" : "Add another bean").dsTitle)
-          .font(DS.Font.din(22, relativeTo: .title3))
-          .frame(maxWidth: .infinity, minHeight: DS.Size.control)
-          .foregroundStyle(DS.ink)
-          .panel(DS.paper)
+        .accessibilityLabel(chosen.isEmpty ? "Add a bean" : "Add another bean")
+        .accessibilityIdentifier("brewform.beans.add")
       }
-      .accessibilityLabel(chosen.isEmpty ? "Add a bean" : "Add another bean")
-      .accessibilityIdentifier("brewform.beans.add")
     }
     // The full bean screen (photo, barcode, every field); Save comes back here with it chosen.
     .sheet(isPresented: $addingBean) {
@@ -465,16 +469,18 @@ struct BrewFormView: View {
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       .accessibilityElement(children: .combine)
-      HStack(spacing: 0) {
-        if isBlend {
-          shareButton("minus", label: "Decrease \(entry.name) share") {
-            model.stepShare(at: index, by: -5)
+      if !locked {
+        HStack(spacing: 0) {
+          if isBlend {
+            shareButton("minus", label: "Decrease \(entry.name) share") {
+              model.stepShare(at: index, by: -5)
+            }
+            shareButton("plus", label: "Increase \(entry.name) share") {
+              model.stepShare(at: index, by: 5)
+            }
           }
-          shareButton("plus", label: "Increase \(entry.name) share") {
-            model.stepShare(at: index, by: 5)
-          }
+          shareButton("xmark", label: "Remove \(entry.name)") { model.removeBean(at: index) }
         }
-        shareButton("xmark", label: "Remove \(entry.name)") { model.removeBean(at: index) }
       }
     }
     .padding(DS.Space.md)
@@ -553,8 +559,10 @@ struct BrewFormView: View {
               .multilineTextAlignment(.leading)
           }
           Spacer(minLength: DS.Space.sm)
-          Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink)
-            .accessibilityHidden(true)
+          if !locked {
+            Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink)
+              .accessibilityHidden(true)
+          }
         }
         .padding(DS.Space.md).frame(minHeight: DS.Size.control)
         .tile()
@@ -702,8 +710,10 @@ struct BrewFormView: View {
               .multilineTextAlignment(.leading)
           }
           Spacer(minLength: DS.Space.sm)
-          Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink)
-            .accessibilityHidden(true)
+          if !locked {
+            Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink)
+              .accessibilityHidden(true)
+          }
         }
         .padding(DS.Space.md).frame(minHeight: DS.Size.control)
         .tile()
@@ -809,8 +819,10 @@ struct BrewFormView: View {
           .frame(maxWidth: .infinity, maxHeight: 220)
           .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
           .accessibilityLabel("Photo of this brew")
-        SteelButton(title: "Remove photo", kind: .secondary) { model.removePhoto() }
-      } else {
+        if !locked {
+          SteelButton(title: "Remove photo", kind: .secondary) { model.removePhoto() }
+        }
+      } else if !locked {
         Menu {
           if Camera.isAvailable {
             Button("Take a photo", systemImage: "camera") { cameraShown = true }
@@ -846,14 +858,25 @@ struct BrewFormView: View {
   private func notesField(_ text: Binding<String>) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.sm) {
       Text("NOTES").font(DS.Font.label).foregroundStyle(DS.ink2)
-      KraftNote {
-        TextEditor(text: text)
-          .font(DS.Font.note).foregroundStyle(DS.ink)
-          .scrollContentBackground(.hidden)
-          .frame(minHeight: 120)
-          .focused($focused, equals: .notes)
-          .accessibilityLabel("Notes")
-          .accessibilityIdentifier("brewform.notes")
+      if locked {
+        // A saved note is plain text at its full height, so the page scrolls through all of it.
+        KraftNote {
+          Text(text.wrappedValue.isEmpty ? "No notes." : text.wrappedValue)
+            .font(DS.Font.note).foregroundStyle(DS.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .textSelection(.enabled)
+            .accessibilityIdentifier("brewform.notes")
+        }
+      } else {
+        KraftNote {
+          TextEditor(text: text)
+            .font(DS.Font.note).foregroundStyle(DS.ink)
+            .scrollContentBackground(.hidden)
+            .frame(minHeight: 120)
+            .focused($focused, equals: .notes)
+            .accessibilityLabel("Notes")
+            .accessibilityIdentifier("brewform.notes")
+        }
       }
     }
   }

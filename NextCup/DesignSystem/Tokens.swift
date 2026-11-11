@@ -50,6 +50,8 @@ enum DS {
   /// Anything drawn as a liquid, off the field: the field's colour in light, the ink
   /// (off-white) in dark. On the field it is `onField`. Never the second colour or the accent.
   static var liquid: Color {
+    // The default look pours its orange accent, on the field and off it (the owner's pick).
+    if AppStyle.current == .sundayStudio { return accent }
     let p = palette
     return Color(
       UIColor {

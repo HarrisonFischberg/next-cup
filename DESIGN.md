@@ -98,7 +98,8 @@ every rule below is written against token roles, not hexes.
 
 Next Cup looks like a poster on the kitchen wall. Colour comes in whole blocks: a
 butter poster at the top of a recipe, cream everywhere else, and cobalt for the one
-thing to press. The brewer you are using is drawn, not photographed, and sits in front.
+thing to press. The brewer you are using is shown as a photograph where the method has
+one, and as a drawing where it has not.
 During a brew the screen itself is the signal: it turns cobalt while your hands are
 needed and goes back to cream when they are not, and a cup fills as the water goes in.
 
@@ -172,9 +173,11 @@ tiles `md`, between sections `lg`.
   the drawing) runs edge to edge and up under the navigation bar, with 36 pt bottom
   corners. Then beans, dose, grind and amount, each a tile with the same stepper row
   so the − and + line up. Steps are a strip of numbered chips; "Show instructions"
-  swaps the strip for a timeline with the full text. Start brew is pinned at the bottom.
+  swaps the strip for a timeline with the first sentence of each step. Start brew is
+  pinned at the bottom.
 - **Brew timer:** music bar and step progress at the top; the chip, the instruction
-  and its detail; the cup beside the countdown, centred in the room that is left; the
+  and one short line (how much to add, or where the scale should be), never the recipe's
+  prose, so the screen fits without scrolling; the cup beside the countdown, centred in the room that is left; the
   next step and the controls pinned at the bottom. The field begins under the
   navigation bar with 36 pt top corners, so the system status bar keeps its colours.
 - **Lists** (Journal, Beans, Explore): white cards on cream.
@@ -193,12 +196,14 @@ Navigation is the system tab bar, navigation stacks and sheets. iPhone portrait 
 ## Illustration
 
 `BrewGlyph` holds one line drawing per brew method, drawn in code so it follows every
-look and stays sharp. `BrewHero` puts it on a disc of the ground colour, to sit on the
-second colour. `PourCup` is the timer's cup: outline in the text colour, and a liquid
-that is always the plain contrasting colour: `liquid` (cobalt in light, off-white in
-dark) off the field and `onField` (off-white) on it, standing a little off the wall so
-the cup reads when both match. Nothing drawn as a liquid, drip, stream or pool may use
-butter, the orange accent, or any yellow, brown, green or purple.
+look and stays sharp. `BrewHero` and `HeroBanner` show the method's photograph
+(`method.<key>` in the asset catalog) and fall back to the drawing as a small still
+life. `PourCup` is the timer's cup: outline in the text colour. In Sunday Studio, the
+default look, the liquid and steam are the orange accent on cobalt or navy (the owner's
+pick). In every other look the liquid is the plain contrasting colour: `liquid` off the
+field and `onField` on it, standing a little off the wall so the cup reads when both
+match. Nothing drawn as a liquid, drip, stream or pool may use butter or any yellow,
+brown, green or purple.
 
 Steam rises from the cup, three wisps in the cup's line weight and the liquid's colour,
 only when it is true to the brew: from the first pour on, through the waits and the
@@ -259,6 +264,7 @@ from VoiceOver; the name beside it carries the meaning. Photographs are not used
 
 **Don't**
 - Don't add a second filled cobalt button to a screen.
-- Don't add photographs, gradients, glows or decorative icons on headings.
+- Don't add gradients, glows or decorative icons on headings; photographs are for brew
+  methods only.
 - Don't shrink text to fit; cap it and stack.
 - Don't use `ink2` for anything the user must read to act.

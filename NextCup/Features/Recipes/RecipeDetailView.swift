@@ -213,7 +213,11 @@ private struct RecipeDetailContent: View {
             .accessibilityAddTraits(.isHeader)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        if !stacked { BrewHero(glyph: recipe.method?.glyph ?? .cup) }
+        if !stacked {
+          BrewHero(
+            glyph: recipe.method?.glyph ?? .cup, methodKey: recipe.method?.builtInKey,
+            role: .setup, size: 132)
+        }
       }
       calculated
     }
@@ -611,7 +615,7 @@ private struct RecipeDetailContent: View {
           ForEach(rows, id: \.step.id) { row in
             TimelineRow(
               time: row.time, name: RecipeFormat.title(row.step.kind),
-              detail: row.step.instruction.isEmpty ? nil : row.step.instruction,
+              detail: Self.firstSentence(row.step.instruction),
               trailing: row.target.map { RecipeFormat.weight($0, units) },
               state: .upcoming, isLast: row.index == steps.count - 1
             )
@@ -660,6 +664,15 @@ private struct RecipeDetailContent: View {
       }
       .padding(.horizontal, DS.Space.lg)
     }
+  }
+
+  /// A step's instruction cut to its first sentence, so the list reads at a glance; an AI
+  /// recipe can write a paragraph per step.
+  static func firstSentence(_ text: String) -> String? {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return nil }
+    guard let end = trimmed.range(of: ". ") else { return trimmed }
+    return String(trimmed[..<end.upperBound]).trimmingCharacters(in: .whitespaces)
   }
 
   /// One of the user's own recipes at its own size is changed in place; anything else

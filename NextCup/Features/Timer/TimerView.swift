@@ -475,9 +475,13 @@ struct TimerView: View {
       ? AnyLayout(VStackLayout(spacing: DS.Space.sm))
       : AnyLayout(HStackLayout(alignment: .center, spacing: DS.Space.lg))
     return layout {
-      PourCup(fraction: poured, line: fg, fill: hot ? DS.onField : DS.liquid, steam: steam)
-        .frame(width: stacked ? 132 : 168, height: stacked ? 132 : 168)
-        .animation(reduceMotion ? nil : .linear(duration: 0.25), value: poured)
+      PourCup(
+        fraction: poured, line: fg,
+        fill: AppStyle.current == .sundayStudio ? DS.liquid : hot ? DS.onField : DS.liquid,
+        steam: steam
+      )
+      .frame(width: stacked ? 132 : 168, height: stacked ? 132 : 168)
+      .animation(reduceMotion ? nil : .linear(duration: 0.25), value: poured)
       VStack(alignment: stacked ? .center : .leading, spacing: 0) {
         Text(number)
           .font(DS.flavor.timerReadout).monospacedDigit()

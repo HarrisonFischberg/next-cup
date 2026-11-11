@@ -361,10 +361,18 @@ struct RecipeLibraryView: View {
   /// A recipe card: its brewer on a colour block, then the name, method and numbers.
   private func card(_ recipe: Recipe) -> some View {
     VStack(alignment: .leading, spacing: 0) {
-      BrewHero(glyph: recipe.method?.glyph ?? .cup)
-        .padding(.vertical, DS.Space.lg)
+      if heroPhoto(methodKey: recipe.method?.builtInKey, role: .card) != nil {
+        HeroBanner(methodKey: recipe.method?.builtInKey, role: .card)
+      } else {
+        HStack {
+          Spacer(minLength: 0)
+          BrewHero(glyph: recipe.method?.glyph ?? .cup, size: 170)
+          Spacer(minLength: 0)
+        }
+        .padding(.vertical, DS.Space.xl)
         .frame(maxWidth: .infinity)
         .background(DS.kraft)
+      }
       VStack(alignment: .leading, spacing: DS.Space.xs) {
         HStack(alignment: .firstTextBaseline) {
           Text(recipe.name.dsTitle).font(DS.Font.din(28, relativeTo: .title2))

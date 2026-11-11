@@ -9,7 +9,7 @@ struct StepCue: Equatable {
 
   /// The command, e.g. "Close the valve, then pour to 270 g".
   var title: String
-  /// How much to add and the recipe's own words.
+  /// How much to add. The recipe's own words stay on Start brew, under Show instructions.
   var detail: String?
   /// Seconds of hands-on work at the start of the step; nil means the whole step.
   var doS: Double?
@@ -74,15 +74,16 @@ struct StepCue: Equatable {
           k, method: method, added: grams, water: water,
           weight: { RecipeFormat.weight($0, units) })
         if let command = phrase.command {
+          // Two pours joined into one step (a short top-up) read as one pour to the later weight.
+          if command.hasPrefix("pour to "), commands.last?.hasPrefix("pour to ") == true {
+            commands.removeLast()
+          }
           commands.append(command)
           chip = chip ?? phrase.chip
         }
         doS = phrase.doS.flatMap { s in doS.map { $0 + s } }
         after = phrase.after ?? after
       }
-      // Recipes saved before the wording change still say "server", barista for the carafe.
-      let words = steps.map(\.instruction).filter { !$0.isEmpty }.joined(separator: " ")
-        .replacingOccurrences(of: "the server", with: "your mug or carafe")
       let add: String? =
         switch method {
         case _ where added == 0: nil
@@ -108,8 +109,7 @@ struct StepCue: Equatable {
         }
       return StepCue(
         title: commands.isEmpty ? waitTitle : sentence(commands),
-        detail: [add, words.isEmpty ? nil : words].compactMap { $0 }.joined(separator: " ")
-          .nilIfEmpty,
+        detail: add,
         doS: commands.isEmpty ? 0 : doS, nowChip: chip ?? "Do it now",
         waitTitle: waitTitle, waitDetail: shouldBe,
         valveOpen: hasValve ? valveOpen : nil)
@@ -185,8 +185,4 @@ struct StepCue: Equatable {
     let joined = parts.joined(separator: ", then ")
     return joined.prefix(1).uppercased() + joined.dropFirst()
   }
-}
-
-extension String {
-  fileprivate var nilIfEmpty: String? { isEmpty ? nil : self }
 }

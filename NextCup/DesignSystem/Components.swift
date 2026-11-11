@@ -299,6 +299,8 @@ struct StepperTile: View {
   var plusLabel: String?
   /// When set, the value is a field the user can tap and type into.
   var text: Binding<String>?
+  /// Disabled (a saved brew before Edit) shows the value alone, with nothing to press.
+  @Environment(\.isEnabled) private var enabled
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -309,8 +311,10 @@ struct StepperTile: View {
             TextField(title, text: text).font(DS.Font.dataLarge).keyboardType(.decimalPad)
               .fixedSize().accessibilityLabel(title).accessibilityHint("Type a value")
               .accessibilityIdentifier("stepper.\(title.lowercased()).value")
-            Image(systemName: "pencil").font(.footnote).foregroundStyle(DS.ink2)
-              .accessibilityHidden(true)
+            if enabled {
+              Image(systemName: "pencil").font(.footnote).foregroundStyle(DS.ink2)
+                .accessibilityHidden(true)
+            }
           } else {
             Text(value).font(DS.Font.dataLarge).minimumScaleFactor(0.6).lineLimit(1)
           }
@@ -323,11 +327,15 @@ struct StepperTile: View {
         .fixedSize(horizontal: false, vertical: true)
       }
       .padding([.horizontal, .top], DS.Space.md)
-      HStack(spacing: 0) {
-        stepButton("minus", label: minusLabel ?? "Decrease \(title)", action: down)
-        stepButton("plus", label: plusLabel ?? "Increase \(title)", action: up)
+      if enabled {
+        HStack(spacing: 0) {
+          stepButton("minus", label: minusLabel ?? "Decrease \(title)", action: down)
+          stepButton("plus", label: plusLabel ?? "Increase \(title)", action: up)
+        }
+        .padding(.bottom, DS.Space.xs)
+      } else {
+        Color.clear.frame(height: DS.Space.sm)
       }
-      .padding(.bottom, DS.Space.xs)
     }
     .tile()
     .accessibilityElement(children: .contain)
