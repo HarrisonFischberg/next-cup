@@ -272,8 +272,11 @@ struct DataImporter {
       archive.recipes[index].id = local
     }
     func mapped(_ id: UUID?) -> UUID? { id.map { idMap[$0] ?? $0 } }
+    // Fields added after the first export are missing from older files. Missing is not
+    // a difference: a star reads as unstarred, and a brew keeps the recipe snapshot it has.
     for index in archive.recipes.indices {
       archive.recipes[index].methodID = mapped(archive.recipes[index].methodID)
+      archive.recipes[index].isFavorite = archive.recipes[index].isFavorite ?? false
     }
     for index in archive.steps.indices {
       archive.steps[index].recipeID = mapped(archive.steps[index].recipeID)
@@ -281,10 +284,16 @@ struct DataImporter {
     for index in archive.brews.indices {
       archive.brews[index].methodID = mapped(archive.brews[index].methodID)
       archive.brews[index].recipeID = mapped(archive.brews[index].recipeID)
+      archive.brews[index].isFavorite = archive.brews[index].isFavorite ?? false
     }
 
-    var plan = ImportPlan(archive: archive)
     let session = ImportSession(store: store)
+    let brewsHere = try session.existing(Brew.self)
+    for index in archive.brews.indices where archive.brews[index].recipeSnapshotJSON == nil {
+      archive.brews[index].recipeSnapshotJSON =
+        brewsHere[archive.brews[index].id]?.recipeSnapshotJSON
+    }
+    var plan = ImportPlan(archive: archive)
     let recipesHere = try session.existing(Recipe.self)
     for step in archive.steps {
       if let recipeID = step.recipeID, recipesHere[recipeID] != nil {
@@ -292,7 +301,6 @@ struct DataImporter {
       }
     }
     plan.archive.steps.removeAll { $0.recipeID.map { recipesHere[$0] != nil } ?? false }
-    let brewsHere = try session.existing(Brew.self)
     for use in archive.brewBeans {
       if let brewID = use.brewID, brewsHere[brewID] != nil {
         plan.adoptedBrewBeans[brewID, default: []].append(use)

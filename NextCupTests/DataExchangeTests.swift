@@ -217,6 +217,26 @@ import Testing
     #expect(try counts(env.store.context) == before)
   }
 
+  /// A file from before stars and recipe snapshots lacks those fields. That alone must not
+  /// turn every brew and recipe into a conflict, or wipe a snapshot when it is chosen.
+  @Test func olderExportWithoutNewerFieldsIsNotAConflict() throws {
+    let env = try makeEnv()
+    let brew = try populate(env.store)
+    brew.snapshotRecipe()
+    try env.store.save().get()
+    var archive = try DataExporter(store: env.store).archive()
+    for index in archive.recipes.indices { archive.recipes[index].isFavorite = nil }
+    for index in archive.brews.indices {
+      archive.brews[index].isFavorite = nil
+      archive.brews[index].recipeSnapshotJSON = nil
+    }
+    let importer = DataImporter(store: env.store)
+    let plan = try importer.plan(for: archive)
+    #expect(plan.newCount == 0 && plan.conflicts.isEmpty)
+    _ = try importer.apply(plan, overwrite: [brew.id]).get()
+    #expect(brew.recipeSnapshotJSON != nil)
+  }
+
   // MARK: Conflicts
 
   @Test func conflictsKeepLocalUnlessChosen() throws {
