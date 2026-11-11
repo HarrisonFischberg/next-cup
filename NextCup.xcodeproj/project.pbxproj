@@ -385,7 +385,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.4;
+				MARKETING_VERSION = 1.4.1;
 				DEVELOPMENT_TEAM = KTV2G3Z883;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup;
@@ -407,7 +407,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.4;
+				MARKETING_VERSION = 1.4.1;
 				DEVELOPMENT_TEAM = KTV2G3Z883;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup;
@@ -424,7 +424,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.4;
+				MARKETING_VERSION = 1.4.1;
 				DEVELOPMENT_TEAM = KTV2G3Z883;
 				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -440,7 +440,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.4;
+				MARKETING_VERSION = 1.4.1;
 				DEVELOPMENT_TEAM = KTV2G3Z883;
 				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -455,7 +455,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.4;
+				MARKETING_VERSION = 1.4.1;
 				DEVELOPMENT_TEAM = KTV2G3Z883;
 				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -470,7 +470,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.4;
+				MARKETING_VERSION = 1.4.1;
 				DEVELOPMENT_TEAM = KTV2G3Z883;
 				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -488,7 +488,7 @@
 				INFOPLIST_FILE = Config/NextCupLiveActivity-Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Next Cup Timer";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 1.4;
+				MARKETING_VERSION = 1.4.1;
 				DEVELOPMENT_TEAM = KTV2G3Z883;
 				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup.liveactivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -507,7 +507,7 @@
 				INFOPLIST_FILE = Config/NextCupLiveActivity-Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Next Cup Timer";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 1.4;
+				MARKETING_VERSION = 1.4.1;
 				DEVELOPMENT_TEAM = KTV2G3Z883;
 				PRODUCT_BUNDLE_IDENTIFIER = app.rarecreatures.nextcup.liveactivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
