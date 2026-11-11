@@ -156,7 +156,7 @@ struct BeanBrewAITests {
     #expect(!BeanBrewAI.isSound(draft, style: .espresso))
   }
 
-  @Test func savedPickWaitsUnderItsBeanUntilRated() throws {
+  @Test func savedPickWaitsUnderItsBeanUntilBrewed() throws {
     let rig = try Harness()
     let outcome = try #require(
       BeanBrewAI.parse(
@@ -172,9 +172,7 @@ struct BeanBrewAITests {
     rig.container.mainContext.insert(brew)
     brew.recipe = first
     try rig.container.mainContext.save()
-    #expect(first.isToTry, "brewed but not rated yet")
-    brew.ratingTenths = 80
-    #expect(!first.isToTry && first.isBrewAdvice, "a rated pick moves to the Next Cup list")
+    #expect(!first.isToTry && first.isBrewAdvice, "a brewed pick leaves the to-try list")
   }
 
   @Test func eachTasteGetsOneRecipe() async throws {

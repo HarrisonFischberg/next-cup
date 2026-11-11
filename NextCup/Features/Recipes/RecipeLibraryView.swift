@@ -48,7 +48,10 @@ struct RecipeLibraryView: View {
   private var matches: [Recipe] {
     let term = search.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !term.isEmpty else {
-      return recipes.filter { !$0.isVersion && !$0.isNextCup && !$0.isToTry }
+      // A brewed AI pick stays in the Journal unless it was favorited.
+      return recipes.filter {
+        !$0.isVersion && !$0.isNextCup && !($0.isBrewAdvice && !$0.isFavorite)
+      }
     }
     return recipes.filter { recipe in
       [recipe.name, recipe.method?.name, recipe.credit, RecipeFormat.groupTitle(for: recipe)]
@@ -56,11 +59,8 @@ struct RecipeLibraryView: View {
     }
   }
 
-  /// What the AI made from past brews, and brew-advice picks saved to try, pinned on top, even
-  /// for a method left out of the page.
-  private var nextCups: [Recipe] {
-    allRecipes.filter { $0.isNextCup || ($0.isBrewAdvice && !$0.isToTry) }
-  }
+  /// What the AI made from past brews, pinned on top, even for a method left out of the page.
+  private var nextCups: [Recipe] { allRecipes.filter(\.isNextCup) }
 
   /// Brew-advice picks not rated yet, one group per bean, newest bean first.
   private var toTry: [(title: String, recipes: [Recipe])] {
