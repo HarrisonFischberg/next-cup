@@ -321,6 +321,14 @@ struct BeanDetailView: View {
     return "\(start) to \(thawedOn.formatted(day))"
   }
 
+  /// Accept and Dismiss change the bean; a failed save is undone and shown, not hidden.
+  private func saveSuggestionAnswer() {
+    if case .failure(.saveFailed(let message)) = Store(context: context).save() {
+      context.rollback()
+      error = message
+    }
+  }
+
   private func toggleFreezer() {
     let result = bean.isFrozen ? service.thaw(bean) : service.freeze(bean)
     if case .failure(let failure) = result { error = failure.message }
@@ -372,13 +380,13 @@ struct BeanDetailView: View {
         HStack(spacing: DS.Space.sm) {
           Button("Accept") {
             BeanDetailsAI.accept(bean)
-            try? context.save()
+            saveSuggestionAnswer()
           }
           .buttonStyle(SteelButtonStyle())
           .accessibilityIdentifier("bean.aiSuggestion.accept")
           Button("Dismiss") {
             BeanDetailsAI.dismiss(bean)
-            try? context.save()
+            saveSuggestionAnswer()
           }
           .frame(minHeight: DS.Size.control)
           .accessibilityIdentifier("bean.aiSuggestion.dismiss")
