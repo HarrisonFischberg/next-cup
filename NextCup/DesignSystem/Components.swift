@@ -514,6 +514,10 @@ struct SteelToast: View {
     .panel(DS.steel)
     // `.contain`, not `.combine`: Undo must stay its own control for VoiceOver.
     .accessibilityElement(children: .contain)
+    // It is gone in a few seconds, so VoiceOver hears of it the moment it shows.
+    .onAppear {
+      AccessibilityNotification.Announcement.urgent("\(message). \(actionTitle) available.")
+    }
   }
 }
 
