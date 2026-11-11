@@ -158,9 +158,11 @@ enum ImportError: LocalizedError, Equatable {
 /// up with the reseeded built-ins instead of duplicating them.
 struct ImportPlan {
   var archive: DataArchive
-  /// Steps of built-in recipes that already exist here. They are only used when
-  /// the user chooses the imported recipe, which then replaces the local steps.
+  /// Steps of recipes, and beans of brews, that already exist here, by parent id. An edit
+  /// here gives these rows new ids, so importing them as new rows would double them. They
+  /// are only used when the user chooses the imported parent, and then replace the local ones.
   var adoptedSteps: [UUID: [StepRecord]] = [:]
+  var adoptedBrewBeans: [UUID: [BrewBeanRecord]] = [:]
   var items: [ImportItem] = []
 
   var conflicts: [ImportItem] { items.filter { $0.status == .conflict } }
@@ -262,14 +264,12 @@ struct DataImporter {
     let recipeByKey = Dictionary(
       localRecipes.compactMap { r in r.builtInKey.map { ($0, r.id) } },
       uniquingKeysWith: { first, _ in first })
-    var adopted: Set<UUID> = []
     for index in archive.recipes.indices {
       guard let key = archive.recipes[index].builtInKey, let local = recipeByKey[key] else {
         continue
       }
       idMap[archive.recipes[index].id] = local
       archive.recipes[index].id = local
-      adopted.insert(local)
     }
     func mapped(_ id: UUID?) -> UUID? { id.map { idMap[$0] ?? $0 } }
     for index in archive.recipes.indices {
@@ -284,14 +284,22 @@ struct DataImporter {
     }
 
     var plan = ImportPlan(archive: archive)
+    let session = ImportSession(store: store)
+    let recipesHere = try session.existing(Recipe.self)
     for step in archive.steps {
-      if let recipeID = step.recipeID, adopted.contains(recipeID) {
+      if let recipeID = step.recipeID, recipesHere[recipeID] != nil {
         plan.adoptedSteps[recipeID, default: []].append(step)
       }
     }
-    plan.archive.steps.removeAll { step in step.recipeID.map(adopted.contains) ?? false }
+    plan.archive.steps.removeAll { $0.recipeID.map { recipesHere[$0] != nil } ?? false }
+    let brewsHere = try session.existing(Brew.self)
+    for use in archive.brewBeans {
+      if let brewID = use.brewID, brewsHere[brewID] != nil {
+        plan.adoptedBrewBeans[brewID, default: []].append(use)
+      }
+    }
+    plan.archive.brewBeans.removeAll { $0.brewID.map { brewsHere[$0] != nil } ?? false }
 
-    let session = ImportSession(store: store)
     plan.items = try plan.archive.lists.flatMap { try $0.items(session) }
     return plan
   }
@@ -303,11 +311,21 @@ struct DataImporter {
     let session = ImportSession(store: store)
     var archive = plan.archive
     do {
-      for recipeID in overwrite where plan.adoptedSteps[recipeID] != nil {
-        for step in try session.existing(RecipeStep.self).values where step.recipe?.id == recipeID {
+      // Fetched here, not through the session: its cache must not hold the deleted rows,
+      // or an imported row with the same id would be taken as already here and skipped.
+      for (recipeID, steps) in plan.adoptedSteps where overwrite.contains(recipeID) {
+        for step in try store.context.fetch(FetchDescriptor<RecipeStep>())
+        where step.recipe?.id == recipeID {
           store.context.delete(step)
         }
-        archive.steps += plan.adoptedSteps[recipeID] ?? []
+        archive.steps += steps
+      }
+      for (brewID, uses) in plan.adoptedBrewBeans where overwrite.contains(brewID) {
+        for use in try store.context.fetch(FetchDescriptor<BrewBean>())
+        where use.brew?.id == brewID {
+          store.context.delete(use)
+        }
+        archive.brewBeans += uses
       }
       for list in archive.lists { try list.insert(session, overwrite: overwrite) }
       for link in session.links { link() }

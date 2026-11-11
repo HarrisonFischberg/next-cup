@@ -237,6 +237,55 @@ import Testing
     #expect(brew.notes == "Imported notes")
   }
 
+  /// Saving an edit gives a brew's beans and a recipe's steps new ids. Restoring an older
+  /// export must not add the old rows next to them (the bag would be deducted twice).
+  @Test func restoringAfterAnEditDoesNotDoubleBeansOrSteps() throws {
+    let env = try makeEnv()
+    let brew = try populate(env.store)
+    let context = env.store.context
+    let recipe = try #require(brew.recipe)
+    let archive = try DataExporter(store: env.store).archive()
+
+    for old in brew.beans ?? [] { context.delete(old) }
+    let use = BrewBean(grams: 15, beanNameSnapshot: "Test Bean A")
+    context.insert(use)
+    use.brew = brew
+    for old in recipe.steps ?? [] { context.delete(old) }
+    for order in 0..<2 {
+      let step = RecipeStep(order: order, kind: .pour, startOffsetS: order * 30)
+      context.insert(step)
+      step.recipe = recipe
+    }
+    recipe.name = "My recipe, edited"
+    try env.store.save().get()
+
+    let importer = DataImporter(store: env.store)
+    let plan = try importer.plan(for: archive)
+    #expect(plan.newCount == 0)
+    _ = try importer.apply(plan).get()
+    #expect(brew.beans?.count == 1)
+    #expect(recipe.steps?.count == 2)
+
+    // Choosing the imported recipe and brew swaps their steps and beans back in.
+    _ = try importer.apply(plan, overwrite: [recipe.id, brew.id]).get()
+    #expect(recipe.steps?.map(\.instruction) == ["Wet the bed"])
+    #expect((brew.beans ?? []).map(\.grams).sorted() == [6, 9])
+  }
+
+  /// A chosen recipe whose steps kept their ids (only its star changed) keeps its steps.
+  @Test func choosingAnImportedRecipeKeepsStepsWithTheSameIDs() throws {
+    let env = try makeEnv()
+    let recipe = try #require(try populate(env.store).recipe)
+    let archive = try DataExporter(store: env.store).archive()
+    recipe.isFavorite = true
+    try env.store.save().get()
+
+    let importer = DataImporter(store: env.store)
+    _ = try importer.apply(try importer.plan(for: archive), overwrite: [recipe.id]).get()
+    #expect(!recipe.isFavorite)
+    #expect(recipe.steps?.map(\.instruction) == ["Wet the bed"])
+  }
+
   @Test func editedBuiltInIsAConflictNotADuplicate() throws {
     let env = try makeEnv()
     let method = try #require(try env.store.context.fetch(FetchDescriptor<BrewMethod>()).first)
