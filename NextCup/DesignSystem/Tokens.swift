@@ -33,6 +33,29 @@ enum DS {
   static var signalOnSteel: Color { Color(palette.signalOnSteel) }  // accent on steel
   static var kraft: Color { Color(palette.kraft) }  // label stock for notes
   static var onKraft: Color { Color(palette.onKraft) }
+  /// A tile that holds a value you set (dose, grind, amount): the second colour, thinned in
+  /// light so it sits under the poster; whole in dark, where it is already quiet.
+  static var tile: Color {
+    let pair = palette.kraft
+    return Color(
+      UIColor {
+        $0.userInterfaceStyle == .dark
+          ? UIColor(hex: pair.dark) : UIColor(hex: pair.light).withAlphaComponent(0.5)
+      })
+  }
+  /// The brew timer's field while your hands are needed, its text and its quieter text.
+  static var field: Color { steel }
+  static var onField: Color { onSteel }
+  static var fieldSoft: Color { signalOnSteel }
+  /// Anything drawn as a liquid, off the field: the field's colour in light, the ink
+  /// (off-white) in dark. On the field it is `onField`. Never the second colour or the accent.
+  static var liquid: Color {
+    let p = palette
+    return Color(
+      UIColor {
+        $0.userInterfaceStyle == .dark ? UIColor(hex: p.ink.dark) : UIColor(hex: p.steel.light)
+      })
+  }
   static var error: Color { Color(palette.error) }
   static var ok: Color { Color(palette.ok) }
   /// The favorite star: the accent, except where the accent is brown, brass, amber or copper
@@ -385,7 +408,7 @@ enum AppStyle: String, CaseIterable, Identifiable {
         error: P(0x9A1B0A, 0xFF9C85), ok: P(0x2A6A2A, 0x7FD18A))
     case .sundayStudio:
       Palette(
-        bg: P(0xFFFDF3, 0x0E1230), paper: P(0xFFFFFF, 0x171D45), steel: P(0x1B2F7A, 0x2448C8),
+        bg: P(0xFFFDF3, 0x0E1230), paper: P(0xFFFFFF, 0x171D45), steel: P(0x2448C8, 0x2448C8),
         onSteel: P(0xFFFDF3, 0xFFFDF3), ink: P(0x2B1A12, 0xFFFDF3), ink2: P(0x625046, 0xC9CCE6),
         line: P(0x8A7A6E, 0x7B82B8), signal: P(0x2448C8, 0xFFFDF3),
         onSignal: P(0xFFFFFF, 0x0E1230), signalOnSteel: P(0xF5E8A4, 0xF5E8A4),

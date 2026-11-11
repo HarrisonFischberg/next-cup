@@ -379,7 +379,7 @@ struct BrewFormView: View {
           .accessibilityHidden(true)
       }
       .padding(DS.Space.md).frame(minHeight: DS.Size.control)
-      .panel(DS.paper)
+      .tile()
     }
     .accessibilityLabel("Method")
     .accessibilityValue(current?.name ?? "None chosen")
@@ -557,7 +557,7 @@ struct BrewFormView: View {
             .accessibilityHidden(true)
         }
         .padding(DS.Space.md).frame(minHeight: DS.Size.control)
-        .panel(DS.paper)
+        .tile()
       }
       .accessibilityLabel("Grinder")
       .accessibilityValue(current?.name ?? "None chosen")
@@ -706,7 +706,7 @@ struct BrewFormView: View {
             .accessibilityHidden(true)
         }
         .padding(DS.Space.md).frame(minHeight: DS.Size.control)
-        .panel(DS.paper)
+        .tile()
       }
       .accessibilityLabel("Water")
       .accessibilityValue(current?.name ?? "None chosen")
@@ -747,7 +747,7 @@ struct BrewFormView: View {
         setting: text, grinderName: grinders.first { $0.id == model.draft.grinderID }?.name,
         identifier: "brewform.grind"
       )
-      .panel(DS.paper)
+      .tile()
     }
   }
 

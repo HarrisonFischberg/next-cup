@@ -48,6 +48,12 @@ extension View {
   func panel(_ fill: Color, border: Color = DS.line, dash: [CGFloat] = []) -> some View {
     modifier(Panel(fill: fill, border: border, dash: dash))
   }
+
+  /// A flat tile in the look's second colour, for a value you set (dose, grind, amount).
+  /// Records and messages stay on `panel`.
+  func tile() -> some View {
+    background(DS.tile, in: RoundedRectangle(cornerRadius: DS.radius, style: .continuous))
+  }
 }
 
 // MARK: Buttons
@@ -91,6 +97,42 @@ struct SteelButtonStyle: ButtonStyle {
       .brightness(configuration.isPressed && reduceMotion ? -0.08 : 0)
       .opacity(enabled ? 1 : 0.4)
       .animation(reduceMotion ? nil : .easeOut(duration: 0.1), value: configuration.isPressed)
+  }
+}
+
+/// A flat filled button whose colours the screen picks, for the brew timer: it turns
+/// inside out when the screen behind it turns into the hands-on field.
+struct FieldButtonStyle: ButtonStyle {
+  let fill: Color
+  let label: Color
+  @Environment(\.isEnabled) private var enabled
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .font(DS.Font.din(26, relativeTo: .title2)).tracking(1)
+      .lineLimit(2).minimumScaleFactor(0.6).multilineTextAlignment(.center)
+      .foregroundStyle(label)
+      .padding(.horizontal, DS.Space.md)
+      .frame(maxWidth: .infinity, minHeight: DS.Size.primary)
+      .background(fill, in: RoundedRectangle(cornerRadius: DS.controlRadius, style: .continuous))
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+      .brightness(configuration.isPressed ? -0.06 : 0)
+      .opacity(enabled ? 1 : 0.4)
+      .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+  }
+}
+
+/// The − or + of a stepper: a solid 40 pt button in the action colour. The caller gives it
+/// the 44 pt tap target.
+struct StepGlyph: View {
+  let symbol: String
+  @Environment(\.isEnabled) private var enabled
+  var body: some View {
+    Image(systemName: symbol).font(.system(size: 16, weight: .heavy))
+      .foregroundStyle(DS.onSignal).frame(width: 40, height: 40)
+      .background(DS.signal, in: Circle())
+      .opacity(enabled ? 1 : 0.4)
   }
 }
 
@@ -280,15 +322,14 @@ struct StepperTile: View {
         )
         .fixedSize(horizontal: false, vertical: true)
       }
-      .padding(DS.Space.md)
-      Hairline()
+      .padding([.horizontal, .top], DS.Space.md)
       HStack(spacing: 0) {
         stepButton("minus", label: minusLabel ?? "Decrease \(title)", action: down)
-        Rectangle().fill(DS.line).frame(width: DS.rule)
         stepButton("plus", label: plusLabel ?? "Increase \(title)", action: up)
       }
+      .padding(.bottom, DS.Space.xs)
     }
-    .panel(DS.paper)
+    .tile()
     .accessibilityElement(children: .contain)
   }
 
@@ -296,10 +337,10 @@ struct StepperTile: View {
     -> some View
   {
     Button(action: action) {
-      Image(systemName: symbol).font(.body.weight(.heavy)).frame(
-        maxWidth: .infinity, minHeight: DS.Size.control)
+      // Each half of the tile is the tap target; the button drawn in it is 40 pt.
+      StepGlyph(symbol: symbol).frame(maxWidth: .infinity, minHeight: DS.Size.control)
+        .contentShape(Rectangle())
     }
-    .foregroundStyle(DS.ink)
     .accessibilityLabel(label)
   }
 }

@@ -98,11 +98,8 @@ struct DialStepper: View {
     _ symbol: String, label: String, id: String, action: @escaping () -> Void
   ) -> some View {
     Button(action: action) {
-      // A 38 pt ring with a fine glyph, inside the full 44 pt tap target.
-      Image(systemName: symbol).font(.system(size: 14, weight: .semibold))
-        .foregroundStyle(DS.accent)
-        .frame(width: 38, height: 38)
-        .overlay(Circle().strokeBorder(DS.accent, lineWidth: 1.25))
+      // A solid 40 pt button, inside the full 44 pt tap target.
+      StepGlyph(symbol: symbol)
         .frame(width: DS.Size.minTap, height: DS.Size.minTap)
         .contentShape(Rectangle())
     }
