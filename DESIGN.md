@@ -227,12 +227,17 @@ from VoiceOver; the name beside it carries the meaning. Photographs are not used
   for a record or a message.
 - **BrewHero, PourCup:** see Illustration.
 - **StateBanner, SteelToast, EmptyState, SkeletonRow:** messages and states. Toasts
-  carry Undo instead of a confirm dialog.
+  carry Undo instead of a confirm dialog and announce themselves to VoiceOver.
 - **TimelineRow** (`Features/Recipes`): a step with its time, for the instructions view.
 
 ## Motion
 
-- Press: 0.97 scale over 120 ms on the timer button; system press on glass buttons.
+- Shared numbers are `DS.Motion` (`DesignSystem/Interaction.swift`): 120 ms press, 200 ms
+  exit, 250 ms enter, 0.97 press scale. The full list of what moves is
+  `docs/interaction-matrix.md`.
+- Press: 0.97 scale over 120 ms on the timer button and on every card that opens
+  something (`PressableStyle`); system press on glass buttons.
+- A new timer step rises into place as the old one lifts away, 250 ms.
 - The timer's field cross-fades over 250 ms when the state changes; the cup level and
   the progress move linearly each second; numbers use the numeric text transition.
 - Steam drifts up and fades on a five-second loop, on its own clock; it is stronger
@@ -241,8 +246,9 @@ from VoiceOver; the name beside it carries the meaning. Photographs are not used
   secondary feedback, never on the timer digits or the instruction).
 - Reduce Motion: no scale, no spring, no moving level between seconds; the field
   changes at once and the steam stands still.
-- Haptics: start, step change, pause and resume, finish, and a warning five seconds
-  before a step. One per event.
+- Haptics go through `Feedback`: start, step change (two heavy beats), pause and resume,
+  finish, and a warning five seconds before a step. One per event, and a step joined to
+  its neighbour on screen cues once.
 
 ## Accessibility
 
