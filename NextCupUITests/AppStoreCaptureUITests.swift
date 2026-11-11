@@ -54,7 +54,7 @@ final class AppStoreCaptureUITests: XCTestCase {
     try shoot("02-ask-ai")
     element("nextcup.save").tap()
     XCTAssertTrue(
-      app.staticTexts["RECIPE TO TRY FOR YOUR NEXT CUP"].waitForExistence(timeout: 5))
+      app.staticTexts["Recipes for your Next Cup"].waitForExistence(timeout: 5))
     try shoot("01-next-cup")
   }
 
