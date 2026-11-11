@@ -531,6 +531,8 @@ final class BrewFormModel {
       TasteReminder.schedule(
         brewID: draft.id, beanName: draft.beans?.first?.name, brewedAt: draft.date)
     }
+    // Tasted through Edit: the reminder to taste it has nothing left to ask.
+    if isEditing, draft.verdict != nil { TasteReminder.cancel(brewID: draft.id) }
     makeSuggestion()
     noteNewBest()
     if case .failure = draftStore.clear() {
