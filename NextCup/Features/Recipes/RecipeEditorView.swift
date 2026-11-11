@@ -477,10 +477,12 @@ struct RecipeEditorView: View {
 
   private func removeStep(_ index: Int) {
     guard fields.steps.indices.contains(index) else { return }
-    removed = (index, fields.steps.remove(at: index))
+    let step = fields.steps.remove(at: index)
+    removed = (index, step)
     Task {
       try? await Task.sleep(for: .seconds(6))
-      removed = nil
+      // A step removed since has its own six seconds.
+      if removed?.step.id == step.id { removed = nil }
     }
   }
 
