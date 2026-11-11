@@ -453,12 +453,14 @@ struct DataEraser {
       }
       // The selected tab stays, so the screen the user is on (and its Undo toast)
       // does not jump away. The rating flag stays, or the next launch would convert
-      // ratings already out of 10 a second time.
+      // ratings already out of 10 a second time. The recipe backfill flag stays, or the
+      // next launch would link brews logged without a recipe to a look-alike one.
       let tab = defaults.object(forKey: AppTab.storageKey)
-      let ratingsMigrated = defaults.bool(forKey: RatingMigration.doneKey)
+      let ranOnce = [RatingMigration.doneKey, RecipeSnapshotBackfill.doneKey].filter(
+        defaults.bool(forKey:))
       defaults.removePersistentDomain(forName: defaultsDomain)
       if let tab { defaults.set(tab, forKey: AppTab.storageKey) }
-      if ratingsMigrated { defaults.set(true, forKey: RatingMigration.doneKey) }
+      for key in ranOnce { defaults.set(true, forKey: key) }
       clearKeys()
       return BuiltInSeeder(store: store, defaults: defaults).seed(content).map { _ in snapshot }
     } catch {

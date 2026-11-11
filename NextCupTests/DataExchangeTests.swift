@@ -126,6 +126,26 @@ import Testing
     #expect(brew.ratingTenths == 85)
   }
 
+  /// Delete all keeps the recipe backfill flag, so a brew logged afterwards without a
+  /// recipe is not linked to a look-alike recipe on the next launch.
+  @Test func eraseKeepsTheRecipeBackfillDone() throws {
+    let env = try makeEnv()
+    env.defaults.set(true, forKey: RecipeSnapshotBackfill.doneKey)
+    let dir = tempDir()
+    _ = try eraser(
+      env, drafts: dir.appendingPathComponent("Drafts"),
+      backups: BackupStore(directory: dir.appendingPathComponent("B"))
+    ).eraseAll(reseeding: try BuiltInContent(bundle: .main)).get()
+
+    let recipe = try #require(
+      try env.store.context.fetch(FetchDescriptor<Recipe>()).first { $0.method != nil })
+    let brew = Brew()
+    (brew.method, brew.doseG, brew.waterG) = (recipe.method, recipe.doseG, recipe.waterG)
+    env.store.context.insert(brew)
+    _ = try RecipeSnapshotBackfill.run(env.store.context, defaults: env.defaults).get()
+    #expect(brew.recipe == nil)
+  }
+
   // MARK: Round trip
 
   @Test func exportWipeImportIsLossless() throws {
