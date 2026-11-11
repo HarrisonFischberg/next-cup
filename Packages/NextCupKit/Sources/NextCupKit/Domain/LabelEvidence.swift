@@ -85,14 +85,14 @@ public enum LabelEvidence {
   }
 
   private static func date(in text: String) -> String? {
-    let cleaned = text.replacing(/(\d)(st|nd|rd|th)\b/) { "\($0.1)" }
-    if let m = cleaned.firstMatch(of: /\b(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})\b/) {
+    let cleaned = text.replacing(/([0-9])(st|nd|rd|th)\b/) { "\($0.1)" }
+    if let m = cleaned.firstMatch(of: /\b([0-9]{4})[-\/.]([0-9]{1,2})[-\/.]([0-9]{1,2})\b/) {
       return valid(Int(m.1)!, Int(m.2)!, Int(m.3)!)
     }
-    if let m = cleaned.firstMatch(of: /\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/) {
+    if let m = cleaned.firstMatch(of: /\b([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{4})\b/) {
       return valid(Int(m.3)!, Int(m.2)!, Int(m.1)!)
     }
-    if let m = cleaned.firstMatch(of: /\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/) {
+    if let m = cleaned.firstMatch(of: /\b([0-9]{1,2})\/([0-9]{1,2})\/([0-9]{4})\b/) {
       let (a, b, year) = (Int(m.1)!, Int(m.2)!, Int(m.3)!)
       // 03/04/2026 could be either order; only a day above 12 or equal parts settle it.
       if a > 12 { return valid(year, b, a) }
@@ -100,12 +100,12 @@ public enum LabelEvidence {
       return nil
     }
     if let m = cleaned.firstMatch(
-      of: /\b(\d{1,2})\.?\s+(?:de\s+)?([a-z]{3,})\.?,?\s+(?:de\s+)?(\d{4})\b/),
+      of: /\b([0-9]{1,2})\.?\s+(?:de\s+)?([a-z]{3,})\.?,?\s+(?:de\s+)?([0-9]{4})\b/),
       let month = months[String(m.2.prefix(3))]
     {
       return valid(Int(m.3)!, month, Int(m.1)!)
     }
-    if let m = cleaned.firstMatch(of: /\b([a-z]{3,})\.?\s+(\d{1,2}),?\s+(\d{4})\b/),
+    if let m = cleaned.firstMatch(of: /\b([a-z]{3,})\.?\s+([0-9]{1,2}),?\s+([0-9]{4})\b/),
       let month = months[String(m.1.prefix(3))]
     {
       return valid(Int(m.3)!, month, Int(m.2)!)
