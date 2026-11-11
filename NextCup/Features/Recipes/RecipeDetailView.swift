@@ -158,7 +158,8 @@ private struct RecipeDetailContent: View {
       // Screenshots: `-autoStartBrew` goes straight on to the timer.
       .task {
         if ProcessInfo.processInfo.arguments.contains("-autoStartBrew"), timerSetup == nil {
-          try? await Task.sleep(for: .milliseconds(600))
+          // Once the push that brought this page has settled.
+          do { try await Task.sleep(for: .seconds(2)) } catch { return }
           startBrew()
         }
       }
@@ -261,16 +262,19 @@ private struct RecipeDetailContent: View {
         .accessibilityIdentifier("recipe.addBean")
     } label: {
       HStack(spacing: DS.Space.sm) {
-        Image(systemName: "leaf.fill").foregroundStyle(DS.accent).accessibilityHidden(true)
+        // At accessibility sizes the name needs the whole row.
+        if !dts.isAccessibilitySize {
+          Image(systemName: "leaf.fill").foregroundStyle(DS.accent).accessibilityHidden(true)
+        }
         Text(chosen?.name ?? (beans.isEmpty ? "Add your beans" : "Choose your beans"))
           .font(DS.Font.headline).foregroundStyle(chosen == nil ? DS.ink2 : DS.ink)
-          .multilineTextAlignment(.leading)
-        Spacer(minLength: DS.Space.sm)
+          .multilineTextAlignment(.leading).minimumScaleFactor(0.7)
+          .frame(maxWidth: .infinity, alignment: .leading)
         Image(systemName: "chevron.up.chevron.down").font(.footnote.weight(.bold))
           .foregroundStyle(DS.ink2).accessibilityHidden(true)
       }
       .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.sm)
-      .frame(minHeight: DS.Size.primary)
+      .frame(maxWidth: .infinity, minHeight: DS.Size.primary)
       .tile()
       .contentShape(Rectangle())
     }

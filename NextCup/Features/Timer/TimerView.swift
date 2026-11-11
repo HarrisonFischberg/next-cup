@@ -90,6 +90,8 @@ struct TimerView: View {
               dial
               Spacer(minLength: 0)
             }
+            // At accessibility sizes the controls would fill the screen, so they scroll too.
+            if dts.isAccessibilitySize { controls }
           }
           .padding(.vertical, DS.Space.sm)
           .frame(maxWidth: .infinity, minHeight: room.size.height)
@@ -100,7 +102,13 @@ struct TimerView: View {
     .padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.lg)
     // A container, so the screen's identifier does not replace its children's.
     .accessibilityElement(children: .contain)
-    .safeAreaInset(edge: .bottom, spacing: 0) { controls }
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      if !dts.isAccessibilitySize {
+        controls.padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.md)
+          // Its own ground, so nothing scrolls through the buttons.
+          .background(hot ? DS.field : DS.bg, ignoresSafeAreaEdges: .bottom)
+      }
+    }
     // The field starts under the bar with the Start brew poster's corners, so the status
     // bar and the bar's buttons keep their own colours.
     .background {
@@ -438,6 +446,17 @@ struct TimerView: View {
     return water / total
   }
 
+  /// Steam over the cup once something hot is in it: more while the water goes in, less
+  /// while it rests. None before the first pour, and none for a cold or iced brew.
+  private var steam: Double {
+    guard poured > 0 else { return 0 }
+    return handsOn && state.phase == .running ? min(restingSteam * 1.8, 1) : restingSteam
+  }
+
+  private var restingSteam: Double {
+    setup.scaled.includesIce || setup.methodKey == "cold-brew" ? 0 : 0.55
+  }
+
   /// The cup filling beside the countdown to the next step.
   private var dial: some View {
     let number =
@@ -456,7 +475,7 @@ struct TimerView: View {
       ? AnyLayout(VStackLayout(spacing: DS.Space.sm))
       : AnyLayout(HStackLayout(alignment: .center, spacing: DS.Space.lg))
     return layout {
-      PourCup(fraction: poured, line: fg, fill: hot ? DS.onField : DS.liquid)
+      PourCup(fraction: poured, line: fg, fill: hot ? DS.onField : DS.liquid, steam: steam)
         .frame(width: stacked ? 132 : 168, height: stacked ? 132 : 168)
         .animation(reduceMotion ? nil : .linear(duration: 0.25), value: poured)
       VStack(alignment: stacked ? .center : .leading, spacing: 0) {
@@ -579,7 +598,8 @@ struct TimerView: View {
     let early = session.outcome?.endedEarly == true
     return VStack(spacing: DS.Space.xs) {
       // The full cup; ended early, as far as the pour got.
-      PourCup(fraction: early ? poured : 1).frame(width: 132, height: 132)
+      PourCup(fraction: early ? poured : 1, steam: early && poured == 0 ? 0 : restingSteam)
+        .frame(width: 132, height: 132)
         .padding(.bottom, DS.Space.sm)
       Text(early ? "Brew ended" : "Brew finished").font(DS.Font.headline)
         .foregroundStyle(DS.accent)
@@ -642,7 +662,6 @@ struct TimerView: View {
         }
       }
     }
-    .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.md)
     .animation(motion, value: state.targetReached)
   }
 

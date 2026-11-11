@@ -198,7 +198,12 @@ second colour. `PourCup` is the timer's cup: outline in the text colour, and a l
 that is always the plain contrasting colour: `liquid` (cobalt in light, off-white in
 dark) off the field and `onField` (off-white) on it, standing a little off the wall so
 the cup reads when both match. Nothing drawn as a liquid, drip, stream or pool may use
-butter, the orange accent, or any yellow, brown, green or purple. All of it is decorative and hidden
+butter, the orange accent, or any yellow, brown, green or purple.
+
+Steam rises from the cup, three wisps in the cup's line weight and the liquid's colour,
+only when it is true to the brew: from the first pour on, through the waits and the
+finished screen; never over an empty cup, and never for cold brew or a recipe brewed
+onto ice. All of it is decorative and hidden
 from VoiceOver; the name beside it carries the meaning. Photographs are not used.
 
 ## Components
@@ -225,10 +230,12 @@ from VoiceOver; the name beside it carries the meaning. Photographs are not used
 - Press: 0.97 scale over 120 ms on the timer button; system press on glass buttons.
 - The timer's field cross-fades over 250 ms when the state changes; the cup level and
   the progress move linearly each second; numbers use the numeric text transition.
+- Steam drifts up and fades on a five-second loop, on its own clock; it is stronger
+  while water goes in and settles over 1.6 s when the pour ends. It never bounces.
 - Look-level feel comes from `Flavor.motion` (Sunday Studio: a short spring on
   secondary feedback, never on the timer digits or the instruction).
 - Reduce Motion: no scale, no spring, no moving level between seconds; the field
-  changes at once.
+  changes at once and the steam stands still.
 - Haptics: start, step change, pause and resume, finish, and a warning five seconds
   before a step. One per event.
 
