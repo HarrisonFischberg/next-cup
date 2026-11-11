@@ -80,9 +80,10 @@ enum AISuggestions {
   private static func usable(_ text: String, for field: BrewParameter) -> Bool {
     switch field {
     case .grind: !text.isEmpty
-    case .water: Double(text).map { $0 > 0 } ?? false
-    case .temperature: Double(text) != nil
-    case .time: Double(text).map { $0 >= 0 } ?? false
+    // Ranges, not just "a number": 1e30 seconds crashed the card, and 205 is Fahrenheit.
+    case .water: Double(text).map { (1...5000).contains($0) } ?? false
+    case .temperature: Double(text).map { (0...100).contains($0) } ?? false
+    case .time: Double(text).map { (0...86_400).contains($0) } ?? false
     default: false
     }
   }

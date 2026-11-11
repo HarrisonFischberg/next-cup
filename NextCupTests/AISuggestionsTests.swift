@@ -90,6 +90,10 @@ struct AISuggestionsTests {
       #"{"field":"water","toValue":"lots","rationale":"r"}"#,
       #"{"field":"time","toValue":"-5","rationale":"r"}"#,
       #"{"field":"grind","toValue":"  ","rationale":"r"}"#,
+      #"{"field":"time","toValue":"1e30","rationale":"r"}"#,
+      #"{"field":"time","toValue":"inf","rationale":"r"}"#,
+      #"{"field":"temperature","toValue":"205","rationale":"r"}"#,
+      #"{"field":"water","toValue":"0.5","rationale":"r"}"#,
       "just grind finer",
     ]
     for json in bad {
