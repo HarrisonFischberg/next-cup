@@ -3,8 +3,8 @@ import SwiftData
 import SwiftUI
 import UIKit
 
-/// S07, Recipe setup: the recipe's brewer as a hero, then beans, grinder, the editable
-/// dose, the numbers calculated from it, a compact step preview and Start brew.
+/// S07, Recipe setup: a poster with the recipe's brewer and the numbers calculated from the
+/// dose, then beans, the dose, the grind and the amount on tiles, the steps and Start brew.
 /// Scaling is a view of the recipe; nothing is saved by it.
 struct RecipeDetailView: View {
   let link: DeepLink
@@ -117,33 +117,31 @@ private struct RecipeDetailContent: View {
     let steps = recipe.orderedSteps
     ScrollView {
       VStack(alignment: .leading, spacing: DS.Space.lg) {
-        hero
-        nextCupNote
-        BrewerFitLine(
-          draft: fitDraft, methodKey: recipe.method?.builtInKey,
-          isAI: BrewerFitLine.isAI(name: recipe.name, credit: recipe.credit))
-        if startFailed {
-          StateBanner(kind: .error, message: "This recipe cannot be timed. Check its steps.")
-        }
-        VStack(spacing: 0) {
-          beansRow
-          Hairline().opacity(0.5).padding(.horizontal, DS.Space.md)
-          grinderRow
-        }
-        .panel(DS.paper)
-        yieldControls
-        doseControls
-        calculated
-        if let notes = scaled?.notes, scaledDoseG != nil, !notes.isEmpty {
-          VStack(alignment: .leading, spacing: DS.Space.xs) {
-            ForEach(notes, id: \.self) { Text($0).font(.footnote).foregroundStyle(DS.ink2) }
+        poster
+        VStack(alignment: .leading, spacing: DS.Space.md) {
+          nextCupNote
+          BrewerFitLine(
+            draft: fitDraft, methodKey: recipe.method?.builtInKey,
+            isAI: BrewerFitLine.isAI(name: recipe.name, credit: recipe.credit))
+          if startFailed {
+            StateBanner(kind: .error, message: "This recipe cannot be timed. Check its steps.")
           }
-          .accessibilityElement(children: .combine)
+          beansRow
+          doseControls
+          grinderRow
+          yieldControls
+          if let notes = scaled?.notes, scaledDoseG != nil, !notes.isEmpty {
+            VStack(alignment: .leading, spacing: DS.Space.xs) {
+              ForEach(notes, id: \.self) { Text($0).font(.footnote).foregroundStyle(DS.ink2) }
+            }
+            .accessibilityElement(children: .combine)
+          }
         }
+        .padding(.horizontal, DS.Space.lg)
         stepPreview(steps)
-        credit
+        credit.padding(.horizontal, DS.Space.lg)
       }
-      .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.lg)
+      .padding(.bottom, DS.Space.lg)
       .dialPopups()
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -156,6 +154,15 @@ private struct RecipeDetailContent: View {
       }
     }
     .navigationDestination(item: $timerSetup) { TimerView(setup: $0) }
+    #if DEBUG
+      // Screenshots: `-autoStartBrew` goes straight on to the timer.
+      .task {
+        if ProcessInfo.processInfo.arguments.contains("-autoStartBrew"), timerSetup == nil {
+          try? await Task.sleep(for: .milliseconds(600))
+          startBrew()
+        }
+      }
+    #endif
     .toolbar {
       ToolbarItem(placement: .topBarTrailing) {
         Menu {
@@ -186,32 +193,37 @@ private struct RecipeDetailContent: View {
 
   // MARK: Sections
 
-  /// The title and method beside the brewer on a colour block.
-  private var hero: some View {
+  /// The poster: the method, the name and the numbers beside the brewer's drawing, on the
+  /// second colour from edge to edge and up under the bar.
+  private var poster: some View {
     let stacked = dts.isAccessibilitySize
     let layout =
       stacked
       ? AnyLayout(VStackLayout(alignment: .leading, spacing: DS.Space.md))
-      : AnyLayout(HStackLayout(alignment: .center, spacing: DS.Space.md))
-    return layout {
-      VStack(alignment: .leading, spacing: DS.Space.xs) {
-        Text(recipe.name.dsTitle).font(DS.Font.instruction).foregroundStyle(DS.ink)
-          .dynamicTypeSize(...DS.displayCap).minimumScaleFactor(0.7)
-          .accessibilityAddTraits(.isHeader)
-        if let method = recipe.method?.name {
-          Text(method).font(.subheadline.weight(.medium)).foregroundStyle(DS.ink2)
+      : AnyLayout(HStackLayout(alignment: .center, spacing: DS.Space.sm))
+    return VStack(alignment: .leading, spacing: DS.Space.md) {
+      layout {
+        VStack(alignment: .leading, spacing: DS.Space.xs) {
+          if let method = recipe.method?.name {
+            Text(method).font(.subheadline.weight(.bold)).foregroundStyle(DS.accent)
+          }
+          Text(recipe.name.dsTitle).font(DS.Font.pageTitle).foregroundStyle(DS.ink)
+            .dynamicTypeSize(...DS.displayCap).lineLimit(3).minimumScaleFactor(0.6)
+            .accessibilityAddTraits(.isHeader)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        if !stacked { BrewHero(glyph: recipe.method?.glyph ?? .cup) }
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
-      if !stacked {
-        BrewHero(
-          glyph: recipe.method?.glyph ?? .cup, methodKey: recipe.method?.builtInKey, role: .setup,
-          size: 132)
-      }
+      calculated
     }
-    .padding(DS.Space.lg)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .colorBlock()
+    .padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.sm).padding(.bottom, DS.Space.xl)
+    .background {
+      // Reaches far above the page so the bar and the status bar sit on it too.
+      UnevenRoundedRectangle(
+        bottomLeadingRadius: 36, bottomTrailingRadius: 36, style: .continuous
+      )
+      .fill(DS.kraft).padding(.top, -1000)
+    }
   }
 
   /// On a Next Cup, which brew it came from and what the AI changed. Start brew shows no
@@ -248,14 +260,18 @@ private struct RecipeDetailContent: View {
       Button("Add new beans", systemImage: "plus") { addingBean = true }
         .accessibilityIdentifier("recipe.addBean")
     } label: {
-      LabeledRow(
-        symbol: "leaf.fill", label: "Beans",
-        value: chosen?.name ?? (beans.isEmpty ? "Add your beans" : "Choose your beans"),
-        valueColor: chosen == nil ? DS.ink2 : DS.ink
-      ) {
-        Image(systemName: "chevron.right").font(.footnote.weight(.bold)).foregroundStyle(DS.ink2)
-          .accessibilityHidden(true)
+      HStack(spacing: DS.Space.sm) {
+        Image(systemName: "leaf.fill").foregroundStyle(DS.accent).accessibilityHidden(true)
+        Text(chosen?.name ?? (beans.isEmpty ? "Add your beans" : "Choose your beans"))
+          .font(DS.Font.headline).foregroundStyle(chosen == nil ? DS.ink2 : DS.ink)
+          .multilineTextAlignment(.leading)
+        Spacer(minLength: DS.Space.sm)
+        Image(systemName: "chevron.up.chevron.down").font(.footnote.weight(.bold))
+          .foregroundStyle(DS.ink2).accessibilityHidden(true)
       }
+      .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.sm)
+      .frame(minHeight: DS.Size.primary)
+      .tile()
       .contentShape(Rectangle())
     }
     .accessibilityLabel("Beans")
@@ -282,9 +298,7 @@ private struct RecipeDetailContent: View {
       let method = GrinderGuide.method(forMethodNamed: recipe.method?.name)
       let recommended = recipeGrind ?? method.flatMap { guide?.recommended(for: $0) }
       VStack(alignment: .leading, spacing: 0) {
-        LabeledRow(symbol: "dial.low.fill", label: "Grinder setting", value: grinder.name) {
-          EmptyView()
-        }
+        tileTitle("Grind · \(grinder.name)")
         GrindWheel(
           setting: $grindSetting, grinderName: grinder.name, identifier: "recipe.grindSetting")
         if let recommended, let guide {
@@ -296,12 +310,26 @@ private struct RecipeDetailContent: View {
           .accessibilityIdentifier("recipe.grindRecommended")
         }
       }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .tile()
       .onAppear { if grindSetting.isEmpty, let recommended { grindSetting = recommended } }
     } else {
-      LabeledRow(symbol: "dial.low.fill", label: "Grinder", value: "Set in Settings") {
-        EmptyView()
+      VStack(alignment: .leading, spacing: 2) {
+        Text("Grinder").font(.subheadline.weight(.bold)).foregroundStyle(DS.ink)
+        Text("Set in Settings").font(.footnote).foregroundStyle(DS.ink2)
       }
+      .padding(DS.Space.md)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .tile()
+      .accessibilityElement(children: .combine)
     }
+  }
+
+  /// The name of a tile, over its stepper.
+  private func tileTitle(_ title: String) -> some View {
+    Text(title).font(.subheadline.weight(.bold)).foregroundStyle(DS.ink)
+      .padding([.horizontal, .top], DS.Space.md)
+      .accessibilityAddTraits(.isHeader)
   }
 
   /// "How much coffee?": an amount in oz, cups or ml sets the dose at the recipe's ratio,
@@ -309,9 +337,8 @@ private struct RecipeDetailContent: View {
   private var yieldControls: some View {
     VStack(alignment: .leading, spacing: 0) {
       HStack(spacing: DS.Space.sm) {
-        Image(systemName: "cup.and.saucer.fill").font(.body.weight(.semibold))
-          .foregroundStyle(DS.accent).frame(width: 28).accessibilityHidden(true)
-        Text("How much coffee?").font(.footnote).foregroundStyle(DS.ink2)
+        Text("How much coffee?").font(.subheadline.weight(.bold)).foregroundStyle(DS.ink)
+          .accessibilityAddTraits(.isHeader)
         Spacer(minLength: DS.Space.sm)
         // Tap buttons, not a wheel: a scroll past the card cannot change the unit.
         Picker("Unit", selection: $yieldUnit) {
@@ -334,7 +361,7 @@ private struct RecipeDetailContent: View {
       if yieldG != nil, let current = scaled?.recipe { pourLine(current) }
       if yieldG != nil { tuningRow }
     }
-    .panel(DS.paper)
+    .tile()
     .onChange(of: yieldAmount) { applyYield() }
     .onChange(of: yieldUnit) { old, new in
       // The amount carries over to the new unit, to the wheel's nearest stop.
@@ -456,12 +483,7 @@ private struct RecipeDetailContent: View {
   /// Dose: the same stepper row as the grind and the amount. Water and ratio follow it below.
   private var doseControls: some View {
     VStack(alignment: .leading, spacing: 0) {
-      HStack(spacing: DS.Space.sm) {
-        Image(systemName: "scalemass.fill").font(.body.weight(.semibold))
-          .foregroundStyle(DS.accent).frame(width: 28).accessibilityHidden(true)
-        Text("Dose").font(.footnote).foregroundStyle(DS.ink2).fixedSize()
-      }
-      .padding([.horizontal, .top], DS.Space.md)
+      tileTitle("Dose")
       let doses = doseStops
       let names = doses.map { RecipeFormat.weight($0, units, withSymbol: false) }
       DialStepper(
@@ -487,7 +509,8 @@ private struct RecipeDetailContent: View {
         .accessibilityIdentifier("recipe.dose.reset")
       }
     }
-    .panel(DS.paper, border: DS.signal.opacity(0.5))
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .tile()
   }
 
   /// The dose stepper's stops: every step up to twice the dose (at least 100 g), plus the
@@ -500,62 +523,71 @@ private struct RecipeDetailContent: View {
       .filter { seen.insert(RecipeFormat.weight($0, units, withSymbol: false)).inserted }
   }
 
-  /// The numbers that follow from the dose, two by two on rules; editing happens above.
+  /// The numbers that follow from the dose, in a row on the poster; editing happens below.
   private var calculated: some View {
     let current = scaled?.recipe ?? recipe.scalable
     let ratio = BrewMath.ratioLabel(
       BrewMath.ratio(
         doseG: current.doseG, waterG: current.waterG,
         iceG: current.includesIce ? current.iceG : nil))
-    var figures: [(id: String, symbol: String, label: String, value: String)] = [
+    var figures: [(id: String, label: String, value: String)] = [
       (
-        "recipe.water", "drop.fill", current.includesIce ? "Hot water" : "Water",
+        "recipe.water", current.includesIce ? "Hot water" : "Water",
         RecipeFormat.weight(current.waterG, units)
       )
     ]
     if current.includesIce, let ice = current.iceG {
-      figures.append(("recipe.ice", "snowflake", "Ice", RecipeFormat.weight(ice, units)))
+      figures.append(("recipe.ice", "Ice", RecipeFormat.weight(ice, units)))
     }
-    if let ratio { figures.append(("recipe.ratio", "circle.grid.2x1.fill", "Ratio", ratio)) }
+    if let ratio { figures.append(("recipe.ratio", "Ratio", ratio)) }
     if let tempC = tuning?.tempC ?? recipe.tempC {
       figures.append(
-        (
-          "recipe.temperature", "thermometer.medium", "Temperature",
-          RecipeFormat.temperature(tempC, units)
-        ))
+        ("recipe.temperature", "Temperature", RecipeFormat.temperature(tempC, units)))
     }
     if let seconds = recipe.totalTimeS {
       figures.append(
         (
-          "recipe.time", "clock", "Time",
+          "recipe.time", "Time",
           RecipeFormat.clock(
             RecipeTiming.scaled(seconds, by: recipe.timingFactor(doseG: doseG, tuning: tuning)))
         ))
     }
-    let columns =
-      dts.isAccessibilitySize
-      ? [GridItem(.flexible())]
-      : [GridItem(.flexible(), spacing: DS.Space.md), GridItem(.flexible())]
-    return VStack(alignment: .leading, spacing: DS.Space.sm) {
-      Kicker("Calculated from dose", color: DS.ink2)
-      LazyVGrid(columns: columns, spacing: 0) {
-        ForEach(figures, id: \.id) { figure in
-          Figure(symbol: figure.symbol, label: figure.label, value: figure.value)
-            .overlay(alignment: .bottom) { Hairline().opacity(0.4) }
-            .accessibilityIdentifier(figure.id)
+    let columns = [
+      GridItem(
+        .adaptive(minimum: dts.isAccessibilitySize ? 140 : 72), spacing: DS.Space.sm,
+        alignment: .topLeading)
+    ]
+    return LazyVGrid(columns: columns, alignment: .leading, spacing: DS.Space.sm) {
+      ForEach(figures, id: \.id) { figure in
+        VStack(alignment: .leading, spacing: 0) {
+          Text(figure.label).font(.caption).foregroundStyle(DS.onKraft.opacity(0.75))
+          Text(figure.value).font(DS.Font.mono(.subheadline, .bold)).foregroundStyle(DS.onKraft)
+            .lineLimit(1).minimumScaleFactor(0.7)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(figure.id)
       }
     }
-    .padding(DS.Space.md)
-    .colorBlock(DS.kraft.opacity(0.6))
   }
 
-  /// The steps as a timeline: time and name, and the full instructions on request.
+  /// The steps as a strip of numbered chips; with the instructions shown, as a timeline
+  /// that has room for them.
   private func stepPreview(_ steps: [RecipeStep]) -> some View {
     let scaledSteps = scaled?.recipe.steps ?? recipe.scalable.steps
     let factor = recipe.timingFactor(doseG: doseG, tuning: tuning)
+    let rows = steps.enumerated().map { index, step in
+      (
+        index: index, step: step,
+        time: RecipeFormat.clock(RecipeTiming.scaled(step.startOffsetS, by: factor)),
+        target: index < scaledSteps.count ? scaledSteps[index].targetCumulativeWaterG : nil
+      )
+    }
     return VStack(alignment: .leading, spacing: DS.Space.md) {
-      SectionRule(title: "Brew steps") {
+      HStack(alignment: .firstTextBaseline) {
+        Text("Brew steps".dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
+          .accessibilityAddTraits(.isHeader)
+        Spacer(minLength: DS.Space.sm)
         if steps.contains(where: { !$0.instruction.isEmpty }) {
           Button(showsInstructions ? "Hide instructions" : "Show instructions") {
             showsInstructions.toggle()
@@ -565,38 +597,64 @@ private struct RecipeDetailContent: View {
           .accessibilityIdentifier("recipe.steps.instructions")
         }
       }
+      .padding(.horizontal, DS.Space.lg)
       if steps.isEmpty {
         Text("This recipe has no steps yet.").font(.body).foregroundStyle(DS.ink2)
+          .padding(.horizontal, DS.Space.lg)
       }
-      VStack(alignment: .leading, spacing: 0) {
-        ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
-          let target = index < scaledSteps.count ? scaledSteps[index].targetCumulativeWaterG : nil
-          TimelineRow(
-            time: RecipeFormat.clock(RecipeTiming.scaled(step.startOffsetS, by: factor)),
-            name: RecipeFormat.title(step.kind),
-            detail: showsInstructions && !step.instruction.isEmpty ? step.instruction : nil,
-            trailing: target.map { RecipeFormat.weight($0, units) },
-            state: .upcoming, isLast: index == steps.count - 1
-          )
-          .accessibilityElement(children: .ignore)
-          .accessibilityLabel(
-            RecipeFormat.spokenStep(
-              kind: step.kind, startOffsetS: step.startOffsetS, targetG: target, units: units)
-          )
-          .accessibilityHint(step.instruction)
-          .accessibilityIdentifier("recipe.step.\(index)")
+      if showsInstructions {
+        VStack(alignment: .leading, spacing: 0) {
+          ForEach(rows, id: \.step.id) { row in
+            TimelineRow(
+              time: row.time, name: RecipeFormat.title(row.step.kind),
+              detail: row.step.instruction.isEmpty ? nil : row.step.instruction,
+              trailing: row.target.map { RecipeFormat.weight($0, units) },
+              state: .upcoming, isLast: row.index == steps.count - 1
+            )
+            .modifier(StepAccessibility(row.index, row.step, row.target, units))
+          }
+        }
+        .padding(.horizontal, DS.Space.lg)
+      } else {
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(alignment: .top, spacing: DS.Space.sm) {
+            ForEach(rows, id: \.step.id) { row in
+              VStack(alignment: .leading, spacing: DS.Space.xs) {
+                Text("\(row.index + 1)").font(DS.Font.mono(.subheadline, .bold))
+                  .foregroundStyle(DS.onSignal).frame(width: 30, height: 30)
+                  .background(DS.signal, in: Circle())
+                Text(RecipeFormat.title(row.step.kind)).font(DS.Font.headline)
+                  .foregroundStyle(DS.onKraft)
+                Text(
+                  [row.target.map { "to \(RecipeFormat.weight($0, units))" }, "at \(row.time)"]
+                    .compactMap { $0 }.joined(separator: " · ")
+                )
+                .font(.footnote).foregroundStyle(DS.onKraft.opacity(0.75))
+              }
+              .padding(DS.Space.md)
+              .frame(minWidth: 124, alignment: .leading)
+              .background(
+                DS.kraft, in: RoundedRectangle(cornerRadius: DS.radius, style: .continuous)
+              )
+              .modifier(StepAccessibility(row.index, row.step, row.target, units))
+            }
+          }
+          .padding(.horizontal, DS.Space.lg)
         }
       }
-      SteelButton(title: "Change steps", kind: .secondary, action: changeSteps)
-        .accessibilityHint("Add or change steps, with optional AI suggestions")
-        .accessibilityIdentifier("recipe.steps.change")
-      Text(
-        editsInPlace
-          ? "Add a step, change a pour or let AI suggest better steps."
-          : "Add a step, change a pour or let AI suggest better steps. It saves as your own "
-            + "recipe at this size; this one stays as it is."
-      )
-      .font(.footnote).foregroundStyle(DS.ink2)
+      VStack(alignment: .leading, spacing: DS.Space.md) {
+        SteelButton(title: "Change steps", kind: .secondary, action: changeSteps)
+          .accessibilityHint("Add or change steps, with optional AI suggestions")
+          .accessibilityIdentifier("recipe.steps.change")
+        Text(
+          editsInPlace
+            ? "Add a step, change a pour or let AI suggest better steps."
+            : "Add a step, change a pour or let AI suggest better steps. It saves as your own "
+              + "recipe at this size; this one stays as it is."
+        )
+        .font(.footnote).foregroundStyle(DS.ink2)
+      }
+      .padding(.horizontal, DS.Space.lg)
     }
   }
 
@@ -732,6 +790,32 @@ extension Recipe {
   /// Built-in versions share a key prefix: "cone-balanced" and "cone-balanced/strong".
   var family: String? { builtInKey?.split(separator: "/").first.map(String.init) }
   var isVersion: Bool { builtInKey?.contains("/") == true }
+}
+
+/// One step read as one element, the same on a chip and on a timeline row.
+private struct StepAccessibility: ViewModifier {
+  let index: Int
+  let step: RecipeStep
+  let target: Double?
+  let units: UnitPreferences
+
+  init(_ index: Int, _ step: RecipeStep, _ target: Double?, _ units: UnitPreferences) {
+    self.index = index
+    self.step = step
+    self.target = target
+    self.units = units
+  }
+
+  func body(content: Content) -> some View {
+    content
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel(
+        RecipeFormat.spokenStep(
+          kind: step.kind, startOffsetS: step.startOffsetS, targetG: target, units: units)
+      )
+      .accessibilityHint(step.instruction)
+      .accessibilityIdentifier("recipe.step.\(index)")
+  }
 }
 
 /// What restarts the batch tuning: a new dose from the wheel, or the tap that sends it.
