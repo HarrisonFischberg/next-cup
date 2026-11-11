@@ -445,8 +445,10 @@ struct DataEraser {
         context.rollback()
         return .failure(error)
       }
+      // The delete is committed: from here nothing may fail the call, or the caller
+      // would say "nothing was deleted" and drop the snapshot Undo needs.
       try? FileManager.default.removeItem(at: draftsDirectory)
-      try backups.removeAll()
+      try? backups.removeAll()
       endActivity()
       for directory in scratchDirectories + [externalData].compactMap({ $0 }) {
         Self.empty(directory)
@@ -462,7 +464,9 @@ struct DataEraser {
       if let tab { defaults.set(tab, forKey: AppTab.storageKey) }
       for key in ranOnce { defaults.set(true, forKey: key) }
       clearKeys()
-      return BuiltInSeeder(store: store, defaults: defaults).seed(content).map { _ in snapshot }
+      // A failed reseed is retried by the next launch (the seeder's ledger is unwritten).
+      _ = BuiltInSeeder(store: store, defaults: defaults).seed(content)
+      return .success(snapshot)
     } catch {
       store.context.rollback()
       return .failure(.saveFailed(error.localizedDescription))
