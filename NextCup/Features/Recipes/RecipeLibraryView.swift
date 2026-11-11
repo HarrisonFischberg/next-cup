@@ -68,7 +68,7 @@ struct RecipeLibraryView: View {
     return grouped.map { id, recipes in
       let bean = beans.first { $0.id == id }
       return (
-        bean.map { "Recipes for \($0.name)" } ?? "Recipes for your beans",
+        bean.map { "Recipes for the \($0.name)" } ?? "Recipes for your beans",
         recipes.sorted { $0.createdAt < $1.createdAt }, bean?.createdAt ?? .distantPast
       )
     }
@@ -119,10 +119,25 @@ struct RecipeLibraryView: View {
           ForEach(groups, id: \.title) { group in section(group.title, group.recipes) }
         } else {
           autoNextCup
-          ForEach(toTry, id: \.title) { group in section(group.title, group.recipes) }
-          if !nextCups.isEmpty {
-            SectionRule("Recipes for your Next Cup")
+          SectionRule("Recipes for your Next Cup")
+          if nextCups.isEmpty {
+            Text("Brew a saved recipe and rate it. Your next cup to make lands here.")
+              .font(.subheadline).foregroundStyle(DS.ink2)
+              .accessibilityIdentifier("recipes.nextCup.empty")
+          } else {
             section("", nextCups)
+          }
+          ForEach(toTry, id: \.title) { group in
+            SectionRule(title: group.title) {
+              let count = group.recipes.count
+              Text(
+                count > BeanBrewAI.pickCount
+                  ? "\(count) saved" : "\(count) of \(BeanBrewAI.pickCount) saved"
+              )
+              .font(.subheadline.weight(.semibold).monospacedDigit()).foregroundStyle(DS.accent)
+              .accessibilityIdentifier("recipes.toTry.count")
+            }
+            section("", group.recipes)
           }
           methods
           SectionRule("Your recipes")

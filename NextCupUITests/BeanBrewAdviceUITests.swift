@@ -67,9 +67,10 @@ final class BeanBrewAdviceUITests: XCTestCase {
 
     // Every recipe decided: back to the Brew tab with the saved ones to try.
     let kicker = app.staticTexts.matching(
-      NSPredicate(format: "label CONTAINS[c] 'recipes for southern weather'")
+      NSPredicate(format: "label CONTAINS[c] 'recipes for the southern weather'")
     ).firstMatch
     XCTAssertTrue(kicker.waitForExistence(timeout: 8))
+    XCTAssertTrue(app.staticTexts["2 of 3 saved"].exists)
     let gone = expectation(
       for: NSPredicate(format: "exists == false"), evaluatedWith: element("beanbrew.sheet"))
     wait(for: [gone], timeout: 5)
