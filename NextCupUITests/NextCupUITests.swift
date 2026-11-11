@@ -772,7 +772,9 @@ final class NextCupUITests: XCTestCase {
       journalRow(app, containing: "15.1 g").waitForExistence(timeout: 5),
       "list shows the edited dose: \(app.debugDescription)")
 
-    // Delete with Undo: the row goes, Undo brings it back untouched.
+    // Delete with Undo: the row goes, Undo brings it back untouched. The search is still
+    // open from before the edit, so its keyboard is put away first; it covers the row.
+    if app.keyboards.buttons["Search"].exists { app.keyboards.buttons["Search"].tap() }
     let edited = journalRow(app, containing: "Washed Ethiopia sweet")
     edited.swipeLeft()
     app.buttons["Delete"].tap()
@@ -907,7 +909,7 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(original.label.contains("15 g"), "the original is unchanged: \(original.label)")
   }
 
-  /// Long-pressing a recipe the user made offers Delete (after a confirmation); a
+  /// Long-pressing a recipe the user made offers Delete (with Undo, no confirmation); a
   /// built-in recipe never offers it.
   @MainActor
   func testLongPressDeletesOnlyARecipeTheUserMade() {
@@ -940,9 +942,17 @@ final class NextCupUITests: XCTestCase {
     copy.press(forDuration: 1)
     XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 5))
     app.buttons["Delete"].tap()
-    let confirm = app.buttons["Delete recipe"].firstMatch
-    XCTAssertTrue(confirm.waitForExistence(timeout: 5))
-    confirm.tap()
+    // No confirmation: the card goes and Undo brings it back.
+    XCTAssertTrue(app.staticTexts["Recipe deleted"].waitForExistence(timeout: 5))
+    XCTAssertTrue(copy.waitForNonExistence(timeout: 5))
+    app.buttons["UNDO"].tap()
+    XCTAssertTrue(copy.waitForExistence(timeout: 5), "Undo puts the recipe back")
+    copy.press(forDuration: 1)
+    XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 5))
+    app.buttons["Delete"].tap()
+    XCTAssertTrue(app.staticTexts["Recipe deleted"].waitForExistence(timeout: 5))
+    // Let the toast run out: the recipe stays gone.
+    XCTAssertTrue(app.staticTexts["Recipe deleted"].waitForNonExistence(timeout: 12))
     XCTAssertTrue(copy.waitForNonExistence(timeout: 5))
     app.buttons["Clear search"].firstMatch.tap()
     search.tap()
