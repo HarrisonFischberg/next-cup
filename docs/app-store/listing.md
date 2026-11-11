@@ -129,6 +129,12 @@ opens a draft in the user's own email app, which they read and send
 themselves; the app sends nothing. **No change to the answers.** The published
 policy already covers it ("If you email us, we receive what you choose to send").
 
+Rechecked 2026-11-09 for 1.4 against the bean AI flow (PR #88: front and back of
+the bag as one image), brewer size in recipe requests (PR #90) and the journal
+recipe line (PR #91, on device only): photos and recipe text still go only to the
+user's own provider on a tap. **No change to the answers.** The published policy
+gained the two matching lines (studio-site PR #45).
+
 ## Export compliance
 
 `ITSAppUsesNonExemptEncryption = false` is already in `Config/NextCup-Info.plist`,

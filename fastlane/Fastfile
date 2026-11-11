@@ -29,8 +29,8 @@ platform :ios do
       scheme: "NextCup",
       export_method: "app-store",
       output_directory: "build",
-      xcargs: "CURRENT_PROJECT_VERSION=#{Time.now.utc.strftime('%Y%m%d.%H%M')} -allowProvisioningUpdates#{key}",
-      export_xcargs: "-allowProvisioningUpdates#{key}"
+      # gym passes xcargs to the export too; repeating the key there makes xcodebuild refuse it.
+      xcargs: "CURRENT_PROJECT_VERSION=#{Time.now.utc.strftime('%Y%m%d.%H%M')} -allowProvisioningUpdates#{key}"
     )
   end
 
