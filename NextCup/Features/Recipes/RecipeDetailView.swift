@@ -581,7 +581,30 @@ private struct RecipeDetailContent: View {
 
   /// The steps as a strip of numbered chips; with the instructions shown, as a timeline
   /// that has room for them.
-  private func stepPreview(_ steps: [RecipeStep]) -> some View {
+  @ViewBuilder private func stepPreview(_ steps: [RecipeStep]) -> some View {
+    let look = BrewStepsLook.current
+    if look == 0 || steps.isEmpty {
+      stripPreview(steps)
+    } else {
+      let factor = recipe.timingFactor(doseG: doseG, tuning: tuning)
+      let scaledSteps = scaled?.recipe.steps ?? recipe.scalable.steps
+      let rows = steps.enumerated().map { index, step in
+        BrewStepRow(
+          index: index, step: step, startS: RecipeTiming.scaled(step.startOffsetS, by: factor),
+          target: index < scaledSteps.count ? scaledSteps[index].targetCumulativeWaterG : nil)
+      }
+      let totalS = max(
+        recipe.totalTimeS.map { RecipeTiming.scaled($0, by: factor) } ?? 0,
+        (rows.last?.startS ?? 0) + 30)
+      switch look {
+      case 1: StepsRecipeCard(rows: rows, totalS: totalS, units: units, onEdit: changeSteps)
+      case 2: StepsPourCurve(rows: rows, totalS: totalS, units: units, onEdit: changeSteps)
+      default: StepsBrewBar(rows: rows, totalS: totalS, units: units, onEdit: changeSteps)
+      }
+    }
+  }
+
+  private func stripPreview(_ steps: [RecipeStep]) -> some View {
     let scaledSteps = scaled?.recipe.steps ?? recipe.scalable.steps
     let factor = recipe.timingFactor(doseG: doseG, tuning: tuning)
     let rows = steps.enumerated().map { index, step in
