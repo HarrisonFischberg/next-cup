@@ -390,6 +390,9 @@ final class BrewFormModel {
       suggestionError = "That value could not be used. Nothing was changed."
       return
     }
+    // For a grind with no number the rules can only say "one step finer". That is advice,
+    // not a setting: accepting it must not replace the grind the user wrote.
+    if edited == nil, parameter == .grind, original.hasPrefix("one step ") { next = draft }
     let previous = SuggestionApplication.value(of: parameter, in: draft)
     suggestion.toValue = applied
     suggestion.state = edited == nil ? .accepted : .edited
@@ -528,6 +531,8 @@ final class BrewFormModel {
       TasteReminder.schedule(
         brewID: draft.id, beanName: draft.beans?.first?.name, brewedAt: draft.date)
     }
+    // Tasted through Edit: the reminder to taste it has nothing left to ask.
+    if isEditing, draft.verdict != nil { TasteReminder.cancel(brewID: draft.id) }
     makeSuggestion()
     noteNewBest()
     if case .failure = draftStore.clear() {

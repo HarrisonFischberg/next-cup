@@ -72,6 +72,9 @@ struct AISettingsView: View {
       model =
         provider == .apple
         ? AppleIntelligence.modelID : (models[provider]?.contains(model) == true ? model : "")
+      // The other provider's model is not on this one's list: start on its default, or
+      // nothing is stored and requests keep going to the provider just switched away from.
+      pickDefaultModel(provider)
       apply()
     }
     .onChange(of: model) { apply() }

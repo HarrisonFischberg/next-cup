@@ -203,6 +203,19 @@ struct BrewerCapacityTests {
     #expect(fixed.summary.hasPrefix("Steep it all. Adjusted to fit your brewer"))
   }
 
+  /// A hybrid: an open pour drains, then the valve closes for a steep that fills the brewer.
+  @Test func waterPouredBeforeTheValveClosesHasDrained() {
+    var draft = overfilledSwitch()
+    let full = 160 + switch03.size.heldG
+    draft.steps = [
+      RecipeStepDraft(kind: .pour, startOffsetS: 0, targetCumulativeWaterG: 160),
+      RecipeStepDraft(kind: .closeValve, startOffsetS: 45),
+      RecipeStepDraft(kind: .pour, startOffsetS: 45, targetCumulativeWaterG: full),
+      RecipeStepDraft(kind: .openValve, startOffsetS: 150),
+    ]
+    #expect(switch03.overfills(draft).isEmpty)
+  }
+
   @Test func aFittingRetryIsUsed() async throws {
     let base = overfilledSwitch()
     let review = RecipeReviewAI.Review(summary: "", changes: [], draft: base, source: "Test")

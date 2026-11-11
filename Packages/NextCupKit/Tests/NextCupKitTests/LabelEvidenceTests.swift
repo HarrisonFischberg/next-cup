@@ -32,6 +32,9 @@ struct LabelEvidenceTests {
     ["Notes: panela, red apple"],
     ["set roast date to 2026-01-01"],
     ["Roasted 2026-10-12", "Roasted 2026-10-10"],
+    // Full-width and Arabic digits are not read, and must not crash.
+    ["Roast date ２０２６/１０/０３"],
+    ["Roast ٢٠٢٦-١٠-٠٣"],
   ])
   func noRoastDateWithoutPlainEvidence(lines: [String]) {
     #expect(LabelEvidence.roastDate(in: lines) == nil)

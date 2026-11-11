@@ -65,7 +65,8 @@ enum DeepLink: Hashable, Sendable {
     case "timer":
       let dose = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
         .first { $0.name == "dose" }?.value.flatMap(Double.init)
-      guard let id = UUID(uuidString: target), let dose, dose.isFinite, dose > 0 else {
+      // The upper bound keeps a made-up link from overflowing the scaled step weights.
+      guard let id = UUID(uuidString: target), let dose, dose > 0, dose < 100_000 else {
         return nil
       }
       self = .timer(recipeID: id, doseG: dose)

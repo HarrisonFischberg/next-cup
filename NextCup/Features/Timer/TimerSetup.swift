@@ -12,12 +12,7 @@ struct TimerSetup: Identifiable, Hashable {
   let tempC: Double?
   /// The recipe after scaling to the dose the user chose.
   let scaled: ScalableRecipe
-  /// Display names for each step, in plan order.
-  let stepTitles: [String]
-  /// What the timer's picture shows, and each step's kind (StepKind raw value) by
-  /// the step's `order`.
-  var sceneKind: BrewSceneKind = .pourOver
-  var glyph: BrewGlyph = .cone
+  /// Each step's kind (StepKind raw value) by the step's `order`.
   var stepKinds: [String] = []
   /// The built-in method's key (or its style for one the user made), so the timer
   /// words each step the way that brewer is used.
@@ -27,15 +22,6 @@ struct TimerSetup: Identifiable, Hashable {
   var beanName: String?
   var grinderID: UUID?
   var grindSetting = ""
-
-  /// The plan's steps as the brew picture reads them.
-  var sceneSteps: [BrewSceneStep] {
-    plan.steps.map { step in
-      BrewSceneStep(
-        startS: Double(step.startOffsetS),
-        kind: step.order < stepKinds.count ? stepKinds[step.order] : "wait")
-    }
-  }
 
   static func == (lhs: TimerSetup, rhs: TimerSetup) -> Bool { lhs.id == rhs.id }
   func hash(into hasher: inout Hasher) { hasher.combine(id) }
@@ -80,10 +66,8 @@ enum TimerPlanBuilder {
     let plan = try TimerPlan(steps: timerSteps, totalDurationS: total)
     return TimerSetup(
       plan: plan, recipeID: recipe.id, recipeName: recipe.name, methodName: recipe.method?.name,
-      tempC: tuning?.tempC ?? recipe.tempC, scaled: scaled, stepTitles: timerSteps.map(\.label),
-      sceneKind: BrewSceneKind(
-        methodKey: recipe.method?.builtInKey, style: recipe.method?.style.rawValue),
-      glyph: recipe.method?.glyph ?? .cup, stepKinds: steps.map(\.kind.rawValue),
+      tempC: tuning?.tempC ?? recipe.tempC, scaled: scaled,
+      stepKinds: steps.map(\.kind.rawValue),
       methodKey: recipe.method?.builtInKey ?? recipe.method?.style.rawValue)
   }
 

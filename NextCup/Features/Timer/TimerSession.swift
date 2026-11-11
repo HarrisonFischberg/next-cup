@@ -103,9 +103,22 @@ final class TimerSession {
     self.setup = setup
     self.haptics = haptics
     self.activity = activity
-    if let restored = TimerEngine.restore(clock: clock, store: store), restored.plan == setup.plan {
+    let saved = store.load()
+    // A run begun over an hour past its target ago was left behind (screen left, app
+    // killed), not paused for a moment: the same recipe today is a new brew.
+    let stale =
+      saved.map {
+        clock.now().timeIntervalSince($0.startedAt) > Double($0.plan.totalDurationS) + 3600
+      } ?? false
+    if saved?.plan == setup.plan, !stale,
+      let restored = TimerEngine.restore(clock: clock, store: store)
+    {
       engine = restored
     } else {
+      if stale {
+        store.clear()
+        activity.end()
+      }
       engine = TimerEngine(plan: setup.plan, clock: clock, store: store)
     }
     state = engine.state()

@@ -511,6 +511,8 @@ struct JournalListView: View {
     if case .failure(.saveFailed(let message)) = store.save() {
       context.rollback()
       deleteError = "The brew was not deleted. \(message)"
+    } else {
+      TasteReminder.cancel(brewID: id)
     }
   }
 }

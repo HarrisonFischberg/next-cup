@@ -240,6 +240,24 @@ struct TimerSessionTests {
     #expect(second.state.currentIndex == 1)
   }
 
+  @Test func aTimerLeftRunningYesterdayIsNotPickedUp() throws {
+    let clock = FakeClock()
+    let store = MemoryStore()
+    let setup = try TimerPlanBuilder.setup(for: makeRecipe(), doseG: 15)
+    let first = TimerSession(
+      setup: setup, clock: clock, store: store, haptics: RecordingHaptics(),
+      activity: RecordingActivity())
+    first.start()
+    clock.advance(86_400)
+
+    let activity = RecordingActivity()
+    let second = TimerSession(
+      setup: setup, clock: clock, store: store, haptics: RecordingHaptics(), activity: activity)
+    #expect(second.state.phase == .notStarted)
+    #expect(store.load() == nil)
+    #expect(activity.endCount == 1)
+  }
+
   @Test func aSavedTimerForAnotherPlanIsNotAdopted() throws {
     let clock = FakeClock()
     let store = MemoryStore()
@@ -299,6 +317,22 @@ struct TimerSessionTests {
 
     session.endEarly()
     #expect(TimerActivityAttributes.ContentState(state: session.state, now: now) == nil)
+  }
+
+  /// Two steps at 0:00 are one displayed step, on the Lock Screen as on the timer screen.
+  @Test func activityCountsStepsThatStartTogetherAsOne() throws {
+    let recipe = makeRecipe()
+    let close = RecipeStep(order: 0, kind: .closeValve, startOffsetS: 0)
+    recipe.steps?.append(close)
+    let setup = try TimerPlanBuilder.setup(for: recipe, doseG: 15)
+    let session = TimerSession(
+      setup: setup, clock: FakeClock(), store: MemoryStore(), haptics: RecordingHaptics(),
+      activity: RecordingActivity())
+    session.start()
+    let content = try #require(
+      TimerActivityAttributes.ContentState(state: session.state, plan: setup.plan, now: Date()))
+    #expect(content.stepNumber == 1)
+    #expect(TimerActivityAttributes(setup: setup).stepCount == 3)
   }
 
   @Test func activityLinkReopensTheTimerAtTheScaledDose() throws {

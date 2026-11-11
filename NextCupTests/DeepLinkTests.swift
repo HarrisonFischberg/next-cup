@@ -54,6 +54,8 @@ struct DeepLinkTests {
       "nextcup://timer/6F1B7A52-3C4D-4E5F-8A9B-0C1D2E3F4A5B?dose=0",
       "nextcup://timer/6F1B7A52-3C4D-4E5F-8A9B-0C1D2E3F4A5B?dose=-3",
       "nextcup://timer/6F1B7A52-3C4D-4E5F-8A9B-0C1D2E3F4A5B?dose=abc",
+      "nextcup://timer/6F1B7A52-3C4D-4E5F-8A9B-0C1D2E3F4A5B?dose=1e300",
+      "nextcup://timer/6F1B7A52-3C4D-4E5F-8A9B-0C1D2E3F4A5B?dose=inf",
       "nextcup://timer/not-a-uuid?dose=15",
     ])
   func rejectsMalformedTimerLinks(_ text: String) {

@@ -329,7 +329,7 @@ struct OnboardingView: View {
       switch BeanService(store: store).save(fields) {
       case .success(let bean): added.append(bean)
       case .failure(let failure):
-        error = "\(entry.coffee) was not saved. \(failure.localizedDescription)"
+        error = "\(entry.coffee) was not saved. \(failure.message)"
         return false
       }
     }
@@ -343,8 +343,12 @@ struct OnboardingView: View {
     let name = grinder.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !name.isEmpty else { return true }
     let store = Store(context: context)
-    let grinder = Grinder(name: name)
-    context.insert(grinder)
+    // Back then Next runs this again: reuse the grinder it saved the first time.
+    let existing = ((try? context.fetch(FetchDescriptor<Grinder>())) ?? []).first {
+      $0.name.compare(name, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+    }
+    let grinder = existing ?? Grinder(name: name)
+    if existing == nil { context.insert(grinder) }
     if case .failure(.saveFailed(let message)) = store.save() {
       context.rollback()
       error = "The grinder was not saved. \(message)"

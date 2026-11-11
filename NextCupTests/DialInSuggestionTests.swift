@@ -237,6 +237,18 @@ struct DialInSuggestionTests {
     #expect(suggestion.appliedTo?.count == 1)
   }
 
+  @Test func acceptingOneStepFinerKeepsTheGrindTheUserWrote() throws {
+    let harness = try Harness()
+    try harness.log(.sour, grind: "medium-fine")
+    let suggestion = try #require(try harness.suggestions().first)
+    #expect(suggestion.toValue == "one step finer")
+    let next = harness.model()
+    next.draft.grindSetting = "medium-fine"
+    next.applySuggestion(suggestion)
+    #expect(next.draft.grindSetting == "medium-fine")
+    #expect(suggestion.state == .accepted)
+  }
+
   @Test func editingTheValueAppliesTheUsersNumber() throws {
     let harness = try Harness()
     try harness.log(.sour)

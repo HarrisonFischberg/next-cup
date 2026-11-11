@@ -158,9 +158,11 @@ enum ImportError: LocalizedError, Equatable {
 /// up with the reseeded built-ins instead of duplicating them.
 struct ImportPlan {
   var archive: DataArchive
-  /// Steps of built-in recipes that already exist here. They are only used when
-  /// the user chooses the imported recipe, which then replaces the local steps.
+  /// Steps of recipes, and beans of brews, that already exist here, by parent id. An edit
+  /// here gives these rows new ids, so importing them as new rows would double them. They
+  /// are only used when the user chooses the imported parent, and then replace the local ones.
   var adoptedSteps: [UUID: [StepRecord]] = [:]
+  var adoptedBrewBeans: [UUID: [BrewBeanRecord]] = [:]
   var items: [ImportItem] = []
 
   var conflicts: [ImportItem] { items.filter { $0.status == .conflict } }
@@ -262,18 +264,19 @@ struct DataImporter {
     let recipeByKey = Dictionary(
       localRecipes.compactMap { r in r.builtInKey.map { ($0, r.id) } },
       uniquingKeysWith: { first, _ in first })
-    var adopted: Set<UUID> = []
     for index in archive.recipes.indices {
       guard let key = archive.recipes[index].builtInKey, let local = recipeByKey[key] else {
         continue
       }
       idMap[archive.recipes[index].id] = local
       archive.recipes[index].id = local
-      adopted.insert(local)
     }
     func mapped(_ id: UUID?) -> UUID? { id.map { idMap[$0] ?? $0 } }
+    // Fields added after the first export are missing from older files. Missing is not
+    // a difference: a star reads as unstarred, and a brew keeps the recipe snapshot it has.
     for index in archive.recipes.indices {
       archive.recipes[index].methodID = mapped(archive.recipes[index].methodID)
+      archive.recipes[index].isFavorite = archive.recipes[index].isFavorite ?? false
     }
     for index in archive.steps.indices {
       archive.steps[index].recipeID = mapped(archive.steps[index].recipeID)
@@ -281,17 +284,30 @@ struct DataImporter {
     for index in archive.brews.indices {
       archive.brews[index].methodID = mapped(archive.brews[index].methodID)
       archive.brews[index].recipeID = mapped(archive.brews[index].recipeID)
+      archive.brews[index].isFavorite = archive.brews[index].isFavorite ?? false
     }
 
+    let session = ImportSession(store: store)
+    let brewsHere = try session.existing(Brew.self)
+    for index in archive.brews.indices where archive.brews[index].recipeSnapshotJSON == nil {
+      archive.brews[index].recipeSnapshotJSON =
+        brewsHere[archive.brews[index].id]?.recipeSnapshotJSON
+    }
     var plan = ImportPlan(archive: archive)
+    let recipesHere = try session.existing(Recipe.self)
     for step in archive.steps {
-      if let recipeID = step.recipeID, adopted.contains(recipeID) {
+      if let recipeID = step.recipeID, recipesHere[recipeID] != nil {
         plan.adoptedSteps[recipeID, default: []].append(step)
       }
     }
-    plan.archive.steps.removeAll { step in step.recipeID.map(adopted.contains) ?? false }
+    plan.archive.steps.removeAll { $0.recipeID.map { recipesHere[$0] != nil } ?? false }
+    for use in archive.brewBeans {
+      if let brewID = use.brewID, brewsHere[brewID] != nil {
+        plan.adoptedBrewBeans[brewID, default: []].append(use)
+      }
+    }
+    plan.archive.brewBeans.removeAll { $0.brewID.map { brewsHere[$0] != nil } ?? false }
 
-    let session = ImportSession(store: store)
     plan.items = try plan.archive.lists.flatMap { try $0.items(session) }
     return plan
   }
@@ -303,11 +319,21 @@ struct DataImporter {
     let session = ImportSession(store: store)
     var archive = plan.archive
     do {
-      for recipeID in overwrite where plan.adoptedSteps[recipeID] != nil {
-        for step in try session.existing(RecipeStep.self).values where step.recipe?.id == recipeID {
+      // Fetched here, not through the session: its cache must not hold the deleted rows,
+      // or an imported row with the same id would be taken as already here and skipped.
+      for (recipeID, steps) in plan.adoptedSteps where overwrite.contains(recipeID) {
+        for step in try store.context.fetch(FetchDescriptor<RecipeStep>())
+        where step.recipe?.id == recipeID {
           store.context.delete(step)
         }
-        archive.steps += plan.adoptedSteps[recipeID] ?? []
+        archive.steps += steps
+      }
+      for (brewID, uses) in plan.adoptedBrewBeans where overwrite.contains(brewID) {
+        for use in try store.context.fetch(FetchDescriptor<BrewBean>())
+        where use.brew?.id == brewID {
+          store.context.delete(use)
+        }
+        archive.brewBeans += uses
       }
       for list in archive.lists { try list.insert(session, overwrite: overwrite) }
       for link in session.links { link() }
@@ -445,22 +471,28 @@ struct DataEraser {
         context.rollback()
         return .failure(error)
       }
+      // The delete is committed: from here nothing may fail the call, or the caller
+      // would say "nothing was deleted" and drop the snapshot Undo needs.
       try? FileManager.default.removeItem(at: draftsDirectory)
-      try backups.removeAll()
+      try? backups.removeAll()
       endActivity()
       for directory in scratchDirectories + [externalData].compactMap({ $0 }) {
         Self.empty(directory)
       }
       // The selected tab stays, so the screen the user is on (and its Undo toast)
       // does not jump away. The rating flag stays, or the next launch would convert
-      // ratings already out of 10 a second time.
+      // ratings already out of 10 a second time. The recipe backfill flag stays, or the
+      // next launch would link brews logged without a recipe to a look-alike one.
       let tab = defaults.object(forKey: AppTab.storageKey)
-      let ratingsMigrated = defaults.bool(forKey: RatingMigration.doneKey)
+      let ranOnce = [RatingMigration.doneKey, RecipeSnapshotBackfill.doneKey].filter(
+        defaults.bool(forKey:))
       defaults.removePersistentDomain(forName: defaultsDomain)
       if let tab { defaults.set(tab, forKey: AppTab.storageKey) }
-      if ratingsMigrated { defaults.set(true, forKey: RatingMigration.doneKey) }
+      for key in ranOnce { defaults.set(true, forKey: key) }
       clearKeys()
-      return BuiltInSeeder(store: store, defaults: defaults).seed(content).map { _ in snapshot }
+      // A failed reseed is retried by the next launch (the seeder's ledger is unwritten).
+      _ = BuiltInSeeder(store: store, defaults: defaults).seed(content)
+      return .success(snapshot)
     } catch {
       store.context.rollback()
       return .failure(.saveFailed(error.localizedDescription))

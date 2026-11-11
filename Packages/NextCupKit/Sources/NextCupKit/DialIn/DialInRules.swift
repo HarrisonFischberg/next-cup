@@ -141,7 +141,7 @@ public enum DialInRules {
       warmer
       ? min(current + temperatureStepC, temperatureCeilingC)
       : max(current - temperatureStepC, temperatureFloorC)
-    guard next != current else { return nil }
+    guard warmer ? next > current : next < current else { return nil }
     let why =
       warmer
       ? "Hotter water extracts more, which helps a sour cup."

@@ -178,7 +178,10 @@ struct BrewerFit: Equatable {
     var closed = false
     for (index, step) in RecipeEditorService.sorted(draft.steps).enumerated() {
       switch step.kind {
-      case .closeValve: closed = true
+      case .closeValve:
+        // What was poured with the valve open has drained; `split` assumes the same.
+        closed = true
+        held = 0
       case .openValve:
         closed = false
         held = 0
