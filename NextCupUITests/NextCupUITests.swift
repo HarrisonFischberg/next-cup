@@ -92,37 +92,33 @@ final class NextCupUITests: XCTestCase {
     }
   }
 
+  /// The flavor explorer lists only what the user's beans carry: the demo beans have
+  /// origins and roasts, no tasting notes and no brewer.
   @MainActor
-  func testFlavorExplorerReachesEveryBucket() {
-    let app = launch()
+  func testFlavorExplorerShowsOnlyYourBeans() {
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      "-perfBrews", "12",
+    ]
+    app.launch()
     app.tabBars.buttons["Explore"].tap()
     let entry = element(app, "explore.flavors")
     XCTAssertTrue(entry.waitForExistence(timeout: 10))
     entry.tap()
     XCTAssertTrue(element(app, "flavor.list").waitForExistence(timeout: 10))
-    let buckets = [
-      "flavor": [
-        "citrus", "stone-fruit", "berry", "tropical", "floral", "chocolate", "nutty", "caramel",
-        "spice", "roasted",
-      ],
-      "origin": ["east-africa", "central-america", "south-america", "asia-pacific", "caribbean"],
-      "process": ["washed", "natural", "honey", "experimental"],
-      "roast": ["light", "medium", "dark"],
-      "brewer": ["pourOver", "immersion", "espresso", "cold"],
-    ]
-    for (dimension, keys) in buckets {
-      for key in keys {
-        let row = element(app, "flavor.bucket.\(dimension).\(key)")
-        // The list is lazy: start from the top each time, then scroll down to the row.
-        for _ in 0..<6 { app.swipeDown() }
-        scrollUntilHittable(row, in: app)
-        XCTAssertTrue(row.isHittable, "bucket \(dimension).\(key) is not reachable")
-      }
+    for id in ["origin.east-africa", "origin.south-america", "origin.central-america"] {
+      let row = element(app, "flavor.bucket.\(id)")
+      scrollUntilHittable(row, in: app)
+      XCTAssertTrue(row.isHittable, "bucket \(id) is not reachable")
     }
-    for _ in 0..<14 { app.swipeDown() }
-    element(app, "flavor.bucket.flavor.citrus").tap()
-    XCTAssertTrue(element(app, "flavor.detail.flavor.citrus").waitForExistence(timeout: 10))
-    XCTAssertTrue(app.staticTexts["WORDS THAT MAP HERE"].exists)
+    for id in ["flavor.citrus", "origin.asia-pacific", "brewer.espresso"] {
+      XCTAssertFalse(element(app, "flavor.bucket.\(id)").exists, "\(id) is not on any bean")
+    }
+    for _ in 0..<6 { app.swipeDown() }
+    element(app, "flavor.bucket.origin.east-africa").tap()
+    XCTAssertTrue(element(app, "flavor.detail.origin.east-africa").waitForExistence(timeout: 10))
+    XCTAssertTrue(app.staticTexts["YOUR BEANS"].exists)
   }
 
   @MainActor
@@ -851,10 +847,18 @@ final class NextCupUITests: XCTestCase {
         ] + variant.args
       app.launch()
       XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-      app.tabBars.buttons["Explore"].tap()
-      let ask = app.descendants(matching: .any).matching(
-        NSPredicate(format: "identifier BEGINSWITH 'explore.insights.'")
-      ).firstMatch
+      // Ask AI about this coffee is on a brewed bean's page in Beans.
+      app.tabBars.buttons["Beans"].tap()
+      // Thirty beans: search for the one with brews instead of scrolling the lazy list.
+      let search = app.searchFields.firstMatch
+      XCTAssertTrue(search.waitForExistence(timeout: 10))
+      search.tap()
+      search.typeText("Bean 0 Ethiopia\n")
+      let bean = element(app, "beans.row.Bean 0 Ethiopia")
+      XCTAssertTrue(bean.waitForExistence(timeout: 5))
+      bean.tap()
+      XCTAssertTrue(element(app, "bean.edit").waitForExistence(timeout: 5), "bean page is open")
+      let ask = element(app, "bean.insights")
       scrollUntilHittable(ask, in: app)
       ask.tap()
 
@@ -1636,55 +1640,23 @@ final class NextCupUITests: XCTestCase {
     }
   }
 
-  // MARK: Explore recommendations (T017)
+  // MARK: Explore (T017)
 
-  /// Opens Explore with no beans, follows its next action to add one, and returns
-  /// to see the bean's labelled default recommendation. `shot` is called with a
-  /// name at each screen worth capturing.
+  /// Explore is roasters and the flavor explorer; brewing a bean lives on its page in Beans.
   @MainActor
   private func runExploreFlow(_ app: XCUIApplication, shot: (String) throws -> Void) throws {
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
     app.tabBars.buttons["Explore"].tap()
     XCTAssertTrue(element(app, "tab.root.explore").waitForExistence(timeout: 5))
-    XCTAssertTrue(element(app, "explore.empty").waitForExistence(timeout: 5))
-    try shot("explore-empty")
-
-    // Explore's Add a bean opens the editor right here, not on the Beans tab.
-    addBean(app, name: "Washed Ethiopia", roaster: "Tiny Roastery", weight: "250")
-    XCTAssertTrue(app.tabBars.buttons["Explore"].isSelected)
-    let card = element(app, "explore.card.Washed Ethiopia")
-    XCTAssertTrue(card.waitForExistence(timeout: 5))
-    let basis = element(app, "explore.basis.Washed Ethiopia")
-    XCTAssertTrue(basis.label.hasPrefix("DEFAULT"), "cold start is labelled: \(basis.label)")
-    XCTAssertTrue(
-      app.staticTexts.matching(
-        NSPredicate(format: "label CONTAINS 'not based on your brews'")
-      ).firstMatch.exists)
-    try shot("explore-default")
+    for id in ["explore.catalog", "explore.roasters", "explore.flavors"] {
+      XCTAssertTrue(element(app, id).waitForExistence(timeout: 5), "\(id) is on Explore")
+    }
+    try shot("explore")
   }
 
-  /// Then a tap on a suggestion opens its Start brew page. Screenshots go to
-  /// docs/design/explore while its `.capture` exists.
   @MainActor
-  func testExploreShowsLabelledDefaultForANewBean() throws {
-    let folder = URL(fileURLWithPath: #filePath)
-      .deletingLastPathComponent().deletingLastPathComponent()
-      .appendingPathComponent("docs/design/explore")
-    let capture = FileManager.default.fileExists(
-      atPath: folder.appendingPathComponent(".capture").path)
-    func shot(_ name: String) throws {
-      guard capture else { return }
-      sleep(1)
-      try XCUIApplication().screenshot().pngRepresentation.write(
-        to: folder.appendingPathComponent("new_\(name).png"))
-    }
-    let app = launch()
-    try runExploreFlow(app) { if $0 == "explore-default" { try shot("explore-picks") } }
-    let pick = element(app, "explore.pick.Washed Ethiopia.1")
-    XCTAssertTrue(pick.waitForExistence(timeout: 5))
-    pick.tap()
-    XCTAssertTrue(app.buttons["Start brew"].waitForExistence(timeout: 5))
-    try shot("explore-pick-opens-brew")
+  func testExploreIsRoastersAndFlavors() throws {
+    try runExploreFlow(launch()) { _ in }
   }
 
   /// Writes Explore screenshots in light, dark and the largest text size. Runs
