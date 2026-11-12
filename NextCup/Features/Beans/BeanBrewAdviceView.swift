@@ -6,7 +6,7 @@ import UIKit
 /// Opens after a scanned bag is saved, and from a bean's page: "Ways to brew [bean]" with a
 /// grid of tastes (up to three, one recipe each, plus free text) or "Recommend 3 recipes".
 /// Each recipe is then saved or composted; once all are decided, the Brew tab opens with the
-/// saved ones under "Recipe to try for your Next Cup". Nothing is stored until Save.
+/// saved ones under "Recipes for the [bean]". Nothing is stored until Save.
 struct BeanBrewAdviceView: View {
   let bean: Bean
   let close: () -> Void
@@ -355,7 +355,7 @@ struct BeanBrewAdviceView: View {
 
   @ViewBuilder private func actions(_ pick: BeanBrewAI.Pick, rank: Int) -> some View {
     SteelButton(title: "Save") { save(pick) }
-      .accessibilityHint("Keeps it on the Brew tab under Recipe to try for your Next Cup")
+      .accessibilityHint("Keeps it on the Brew tab under Recipes for the \(bean.name)")
       .accessibilityIdentifier("beanbrew.save.\(rank)")
     SteelButton(title: "Compost bin", kind: .secondary) {
       Feedback.tap()

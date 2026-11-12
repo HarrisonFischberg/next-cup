@@ -349,10 +349,10 @@ enum BeanBrewAI {
 }
 
 extension Recipe {
-  /// A brew-advice pick: it waits on the Brew tab under "Recipes for [bean]" until a brew of it
-  /// is rated or tasted, then shows under "Recipes for your Next Cup" and in the user's recipes.
+  /// A brew-advice pick: it waits on the Brew tab under "Recipes for the [bean]" until it is
+  /// brewed, then lives on in the Journal, and in Your recipes only once it is favorited.
   var isBrewAdvice: Bool { builtInKey == nil && credit == BeanBrewAI.credit }
-  var isToTry: Bool { isBrewAdvice && !(brews ?? []).contains(where: \.isReviewed) }
+  var isToTry: Bool { isBrewAdvice && (brews ?? []).isEmpty }
 
   /// The bean a brew-advice pick was made for.
   var adviceBeanID: UUID? {
