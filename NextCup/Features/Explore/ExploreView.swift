@@ -538,7 +538,9 @@ private struct KeptBeanDrawer: View {
           (recipe: $0.0, count: group.count, best: group.compactMap(\.1.ratingTenths).max())
         }
       }
-      .sorted { ($0.best ?? -1, $0.count, $1.recipe.name) > ($1.best ?? -1, $1.count, $0.recipe.name) }
+      .sorted {
+        ($0.best ?? -1, $0.count, $1.recipe.name) > ($1.best ?? -1, $1.count, $0.recipe.name)
+      }
   }
 
   var body: some View {
