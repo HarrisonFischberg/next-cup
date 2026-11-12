@@ -170,7 +170,8 @@ final class BrewFormModel {
         doseG: seed.doseG, waterG: seed.waterG, tempC: seed.tempC, totalTimeS: seed.totalTimeS,
         grindSetting: seed.grindSetting, targets: seed.targets, endedEarly: seed.endedEarly,
         beans: seed.beanName.map { [DraftBean(beanID: seed.beanID, name: $0, grams: seed.doseG)] },
-        grinderID: seed.grinderID)
+        // A run started without a grinder (a roaster's recipe) still logs the one used last.
+        grinderID: seed.grinderID ?? rememberedGrinder(store, defaults))
     }
     let remembered = defaults.string(forKey: lastMethodKey).flatMap(UUID.init(uuidString:))
     let visible = (try? store.context.fetch(FetchDescriptor<BrewMethod>())) ?? []

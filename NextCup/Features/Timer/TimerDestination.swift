@@ -3,7 +3,8 @@ import SwiftUI
 
 /// Opens the guided timer from a `nextcup://timer` link (the Live Activity tap).
 /// The timer picks up the saved run when the plan matches; a recipe that is gone
-/// or cannot be timed lands on a screen that says so.
+/// or cannot be timed lands on a screen that says so. The bean and grinder chosen
+/// for that run come back with it, so a brew rated later still has them.
 struct TimerDestination: View {
   let link: DeepLink
   let doseG: Double
@@ -19,7 +20,7 @@ struct TimerDestination: View {
     if let recipe = matches.first,
       let setup = try? TimerPlanBuilder.setup(for: recipe, doseG: doseG)
     {
-      TimerView(setup: setup).accessibilityIdentifier(link.identifier)
+      TimerView(setup: setup.withRememberedChoices()).accessibilityIdentifier(link.identifier)
     } else {
       ScrollView {
         EmptyState(
