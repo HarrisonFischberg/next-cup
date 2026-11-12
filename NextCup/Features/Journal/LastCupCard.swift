@@ -61,7 +61,7 @@ struct LastCupCard: View {
             .frame(minHeight: 54).foregroundStyle(DS.ink2)
         }
       }
-      .buttonStyle(.plain)
+      .buttonStyle(PressableStyle())
 
       VStack(alignment: .leading, spacing: DS.Space.sm) {
         HStack(alignment: .firstTextBaseline) {

@@ -211,7 +211,7 @@ struct RoasterDiscoveryView: View {
     switch result {
     case .success:
       error = nil
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      Feedback.tap()
     case .failure(.saveFailed(let reason)):
       error = "The change was not kept. \(reason)"
     }
@@ -246,7 +246,7 @@ private struct PlaceRow: View {
           .background(isSaved ? DS.signal : DS.paper, ignoresSafeAreaEdges: [])
           .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
       }
-      .buttonStyle(.plain)
+      .buttonStyle(PressableStyle())
       .accessibilityLabel(isSaved ? "Remove \(place.name) from saved" : "Save \(place.name)")
       .accessibilityAddTraits(isSaved ? .isSelected : [])
       .accessibilityIdentifier("roasters.toggle.\(place.name)")

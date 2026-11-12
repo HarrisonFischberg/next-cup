@@ -60,18 +60,18 @@ final class SavedBrewLockUITests: XCTestCase {
     launch()
     logAndOpenBrew()
 
-    // Locked: the values show, but nothing takes a tap or a swipe, and there is no Save.
+    // Locked: the values show with no controls, nothing takes a swipe, and there is no Save.
     XCTAssertTrue(element("brewform.locked").exists)
     XCTAssertTrue(app.navigationBars["Saved brew"].exists)
     XCTAssertTrue(dose().hasPrefix("15"), dose())
-    XCTAssertFalse(app.buttons["Increase Dose"].isEnabled)
+    XCTAssertFalse(app.buttons["Increase Dose"].exists, "no steppers until Edit")
     XCTAssertFalse(app.buttons["Save brew"].exists)
     let grind = wheel("brewform.grind")
     scrollTo(grind)
     XCTAssertEqual(grind.value as? String, "12")
     grind.swipeUp()
     XCTAssertEqual(grind.value as? String, "12", "a swipe on a locked grind changes nothing")
-    XCTAssertFalse(app.buttons["brewform.grind.increase"].isEnabled)
+    XCTAssertFalse(app.buttons["brewform.grind.increase"].exists)
 
     // Edit unlocks; Cancel puts the saved values back and locks again.
     element("brewform.unlock").tap()

@@ -114,52 +114,6 @@ extension View {
   func colorBlock(_ fill: Color = DS.kraft) -> some View { modifier(ColorBlock(fill: fill)) }
 }
 
-/// A labelled row: a small icon, a label over its value, and whatever sits on the right.
-struct LabeledRow<Trailing: View>: View {
-  let symbol: String
-  let label: String
-  let value: String
-  var valueColor = DS.ink
-  @ViewBuilder var trailing: Trailing
-
-  var body: some View {
-    HStack(spacing: DS.Space.md) {
-      Image(systemName: symbol).font(.body.weight(.semibold)).foregroundStyle(DS.accent)
-        .frame(width: 28).accessibilityHidden(true)
-      VStack(alignment: .leading, spacing: 2) {
-        Text(label).font(.footnote).foregroundStyle(DS.ink2)
-        Text(value).font(DS.Font.headline).foregroundStyle(valueColor)
-          .lineLimit(2).minimumScaleFactor(0.8)
-      }
-      Spacer(minLength: DS.Space.sm)
-      trailing
-    }
-    .padding(DS.Space.md)
-    .frame(maxWidth: .infinity, minHeight: DS.Size.primary, alignment: .leading)
-  }
-}
-
-/// A big number with its label, for the calculated grid on the setup page.
-struct Figure: View {
-  let symbol: String
-  let label: String
-  let value: String
-  var body: some View {
-    HStack(alignment: .top, spacing: DS.Space.sm) {
-      Image(systemName: symbol).font(.footnote.weight(.semibold)).foregroundStyle(DS.accent)
-        .frame(width: 20).padding(.top, 3).accessibilityHidden(true)
-      VStack(alignment: .leading, spacing: 0) {
-        Text(label).font(.footnote).foregroundStyle(DS.ink2)
-        Text(value).font(DS.Font.dataLarge).foregroundStyle(DS.ink)
-          .minimumScaleFactor(0.6).lineLimit(1)
-      }
-    }
-    .padding(.vertical, DS.Space.sm)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .accessibilityElement(children: .combine)
-  }
-}
-
 /// Where a hero sits, which picks its photograph when the look has one.
 enum HeroRole: String { case card, setup, brew }
 

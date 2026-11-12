@@ -119,7 +119,7 @@ struct SuccessView<Detail: View>: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .accessibilityElement(children: .contain)
     .onAppear {
-      if playsHaptic { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+      if playsHaptic { Feedback.success() }
       withAnimation(
         reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.6, dampingFraction: 0.8)
       ) { shown = true }

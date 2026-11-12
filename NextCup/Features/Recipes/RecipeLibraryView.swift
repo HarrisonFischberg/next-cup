@@ -7,7 +7,9 @@ import UIKit
 /// styles), More methods for the ones left out in onboarding, then Your recipes as cards.
 /// Searching lists matching recipes by brew style.
 struct RecipeLibraryView: View {
-  @Query(sort: \Recipe.name) private var allRecipes: [Recipe]
+  @Query(sort: \Recipe.name) private var storedRecipes: [Recipe]
+  /// Without the recipe waiting out its Undo.
+  private var allRecipes: [Recipe] { storedRecipes.filter { $0.id != pendingDelete } }
   @Query private var beans: [Bean]
   @Query(filter: #Predicate<BrewMethod> { $0.isHidden }) private var hiddenMethods: [BrewMethod]
   @Query(filter: #Predicate<BrewMethod> { !$0.isHidden }, sort: \BrewMethod.sortOrder)
@@ -17,8 +19,9 @@ struct RecipeLibraryView: View {
   @State private var creatingWithAI = false
   /// The recipe "Create with AI" wrote, opened in the editor once its sheet is gone.
   @State private var aiDraft: RecipeDraft?
-  /// The recipe waiting on the Delete confirmation.
-  @State private var deleting: Recipe?
+  /// The recipe taken off the page and waiting out its Undo; deleted when the toast runs out.
+  @State private var pendingDelete: UUID?
+  @State private var deleteTimer: Task<Void, Never>?
   @State private var deleteError: String?
   @State private var scrollPosition = ScrollPosition(edge: .top)
   /// The provider's notice, opened from the automatic Next Cup's banner.
@@ -169,17 +172,15 @@ struct RecipeLibraryView: View {
         creatingWithAI = false
       }
     }
-    .confirmationDialog(
-      "Delete “\(deleting?.name ?? "")”?",
-      isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
-      titleVisibility: .visible, presenting: deleting
-    ) { recipe in
-      Button("Delete recipe", role: .destructive) { delete(recipe) }
-        .accessibilityIdentifier("recipe.delete.confirm")
-      Button("Cancel", role: .cancel) {}
-    } message: { _ in
-      Text("Brews you logged with it stay in your journal.")
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      if pendingDelete != nil {
+        SteelToast(message: "Recipe deleted", actionTitle: "Undo", action: undoDelete)
+          .padding(.horizontal, DS.Space.lg).padding(.bottom, DS.Space.sm)
+          .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+          .accessibilityIdentifier("recipes.toast")
+      }
     }
+    .onDisappear { commitPendingDelete() }
     .accessibilityIdentifier("tab.root.recipes")
   }
 
@@ -210,14 +211,36 @@ struct RecipeLibraryView: View {
     }
   }
 
+  // MARK: Delete with Undo
+
   private func delete(_ recipe: Recipe) {
-    deleting = nil
-    let service = RecipeEditorService(store: Store(context: context))
-    if case .failure(let failure) = service.delete(recipe) {
-      UINotificationFeedbackGenerator().notificationOccurred(.error)
+    commitPendingDelete()
+    Feedback.lift()
+    withAnimation(DS.Motion.exit(reduceMotion)) { pendingDelete = recipe.id }
+    deleteTimer = Task {
+      try? await Task.sleep(for: .seconds(6))
+      guard !Task.isCancelled else { return }
+      commitPendingDelete()
+    }
+  }
+
+  private func undoDelete() {
+    deleteTimer?.cancel()
+    Feedback.tap()
+    withAnimation(DS.Motion.exit(reduceMotion)) { pendingDelete = nil }
+  }
+
+  /// Removes the recipe that was waiting out its Undo window. A write failure puts it
+  /// back and says so, so nothing disappears without being deleted.
+  private func commitPendingDelete() {
+    deleteTimer?.cancel()
+    guard let id = pendingDelete else { return }
+    withAnimation(DS.Motion.exit(reduceMotion)) { pendingDelete = nil }
+    let store = Store(context: context)
+    guard let recipe = try? store.find(Recipe.self, id: id) else { return }
+    if case .failure(let failure) = RecipeEditorService(store: store).delete(recipe) {
+      Feedback.error()
       deleteError = "The recipe was not deleted. \(failure.message)"
-    } else {
-      UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
   }
 
@@ -259,7 +282,7 @@ struct RecipeLibraryView: View {
         HStack(alignment: .top, spacing: DS.Space.lg) {
           ForEach(shownMethods) { method in
             NavigationLink(value: DeepLink.method(method.id)) { methodTile(method) }
-              .buttonStyle(.plain)
+              .buttonStyle(PressableStyle())
               .accessibilityIdentifier("brew.method.\(method.name)")
           }
         }
@@ -313,7 +336,7 @@ struct RecipeLibraryView: View {
       if !title.isEmpty { Kicker(title, color: DS.ink2).accessibilityAddTraits(.isHeader) }
       ForEach(members) { recipe in
         NavigationLink(value: DeepLink.recipe(recipe.id)) { card(recipe) }
-          .buttonStyle(.plain)
+          .buttonStyle(PressableStyle())
           .contextMenu {
             favoriteButton(recipe)
             if recipe.builtInKey == nil {
@@ -325,7 +348,7 @@ struct RecipeLibraryView: View {
                 ? "plus.square.on.square" : "slider.horizontal.3"
             ) { editor = .copy(recipe.id) }
             if recipe.builtInKey == nil {
-              Button("Delete", systemImage: "trash", role: .destructive) { deleting = recipe }
+              Button("Delete", systemImage: "trash", role: .destructive) { delete(recipe) }
                 .accessibilityIdentifier("recipe.delete")
             }
           }
@@ -351,10 +374,10 @@ struct RecipeLibraryView: View {
       result = Store(context: context).toggleFavorite(recipe, \.isFavorite)
     }
     if case .failure(.saveFailed(let message)) = result {
-      UINotificationFeedbackGenerator().notificationOccurred(.error)
+      Feedback.error()
       deleteError = "The favorite was not saved. \(message)"
     } else {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      Feedback.tap()
     }
   }
 

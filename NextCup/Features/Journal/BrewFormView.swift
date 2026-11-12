@@ -30,7 +30,6 @@ struct BrewFormView: View {
   @Query(sort: \BrewMethod.sortOrder) private var methods: [BrewMethod]
   @Query(sort: \Bean.name) private var allBeans: [Bean]
   @Query(sort: \Grinder.name) private var grinders: [Grinder]
-  @Query(sort: \Suggestion.createdAt, order: .reverse) private var suggestions: [Suggestion]
   @Query(sort: \WaterProfile.name) private var waters: [WaterProfile]
   @State private var askingNextCup = false
   @State private var addingWater = false
@@ -237,7 +236,6 @@ struct BrewFormView: View {
           methodPicker(binding.draft, model)
           beansSection(model)
           if fields.contains(.grind) { grinderPicker(model) }
-          suggestionSection(model)
           if let amount = (BrewYield(rawValue: yieldUnit) ?? .ml).amountText(
             doseG: model.draft.doseG, waterG: model.draft.waterG)
           {
@@ -375,11 +373,13 @@ struct BrewFormView: View {
             .multilineTextAlignment(.leading)
         }
         Spacer(minLength: DS.Space.sm)
-        Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink)
-          .accessibilityHidden(true)
+        if !locked {
+          Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink)
+            .accessibilityHidden(true)
+        }
       }
       .padding(DS.Space.md).frame(minHeight: DS.Size.control)
-      .panel(DS.paper)
+      .tile()
     }
     .accessibilityLabel("Method")
     .accessibilityValue(current?.name ?? "None chosen")
@@ -420,22 +420,24 @@ struct BrewFormView: View {
             .font(.footnote).foregroundStyle(DS.ink2)
         }
       }
-      Menu {
-        ForEach(available) { bean in
-          Button(bean.name) { model.addBean(bean) }
+      if !locked {
+        Menu {
+          ForEach(available) { bean in
+            Button(bean.name) { model.addBean(bean) }
+          }
+          if !available.isEmpty { Divider() }
+          Button("New bean…", systemImage: "plus") { addingBean = true }
+            .accessibilityIdentifier("brewform.beans.new")
+        } label: {
+          Text((chosen.isEmpty ? "Add a bean" : "Add another bean").dsTitle)
+            .font(DS.Font.din(22, relativeTo: .title3))
+            .frame(maxWidth: .infinity, minHeight: DS.Size.control)
+            .foregroundStyle(DS.ink)
+            .panel(DS.paper)
         }
-        if !available.isEmpty { Divider() }
-        Button("New bean…", systemImage: "plus") { addingBean = true }
-          .accessibilityIdentifier("brewform.beans.new")
-      } label: {
-        Text((chosen.isEmpty ? "Add a bean" : "Add another bean").dsTitle)
-          .font(DS.Font.din(22, relativeTo: .title3))
-          .frame(maxWidth: .infinity, minHeight: DS.Size.control)
-          .foregroundStyle(DS.ink)
-          .panel(DS.paper)
+        .accessibilityLabel(chosen.isEmpty ? "Add a bean" : "Add another bean")
+        .accessibilityIdentifier("brewform.beans.add")
       }
-      .accessibilityLabel(chosen.isEmpty ? "Add a bean" : "Add another bean")
-      .accessibilityIdentifier("brewform.beans.add")
     }
     // The full bean screen (photo, barcode, every field); Save comes back here with it chosen.
     .sheet(isPresented: $addingBean) {
@@ -465,16 +467,18 @@ struct BrewFormView: View {
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       .accessibilityElement(children: .combine)
-      HStack(spacing: 0) {
-        if isBlend {
-          shareButton("minus", label: "Decrease \(entry.name) share") {
-            model.stepShare(at: index, by: -5)
+      if !locked {
+        HStack(spacing: 0) {
+          if isBlend {
+            shareButton("minus", label: "Decrease \(entry.name) share") {
+              model.stepShare(at: index, by: -5)
+            }
+            shareButton("plus", label: "Increase \(entry.name) share") {
+              model.stepShare(at: index, by: 5)
+            }
           }
-          shareButton("plus", label: "Increase \(entry.name) share") {
-            model.stepShare(at: index, by: 5)
-          }
+          shareButton("xmark", label: "Remove \(entry.name)") { model.removeBean(at: index) }
         }
-        shareButton("xmark", label: "Remove \(entry.name)") { model.removeBean(at: index) }
       }
     }
     .padding(DS.Space.md)
@@ -493,32 +497,6 @@ struct BrewFormView: View {
         .contentShape(Rectangle())
     }
     .accessibilityLabel(label)
-  }
-
-  /// The dial-in card from the last brew of these beans. Only a new brew shows
-  /// it; an answered card stays, with Undo, until the form is closed.
-  @ViewBuilder
-  private func suggestionSection(_ model: BrewFormModel) -> some View {
-    if !model.isEditing {
-      let handled = suggestions.first { $0.id == model.handledSuggestionID }
-      let waiting = SuggestionService.match(
-        in: suggestions, beanIDs: Set((model.draft.beans ?? []).compactMap(\.beanID)),
-        methodID: model.draft.methodID, excluding: model.draft.id)
-      if let suggestion = handled ?? waiting {
-        SuggestionCard(
-          suggestion: suggestion, units: units, error: model.suggestionError,
-          onAccept: { model.applySuggestion(suggestion) },
-          onEdit: { typed in
-            if let value = SuggestionFormat.canonical(typed, for: suggestion.field, units) {
-              model.applySuggestion(suggestion, editedTo: value)
-            } else {
-              model.applySuggestion(suggestion, editedTo: "")
-            }
-          },
-          onDismiss: { model.dismissSuggestion(suggestion) },
-          onUndo: { model.undoSuggestionAnswer(suggestion) })
-      }
-    }
   }
 
   private func grinderPicker(_ model: BrewFormModel) -> some View {
@@ -553,11 +531,13 @@ struct BrewFormView: View {
               .multilineTextAlignment(.leading)
           }
           Spacer(minLength: DS.Space.sm)
-          Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink)
-            .accessibilityHidden(true)
+          if !locked {
+            Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink)
+              .accessibilityHidden(true)
+          }
         }
         .padding(DS.Space.md).frame(minHeight: DS.Size.control)
-        .panel(DS.paper)
+        .tile()
       }
       .accessibilityLabel("Grinder")
       .accessibilityValue(current?.name ?? "None chosen")
@@ -702,11 +682,13 @@ struct BrewFormView: View {
               .multilineTextAlignment(.leading)
           }
           Spacer(minLength: DS.Space.sm)
-          Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink)
-            .accessibilityHidden(true)
+          if !locked {
+            Image(systemName: "chevron.up.chevron.down").foregroundStyle(DS.ink)
+              .accessibilityHidden(true)
+          }
         }
         .padding(DS.Space.md).frame(minHeight: DS.Size.control)
-        .panel(DS.paper)
+        .tile()
       }
       .accessibilityLabel("Water")
       .accessibilityValue(current?.name ?? "None chosen")
@@ -747,7 +729,7 @@ struct BrewFormView: View {
         setting: text, grinderName: grinders.first { $0.id == model.draft.grinderID }?.name,
         identifier: "brewform.grind"
       )
-      .panel(DS.paper)
+      .tile()
     }
   }
 
@@ -809,8 +791,10 @@ struct BrewFormView: View {
           .frame(maxWidth: .infinity, maxHeight: 220)
           .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
           .accessibilityLabel("Photo of this brew")
-        SteelButton(title: "Remove photo", kind: .secondary) { model.removePhoto() }
-      } else {
+        if !locked {
+          SteelButton(title: "Remove photo", kind: .secondary) { model.removePhoto() }
+        }
+      } else if !locked {
         Menu {
           if Camera.isAvailable {
             Button("Take a photo", systemImage: "camera") { cameraShown = true }
@@ -846,14 +830,25 @@ struct BrewFormView: View {
   private func notesField(_ text: Binding<String>) -> some View {
     VStack(alignment: .leading, spacing: DS.Space.sm) {
       Text("NOTES").font(DS.Font.label).foregroundStyle(DS.ink2)
-      KraftNote {
-        TextEditor(text: text)
-          .font(DS.Font.note).foregroundStyle(DS.ink)
-          .scrollContentBackground(.hidden)
-          .frame(minHeight: 120)
-          .focused($focused, equals: .notes)
-          .accessibilityLabel("Notes")
-          .accessibilityIdentifier("brewform.notes")
+      if locked {
+        // A saved note is plain text at its full height, so the page scrolls through all of it.
+        KraftNote {
+          Text(text.wrappedValue.isEmpty ? "No notes." : text.wrappedValue)
+            .font(DS.Font.note).foregroundStyle(DS.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .textSelection(.enabled)
+            .accessibilityIdentifier("brewform.notes")
+        }
+      } else {
+        KraftNote {
+          TextEditor(text: text)
+            .font(DS.Font.note).foregroundStyle(DS.ink)
+            .scrollContentBackground(.hidden)
+            .frame(minHeight: 120)
+            .focused($focused, equals: .notes)
+            .accessibilityLabel("Notes")
+            .accessibilityIdentifier("brewform.notes")
+        }
       }
     }
   }

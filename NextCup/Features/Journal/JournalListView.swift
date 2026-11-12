@@ -64,15 +64,6 @@ struct JournalListView: View {
       if logged.isEmpty {
         ScrollView {
           header.padding(.horizontal, DS.Space.lg).padding(.top, DS.Space.sm)
-          if gettingStartedDismissed {
-            EmptyState(
-              title: "No brews yet",
-              message: "Log a brew and it will be listed here, newest first.",
-              actionTitle: "Log a brew", action: { router.open(.newBrew) })
-          } else {
-            GettingStartedCard(
-              logBrew: { router.open(.newBrew) }, importPage: { showImport = true })
-          }
           if !unsaved.isEmpty {
             LazyVStack(alignment: .leading, spacing: DS.Space.sm) {
               unsavedHeader
@@ -85,11 +76,20 @@ struct JournalListView: View {
                       RoundedRectangle(cornerRadius: max(DS.radius, 18), style: .continuous)
                         .fill(DS.paper))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableStyle())
                 .padding(.horizontal, DS.Space.lg)
                 .contextMenu { discardButton(entry) }
               }
             }
+          }
+          if gettingStartedDismissed {
+            EmptyState(
+              title: "No brews yet",
+              message: "Log a brew and it will be listed here, newest first.",
+              actionTitle: "Log a brew", action: { router.open(.newBrew) })
+          } else {
+            GettingStartedCard(
+              logBrew: { router.open(.newBrew) }, importPage: { showImport = true })
           }
         }
       } else if shown.isEmpty {
@@ -172,6 +172,33 @@ struct JournalListView: View {
         .accessibilityIdentifier("journal.error")
         .listRowInsets(EdgeInsets())
         .listRowBackground(DS.bg)
+      }
+      // Unsaved brews lead the journal: they still need finishing, so they sit above the
+      // cards and Past Brews. Once saved, a brew joins Past Brews in date order.
+      if !unsaved.isEmpty {
+        unsavedHeader
+          .listRowInsets(EdgeInsets()).listRowBackground(DS.bg).listRowSeparator(.hidden)
+      }
+      ForEach(unsaved) { entry in
+        Button {
+          openUnsaved(entry)
+        } label: {
+          UnsavedBrewRow(entry: entry, methods: methods)
+        }
+        .buttonStyle(PressableStyle())
+        .listRowInsets(
+          EdgeInsets(
+            top: DS.Space.xs, leading: DS.Space.lg, bottom: DS.Space.xs,
+            trailing: DS.Space.lg + DS.Space.md)
+        )
+        .listRowBackground(
+          RoundedRectangle(cornerRadius: max(DS.radius, 18), style: .continuous).fill(DS.paper)
+            .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.xs)
+        )
+        .listRowSeparator(.hidden)
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) { discardButton(entry) }
+        .contextMenu { discardButton(entry) }
+        .accessibilityAction(named: "Discard") { discard(entry) }
       }
       if let last = logged.first, TodayCard.applies(to: last) {
         TodayCard(brew: last) { router.open(.taste(last.id)) }
@@ -278,31 +305,6 @@ struct JournalListView: View {
         .accessibilityAction(named: "Ask AI for Next Cup") { askingNextCup = brew }
         .accessibilityAction(named: "Delete") { delete(brew) }
         .accessibilityIdentifier("journal.row.\(brew.id.uuidString)")
-      }
-      if !unsaved.isEmpty {
-        unsavedHeader
-          .listRowInsets(EdgeInsets()).listRowBackground(DS.bg).listRowSeparator(.hidden)
-      }
-      ForEach(unsaved) { entry in
-        Button {
-          openUnsaved(entry)
-        } label: {
-          UnsavedBrewRow(entry: entry, methods: methods)
-        }
-        .buttonStyle(.plain)
-        .listRowInsets(
-          EdgeInsets(
-            top: DS.Space.xs, leading: DS.Space.lg, bottom: DS.Space.xs,
-            trailing: DS.Space.lg + DS.Space.md)
-        )
-        .listRowBackground(
-          RoundedRectangle(cornerRadius: max(DS.radius, 18), style: .continuous).fill(DS.paper)
-            .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.xs)
-        )
-        .listRowSeparator(.hidden)
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) { discardButton(entry) }
-        .contextMenu { discardButton(entry) }
-        .accessibilityAction(named: "Discard") { discard(entry) }
       }
     }
     .listStyle(.plain)
@@ -431,10 +433,10 @@ struct JournalListView: View {
       result = Store(context: context).toggleFavorite(brew, \.isFavorite)
     }
     if case .failure(.saveFailed(let message)) = result {
-      UINotificationFeedbackGenerator().notificationOccurred(.error)
+      Feedback.error()
       deleteError = "The favorite was not saved. \(message)"
     } else {
-      UIImpactFeedbackGenerator(style: .light).impactOccurred()
+      Feedback.tap()
     }
   }
 
@@ -484,7 +486,7 @@ struct JournalListView: View {
 
   private func delete(_ brew: Brew) {
     commitPendingDelete()
-    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    Feedback.lift()
     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { pendingDelete = brew.id }
     deleteTimer = Task {
       try? await Task.sleep(for: .seconds(Self.undoSeconds))
@@ -495,7 +497,7 @@ struct JournalListView: View {
 
   private func undoDelete() {
     deleteTimer?.cancel()
-    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    Feedback.tap()
     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { pendingDelete = nil }
   }
 

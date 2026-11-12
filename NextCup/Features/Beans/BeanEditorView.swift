@@ -905,7 +905,7 @@ struct BeanEditorView: View {
     fill()
     filledByScan = true
     let count = before.changedCount(to: fields)
-    UINotificationFeedbackGenerator().notificationOccurred(.success)
+    Feedback.success()
     await StagedProgress.hold(since: Date())
     fillStages = nil
     filledMessage =

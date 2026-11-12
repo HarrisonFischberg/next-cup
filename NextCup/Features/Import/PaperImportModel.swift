@@ -220,14 +220,14 @@ final class PaperImportModel {
       return fail(save: error.localizedDescription)
     }
     if case .failure(.saveFailed(let message)) = store.save() { return fail(save: message) }
-    UINotificationFeedbackGenerator().notificationOccurred(.success)
+    Feedback.success()
     return true
   }
 
   private func fail(save message: String) -> Bool {
     store.context.rollback()
     saveError = "Not saved. \(message) Your checked page is still here. Try again."
-    UINotificationFeedbackGenerator().notificationOccurred(.error)
+    Feedback.error()
     return false
   }
 

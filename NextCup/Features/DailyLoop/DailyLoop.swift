@@ -275,7 +275,7 @@ struct TasteView: View {
             .padding(.horizontal, DS.Space.lg).frame(minHeight: 64).contentShape(Rectangle())
             .background(on ? DS.signal.opacity(0.08) : .clear)
           }
-          .buttonStyle(.plain)
+          .buttonStyle(PressableStyle())
           .accessibilityAddTraits(on ? .isSelected : [])
           .accessibilityIdentifier("taste.\(option.rawValue)")
           .sensoryFeedback(.selection, trigger: on)

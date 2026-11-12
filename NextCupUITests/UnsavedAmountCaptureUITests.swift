@@ -20,7 +20,10 @@ final class UnsavedAmountCaptureUITests: XCTestCase {
     let app = XCUIApplication()
     app.launchArguments = [
       "-inMemoryStore", "-resetNavigationState", "-resetDraft", "-timerSpeed", "60",
+      "-demoBrews", "-appStyle", "sundayStudio",
     ]
+    XCUIDevice.shared.appearance = .dark
+    defer { XCUIDevice.shared.appearance = .light }
     app.launch()
     XCTAssertTrue(
       app.descendants(matching: .any)["tab.root.journal"].waitForExistence(timeout: 10))
@@ -35,10 +38,12 @@ final class UnsavedAmountCaptureUITests: XCTestCase {
     let finish = app.buttons["Finish brew"]
     XCTAssertTrue(finish.waitForExistence(timeout: 30))
     finish.tap()
-    app.buttons["Rate after this cup"].tap()
+    let later = app.buttons["Rate after this cup"]
+    XCTAssertTrue(later.waitForExistence(timeout: 5))
+    later.tap()
     let unsaved = app.descendants(matching: .any)["journal.unsaved.row"].firstMatch
     XCTAssertTrue(unsaved.waitForExistence(timeout: 5))
-    app.swipeUp()
+    if !unsaved.isHittable { app.swipeUp() }
     try shot("row")
     unsaved.tap()
     try shot("form")

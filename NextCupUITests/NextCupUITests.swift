@@ -92,37 +92,33 @@ final class NextCupUITests: XCTestCase {
     }
   }
 
+  /// The flavor explorer lists only what the user's beans carry: the demo beans have
+  /// origins and roasts, no tasting notes and no brewer.
   @MainActor
-  func testFlavorExplorerReachesEveryBucket() {
-    let app = launch()
+  func testFlavorExplorerShowsOnlyYourBeans() {
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      "-perfBrews", "12",
+    ]
+    app.launch()
     app.tabBars.buttons["Explore"].tap()
     let entry = element(app, "explore.flavors")
     XCTAssertTrue(entry.waitForExistence(timeout: 10))
     entry.tap()
     XCTAssertTrue(element(app, "flavor.list").waitForExistence(timeout: 10))
-    let buckets = [
-      "flavor": [
-        "citrus", "stone-fruit", "berry", "tropical", "floral", "chocolate", "nutty", "caramel",
-        "spice", "roasted",
-      ],
-      "origin": ["east-africa", "central-america", "south-america", "asia-pacific", "caribbean"],
-      "process": ["washed", "natural", "honey", "experimental"],
-      "roast": ["light", "medium", "dark"],
-      "brewer": ["pourOver", "immersion", "espresso", "cold"],
-    ]
-    for (dimension, keys) in buckets {
-      for key in keys {
-        let row = element(app, "flavor.bucket.\(dimension).\(key)")
-        // The list is lazy: start from the top each time, then scroll down to the row.
-        for _ in 0..<6 { app.swipeDown() }
-        scrollUntilHittable(row, in: app)
-        XCTAssertTrue(row.isHittable, "bucket \(dimension).\(key) is not reachable")
-      }
+    for id in ["origin.east-africa", "origin.south-america", "origin.central-america"] {
+      let row = element(app, "flavor.bucket.\(id)")
+      scrollUntilHittable(row, in: app)
+      XCTAssertTrue(row.isHittable, "bucket \(id) is not reachable")
     }
-    for _ in 0..<14 { app.swipeDown() }
-    element(app, "flavor.bucket.flavor.citrus").tap()
-    XCTAssertTrue(element(app, "flavor.detail.flavor.citrus").waitForExistence(timeout: 10))
-    XCTAssertTrue(app.staticTexts["WORDS THAT MAP HERE"].exists)
+    for id in ["flavor.citrus", "origin.asia-pacific", "brewer.espresso"] {
+      XCTAssertFalse(element(app, "flavor.bucket.\(id)").exists, "\(id) is not on any bean")
+    }
+    for _ in 0..<6 { app.swipeDown() }
+    element(app, "flavor.bucket.origin.east-africa").tap()
+    XCTAssertTrue(element(app, "flavor.detail.origin.east-africa").waitForExistence(timeout: 10))
+    XCTAssertTrue(app.staticTexts["YOUR BEANS"].exists)
   }
 
   @MainActor
@@ -365,6 +361,10 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "journal.savedLater").waitForExistence(timeout: 5))
     let row = element(app, "journal.unsaved.row")
     XCTAssertTrue(row.waitForExistence(timeout: 5), "no Unsaved Brews row")
+    let past = element(app, "journal.past")
+    if past.exists {
+      XCTAssertLessThan(row.frame.minY, past.frame.minY, "Unsaved Brews sit above Past Brews")
+    }
     scrollUntilHittable(row, in: app)
     row.tap()
     XCTAssertTrue(element(app, "brewform.dose").waitForExistence(timeout: 5))
@@ -772,7 +772,9 @@ final class NextCupUITests: XCTestCase {
       journalRow(app, containing: "15.1 g").waitForExistence(timeout: 5),
       "list shows the edited dose: \(app.debugDescription)")
 
-    // Delete with Undo: the row goes, Undo brings it back untouched.
+    // Delete with Undo: the row goes, Undo brings it back untouched. The search is still
+    // open from before the edit, so its keyboard is put away first; it covers the row.
+    if app.keyboards.buttons["Search"].exists { app.keyboards.buttons["Search"].tap() }
     let edited = journalRow(app, containing: "Washed Ethiopia sweet")
     edited.swipeLeft()
     app.buttons["Delete"].tap()
@@ -845,10 +847,18 @@ final class NextCupUITests: XCTestCase {
         ] + variant.args
       app.launch()
       XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-      app.tabBars.buttons["Explore"].tap()
-      let ask = app.descendants(matching: .any).matching(
-        NSPredicate(format: "identifier BEGINSWITH 'explore.insights.'")
-      ).firstMatch
+      // Ask AI about this coffee is on a brewed bean's page in Beans.
+      app.tabBars.buttons["Beans"].tap()
+      // Thirty beans: search for the one with brews instead of scrolling the lazy list.
+      let search = app.searchFields.firstMatch
+      XCTAssertTrue(search.waitForExistence(timeout: 10))
+      search.tap()
+      search.typeText("Bean 0 Ethiopia\n")
+      let bean = element(app, "beans.row.Bean 0 Ethiopia")
+      XCTAssertTrue(bean.waitForExistence(timeout: 5))
+      bean.tap()
+      XCTAssertTrue(element(app, "bean.edit").waitForExistence(timeout: 5), "bean page is open")
+      let ask = element(app, "bean.insights")
       scrollUntilHittable(ask, in: app)
       ask.tap()
 
@@ -907,7 +917,7 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(original.label.contains("15 g"), "the original is unchanged: \(original.label)")
   }
 
-  /// Long-pressing a recipe the user made offers Delete (after a confirmation); a
+  /// Long-pressing a recipe the user made offers Delete (with Undo, no confirmation); a
   /// built-in recipe never offers it.
   @MainActor
   func testLongPressDeletesOnlyARecipeTheUserMade() {
@@ -940,9 +950,17 @@ final class NextCupUITests: XCTestCase {
     copy.press(forDuration: 1)
     XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 5))
     app.buttons["Delete"].tap()
-    let confirm = app.buttons["Delete recipe"].firstMatch
-    XCTAssertTrue(confirm.waitForExistence(timeout: 5))
-    confirm.tap()
+    // No confirmation: the card goes and Undo brings it back.
+    XCTAssertTrue(app.staticTexts["Recipe deleted"].waitForExistence(timeout: 5))
+    XCTAssertTrue(copy.waitForNonExistence(timeout: 5))
+    app.buttons["UNDO"].tap()
+    XCTAssertTrue(copy.waitForExistence(timeout: 5), "Undo puts the recipe back")
+    copy.press(forDuration: 1)
+    XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 5))
+    app.buttons["Delete"].tap()
+    XCTAssertTrue(app.staticTexts["Recipe deleted"].waitForExistence(timeout: 5))
+    // Let the toast run out: the recipe stays gone.
+    XCTAssertTrue(app.staticTexts["Recipe deleted"].waitForNonExistence(timeout: 12))
     XCTAssertTrue(copy.waitForNonExistence(timeout: 5))
     app.buttons["Clear search"].firstMatch.tap()
     search.tap()
@@ -1622,55 +1640,23 @@ final class NextCupUITests: XCTestCase {
     }
   }
 
-  // MARK: Explore recommendations (T017)
+  // MARK: Explore (T017)
 
-  /// Opens Explore with no beans, follows its next action to add one, and returns
-  /// to see the bean's labelled default recommendation. `shot` is called with a
-  /// name at each screen worth capturing.
+  /// Explore is roasters and the flavor explorer; brewing a bean lives on its page in Beans.
   @MainActor
   private func runExploreFlow(_ app: XCUIApplication, shot: (String) throws -> Void) throws {
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
     app.tabBars.buttons["Explore"].tap()
     XCTAssertTrue(element(app, "tab.root.explore").waitForExistence(timeout: 5))
-    XCTAssertTrue(element(app, "explore.empty").waitForExistence(timeout: 5))
-    try shot("explore-empty")
-
-    // Explore's Add a bean opens the editor right here, not on the Beans tab.
-    addBean(app, name: "Washed Ethiopia", roaster: "Tiny Roastery", weight: "250")
-    XCTAssertTrue(app.tabBars.buttons["Explore"].isSelected)
-    let card = element(app, "explore.card.Washed Ethiopia")
-    XCTAssertTrue(card.waitForExistence(timeout: 5))
-    let basis = element(app, "explore.basis.Washed Ethiopia")
-    XCTAssertTrue(basis.label.hasPrefix("DEFAULT"), "cold start is labelled: \(basis.label)")
-    XCTAssertTrue(
-      app.staticTexts.matching(
-        NSPredicate(format: "label CONTAINS 'not based on your brews'")
-      ).firstMatch.exists)
-    try shot("explore-default")
+    for id in ["explore.catalog", "explore.roasters", "explore.flavors"] {
+      XCTAssertTrue(element(app, id).waitForExistence(timeout: 5), "\(id) is on Explore")
+    }
+    try shot("explore")
   }
 
-  /// Then a tap on a suggestion opens its Start brew page. Screenshots go to
-  /// docs/design/explore while its `.capture` exists.
   @MainActor
-  func testExploreShowsLabelledDefaultForANewBean() throws {
-    let folder = URL(fileURLWithPath: #filePath)
-      .deletingLastPathComponent().deletingLastPathComponent()
-      .appendingPathComponent("docs/design/explore")
-    let capture = FileManager.default.fileExists(
-      atPath: folder.appendingPathComponent(".capture").path)
-    func shot(_ name: String) throws {
-      guard capture else { return }
-      sleep(1)
-      try XCUIApplication().screenshot().pngRepresentation.write(
-        to: folder.appendingPathComponent("new_\(name).png"))
-    }
-    let app = launch()
-    try runExploreFlow(app) { if $0 == "explore-default" { try shot("explore-picks") } }
-    let pick = element(app, "explore.pick.Washed Ethiopia.1")
-    XCTAssertTrue(pick.waitForExistence(timeout: 5))
-    pick.tap()
-    XCTAssertTrue(app.buttons["Start brew"].waitForExistence(timeout: 5))
-    try shot("explore-pick-opens-brew")
+  func testExploreIsRoastersAndFlavors() throws {
+    try runExploreFlow(launch()) { _ in }
   }
 
   /// Writes Explore screenshots in light, dark and the largest text size. Runs
@@ -1709,7 +1695,7 @@ final class NextCupUITests: XCTestCase {
   // MARK: Dial-in suggestions (T018)
 
   /// Logs a sour cup of a bean, reads the suggestion on the saved screen and in
-  /// the journal, then starts the next brew of that bean, where the card waits.
+  /// the journal, then starts the next brew of that bean, which shows no card.
   /// `shot` is called with a name at each screen worth capturing.
   @MainActor
   private func runDialInFlow(_ app: XCUIApplication, shot: (String) throws -> Void) throws {
@@ -1746,38 +1732,17 @@ final class NextCupUITests: XCTestCase {
       .firstMatch
     XCTAssertTrue(row.waitForExistence(timeout: 5), "journal row shows the suggestion")
 
-    // The next brew of the same bean carries the card.
+    // The next brew of the same bean shows no card: the advice lives on the saved brew and
+    // in Ask AI, not on the form you are filling in.
     app.buttons["Log a brew"].firstMatch.tap()
     XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 5))
-    XCTAssertFalse(element(app, "suggestion.card").exists, "no bean yet, so no card")
     element(app, "brewform.beans.add").tap()
     app.buttons["Washed Ethiopia"].tap()
-    let card = element(app, "suggestion.card")
-    XCTAssertTrue(card.waitForExistence(timeout: 5))
-    XCTAssertTrue(element(app, "suggestion.headline").label == "Grind from 20 to 19")
-    try shot("dialin-card")
-
-    // Accepting puts the new grind in the form; Undo takes it back.
-    element(app, "suggestion.accept").tap()
-    XCTAssertTrue(element(app, "suggestion.undo").waitForExistence(timeout: 5))
-    let nextGrind = grindWheel(app, "brewform.grind")
-    scrollUntilHittable(nextGrind, in: app)
-    XCTAssertEqual(nextGrind.value as? String, "19")
-    try shot("dialin-accepted")
-    scrollUntilHittable(element(app, "suggestion.undo"), in: app)
-    element(app, "suggestion.undo").tap()
-    XCTAssertTrue(element(app, "suggestion.accept").waitForExistence(timeout: 5))
-    XCTAssertFalse((grindWheel(app, "brewform.grind").value as? String) == "19")
-
-    // Dismissing keeps the form as it is and can be taken back as well.
-    element(app, "suggestion.dismiss").tap()
-    XCTAssertTrue(element(app, "suggestion.undo").waitForExistence(timeout: 5))
-    element(app, "suggestion.undo").tap()
-    XCTAssertTrue(element(app, "suggestion.accept").waitForExistence(timeout: 5))
+    XCTAssertFalse(element(app, "suggestion.card").waitForExistence(timeout: 2))
   }
 
   @MainActor
-  func testDialInSuggestionShowsOnTheNextBrewOfThatBean() throws {
+  func testDialInSuggestionStaysOffTheNextBrewForm() throws {
     let app = launch()
     try runDialInFlow(app) { _ in }
   }

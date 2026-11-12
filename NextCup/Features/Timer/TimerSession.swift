@@ -25,21 +25,23 @@ struct SystemTimerHaptics: TimerHaptics {
 
   func play(_ haptic: TimerHaptic) {
     switch haptic {
-    case .start, .pauseToggle: UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    case .start, .pauseToggle: Feedback.tap()
     case .stepChange, .targetReached:
-      UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+      Feedback.stepChange()
       BrewAudio.shared.chime()
-    case .finish: UINotificationFeedbackGenerator().notificationOccurred(.success)
+    case .finish: Feedback.success()
     }
   }
 }
 
 /// Clock and storage for the running timer. UI tests can speed the clock up with
-/// `-timerSpeed <n>` in debug builds, so a three-minute recipe finishes in seconds.
+/// `-timerSpeed <n>` in debug builds, so a three-minute recipe finishes in seconds;
+/// screenshots hold it still at a chosen second with `-timerHoldAt <s>`.
 @MainActor
 enum TimerEnvironment {
   static let clock: any TimerClock = {
     #if DEBUG
+      if HeldTimerClock.holdAt != nil { return HeldTimerClock() }
       let arguments = ProcessInfo.processInfo.arguments
       if let index = arguments.firstIndex(of: "-timerSpeed"), index + 1 < arguments.count,
         let speed = Double(arguments[index + 1]), speed > 0
@@ -65,6 +67,19 @@ enum TimerEnvironment {
 }
 
 #if DEBUG
+  /// A clock that stands still, so a screenshot shows the same second every time.
+  struct HeldTimerClock: TimerClock {
+    static let holdAt: Double? = {
+      let arguments = ProcessInfo.processInfo.arguments
+      guard let index = arguments.firstIndex(of: "-timerHoldAt"), index + 1 < arguments.count
+      else { return nil }
+      return Double(arguments[index + 1])
+    }()
+    nonisolated(unsafe) static var offset = 0.0
+    private let origin = Date()
+    func now() -> Date { origin.addingTimeInterval(Self.offset) }
+  }
+
   struct AcceleratedTimerClock: TimerClock {
     let speed: Double
     private let origin = Date()
@@ -90,6 +105,8 @@ final class TimerSession {
 
   @ObservationIgnored private var engine: TimerEngine
   @ObservationIgnored private let haptics: any TimerHaptics
+  /// The displayed step last cued. Short steps joined into one on screen cue once, when
+  /// the screen changes, not again as each passes inside it.
   @ObservationIgnored private var lastIndex: Int?
   @ObservationIgnored private let activity: any TimerActivityControlling
 
@@ -122,7 +139,7 @@ final class TimerSession {
       engine = TimerEngine(plan: setup.plan, clock: clock, store: store)
     }
     state = engine.state()
-    lastIndex = state.currentIndex
+    lastIndex = group(state)
     if case .finished = state.phase {
       complete(state)
     } else if state.phase != .notStarted {
@@ -137,7 +154,7 @@ final class TimerSession {
     engine.start()
     haptics.play(.start)
     refresh()
-    lastIndex = state.currentIndex
+    lastIndex = group(state)
   }
 
   func pause() {
@@ -180,13 +197,13 @@ final class TimerSession {
       return
     }
     if cues, state.phase != .notStarted {
-      if let index = latest.currentIndex, index != lastIndex, lastIndex != nil {
+      if let index = group(latest), index != lastIndex, lastIndex != nil {
         haptics.play(.stepChange)
       } else if latest.targetReached, !state.targetReached {
         haptics.play(.targetReached)
       }
     }
-    lastIndex = latest.currentIndex
+    lastIndex = group(latest)
     publish(latest)
   }
 
@@ -204,6 +221,10 @@ final class TimerSession {
   }
 
   // MARK: Private
+
+  private func group(_ state: TimerState) -> Int? {
+    state.currentIndex.flatMap { setup.plan.groupIndex(ofStep: $0) }
+  }
 
   private func refresh() {
     let latest = engine.state()

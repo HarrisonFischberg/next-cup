@@ -7,8 +7,10 @@ import Testing
 @Suite("Brew audio")
 struct BrewAudioTests {
   @Test func everyBundledTrackOpens() throws {
-    #expect(BrewAudio.tracks.count == 5)
+    #expect(BrewAudio.tracks.count == 18)
     for url in BrewAudio.tracks {
+      let name = url.deletingPathExtension().lastPathComponent
+      #expect(BrewAudio.titles[name] != nil, "\(name) has a title")
       let player = try AVAudioPlayer(contentsOf: url)
       #expect(player.duration > 120, "\(url.lastPathComponent) is a full track")
     }

@@ -59,7 +59,7 @@ struct RoasterMatchView: View {
                 .padding(DS.Space.md)
                 .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
               }
-              .buttonStyle(.plain)
+              .buttonStyle(PressableStyle())
               .accessibilityElement(children: .combine)
               .accessibilityHint("Uses this business as the roaster")
               .accessibilityIdentifier("roastermatch.pick.\(place.name)")

@@ -68,6 +68,20 @@ struct RootTabView: View {
         {
           handle(url)
         }
+        // Screenshots: `-openRecipe <built-in key>` opens that recipe's Start brew page.
+        if let index = arguments.firstIndex(of: "-openRecipe"), index + 1 < arguments.count,
+          let recipe = try? context.fetch(FetchDescriptor<Recipe>()).first(where: {
+            $0.builtInKey == arguments[index + 1]
+          })
+        {
+          handle(DeepLink.recipe(recipe.id).url)
+        }
+        // Screenshots: `-openFirstBrew` opens a saved brew, as the Journal does.
+        if arguments.contains("-openFirstBrew"),
+          let brew = try? context.fetch(FetchDescriptor<Brew>()).first
+        {
+          handle(DeepLink.brew(brew.id).url)
+        }
       }
     #endif
   }

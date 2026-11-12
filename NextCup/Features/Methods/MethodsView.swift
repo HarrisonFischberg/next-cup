@@ -99,7 +99,7 @@ struct MethodsView: View {
       .frame(minHeight: DS.Size.control, alignment: .leading)
       .contentShape(Rectangle())
     }
-    .buttonStyle(.plain)
+    .buttonStyle(PressableStyle())
     .listRowBackground(DS.paper)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(

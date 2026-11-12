@@ -1,226 +1,276 @@
 ---
 name: Next Cup
-description: A brew journal built like a bench instrument: spec-sheet tables, one signal orange, kraft paper for notes.
+description: A brew journal as a kitchen poster: butter, cream and cobalt in whole fields, heavy rounded type, the brewer's drawing in front, and a timer screen that changes colour when your hands are needed.
 colors:
-  kraft-board: "#D9C4A0"
-  gunmetal: "#1B1D1F"
-  sheet-paper: "#EFE6D3"
-  gunmetal-paper: "#26292C"
-  panel-steel: "#2B2F33"
-  panel-steel-dark: "#30353A"
-  steel-text: "#E8EAEC"
-  ink: "#1E1E1C"
-  ink-dark: "#ECEAE4"
-  ink-muted: "#4A463E"
-  ink-muted-dark: "#B4B1A8"
-  rule: "#1E1E1C"
-  rule-dark: "#8A9096"
-  signal-orange: "#C2410C"
-  signal-orange-dark: "#FF7A3D"
-  signal-on-steel: "#FF7A3D"
-  on-signal: "#FFFFFF"
-  on-signal-dark: "#1B1D1F"
-  label-kraft: "#C9AE82"
+  cream: "#FFFDF3"
+  cream-dark: "#0E1230"
+  paper: "#FFFFFF"
+  paper-dark: "#171D45"
+  butter: "#F5E8A4"
+  butter-dark: "#14204F"
+  cobalt: "#2448C8"
+  cobalt-dark: "#FFFDF3"
+  on-cobalt: "#FFFFFF"
+  on-cobalt-dark: "#0E1230"
+  accent: "#2448C8"
+  accent-dark: "#FF9F5A"
+  field: "#2448C8"
+  on-field: "#FFFDF3"
+  field-soft: "#F5E8A4"
+  ink: "#2B1A12"
+  ink-dark: "#FFFDF3"
+  ink-muted: "#625046"
+  ink-muted-dark: "#C9CCE6"
+  line: "#8A7A6E"
+  line-dark: "#7B82B8"
   error-red: "#9A1B0A"
-  error-red-dark: "#FF9C85"
+  error-red-dark: "#FFA08C"
   ok-green: "#2A6A2A"
-  ok-green-dark: "#7FD18A"
+  ok-green-dark: "#9FE0A8"
 typography:
-  display:
-    fontFamily: "DIN Condensed Bold"
-    fontSize: "34pt (Title, scales)"
-    fontWeight: 700
-    lineHeight: 1.05
+  page-title:
+    fontFamily: "SF Pro Rounded"
+    fontSize: "Large Title, scales, capped at accessibility1"
+    fontWeight: 800
   headline:
-    fontFamily: "DIN Condensed Bold"
-    fontSize: "21pt (Headline, scales)"
-  label:
-    fontFamily: "DIN Condensed Bold"
-    fontSize: "16pt (Footnote, scales)"
-    letterSpacing: "0.5pt"
+    fontFamily: "SF Pro Rounded"
+    fontSize: "Headline, scales"
+    fontWeight: 800
+  body:
+    fontFamily: "SF Pro Rounded"
+    fontSize: "Body, scales"
   data:
-    fontFamily: "SF Mono"
-    fontSize: "Callout, bold"
-  data-large:
-    fontFamily: "SF Mono"
-    fontSize: "Title, bold"
-  readout:
-    fontFamily: "SF Mono"
-    fontSize: "104pt, capped at xxxLarge"
-    fontWeight: 700
-  note:
-    fontFamily: "American Typewriter"
-    fontSize: "15pt (Body, scales)"
+    fontFamily: "SF Pro Rounded, monospaced digits"
+    fontSize: "Callout / Title, bold"
+  timer-readout:
+    fontFamily: "SF Pro Rounded, monospaced digits"
+    fontSize: "84pt, capped at xxxLarge"
+    fontWeight: 800
 rounded:
-  control: "3px"
-  panel: "0px"
+  panel: "22px"
+  control: "pill"
+  poster-corner: "36px"
 spacing:
-  xs: "4px"
-  sm: "8px"
-  md: "12px"
-  lg: "16px"
-  xl: "24px"
-  xxl: "32px"
+  xs: "5px"
+  sm: "10px"
+  md: "14px"
+  lg: "19px"
+  xl: "29px"
+  xxl: "38px"
 components:
   button-primary:
-    backgroundColor: "{colors.signal-orange}"
-    textColor: "{colors.on-signal}"
+    backgroundColor: "{colors.cobalt}"
+    textColor: "{colors.on-cobalt}"
     rounded: "{rounded.control}"
     height: "60px"
-  button-secondary:
-    backgroundColor: "{colors.panel-steel}"
-    textColor: "{colors.steel-text}"
-    rounded: "{rounded.control}"
-    height: "64px"
-  stepper-tile:
-    backgroundColor: "{colors.sheet-paper}"
+  step-button:
+    backgroundColor: "{colors.cobalt}"
+    textColor: "{colors.on-cobalt}"
+    rounded: "full"
+    height: "40px (44px target)"
+  tile:
+    backgroundColor: "{colors.butter} at 50%"
     textColor: "{colors.ink}"
     rounded: "{rounded.panel}"
-    padding: "12px"
-  operation-row-live:
-    backgroundColor: "{colors.signal-orange}"
-    textColor: "{colors.on-signal}"
-    rounded: "{rounded.panel}"
-    padding: "12px"
-  kraft-note:
-    backgroundColor: "{colors.label-kraft}"
+  poster:
+    backgroundColor: "{colors.butter}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.panel}"
-    padding: "12px"
+    rounded: "{rounded.poster-corner}"
+  timer-field:
+    backgroundColor: "{colors.field}"
+    textColor: "{colors.on-field}"
+    rounded: "{rounded.poster-corner}"
 ---
 
 # Design System: Next Cup
 
-Light-mode hexes are the defaults above; the `-dark` entries are the gunmetal
-appearance. Source of truth: `docs/design/tokens/*.json` and
-`NextCup/DesignSystem/Tokens.swift` (kept in sync by `design/check_tokens.py`).
-Values the format cannot hold (focus, motion, depth) are in the sections below.
+The hexes above are Sunday Studio, the look the app ships with ("Fill the Cup",
+chosen November 2026). Source of truth: `NextCup/DesignSystem/Tokens.swift` and
+`docs/design/tokens/sundayStudio.json`, kept in sync by `design/check_tokens.py` and
+checked for contrast by `design/contrast.py`. Settings still offers five other looks
+(Brass, Steel Blue, Daily, Café Page, Roaster Poster); each is a palette plus a
+`Flavor` (type, corners, density, control and number style) over the same layouts, so
+every rule below is written against token roles, not hexes.
 
 ## Overview
 
-**Creative North Star: "The Bench Instrument"**
+**Creative North Star: "Fill the Cup"**
 
-Next Cup looks like the tool on the bench next to the scale: a spec sheet with
-a readout. Information sits in ruled tables and square tiles, measured values
-are monospaced, names are set in condensed capitals, and one signal orange
-marks the thing that is happening now or the thing to press. Notes live on a
-piece of kraft stock, because a journal is paper at heart. Light mode is kraft
-board and cream sheets; dark mode is gunmetal. Both are first-class.
+Next Cup looks like a poster on the kitchen wall. Colour comes in whole blocks: a
+butter poster at the top of a recipe, cream everywhere else, and cobalt for the one
+thing to press. The brewer you are using is shown as a photograph where the method has
+one, and as a drawing where it has not.
+During a brew the screen itself is the signal: it turns cobalt while your hands are
+needed and goes back to cream when they are not, and a cup fills as the water goes in.
 
-It rejects the soft wellness-app look: no rounded cards, gradients, glass or
-mascots. It is dense but never cramped, because it is used one-handed at the
-brew station.
+It is used one-handed at the brew station, often with wet hands, so type is large,
+targets are large, and the state can be read from across the counter.
 
-**Key Characteristics:**
-- Ruled tables and square tiles; 1.5 pt rules; no shadows.
-- Monospaced numbers so values line up and do not jump while the timer runs.
-- One accent, orange, used for the primary action and the live step only.
-- Large hit areas: every control is at least 44 pt; primary buttons are 60 pt.
-- Everything reflows at the largest accessibility text size.
+**Key characteristics**
+- Three colours do the work: cream ground, butter second colour, cobalt for action.
+- Heavy rounded type, sentence case; numbers in the same face with fixed-width digits.
+- The method's drawing (`BrewGlyph`) is the hero wherever a recipe or method is shown.
+- Values you set sit on butter tiles; records and messages sit on white cards.
+- One primary button per screen, a full-width pill.
 
 ## Colors
 
-A kraft-and-steel palette with a single hot accent.
+Roles, with the token that carries each (`DS.` in code):
 
-### Primary
-- **Signal Orange** (`#C2410C` light, `#FF7A3D` dark): the primary button, the live step, selected choices, grade blocks. White text on it in light (5.2:1), gunmetal text in dark (6.5:1). On steel panels use **Signal on Steel** (`#FF7A3D`, 5.2:1 light, 4.8:1 dark).
+- **Ground** (`bg`): cream; navy in dark.
+- **Card** (`paper`): white; indigo in dark. Records (journal rows, bean cards), banners,
+  menus and the music bar.
+- **Second colour** (`kraft`): butter. The Start brew poster, recipe-card heads, step
+  chips, the "Explore by method" block. Text on it is `onKraft`.
+- **Tile** (`tile`): the second colour at half strength over the ground. Holds a value
+  you set: dose, grind, amount, the pickers on the brew form.
+- **Action** (`signal`, text `onSignal`): cobalt; cream in dark. The primary button and
+  the − and + of every stepper.
+- **Accent** (`accent`): labels, icons, links and progress; cobalt in light, orange in
+  dark.
+- **Field** (`field`, text `onField`, quieter text `fieldSoft`): the brew timer while
+  your hands are needed; cobalt with cream and butter text in both appearances. These
+  are the `steel`, `onSteel` and `signalOnSteel` tokens, which every look already
+  defines as a checked pair; toasts use the same three.
+- **Ink** (`ink`, `ink2`): text; `ink2` is for labels and captions only and becomes
+  `ink` under Increase Contrast.
+- **Line** (`line`): outlines and dividers, 3:1 against what they border.
+- **Error** and **OK**: messages only, always with an icon or words.
 
-### Neutral
-- **Kraft Board** (`#D9C4A0`) / **Gunmetal** (`#1B1D1F`): the screen.
-- **Sheet Paper** (`#EFE6D3`) / **Gunmetal Paper** (`#26292C`): tables, tiles, list rows.
-- **Panel Steel** (`#2B2F33` / `#30353A`): the timer readout, table headers, secondary buttons.
-- **Ink** (`#1E1E1C` / `#ECEAE4`) and **Ink Muted** (`#4A463E` / `#B4B1A8`): text; muted is for labels and captions only.
-- **Rule** (`#1E1E1C` / `#8A9096`): every outline and divider; 3:1 or better against the surfaces it borders.
-- **Label Kraft** (`#C9AE82`): the note stock, same in both appearances, with `#1E1E1C` text (7.8:1).
-- **Error Red** (`#9A1B0A` / `#FF9C85`) and **OK Green** (`#2A6A2A` / `#7FD18A`): messages only, never decoration.
-
-### Named Rules
-**The One Voice Rule.** Orange appears on at most one block per screen region: the action to take or the step in progress. If two things are orange, one is wrong.
-**The Measured Contrast Rule.** Every text and control pair is checked with `contrast.py` against both token files. A new color is not added until its pairs pass AA.
+### Rules
+- **One thing is cobalt.** A screen has one filled cobalt button. The stepper buttons
+  are small and belong to their tile; nothing else is filled with the action colour.
+- **State is never colour alone.** The timer's field always comes with the chip
+  ("Pour now", "Hands off", "Get ready") and the instruction in words.
+- **Measure before adding.** A new pair goes into `tokens.light.json`'s `pairs` and
+  through `design/contrast.py` before it ships.
 
 ## Typography
 
-**Display Font:** DIN Condensed Bold (bundled with iOS, set uppercase)
-**Data Font:** SF Mono (system monospaced)
-**Note Font:** American Typewriter (bundled with iOS)
-**Body:** SF Pro via system text styles
+System fonts only. Sunday Studio sets everything in SF Pro Rounded (`bodyDesign` and
+`displayDesign` `.rounded`), display weight heavy.
 
-**Character:** a stencil-and-ledger pairing: condensed capitals name things, monospaced figures measure them, typewriter text is the human note.
+- **Page title** (`DS.Font.pageTitle`): tab titles, the recipe name on the poster, the
+  timer's instruction. Large Title, capped at `accessibility1`, up to three lines.
+- **Headline** (`DS.Font.headline`): row names, chip names, the next step.
+- **Tile title**: Subheadline, bold. Names the value a tile holds.
+- **Body, footnote, caption**: system text styles; captions in `ink2`.
+- **Data** (`DS.Font.data`, `dataLarge`): measured values, with monospaced digits so
+  they do not jump.
+- **Timer readout** (`DS.flavor.timerReadout`): the countdown, capped at `xxxLarge`.
 
-### Hierarchy
-- **Display** (DIN Bold, 34 pt, Title style): the recipe name, empty-state titles.
-- **Headline** (DIN Bold, 21 pt): row and bean names.
-- **Label** (DIN Bold, 16 pt, uppercase): column headers and tile labels.
-- **Data** (SF Mono bold, Callout / Title): every measured value.
-- **Readout** (SF Mono bold, 104 pt, capped at xxxLarge): the timer.
-- **Note** (American Typewriter, 15 pt): tuning notes and the tasting note.
-- **Body** (system, Body): instructions and sentences, 65 characters or fewer per line on a phone.
-
-### Named Rules
-**The Dynamic Type Rule.** Every size is relative to a text style. Large display text is capped (`accessibility1`, timer `xxxLarge`) so one control never exceeds the screen; layouts stack instead of shrinking.
-**The Numbers Are Monospaced Rule.** Measured values are never set in a proportional face.
+Every size is a text style or scales from one. Large display text is capped so one
+element never fills the screen; layouts stack instead (the poster drops its drawing,
+the cup moves above the countdown, the next-step strip stacks).
 
 ## Layout
 
-One column, 16 pt side margins, 4-pt spacing scale (4, 8, 12, 16, 24, 32). Tables run edge to edge inside the margin; tiles sit in a two-column grid that becomes one column at accessibility sizes. Primary actions are pinned to the bottom third inside a safe-area inset so a thumb reaches them and the keyboard never covers Save. Navigation is the system tab bar (Journal, Recipes), navigation stack, sheet (log form) and full-screen cover (timer). iPhone portrait only.
+One column, `DS.Space.lg` side margins, the 4-pt scale times the look's density
+(Sunday Studio is airy, 1.2). Gaps grow with grouping: inside a tile `md`, between
+tiles `md`, between sections `lg`.
 
-## Elevation & Depth
+- **Start brew:** the poster (method, name, the numbers that follow from the dose,
+  the drawing) runs edge to edge and up under the navigation bar, with 36 pt bottom
+  corners. Then beans, dose, grind and amount, each a tile with the same stepper row
+  so the − and + line up. Steps are a strip of numbered chips; "Show instructions"
+  swaps the strip for a timeline with the first sentence of each step. Start brew is
+  pinned at the bottom.
+- **Brew timer:** music bar and step progress at the top; the chip, the instruction
+  and one short line (how much to add, or where the scale should be), never the recipe's
+  prose, so the screen fits without scrolling; the cup beside the countdown, centred in the room that is left; the
+  next step and the controls pinned at the bottom. The field begins under the
+  navigation bar with 36 pt top corners, so the system status bar keeps its colours.
+- **Lists** (Journal, Beans, Explore): white cards on cream.
 
-Flat. Depth is conveyed by rules, contrasting surfaces (paper on board, steel on paper) and the 2 pt press offset on buttons. There are no shadows, blur or gradients. System surfaces (tab bar, sheet) keep their native materials.
+Navigation is the system tab bar, navigation stacks and sheets. iPhone portrait only.
 
-**The Flat-By-Default Rule.** No shadow is added to any component; hierarchy comes from rule weight and surface color.
+## Shapes and depth
 
-## Shapes
+- Cards and tiles: the look's radius (22 pt). Buttons: pills. Poster and field: 36 pt
+  on the edge that meets the page.
+- Tiles, posters, chips and the timer field are flat fills with no border and no
+  shadow. Cards (`panel`) keep the system glass with a hairline; with Reduce
+  Transparency they become solid with a full border.
+- Icons are SF Symbols. Tile titles carry no icon.
 
-Square. Panels, tables, tiles and chips have 0 radius; buttons have a 3 pt radius so they read as pressable. Outlines are 1.5 pt (1 pt for inner dividers). Kraft notes have a dashed outline like a cut label. Icons are SF Symbols only, used sparingly.
+## Illustration
+
+`BrewGlyph` holds one line drawing per brew method, drawn in code so it follows every
+look and stays sharp. `BrewHero` and `HeroBanner` show the method's photograph
+(`method.<key>` in the asset catalog) and fall back to the drawing as a small still
+life. `PourCup` is the timer's cup: outline in the text colour. In Sunday Studio, the
+default look, the liquid and steam are orange in light and dark (the owner's
+pick). In every other look the liquid is the plain contrasting colour: `liquid` off the
+field and `onField` on it, standing a little off the wall so the cup reads when both
+match. Nothing drawn as a liquid, drip, stream or pool may use butter or any yellow,
+brown, green or purple.
+
+Steam rises from the cup, three wisps in the cup's line weight and the liquid's colour,
+only when it is true to the brew: from the first pour on, through the waits and the
+finished screen; never over an empty cup, and never for cold brew or a recipe brewed
+onto ice. All of it is decorative and hidden
+from VoiceOver; the name beside it carries the meaning. Photographs are not used.
 
 ## Components
 
-All components live in `NextCup/DesignSystem/Components.swift`.
+`NextCup/DesignSystem/Components.swift` unless noted.
 
-### Buttons
-- **Primary** (`SteelButton`): signal orange, uppercase DIN, 60 pt tall, full width. Pressed: down 2 pt (brightness dip under Reduce Motion). Disabled: 40% opacity. Loading: spinner beside the label, taps blocked, label kept for VoiceOver.
-- **Secondary:** panel steel, 64 pt on the timer row, same states.
+- **SteelButton:** the primary (cobalt pill, 60 pt) and secondary (clear glass) button.
+  Pressed, disabled (40%) and loading states; loading keeps the label.
+- **FieldButtonStyle:** the timer's primary button, flat, in colours the screen passes:
+  cobalt on cream, cream on the field. Presses to 0.97.
+- **DialStepper** (`Features/Recipes`): caption, −, value, +. Hold the value for a dial.
+  The − and + are `StepGlyph`: solid 40 pt discs inside a 44 pt target, 40% when at
+  the end of the range.
+- **StepperTile:** a value over its − and + on a tile (the brew form).
+- **`.tile()` and `.panel(_:)`:** the two surfaces. Tile for a value you set, panel
+  for a record or a message.
+- **BrewHero, PourCup:** see Illustration.
+- **StateBanner, SteelToast, EmptyState, SkeletonRow:** messages and states. Toasts
+  carry Undo instead of a confirm dialog and announce themselves to VoiceOver.
+- **TimelineRow** (`Features/Recipes`): a step with its time, for the instructions view.
 
-### Spec cell, table, operation row
-- **SpecCell / PaperBox:** label over a monospaced value in a ruled grid.
-- **ColumnHeader + OperationRow:** steel header, paper rows; the live row turns orange and shows its instruction; finished rows turn muted.
+## Motion
 
-### Instrument panel
-- **InstrumentPanel + ReadoutBar:** steel panel, the elapsed time and a thin orange bar (decorative; the value is the label).
+- Shared numbers are `DS.Motion` (`DesignSystem/Interaction.swift`): 120 ms press, 200 ms
+  exit, 250 ms enter, 0.97 press scale. The full list of what moves is
+  `docs/interaction-matrix.md`.
+- Press: 0.97 scale over 120 ms on the timer button and on every card that opens
+  something (`PressableStyle`); system press on glass buttons.
+- A new timer step rises into place as the old one lifts away, 250 ms.
+- The timer's field cross-fades over 250 ms when the state changes; the cup level and
+  the progress move linearly each second; numbers use the numeric text transition.
+- Steam drifts up and fades on a five-second loop, on its own clock; it is stronger
+  while water goes in and settles over 1.6 s when the pour ends. It never bounces.
+- Look-level feel comes from `Flavor.motion` (Sunday Studio: a short spring on
+  secondary feedback, never on the timer digits or the instruction).
+- Reduce Motion: no scale, no spring, no moving level between seconds; the field
+  changes at once and the steam stands still.
+- Haptics go through `Feedback`: start, step change (two heavy beats), pause and resume,
+  finish, and a warning five seconds before a step. One per event, and a step joined to
+  its neighbour on screen cues once.
 
-### Value entry
-- **StepperTile:** value, unit, recipe target beneath, and minus/plus halves 48 pt tall. The saved value is whatever is shown; the target is never locked.
-- **ReadoutTile:** derived values (ratio) in a dashed outline, no input.
-- **ChoiceButton:** one of several exclusive words; selected is orange with the selected trait.
-- **GradeScale:** five square cells 1 to 5, one tap per whole grade, a half-step toggle, adjustable for VoiceOver.
-- **GradeBadge:** orange block with the grade in lists.
+## Accessibility
 
-### Notes
-- **KraftNote:** kraft stock with a dashed outline, typewriter text.
+- 44 pt targets everywhere; primary buttons 60 pt.
+- Dynamic Type through the accessibility sizes: display text is capped and layouts
+  stack.
+- VoiceOver: each step is one element; the countdown reads as chip, caption and value;
+  step changes are announced.
+- Increase Contrast swaps `ink2` for `ink`. Reduce Transparency makes cards solid.
 
-### Feedback and state
-- **SteelToast:** steel bar with one Undo action; used instead of confirm dialogs for reversible actions.
-- **StateBanner:** error, offline and info; names the problem and offers a way out.
-- **EmptyState:** title, one sentence, one action.
-- **SkeletonRow:** paper block with grey bars; pulses unless Reduce Motion is on.
+## Do and don't
 
-### Focus and motion
-- Focus (Full Keyboard Access): not yet designed or tested. Open item for Phase 4: verify the system focus ring is visible on every custom control and add an ink outline where it is not.
-- Motion: 100 ms ease-out for press; skeleton pulse 0.9 s. Reduce Motion removes the press offset and the pulse.
+**Do**
+- Put the drawing of the brewer wherever a recipe or method is introduced.
+- Put a value the user sets on a tile, with the shared stepper row.
+- Keep the timer's state in words as well as colour.
+- Run `python3 design/check_tokens.py` and `python3 design/contrast.py` after any
+  colour change.
 
-## Do's and Don'ts
-
-### Do:
-- **Do** show the recipe target beside every value the user can change.
-- **Do** keep every control 44 pt or larger and stack rows at accessibility sizes.
-- **Do** set measured numbers in SF Mono and names in DIN capitals.
-- **Do** use Undo toasts for reversible actions and keep the draft on any failure.
-- **Do** run `python3 design/check_tokens.py` and `contrast.py` after any color change.
-
-### Don't:
-- **Don't** add rounded cards, shadows, gradients, blur or decorative illustrations.
-- **Don't** put orange on more than one block in a region.
-- **Don't** use muted ink for anything the user must read to act.
-- **Don't** shrink text to fit; cap it and reflow.
-- **Don't** lock or hide a user's value behind a recipe target.
+**Don't**
+- Don't add a second filled cobalt button to a screen.
+- Don't add gradients, glows or decorative icons on headings; photographs are for brew
+  methods only.
+- Don't shrink text to fit; cap it and stack.
+- Don't use `ink2` for anything the user must read to act.

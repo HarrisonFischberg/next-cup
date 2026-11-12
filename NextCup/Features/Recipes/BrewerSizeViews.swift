@@ -57,7 +57,7 @@ struct BrewerSizeQuestion: View {
 
   private func pick(_ size: BrewerSize) {
     BrewerCapacity.choose(size, for: key)
-    UISelectionFeedbackGenerator().selectionChanged()
+    Feedback.selection()
     done()
   }
 

@@ -54,7 +54,7 @@ struct MethodStylesView: View {
           }
           ForEach(Array(styles.enumerated()), id: \.element.id) { index, recipe in
             NavigationLink(value: DeepLink.recipe(recipe.id)) { card(recipe, number: index + 1) }
-              .buttonStyle(.plain)
+              .buttonStyle(PressableStyle())
               .accessibilityIdentifier("style.\(index + 1)")
           }
           yourStyle
@@ -97,7 +97,7 @@ struct MethodStylesView: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
       }
-      .buttonStyle(.plain)
+      .buttonStyle(PressableStyle())
       .accessibilityIdentifier("style.1")
     }
     .padding(DS.Space.lg)
@@ -128,7 +128,7 @@ struct MethodStylesView: View {
       .panel(DS.paper, dash: [6, 4])
       .contentShape(Rectangle())
     }
-    .buttonStyle(.plain)
+    .buttonStyle(PressableStyle())
     .accessibilityIdentifier("style.yours")
   }
 

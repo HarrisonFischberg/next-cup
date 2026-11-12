@@ -358,9 +358,34 @@ private func makePlan() throws -> TimerPlan {
 
   @Test func groupsStepsThatStartTogether() throws {
     let plan = try plan()
-    #expect(plan.displayGroups == [[0, 1], [2], [3], [4], [5]])
+    // The 10-second stir joins the wait after it, and the 5-second valve the drawdown:
+    // nothing shown lasts under 15 seconds.
+    #expect(plan.displayGroups == [[0, 1], [2, 3], [4, 5]])
     #expect(plan.groupIndex(ofStep: 1) == 0)
-    #expect(plan.groupIndex(ofStep: 3) == 2)
+    #expect(plan.groupIndex(ofStep: 3) == 1)
+  }
+
+  @Test func aShortLastStepStandsAlone() throws {
+    let plan = try TimerPlan(
+      steps: [
+        TimerStep(order: 0, label: "Pour", startOffsetS: 0, targetCumulativeWaterG: 200),
+        TimerStep(order: 1, label: "Pour", startOffsetS: 5, targetCumulativeWaterG: 250),
+        TimerStep(order: 2, label: "Press", startOffsetS: 240),
+      ], totalDurationS: 245)
+    #expect(plan.displayGroups == [[0, 1], [2]])
+  }
+
+  @Test func skipLeavesTheWholeDisplayedStep() throws {
+    let clock = FakeClock()
+    var engine = TimerEngine(plan: try plan(), clock: clock, store: MemoryStore())
+    engine.start()
+    clock.advance(32)  // in the stir, shown joined to the wait as one step
+    #expect(try plan().nextDisplayedStep(after: engine.state())?.label == "Open valve")
+    engine.skipToNextStep()
+    #expect(engine.state().elapsedS == 120)
+    #expect(engine.state().current?.label == "Open valve")
+    engine.skipToNextStep()  // the valve and the drawdown are the last step shown
+    #expect(engine.state().phase == .finished(endedEarly: false))
   }
 
   @Test func walksTheScheduleWithoutTaps() throws {

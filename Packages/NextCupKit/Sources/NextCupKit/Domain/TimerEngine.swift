@@ -207,7 +207,8 @@ public struct TimerEngine: Sendable {
     case .notStarted, .finished: return
     case .running, .paused: break
     }
-    if let next = current.next {
+    // To the next step on screen: a short step joined to this one is not a step of its own.
+    if let next = plan.nextDisplayedStep(after: current) {
       saved.skippedS += Double(next.startOffsetS) - current.elapsedS
     } else {
       saved.endedElapsedS = Double(plan.totalDurationS)
@@ -285,8 +286,14 @@ public struct TimerEngine: Sendable {
 }
 
 extension TimerPlan {
+  /// A displayed step shorter than this is too easy to miss, so it joins its neighbour.
+  public static let shortestDisplayedStepS = 15
+
   /// Step indices grouped by start time, so steps that begin together (close the valve,
-  /// then pour, both at 0:00) show as one displayed step in their original order.
+  /// then pour, both at 0:00) show as one displayed step in their original order. A group
+  /// that would last under `shortestDisplayedStepS` (a 5-second top-up pour) joins the one
+  /// after it, so no step flashes past. The last group stands alone however short: joined
+  /// to the one before, its order would show minutes early.
   public var displayGroups: [[Int]] {
     var groups: [[Int]] = []
     for (index, step) in steps.enumerated() {
@@ -296,11 +303,30 @@ extension TimerPlan {
         groups.append([index])
       }
     }
+    var group = 0
+    while group + 1 < groups.count {
+      let length = steps[groups[group + 1][0]].startOffsetS - steps[groups[group][0]].startOffsetS
+      if length < Self.shortestDisplayedStepS {
+        groups[group] += groups.remove(at: group + 1)  // and look at the joined group again
+      } else {
+        group += 1
+      }
+    }
     return groups
   }
 
   /// The displayed group holding step `index`.
   public func groupIndex(ofStep index: Int) -> Int? {
     displayGroups.firstIndex { $0.contains(index) }
+  }
+
+  /// The first step of the displayed group after the current one; nil on the last group.
+  /// Before the first step it is the first step.
+  public func nextDisplayedStep(after state: TimerState) -> TimerStep? {
+    guard let index = state.currentIndex else { return state.next }
+    let groups = displayGroups
+    guard let group = groups.firstIndex(where: { $0.contains(index) }), group + 1 < groups.count
+    else { return nil }
+    return steps[groups[group + 1][0]]
   }
 }

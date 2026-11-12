@@ -14,6 +14,7 @@ struct DialStepper: View {
   let identifier: String
 
   @State private var open = false
+  @Environment(\.isEnabled) private var enabled
   /// The stop the hold began on; nil when no finger is down on the number.
   @State private var heldFrom: Int?
 
@@ -21,13 +22,20 @@ struct DialStepper: View {
 
   var body: some View {
     HStack(spacing: 2) {
-      Text("Hold for dial").font(.footnote).foregroundStyle(DS.ink2).layoutPriority(1)
-      Spacer(minLength: DS.Space.sm)
-      stepButton("minus", label: "Decrease \(title)", id: "decrease") { step(by: -1) }
-        .disabled(index == 0)
+      // Disabled (a saved brew before Edit) shows the value alone.
+      if enabled {
+        Text("Hold for dial").font(.footnote).foregroundStyle(DS.ink2).layoutPriority(1)
+        Spacer(minLength: DS.Space.sm)
+        stepButton("minus", label: "Decrease \(title)", id: "decrease") { step(by: -1) }
+          .disabled(index == 0)
+      }
       number
-      stepButton("plus", label: "Increase \(title)", id: "increase") { step(by: 1) }
-        .disabled(index == options.count - 1)
+      if enabled {
+        stepButton("plus", label: "Increase \(title)", id: "increase") { step(by: 1) }
+          .disabled(index == options.count - 1)
+      } else {
+        Spacer(minLength: 0)
+      }
     }
     .padding(DS.Space.md)
     .sensoryFeedback(.selection, trigger: selection)
@@ -98,11 +106,8 @@ struct DialStepper: View {
     _ symbol: String, label: String, id: String, action: @escaping () -> Void
   ) -> some View {
     Button(action: action) {
-      // A 38 pt ring with a fine glyph, inside the full 44 pt tap target.
-      Image(systemName: symbol).font(.system(size: 14, weight: .semibold))
-        .foregroundStyle(DS.accent)
-        .frame(width: 38, height: 38)
-        .overlay(Circle().strokeBorder(DS.accent, lineWidth: 1.25))
+      // A solid 40 pt button, inside the full 44 pt tap target.
+      StepGlyph(symbol: symbol)
         .frame(width: DS.Size.minTap, height: DS.Size.minTap)
         .contentShape(Rectangle())
     }

@@ -25,10 +25,10 @@ import Testing
       ], total: 210, method: "switchable-dripper")
     #expect(
       all.map(\.title) == [
-        "Close the valve, then pour to 270 g", "Stir the grounds", "Hands off. Let it steep",
-        "Open the valve", "Hands off. Let it drain",
+        // The 10-second stir and the 5-second valve each join the step after them.
+        "Close the valve, then pour to 270 g", "Stir the grounds", "Open the valve",
       ])
-    #expect(all.map(\.valveOpen) == [false, false, false, true, true])
+    #expect(all.map(\.valveOpen) == [false, false, true])
     #expect(all[0].waitTitle == "Hands off. Let it steep")
     #expect(all[0].waitDetail == "You should be at 270 g.")
     #expect(all[0].nowChip == "Do it now" && all[0].doS == 3 + 54)
@@ -74,12 +74,12 @@ import Testing
       ], total: 120, method: "aeropress")
     #expect(
       all.map(\.title) == [
-        "Pour to 100 g", "Stir the grounds", "Set the plunger on top",
+        "Pour to 100 g, then stir the grounds", "Set the plunger on top",
         "Press the plunger down slowly",
         "Top up with 100 g of hot water",
       ])
-    #expect(all[2].waitTitle == "Hands off. Let it steep")
-    #expect(all[3].doS == nil && all[3].nowChip == "Press now")
+    #expect(all[1].waitTitle == "Hands off. Let it steep")
+    #expect(all[2].doS == nil && all[2].nowChip == "Press now")
   }
 
   @Test func dripMachineFillsStartsAndWaits() throws {
