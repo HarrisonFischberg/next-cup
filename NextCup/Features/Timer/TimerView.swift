@@ -176,7 +176,9 @@ struct TimerView: View {
     .sensoryFeedback(.warning, trigger: readyCue)
     // A tick each running second; the music follows the brew: playing, paused, over.
     .onChange(of: Int(state.elapsedS)) { _, _ in
-      if state.phase == .running { BrewAudio.shared.tick() }
+      guard state.phase == .running else { return }
+      BrewAudio.shared.tick()
+      if scenePhase == .active { BrewAudio.shared.resume() }
     }
     .onChange(of: state.phase, initial: true) { _, phase in
       switch phase {
