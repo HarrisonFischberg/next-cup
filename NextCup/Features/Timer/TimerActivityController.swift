@@ -12,7 +12,8 @@ extension TimerActivityAttributes.ContentState {
     }
     let start = now.addingTimeInterval(-state.elapsedS)
     self.init(
-      stepLabel: state.current?.label ?? "Ready", nextLabel: state.next?.label,
+      stepLabel: state.current?.label ?? "Ready",
+      nextLabel: (plan.map { $0.nextDisplayedStep(after: state) } ?? state.next)?.label,
       stepNumber: (state.currentIndex.map { plan?.groupIndex(ofStep: $0) ?? $0 } ?? -1) + 1,
       startDate: start,
       endDate: start.addingTimeInterval(Double(state.totalDurationS)),

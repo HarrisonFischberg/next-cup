@@ -207,7 +207,8 @@ public struct TimerEngine: Sendable {
     case .notStarted, .finished: return
     case .running, .paused: break
     }
-    if let next = current.next {
+    // To the next step on screen: a short step joined to this one is not a step of its own.
+    if let next = plan.nextDisplayedStep(after: current) {
       saved.skippedS += Double(next.startOffsetS) - current.elapsedS
     } else {
       saved.endedElapsedS = Double(plan.totalDurationS)
@@ -317,5 +318,15 @@ extension TimerPlan {
   /// The displayed group holding step `index`.
   public func groupIndex(ofStep index: Int) -> Int? {
     displayGroups.firstIndex { $0.contains(index) }
+  }
+
+  /// The first step of the displayed group after the current one; nil on the last group.
+  /// Before the first step it is the first step.
+  public func nextDisplayedStep(after state: TimerState) -> TimerStep? {
+    guard let index = state.currentIndex else { return state.next }
+    let groups = displayGroups
+    guard let group = groups.firstIndex(where: { $0.contains(index) }), group + 1 < groups.count
+    else { return nil }
+    return steps[groups[group + 1][0]]
   }
 }

@@ -375,6 +375,19 @@ private func makePlan() throws -> TimerPlan {
     #expect(plan.displayGroups == [[0, 1], [2]])
   }
 
+  @Test func skipLeavesTheWholeDisplayedStep() throws {
+    let clock = FakeClock()
+    var engine = TimerEngine(plan: try plan(), clock: clock, store: MemoryStore())
+    engine.start()
+    clock.advance(32)  // in the stir, shown joined to the wait as one step
+    #expect(try plan().nextDisplayedStep(after: engine.state())?.label == "Open valve")
+    engine.skipToNextStep()
+    #expect(engine.state().elapsedS == 120)
+    #expect(engine.state().current?.label == "Open valve")
+    engine.skipToNextStep()  // the valve and the drawdown are the last step shown
+    #expect(engine.state().phase == .finished(endedEarly: false))
+  }
+
   @Test func walksTheScheduleWithoutTaps() throws {
     let clock = FakeClock()
     var engine = TimerEngine(plan: try plan(), clock: clock, store: MemoryStore())
