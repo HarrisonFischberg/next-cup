@@ -258,6 +258,17 @@ struct BrewFormModelTests {
     #expect(model.draft.targets?.totalTimeS == 180)
   }
 
+  @Test func seedWithoutAGrinderLogsTheOneUsedLast() throws {
+    let harness = try Harness()
+    let grinder = Grinder(name: "Hand mill")
+    harness.container.mainContext.insert(grinder)
+    harness.defaults.set(grinder.id.uuidString, forKey: BrewFormModel.lastGrinderKey)
+    #expect(harness.model(seed: seed()).draft.grinderID == grinder.id)
+    var chosen = seed(key: "run-2")
+    chosen.grinderID = UUID()
+    #expect(harness.model(seed: chosen).draft.grinderID == chosen.grinderID)
+  }
+
   @Test func corruptDraftIsDiscardedWithANotice() throws {
     let harness = try Harness()
     try FileManager.default.createDirectory(
