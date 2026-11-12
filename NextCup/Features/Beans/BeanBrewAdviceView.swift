@@ -194,12 +194,8 @@ struct BeanBrewAdviceView: View {
       BrewingCupView().frame(maxWidth: 180)
       VStack(spacing: DS.Space.xs) {
         Text("Picking three brews").font(DS.Font.headline).foregroundStyle(DS.ink)
-        Text(
-          RecipeReviewAI.cloudProviderTitle.map {
-            "Sending this bean, what you want and your brewers to \($0)."
-          } ?? "Working it out on this iPhone."
-        )
-        .font(.body).foregroundStyle(DS.ink2).multilineTextAlignment(.center)
+        Text("Research, development and bean magic ahead!")
+          .font(.body).foregroundStyle(DS.ink2).multilineTextAlignment(.center)
       }
       .accessibilityElement(children: .combine)
     }
