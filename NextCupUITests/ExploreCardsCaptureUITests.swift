@@ -1,6 +1,6 @@
 import XCTest
 
-/// Explore's suggestion cards, top and scrolled to the end. Runs only while
+/// Explore's deck, a kept bean's drawer, Skip with its Undo, and the end of the page. Runs only while
 /// `docs/design/explore-cards/.capture` exists; files are named with the
 /// CAPTURE_PREFIX environment variable (old_ or new_).
 final class ExploreCardsCaptureUITests: XCTestCase {
@@ -17,7 +17,7 @@ final class ExploreCardsCaptureUITests: XCTestCase {
     for variant in ["light"] {
       let app = XCUIApplication()
       app.launchArguments = [
-        "-inMemoryStore", "-resetNavigationState", "-resetDraft", "-demoBrews",
+        "-inMemoryStore", "-resetNavigationState", "-resetDraft", "-demoBrews", "-demoBeans",
         "-demoOnlyMethod", "switchable-dripper", "-appStyle", "sundayStudio",
       ]
       app.launch()
@@ -28,9 +28,14 @@ final class ExploreCardsCaptureUITests: XCTestCase {
         try app.screenshot().pngRepresentation.write(
           to: folder.appendingPathComponent("\(prefix)explore-\(name)-\(variant).png"))
       }
-      try shot("top")
+      try shot("deck")
+      app.buttons["explore.keep"].tap()
+      try shot("kept-open")
+      app.buttons["explore.skip"].tap()
+      try shot("skipped-undo")
+      app.buttons["explore.keep"].tap()
       app.swipeUp()
-      try shot("middle")
+      try shot("drawers")
       for _ in 0..<6 { app.swipeUp() }
       try shot("bottom")
       app.terminate()

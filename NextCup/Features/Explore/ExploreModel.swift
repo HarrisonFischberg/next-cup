@@ -62,6 +62,39 @@ enum ExploreModel {
     beans.filter { $0.status == .inUse || $0.status == .buyAgain }
   }
 
+  /// The round Explore deals: the first `limit` beans not yet kept or skipped. With tastes
+  /// chosen (flavor bucket keys), only beans that have one of them.
+  static func deck(
+    _ beans: [Bean], decided: Set<UUID>, tastes: Set<String>, limit: Int = 3,
+    buckets: (Bean) -> [BucketRef]
+  ) -> [Bean] {
+    Array(
+      beans.filter { bean in
+        !decided.contains(bean.id)
+          && (tastes.isEmpty
+            || buckets(bean).contains { $0.dimension == .flavor && tastes.contains($0.key) })
+      }.prefix(limit))
+  }
+
+  /// The distinct flavor buckets of these beans, in first-seen order, for the taste chips.
+  static func flavors(of beans: [Bean], buckets: (Bean) -> [BucketRef]) -> [BucketRef] {
+    var seen = Set<String>()
+    return beans.flatMap(buckets).filter { $0.dimension == .flavor && seen.insert($0.key).inserted }
+  }
+
+  // Kept and skipped bean ids are stored as one comma-separated string in UserDefaults.
+  static func ids(_ stored: String) -> Set<UUID> {
+    Set(stored.split(separator: ",").compactMap { UUID(uuidString: String($0)) })
+  }
+
+  static func adding(_ id: UUID, to stored: String) -> String {
+    ids(stored).union([id]).map(\.uuidString).sorted().joined(separator: ",")
+  }
+
+  static func removing(_ id: UUID, from stored: String) -> String {
+    ids(stored).subtracting([id]).map(\.uuidString).sorted().joined(separator: ",")
+  }
+
   /// Keeps a default pick to the brew types the user brews with: the bundled default
   /// becomes recipes of the shown methods, ones not brewed yet first, the default's
   /// own method ahead of the rest. History picks are already limited by `history`.

@@ -184,6 +184,12 @@ struct StartupError: Error, Equatable {
         bean.bagWeightG = bag
         bean.remainingAdjustmentG = -used
         bean.ratingTenths = rating
+        // Tastes for Explore's chips.
+        bean.bagFlavorNotes =
+          [
+            "USA": ["chocolate", "caramel"], "Colombia": ["cherry", "chocolate"],
+            "Kenya": ["blueberry", "grapefruit"], "Brazil": ["hazelnut", "caramel"],
+          ][origin] ?? []
         context.insert(bean)
       }
       try? context.save()

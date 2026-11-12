@@ -19,6 +19,8 @@ struct NextCupApp: App {
       JournalStorage.reset()
       UserDefaults.standard.removeObject(forKey: GettingStartedCard.dismissedKey)
       UserDefaults.standard.removeObject(forKey: FlavorPicker.returnKey)
+      UserDefaults.standard.removeObject(forKey: "explore.kept")
+      UserDefaults.standard.removeObject(forKey: "explore.skipped")
     }
     // UI tests start without drafts left by an earlier test; relaunches omit this.
     if ProcessInfo.processInfo.arguments.contains("-resetDraft") {

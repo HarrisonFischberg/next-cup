@@ -2,9 +2,10 @@ import NextCupKit
 import SwiftData
 import SwiftUI
 
-/// The Explore tab: for each bean in use, which method and starting values the
-/// recommender suggests and why. The explanation is built from facts the
-/// recommender computed; with too few graded brews the card says it is a default.
+/// The Explore tab: up to three beans in use are dealt one at a time (the next ones on the
+/// shelf, or the ones with a chosen taste), each with the method and starting values the
+/// recommender suggests. A kept bean becomes a drawer below the deck with the recipes it was
+/// brewed with and the AI's help; a skipped one leaves the deck until it is brought back.
 struct ExploreView: View {
   @Environment(\.dynamicTypeSize) private var dts
   @Query(sort: \Bean.createdAt, order: .reverse) private var beans: [Bean]
@@ -18,6 +19,19 @@ struct ExploreView: View {
   @State private var taxonomy = ExploreModel.taxonomy
   @State private var addingBean = false
   @State private var showsRoasters = false
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  /// Kept and skipped bean ids, comma-separated, so the choices outlast a relaunch.
+  @AppStorage("explore.kept") private var keptIDs = ""
+  @AppStorage("explore.skipped") private var skippedIDs = ""
+  /// Flavor bucket keys chosen on the taste chips; empty means the recommended three.
+  @State private var tastes: Set<String> = []
+  /// The beans dealt this round, in order; the decided ones drop out of the deck.
+  @State private var round: [UUID] = []
+  @State private var openDrawer: UUID?
+  @State private var lastSkipped: Bean?
+  /// How far the top card has been thrown off the side by Keep or Skip.
+  @State private var thrown: CGFloat = 0
+  @GestureState private var drag: CGFloat = 0
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -142,6 +156,48 @@ struct ExploreView: View {
     .accessibilityElement(children: .combine)
   }
 
+  private var kept: Set<UUID> { ExploreModel.ids(keptIDs) }
+  private var decided: Set<UUID> { kept.union(ExploreModel.ids(skippedIDs)) }
+
+  /// Deals the next round: up to three undecided beans, with a chosen taste when one is set.
+  private func deal(_ taxonomy: Taxonomy) {
+    let aliases = ExploreModel.aliases(storedAliases)
+    round = ExploreModel.deck(ExploreModel.planned(beans), decided: decided, tastes: tastes) {
+      ExploreModel.buckets(of: $0, taxonomy: taxonomy, aliases: aliases)
+    }.map(\.id)
+  }
+
+  /// Keep or Skip: the card leaves by its side, then the choice is stored.
+  private func decide(_ bean: Bean, keep: Bool) {
+    let commit = {
+      thrown = 0
+      if keep {
+        keptIDs = ExploreModel.adding(bean.id, to: keptIDs)
+        openDrawer = bean.id
+        Feedback.success()
+      } else {
+        skippedIDs = ExploreModel.adding(bean.id, to: skippedIDs)
+        lastSkipped = bean
+        Feedback.lift()
+      }
+    }
+    guard !reduceMotion else { return commit() }
+    withAnimation(.easeIn(duration: DS.Motion.local)) {
+      thrown = keep ? 500 : -500
+    } completion: {
+      withAnimation(.spring(duration: DS.Motion.enter)) { commit() }
+    }
+  }
+
+  private func undoSkip() {
+    guard let bean = lastSkipped else { return }
+    withAnimation(DS.Motion.enter(reduceMotion)) {
+      skippedIDs = ExploreModel.removing(bean.id, from: skippedIDs)
+      lastSkipped = nil
+    }
+    Feedback.tap()
+  }
+
   @ViewBuilder
   private func content(_ taxonomy: Taxonomy) -> some View {
     let planned = ExploreModel.planned(beans)
@@ -164,24 +220,73 @@ struct ExploreView: View {
       let aliases = ExploreModel.aliases(storedAliases)
       let history = ExploreModel.history(of: brews, taxonomy: taxonomy, aliases: aliases)
       let brewedBeanIDs = Set(brews.flatMap { ($0.beans ?? []).compactMap { $0.bean?.id } })
+      let decided = decided
+      let waiting = planned.filter { !decided.contains($0.id) }
+      let buckets = { (bean: Bean) in
+        ExploreModel.buckets(of: bean, taxonomy: taxonomy, aliases: aliases)
+      }
+      let result = { (refs: [BucketRef]) in
+        ExploreModel.limited(Recommender.recommend(for: refs, history: history), to: methods)
+      }
+      let cards = round.compactMap { id in waiting.first { $0.id == id } }
+      let keptBeans = beans.filter { kept.contains($0.id) }
       ScrollView {
-        LazyVStack(alignment: .leading, spacing: DS.Space.lg) {
+        VStack(alignment: .leading, spacing: DS.Space.lg) {
           PageHeader(title: "Explore") { SettingsGear(id: "explore.settings", large: true) }
-          Kicker("For your Next Cup", color: DS.ink2).accessibilityAddTraits(.isHeader)
-          ForEach(planned) { bean in
-            let refs = ExploreModel.buckets(of: bean, taxonomy: taxonomy, aliases: aliases)
-            BeanRecommendationCard(
-              bean: bean, buckets: refs,
-              result: ExploreModel.limited(
-                Recommender.recommend(for: refs, history: history), to: methods),
-              units: units,
-              canAsk: brewedBeanIDs.contains(bean.id), featured: bean.id == planned.first?.id,
-              link: link(for:), onAsk: { insightsBean = bean }, onOtherWays: { adviceBean = bean })
+          tasteChips(ExploreModel.flavors(of: waiting, buckets: buckets))
+          if let bean = cards.first {
+            let refs = buckets(bean)
+            deck(
+              bean, refs: refs, result: result(refs),
+              position: round.count - cards.count + 1, behind: cards.count - 1)
+          } else {
+            roundOver(waiting: waiting, taxonomy: taxonomy)
+          }
+          if !keptBeans.isEmpty {
+            Kicker("Kept", color: DS.ink2).accessibilityAddTraits(.isHeader)
+              .padding(.top, DS.Space.sm)
+            ForEach(keptBeans) { bean in
+              let refs = buckets(bean)
+              KeptBeanDrawer(
+                bean: bean, buckets: refs, pick: result(refs).items.first,
+                brews: brews(of: bean), units: units, canAsk: brewedBeanIDs.contains(bean.id),
+                isOpen: openDrawer == bean.id,
+                toggle: {
+                  withAnimation(DS.Motion.enter(reduceMotion)) {
+                    openDrawer = openDrawer == bean.id ? nil : bean.id
+                  }
+                  Feedback.selection()
+                },
+                link: link(for:), onAsk: { insightsBean = bean },
+                onOtherWays: { adviceBean = bean },
+                onRemove: {
+                  withAnimation(DS.Motion.exit(reduceMotion)) {
+                    keptIDs = ExploreModel.removing(bean.id, from: keptIDs)
+                  }
+                  Feedback.lift()
+                })
+            }
           }
           moreSections
         }
         .padding(DS.Space.lg)
       }
+      .safeAreaInset(edge: .bottom) {
+        if let bean = lastSkipped {
+          SteelToast(message: "Skipped \(bean.name)", actionTitle: "Undo", action: undoSkip)
+            .padding(DS.Space.lg)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .accessibilityIdentifier("explore.undo")
+            .task(id: bean.id) {
+              try? await Task.sleep(for: .seconds(6))
+              guard !Task.isCancelled else { return }
+              withAnimation(DS.Motion.exit(reduceMotion)) { lastSkipped = nil }
+            }
+        }
+      }
+      .onAppear { if round.isEmpty { deal(taxonomy) } }
+      .onChange(of: tastes) { deal(taxonomy) }
+      .onChange(of: planned.map(\.id)) { deal(taxonomy) }
       .sheet(item: $insightsBean) { bean in
         let history = brews(of: bean)
         if !history.isEmpty {
@@ -195,125 +300,206 @@ struct ExploreView: View {
       .accessibilityIdentifier("explore.list")
     }
   }
+
+  /// "Recommended" (the next three on the shelf) or the tastes of the beans still waiting.
+  @ViewBuilder private func tasteChips(_ flavors: [BucketRef]) -> some View {
+    if !flavors.isEmpty {
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: DS.Space.sm) {
+          chip("Recommended", on: tastes.isEmpty) { tastes = [] }
+            .accessibilityIdentifier("explore.taste.recommended")
+          ForEach(flavors, id: \.key) { flavor in
+            chip(flavor.name, on: tastes.contains(flavor.key)) {
+              if tastes.contains(flavor.key) {
+                tastes.remove(flavor.key)
+              } else {
+                tastes.insert(flavor.key)
+              }
+            }
+            .accessibilityIdentifier("explore.taste.\(flavor.key)")
+          }
+        }
+        .padding(.horizontal, DS.Space.lg)
+      }
+      .padding(.horizontal, -DS.Space.lg)
+      .sensoryFeedback(.selection, trigger: tastes)
+    }
+  }
+
+  private func chip(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
+    Button(action: action) {
+      Text(title).font(.subheadline.weight(.semibold))
+        .foregroundStyle(on ? DS.onSignal : DS.ink)
+        .padding(.horizontal, DS.Space.lg)
+        .frame(minHeight: DS.Size.minTap)
+        .background(Capsule().fill(on ? DS.signal : DS.paper))
+        .overlay(Capsule().strokeBorder(DS.line.opacity(0.5), lineWidth: on ? 0 : 1))
+    }
+    .buttonStyle(PressableStyle())
+    .accessibilityAddTraits(on ? .isSelected : [])
+  }
+
+  /// The top card of the round over the edges of the ones behind it, with Skip and Keep
+  /// under it. A swipe right keeps and a swipe left skips; the buttons do the same.
+  private func deck(
+    _ bean: Bean, refs: [BucketRef], result: RecommendationResult, position: Int, behind: Int
+  ) -> some View {
+    let offset = thrown + drag
+    return VStack(spacing: DS.Space.md) {
+      ExploreDeckCard(
+        bean: bean, buckets: refs, result: result, units: units,
+        counter: "\(position) of \(round.count)", link: link(for:), lean: offset
+      )
+      .offset(x: offset)
+      .rotationEffect(.degrees(reduceMotion ? 0 : Double(offset) / 24), anchor: .bottom)
+      .animation(reduceMotion ? nil : .interactiveSpring, value: drag)
+      .id(bean.id)
+      .transition(.scale(scale: 0.94).combined(with: .opacity))
+      // Beside the scroll, not instead of it: only a sideways drag moves the card.
+      .simultaneousGesture(
+        DragGesture(minimumDistance: 16)
+          .updating($drag) { value, state, _ in
+            if abs(value.translation.width) > abs(value.translation.height) {
+              state = value.translation.width
+            }
+          }
+          .onEnded { value in
+            let across = value.translation.width
+            guard abs(across) > 110, abs(across) > abs(value.translation.height) * 2 else {
+              return
+            }
+            decide(bean, keep: across > 0)
+          }
+      )
+      // The edges of the cards still to come.
+      .padding(.bottom, CGFloat(behind) * 10)
+      .background(alignment: .bottom) {
+        ZStack(alignment: .bottom) {
+          ForEach(Array((0..<behind).reversed()), id: \.self) { depth in
+            RoundedRectangle(cornerRadius: DS.radius, style: .continuous)
+              .fill(DS.paper.opacity(depth == 0 ? 0.7 : 0.4))
+              .frame(height: 48)
+              .padding(.horizontal, CGFloat(depth + 1) * 14)
+              .offset(y: -CGFloat(behind - depth - 1) * 10)
+          }
+        }
+        .accessibilityHidden(true)
+      }
+      HStack(spacing: DS.Space.md) {
+        SteelButton(title: "Skip", kind: .secondary) { decide(bean, keep: false) }
+          .accessibilityHint("Takes \(bean.name) out of the deck")
+          .accessibilityIdentifier("explore.skip")
+        SteelButton(title: "Keep") { decide(bean, keep: true) }
+          .accessibilityHint("Keeps \(bean.name) below with its recipes")
+          .accessibilityIdentifier("explore.keep")
+      }
+      .disabled(thrown != 0)
+    }
+  }
+
+  /// The round is decided: deal again, bring the skipped beans back, or point at the kept ones.
+  private func roundOver(waiting: [Bean], taxonomy: Taxonomy) -> some View {
+    let skipped = !ExploreModel.ids(skippedIDs).isEmpty
+    return VStack(alignment: .leading, spacing: DS.Space.md) {
+      Text(round.isEmpty ? "Nothing left to deal" : "That's the round")
+        .font(.system(.title2, design: .serif, weight: .medium)).foregroundStyle(DS.ink)
+      Text(
+        !waiting.isEmpty
+          ? "There are more beans on your shelf."
+          : skipped
+            ? "You kept or skipped every bean on your shelf."
+            : "Every bean on your shelf is kept below."
+      )
+      .font(.body).foregroundStyle(DS.ink2)
+      if !waiting.isEmpty {
+        SteelButton(title: "Deal three more", kind: .secondary) {
+          tastes = tastes.intersection(
+            ExploreModel.flavors(of: waiting) {
+              ExploreModel.buckets(
+                of: $0, taxonomy: taxonomy, aliases: ExploreModel.aliases(storedAliases))
+            }.map(\.key))
+          withAnimation(DS.Motion.enter(reduceMotion)) { deal(taxonomy) }
+        }
+        .accessibilityIdentifier("explore.deal")
+      } else if skipped {
+        SteelButton(title: "Bring back skipped beans", kind: .secondary) {
+          skippedIDs = ""
+          lastSkipped = nil
+          tastes = []
+          withAnimation(DS.Motion.enter(reduceMotion)) { deal(taxonomy) }
+        }
+        .accessibilityIdentifier("explore.restore")
+      }
+    }
+    .padding(DS.Space.lg)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .panel(DS.paper, dash: [5, 3])
+    .accessibilityElement(children: .contain)
+    .accessibilityIdentifier("explore.roundOver")
+  }
 }
 
-/// One bean with its ranked suggestions.
-private struct BeanRecommendationCard: View {
+/// One dealt bean: its name, what it is, and the brew the recommender would start with.
+private struct ExploreDeckCard: View {
   let bean: Bean
   let buckets: [BucketRef]
   let result: RecommendationResult
   let units: UnitPreferences
-  let canAsk: Bool
-  /// The first card is the screen's standout; the rest show only their top pick.
-  let featured: Bool
+  /// "1 of 3".
+  let counter: String
   let link: (Recommendation) -> DeepLink?
-  let onAsk: () -> Void
-  /// Opens the AI's other brews for this bean.
-  let onOtherWays: () -> Void
+  /// How far the card is off centre: right shows Keep, left shows Skip.
+  let lean: CGFloat
   @Environment(AppRouter.self) private var router: AppRouter?
 
-  /// Where "Brew <bean>" goes: the top suggestion's Start brew page.
-  private var brewLink: DeepLink? { result.items.first.flatMap(link) }
-
-  /// "Brew Counter Culture 46", or "Brew this bean" when the name does not fit on a line.
-  private func brewLabel(_ font: Font) -> some View {
-    ViewThatFits(in: .horizontal) {
-      Text("Brew \(bean.name)".dsTitle).font(font).lineLimit(1)
-      Text("Brew this bean".dsTitle).font(font).lineLimit(1)
-    }
-  }
-
   var body: some View {
-    // Like the Journal's Past Brews: the bean is a heading and each suggestion is its own
-    // card, spaced from the next, instead of one box split by rules.
     VStack(alignment: .leading, spacing: DS.Space.sm) {
-      header
-      ForEach(
-        Array(result.items.prefix(featured ? result.items.count : 1).enumerated()), id: \.offset
-      ) { index, item in
-        let rank = result.items.count > 1 ? index + 1 : nil
-        // A tap on a suggestion opens its Start brew page.
-        PaperBox {
-          if let link = link(item) {
-            NavigationLink(value: link) {
-              RecommendationRow(item: item, rank: rank, units: units, opens: true)
-            }
-            .buttonStyle(PressableStyle())
-            .simultaneousGesture(TapGesture().onEnded { router?.startBeanID = bean.id })
-            .accessibilityIdentifier("explore.pick.\(bean.name).\(index + 1)")
-          } else {
-            RecommendationRow(item: item, rank: rank, units: units)
-          }
+      HStack(alignment: .firstTextBaseline) {
+        Kicker(counter)
+        Spacer()
+        // Named as it leans, in words: the choice is never told by direction alone.
+        if abs(lean) > 24 {
+          Text(lean > 0 ? "KEEP" : "SKIP").font(DS.Font.label).tracking(1.2)
+            .foregroundStyle(lean > 0 ? DS.accent : DS.ink2)
+            .opacity(min(1, Double(abs(lean)) / 110))
+            .accessibilityHidden(true)
         }
       }
-      // The page recommends a brew for this bean, so the button starts it: Start brew opens
-      // on the top suggestion with this bean chosen. Logging a brew already made is the Journal's job.
-      if featured, let brewLink {
-        NavigationLink(value: brewLink) {
-          brewLabel(DS.Font.din(24, relativeTo: .title2)).tracking(1)
-            .frame(maxWidth: .infinity, minHeight: DS.Size.primary)
-        }
-        .buttonStyle(SteelButtonStyle())
-        .simultaneousGesture(TapGesture().onEnded { router?.startBeanID = bean.id })
-        .padding(.top, DS.Space.xs)
-        .accessibilityLabel("Brew \(bean.name)")
-        .accessibilityIdentifier("explore.brew.\(bean.name)")
-      }
-      PaperBox {
-        VStack(alignment: .leading, spacing: 0) {
-          if !featured, let brewLink {
-            NavigationLink(value: brewLink) {
-              brewLabel(DS.Font.headline).foregroundStyle(DS.ink)
-                .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
-                .padding(.horizontal, DS.Space.md)
-            }
-            .simultaneousGesture(TapGesture().onEnded { router?.startBeanID = bean.id })
-            .accessibilityLabel("Brew \(bean.name)")
-            .accessibilityIdentifier("explore.brew.\(bean.name)")
-            Hairline()
-          }
-          Button(action: onOtherWays) {
-            Text("Other ways to brew this bean".dsTitle).font(DS.Font.headline)
-              .foregroundStyle(DS.ink)
-              .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
-              .padding(.horizontal, DS.Space.md)
-          }
-          .accessibilityHint("Asks AI for three brews for this bean")
-          .accessibilityIdentifier("explore.otherWays.\(bean.name)")
-          if canAsk {
-            Hairline()
-            Button(action: onAsk) {
-              Text("Ask AI about this coffee".dsTitle).font(DS.Font.headline)
-                .foregroundStyle(DS.ink)
-                .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
-                .padding(.horizontal, DS.Space.md)
-            }
-            .accessibilityIdentifier("explore.insights.\(bean.name)")
-          }
-        }
-      }
-    }
-    .accessibilityElement(children: .contain)
-    .accessibilityIdentifier("explore.card.\(bean.name)")
-  }
-
-  private var header: some View {
-    VStack(alignment: .leading, spacing: DS.Space.xs) {
       NavigationLink(value: DeepLink.bean(bean.id)) {
-        Text(bean.name).font(.system(.title2, design: .serif, weight: .medium))
-          .foregroundStyle(DS.ink)
+        Text(bean.name).font(.system(.largeTitle, design: .serif, weight: .medium))
+          .foregroundStyle(DS.ink).multilineTextAlignment(.leading)
           .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
       }
       .accessibilityAddTraits(.isHeader)
       if !buckets.isEmpty {
-        Text(buckets.map(\.name).joined(separator: "  ·  ")).font(.footnote)
+        Text(buckets.map(\.name).joined(separator: "  ·  ")).font(.subheadline)
           .foregroundStyle(DS.ink2)
       }
       Text(subtitle).font(DS.Font.mono(.footnote)).foregroundStyle(DS.ink2)
         .accessibilityIdentifier("explore.basis.\(bean.name)")
+      if let item = result.items.first {
+        Hairline().opacity(0.6).padding(.top, DS.Space.sm)
+        Kicker("Start with", color: DS.ink2).padding(.top, DS.Space.sm)
+        // A tap on the suggestion opens its Start brew page with this bean chosen.
+        if let link = link(item) {
+          NavigationLink(value: link) {
+            RecommendationRow(item: item, rank: nil, units: units, opens: true, explains: false)
+          }
+          .buttonStyle(PressableStyle())
+          .simultaneousGesture(TapGesture().onEnded { router?.startBeanID = bean.id })
+          .accessibilityIdentifier("explore.pick.\(bean.name).1")
+          .padding(.horizontal, -DS.Space.md)
+        } else {
+          RecommendationRow(item: item, rank: nil, units: units, explains: false)
+            .padding(.horizontal, -DS.Space.md)
+        }
+      }
     }
-    .padding(.top, DS.Space.sm)
+    .padding(DS.Space.lg)
     .frame(maxWidth: .infinity, alignment: .leading)
+    .panel(DS.paper)
+    .accessibilityElement(children: .contain)
+    .accessibilityIdentifier("explore.card.\(bean.name)")
   }
 
   private var subtitle: String {
@@ -325,11 +511,175 @@ private struct BeanRecommendationCard: View {
   }
 }
 
+/// A kept bean: a row that opens to brew it, the recipes it was brewed with, and the AI's help.
+private struct KeptBeanDrawer: View {
+  let bean: Bean
+  let buckets: [BucketRef]
+  /// The recommender's top suggestion, where "Brew <bean>" goes.
+  let pick: Recommendation?
+  /// Saved brews of this bean, newest first.
+  let brews: [Brew]
+  let units: UnitPreferences
+  let canAsk: Bool
+  let isOpen: Bool
+  let toggle: () -> Void
+  let link: (Recommendation) -> DeepLink?
+  let onAsk: () -> Void
+  let onOtherWays: () -> Void
+  let onRemove: () -> Void
+  @Environment(AppRouter.self) private var router: AppRouter?
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  /// The recipes this bean was brewed with, the best rated first.
+  private var recipes: [(recipe: Recipe, count: Int, best: Int?)] {
+    Dictionary(grouping: brews.compactMap { brew in brew.recipe.map { ($0, brew) } }) { $0.0.id }
+      .values.compactMap { group in
+        group.first.map {
+          (recipe: $0.0, count: group.count, best: group.compactMap(\.1.ratingTenths).max())
+        }
+      }
+      .sorted { ($0.best ?? -1, $0.count, $1.recipe.name) > ($1.best ?? -1, $1.count, $0.recipe.name) }
+  }
+
+  var body: some View {
+    PaperBox {
+      VStack(alignment: .leading, spacing: 0) {
+        Button(action: toggle) {
+          HStack(spacing: DS.Space.md) {
+            VStack(alignment: .leading, spacing: 2) {
+              Text(bean.name).font(.system(.title3, design: .serif, weight: .medium))
+                .foregroundStyle(DS.ink).multilineTextAlignment(.leading)
+              Text(summary).font(.footnote).foregroundStyle(DS.ink2)
+            }
+            Spacer(minLength: DS.Space.sm)
+            Image(systemName: "chevron.down").font(.footnote.weight(.semibold))
+              .foregroundStyle(DS.accent)
+              .rotationEffect(.degrees(isOpen ? 180 : 0))
+              .accessibilityHidden(true)
+          }
+          .padding(DS.Space.md)
+          .frame(maxWidth: .infinity, minHeight: DS.Size.primary, alignment: .leading)
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle())
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(isOpen ? "Open" : "Closed")
+        .accessibilityHint(isOpen ? "Closes the drawer" : "Opens recipes and AI help")
+        .accessibilityIdentifier("explore.kept.\(bean.name)")
+        if isOpen {
+          opened.transition(.opacity)
+        }
+      }
+    }
+    .accessibilityElement(children: .contain)
+  }
+
+  private var summary: String {
+    let count = brews.count
+    let brewed = count == 0 ? "Not brewed yet" : "\(count) \(count == 1 ? "brew" : "brews")"
+    return ([brewed] + buckets.filter { $0.dimension == .flavor }.map(\.name))
+      .joined(separator: "  ·  ")
+  }
+
+  @ViewBuilder private var opened: some View {
+    Hairline()
+    if let pick, let brewLink = link(pick) {
+      NavigationLink(value: brewLink) {
+        ViewThatFits(in: .horizontal) {
+          Text("Brew \(bean.name)".dsTitle).lineLimit(1)
+          Text("Brew this bean".dsTitle).lineLimit(1)
+        }
+        .font(DS.Font.din(22, relativeTo: .title2)).tracking(1)
+        .frame(maxWidth: .infinity, minHeight: DS.Size.control)
+      }
+      .buttonStyle(SteelButtonStyle())
+      .simultaneousGesture(TapGesture().onEnded { router?.startBeanID = bean.id })
+      .padding(DS.Space.md)
+      .accessibilityLabel("Brew \(bean.name)")
+      .accessibilityIdentifier("explore.brew.\(bean.name)")
+    }
+    Text("RECIPES YOU'VE BREWED").font(DS.Font.label).foregroundStyle(DS.ink2)
+      .padding(.horizontal, DS.Space.md).padding(.top, DS.Space.sm)
+      .accessibilityAddTraits(.isHeader)
+    if recipes.isEmpty {
+      Text("None yet. Brew it once and the recipe shows here.")
+        .font(.subheadline).foregroundStyle(DS.ink2)
+        .padding(DS.Space.md)
+    }
+    ForEach(recipes, id: \.recipe.id) { entry in
+      NavigationLink(value: DeepLink.recipe(entry.recipe.id)) {
+        HStack(spacing: DS.Space.md) {
+          VStack(alignment: .leading, spacing: 2) {
+            Text(entry.recipe.name).font(DS.Font.headline).foregroundStyle(DS.ink)
+              .multilineTextAlignment(.leading)
+            Text(detail(entry)).font(.footnote).foregroundStyle(DS.ink2)
+          }
+          Spacer(minLength: DS.Space.sm)
+          if let best = entry.best, best > 0 {
+            Text(Rating.text(best)).font(DS.Font.data).foregroundStyle(DS.accent)
+              .accessibilityLabel("Best \(Rating.text(best)) out of 10")
+          }
+          Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+            .foregroundStyle(DS.ink2).accessibilityHidden(true)
+        }
+        .padding(DS.Space.md)
+        .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+      }
+      .buttonStyle(PressableStyle())
+      .simultaneousGesture(TapGesture().onEnded { router?.startBeanID = bean.id })
+      .accessibilityHint("Opens Start brew")
+      .accessibilityIdentifier("explore.recipe.\(bean.name).\(entry.recipe.name)")
+    }
+    Hairline()
+    if canAsk {
+      action("Ask AI about this coffee", "sparkles", id: "explore.insights", onAsk)
+      Hairline()
+    }
+    action("Other ways to brew this bean", "arrow.triangle.branch", id: "explore.otherWays") {
+      onOtherWays()
+    }
+    .accessibilityHint("Asks AI for three brews for this bean")
+    Hairline()
+    Button(action: onRemove) {
+      Text("Put back in the deck").font(.subheadline).foregroundStyle(DS.ink2)
+        .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
+        .padding(.horizontal, DS.Space.md)
+    }
+    .accessibilityIdentifier("explore.unkeep.\(bean.name)")
+  }
+
+  private func detail(_ entry: (recipe: Recipe, count: Int, best: Int?)) -> String {
+    [entry.recipe.method?.name, "brewed \(entry.count) \(entry.count == 1 ? "time" : "times")"]
+      .compactMap { $0 }.joined(separator: "  ·  ")
+  }
+
+  private func action(
+    _ title: String, _ symbol: String, id: String, _ run: @escaping () -> Void
+  ) -> some View {
+    Button(action: run) {
+      HStack(spacing: DS.Space.md) {
+        Image(systemName: symbol).foregroundStyle(DS.accent).frame(width: 24)
+          .accessibilityHidden(true)
+        Text(title.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
+        Spacer(minLength: 0)
+      }
+      .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
+      .padding(.horizontal, DS.Space.md)
+      .contentShape(Rectangle())
+    }
+    .accessibilityIdentifier("\(id).\(bean.name)")
+  }
+}
+
 private struct RecommendationRow: View {
   let item: Recommendation
   let rank: Int?
   let units: UnitPreferences
   var opens = false
+  /// The deck card leaves the explanation out so Skip and Keep stay on screen.
+  var explains = true
 
   var body: some View {
     VStack(alignment: .leading, spacing: DS.Space.sm) {
@@ -354,8 +704,10 @@ private struct RecommendationRow: View {
         }
         .accessibilityElement(children: .combine)
       }
-      Text(item.explanation).font(.callout).foregroundStyle(DS.ink2)
-        .fixedSize(horizontal: false, vertical: true)
+      if explains {
+        Text(item.explanation).font(.callout).foregroundStyle(DS.ink2)
+          .fixedSize(horizontal: false, vertical: true)
+      }
     }
     .padding(DS.Space.md)
     .frame(maxWidth: .infinity, alignment: .leading)
