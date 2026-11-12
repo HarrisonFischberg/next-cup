@@ -2,11 +2,13 @@ import NextCupKit
 import SwiftData
 import SwiftUI
 
-/// The flavor explorer: every bucket of the shared vocabulary, grouped by
-/// dimension. A bucket opens to the words that map to it, the beans that carry
-/// it, and the buckets those beans also carry, each one a link onward.
+/// The flavor explorer: the buckets your beans carry, grouped by dimension. A bucket opens
+/// to the words that map to it, the beans that carry it, and the buckets those beans also
+/// carry, each one a link onward.
 struct FlavorExplorerView: View {
   let taxonomy: Taxonomy
+  @Query(sort: \Bean.name) private var beans: [Bean]
+  @Query private var storedAliases: [TaxonomyAlias]
 
   private static let sections: [(Taxonomy.Dimension, String)] = [
     (.flavor, "Flavors"), (.origin, "Origins"), (.process, "Processes"),
@@ -14,15 +16,30 @@ struct FlavorExplorerView: View {
   ]
 
   var body: some View {
+    let aliases = ExploreModel.aliases(storedAliases)
+    let carried = Set(
+      beans.flatMap { ExploreModel.buckets(of: $0, taxonomy: taxonomy, aliases: aliases) })
+    let sections = Self.sections.compactMap { dimension, title in
+      let buckets = taxonomy.buckets(in: dimension).filter {
+        carried.contains(BucketRef($0, in: dimension))
+      }
+      return buckets.isEmpty ? nil : (dimension, title, buckets)
+    }
     ScrollView {
       LazyVStack(alignment: .leading, spacing: DS.Space.lg) {
-        ForEach(Self.sections, id: \.0) { dimension, title in
+        if sections.isEmpty {
+          EmptyState(
+            title: "No flavors yet",
+            message: "Add a bean with its origin, roast or tasting notes and its flavors show here."
+          )
+          .accessibilityIdentifier("flavor.empty")
+        }
+        ForEach(sections, id: \.0) { dimension, title, buckets in
           VStack(alignment: .leading, spacing: DS.Space.sm) {
             Text(title.uppercased()).font(DS.Font.label).foregroundStyle(DS.ink2)
               .accessibilityAddTraits(.isHeader)
             PaperBox {
               VStack(spacing: 0) {
-                let buckets = taxonomy.buckets(in: dimension)
                 ForEach(Array(buckets.enumerated()), id: \.element.key) { index, bucket in
                   if index > 0 { Hairline() }
                   BucketLink(taxonomy: taxonomy, ref: BucketRef(bucket, in: dimension))

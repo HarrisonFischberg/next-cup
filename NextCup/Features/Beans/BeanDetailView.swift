@@ -40,6 +40,7 @@ struct BeanDetailView: View {
     .rawValue
   @State private var editor: BeanEditorTarget?
   @State private var adviceShown = false
+  @State private var askShown = false
   @State private var correcting = false
   @State private var correctionText = ""
   @State private var error: String?
@@ -62,7 +63,7 @@ struct BeanDetailView: View {
         header
         readouts
         // A bean saved from the shop shelf: the three brews wait here until it is first brewed.
-        if (bean.brewUses ?? []).isEmpty { adviceCard }
+        if beanBrews.isEmpty { adviceCard } else { brewHelp }
         if let trend { trendLine(trend) }
         BestSoFarCard(summary: bean.bestSoFar, units: units)
         attributes
@@ -95,6 +96,11 @@ struct BeanDetailView: View {
     .sheet(isPresented: $adviceShown) {
       BeanBrewAdviceView(bean: bean) { adviceShown = false }
     }
+    .sheet(isPresented: $askShown) {
+      AIAskView(
+        model: AIAskModel(feature: .insights, brews: beanBrews, context: context),
+        close: { askShown = false })
+    }
     .alert("Correct the amount left", isPresented: $correcting) {
       TextField("Amount left", text: $correctionText).keyboardType(.decimalPad)
       Button("Cancel", role: .cancel) {}
@@ -124,10 +130,48 @@ struct BeanDetailView: View {
     .panel(DS.paper)
   }
 
+  /// Saved brews that used this bean, newest first.
+  private var beanBrews: [Brew] {
+    (bean.brewUses ?? []).compactMap(\.brew).sorted { $0.date > $1.date }
+  }
+
+  /// Once brewed: other brews from AI, and questions about this coffee from its brews.
+  private var brewHelp: some View {
+    PaperBox {
+      VStack(spacing: 0) {
+        helpRow("Other ways to brew this bean", "arrow.triangle.branch") { adviceShown = true }
+          .accessibilityHint("Asks AI for three brews for this bean")
+          .accessibilityIdentifier("bean.otherWays")
+        Hairline()
+        helpRow("Ask AI about this coffee", "sparkles") { askShown = true }
+          .accessibilityHint("Asks AI about your brews of this bean")
+          .accessibilityIdentifier("bean.insights")
+      }
+    }
+  }
+
+  private func helpRow(
+    _ title: String, _ symbol: String, action: @escaping () -> Void
+  ) -> some View {
+    Button(action: action) {
+      HStack(spacing: DS.Space.md) {
+        Image(systemName: symbol).foregroundStyle(DS.accent).frame(width: 24)
+          .accessibilityHidden(true)
+        Text(title.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
+        Spacer(minLength: DS.Space.sm)
+        Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+          .foregroundStyle(DS.ink2).accessibilityHidden(true)
+      }
+      .padding(.horizontal, DS.Space.md)
+      .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(PressableStyle())
+  }
+
   /// The brew to repeat: the best graded one (newest on a tie), else the newest.
   private var bestBrew: Brew? {
-    let used = (bean.brewUses ?? []).compactMap(\.brew)
-    return used.max {
+    beanBrews.max {
       ($0.ratingTenths ?? 0, $0.date) < ($1.ratingTenths ?? 0, $1.date)
     }
   }
