@@ -187,4 +187,27 @@ struct ExploreModelTests {
     #expect(result.items.allSatisfy { $0.methodKey == "switchable" })
     #expect(result.items[0].start.doseG == 18)
   }
+
+  @Test("The deck is the first three undecided beans, or the ones with a chosen taste")
+  func deck() throws {
+    let harness = try Harness()
+    let taxonomy = try #require(ExploreModel.taxonomy)
+    let beans = [
+      harness.bean("A"), harness.bean("B", notes: ["chocolate"]), harness.bean("C"),
+      harness.bean("D"),
+    ]
+    let buckets = { ExploreModel.buckets(of: $0, taxonomy: taxonomy, aliases: []) }
+    let deal = { (decided: Set<UUID>, tastes: Set<String>) in
+      ExploreModel.deck(beans, decided: decided, tastes: tastes, buckets: buckets).map(\.name)
+    }
+    #expect(deal([], []) == ["A", "B", "C"])
+    #expect(deal([beans[0].id], []) == ["B", "C", "D"])
+    #expect(deal([], ["chocolate"]) == ["B"])
+    let flavors = ExploreModel.flavors(of: beans, buckets: buckets).map(\.key)
+    #expect(flavors == ["citrus", "chocolate"])
+
+    let stored = ExploreModel.adding(beans[1].id, to: ExploreModel.adding(beans[0].id, to: ""))
+    #expect(ExploreModel.ids(stored) == [beans[0].id, beans[1].id])
+    #expect(ExploreModel.ids(ExploreModel.removing(beans[0].id, from: stored)) == [beans[1].id])
+  }
 }

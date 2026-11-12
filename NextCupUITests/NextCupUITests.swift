@@ -851,6 +851,8 @@ final class NextCupUITests: XCTestCase {
       let ask = app.descendants(matching: .any).matching(
         NSPredicate(format: "identifier BEGINSWITH 'explore.insights.'")
       ).firstMatch
+      // Ask AI is in a kept bean's drawer; keep dealt beans until one has brews to ask about.
+      for _ in 0..<3 where !ask.exists { app.buttons["explore.keep"].tap() }
       scrollUntilHittable(ask, in: app)
       ask.tap()
 
@@ -1652,6 +1654,9 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(card.waitForExistence(timeout: 5))
     let basis = element(app, "explore.basis.Washed Ethiopia")
     XCTAssertTrue(basis.label.hasPrefix("DEFAULT"), "cold start is labelled: \(basis.label)")
+    // Kept, the bean opens as a drawer that says why this brew.
+    app.buttons["explore.keep"].tap()
+    XCTAssertTrue(element(app, "explore.kept.Washed Ethiopia").waitForExistence(timeout: 5))
     XCTAssertTrue(
       app.staticTexts.matching(
         NSPredicate(format: "label CONTAINS 'not based on your brews'")
@@ -1676,7 +1681,7 @@ final class NextCupUITests: XCTestCase {
     }
     let app = launch()
     try runExploreFlow(app) { if $0 == "explore-default" { try shot("explore-picks") } }
-    let pick = element(app, "explore.pick.Washed Ethiopia.1")
+    let pick = element(app, "explore.brew.Washed Ethiopia")
     XCTAssertTrue(pick.waitForExistence(timeout: 5))
     pick.tap()
     XCTAssertTrue(app.buttons["Start brew"].waitForExistence(timeout: 5))

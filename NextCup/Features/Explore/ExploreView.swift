@@ -599,6 +599,10 @@ private struct KeptBeanDrawer: View {
       .padding(DS.Space.md)
       .accessibilityLabel("Brew \(bean.name)")
       .accessibilityIdentifier("explore.brew.\(bean.name)")
+      // Why this brew, and whether it comes from the user's own brews or is a default.
+      Text(pick.explanation).font(.subheadline).foregroundStyle(DS.ink2)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.horizontal, DS.Space.md)
     }
     Text("RECIPES YOU'VE BREWED").font(DS.Font.label).foregroundStyle(DS.ink2)
       .padding(.horizontal, DS.Space.md).padding(.top, DS.Space.sm)
