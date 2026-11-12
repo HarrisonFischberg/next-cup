@@ -365,6 +365,10 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "journal.savedLater").waitForExistence(timeout: 5))
     let row = element(app, "journal.unsaved.row")
     XCTAssertTrue(row.waitForExistence(timeout: 5), "no Unsaved Brews row")
+    let past = element(app, "journal.past")
+    if past.exists {
+      XCTAssertLessThan(row.frame.minY, past.frame.minY, "Unsaved Brews sit above Past Brews")
+    }
     scrollUntilHittable(row, in: app)
     row.tap()
     XCTAssertTrue(element(app, "brewform.dose").waitForExistence(timeout: 5))
