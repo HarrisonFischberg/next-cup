@@ -88,6 +88,26 @@ struct TimerSessionTests {
     #expect(setup.plan.steps[0].instruction == "Wet the bed")
   }
 
+  @Test func aReopenedTimerGetsBackTheChoicesOfTheSameRun() throws {
+    let defaults = try #require(UserDefaults(suiteName: "nextcup.timertests.\(UUID().uuidString)"))
+    let recipe = makeRecipe()
+    var started = try TimerPlanBuilder.setup(for: recipe, doseG: 30)
+    (started.beanID, started.beanName) = (UUID(), "Ethiopia")
+    (started.grinderID, started.grindSetting) = (UUID(), "18")
+    started.rememberChoices(in: defaults)
+
+    let reopened = try TimerPlanBuilder.setup(for: recipe, doseG: 30)
+      .withRememberedChoices(from: defaults)
+    #expect(reopened.beanID == started.beanID)
+    #expect(reopened.beanName == "Ethiopia")
+    #expect(reopened.grinderID == started.grinderID)
+    #expect(reopened.grindSetting == "18")
+
+    let otherDose = try TimerPlanBuilder.setup(for: recipe, doseG: 20)
+      .withRememberedChoices(from: defaults)
+    #expect(otherDose.beanID == nil && otherDose.grindSetting.isEmpty)
+  }
+
   @Test func stepWeightsInTheTextFollowTheDose() {
     #expect(
       TimerPlanBuilder.scaledWeights(in: "Pour to 500 g in the centre.", by: 0.806)
