@@ -43,7 +43,6 @@ private struct RecipeDetailContent: View {
   @State private var editor: RecipeEditorTarget?
   /// A recipe saved from "Change steps", opened on top so the user brews it next.
   @State private var savedCopy: UUID?
-  @State private var showsInstructions = false
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
@@ -579,100 +578,25 @@ private struct RecipeDetailContent: View {
     }
   }
 
-  /// The steps as a strip of numbered chips; with the instructions shown, as a timeline
-  /// that has room for them.
-  private func stepPreview(_ steps: [RecipeStep]) -> some View {
-    let scaledSteps = scaled?.recipe.steps ?? recipe.scalable.steps
-    let factor = recipe.timingFactor(doseG: doseG, tuning: tuning)
-    let rows = steps.enumerated().map { index, step in
-      (
-        index: index, step: step,
-        time: RecipeFormat.clock(RecipeTiming.scaled(step.startOffsetS, by: factor)),
-        target: index < scaledSteps.count ? scaledSteps[index].targetCumulativeWaterG : nil
-      )
-    }
-    return VStack(alignment: .leading, spacing: DS.Space.md) {
-      HStack(alignment: .firstTextBaseline) {
-        Text("Brew steps".dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
-          .accessibilityAddTraits(.isHeader)
-        Spacer(minLength: DS.Space.sm)
-        if steps.contains(where: { !$0.instruction.isEmpty }) {
-          Button(showsInstructions ? "Hide instructions" : "Show instructions") {
-            showsInstructions.toggle()
-          }
-          .font(.subheadline.weight(.semibold)).foregroundStyle(DS.accent)
-          .frame(minHeight: DS.Size.minTap)
-          .accessibilityIdentifier("recipe.steps.instructions")
-        }
-      }
-      .padding(.horizontal, DS.Space.lg)
-      if steps.isEmpty {
-        Text("This recipe has no steps yet.").font(.body).foregroundStyle(DS.ink2)
-          .padding(.horizontal, DS.Space.lg)
-      }
-      if showsInstructions {
-        VStack(alignment: .leading, spacing: 0) {
-          ForEach(rows, id: \.step.id) { row in
-            TimelineRow(
-              time: row.time, name: RecipeFormat.title(row.step.kind),
-              detail: Self.firstSentence(row.step.instruction),
-              trailing: row.target.map { RecipeFormat.weight($0, units) },
-              state: .upcoming, isLast: row.index == steps.count - 1
-            )
-            .modifier(StepAccessibility(row.index, row.step, row.target, units))
-          }
-        }
+  /// The steps as one card of rows: time, step, the pour target and the first line of
+  /// its instruction, with a quiet Edit next to the heading.
+  @ViewBuilder private func stepPreview(_ steps: [RecipeStep]) -> some View {
+    if steps.isEmpty {
+      Text("This recipe has no steps yet.").font(.body).foregroundStyle(DS.ink2)
         .padding(.horizontal, DS.Space.lg)
-      } else {
-        ScrollView(.horizontal, showsIndicators: false) {
-          HStack(alignment: .top, spacing: DS.Space.sm) {
-            ForEach(rows, id: \.step.id) { row in
-              VStack(alignment: .leading, spacing: DS.Space.xs) {
-                Text("\(row.index + 1)").font(DS.Font.mono(.subheadline, .bold))
-                  .foregroundStyle(DS.onSignal).frame(width: 30, height: 30)
-                  .background(DS.signal, in: Circle())
-                Text(RecipeFormat.title(row.step.kind)).font(DS.Font.headline)
-                  .foregroundStyle(DS.onKraft)
-                Text(
-                  [row.target.map { "to \(RecipeFormat.weight($0, units))" }, "at \(row.time)"]
-                    .compactMap { $0 }.joined(separator: " · ")
-                )
-                .font(.footnote).foregroundStyle(DS.onKraft.opacity(0.75))
-              }
-              .padding(DS.Space.md)
-              .frame(minWidth: 124, alignment: .leading)
-              .background(
-                DS.kraft, in: RoundedRectangle(cornerRadius: DS.radius, style: .continuous)
-              )
-              .modifier(StepAccessibility(row.index, row.step, row.target, units))
-            }
-          }
-          .padding(.horizontal, DS.Space.lg)
-        }
+    } else {
+      let factor = recipe.timingFactor(doseG: doseG, tuning: tuning)
+      let scaledSteps = scaled?.recipe.steps ?? recipe.scalable.steps
+      let rows = steps.enumerated().map { index, step in
+        BrewStepRow(
+          index: index, step: step, startS: RecipeTiming.scaled(step.startOffsetS, by: factor),
+          target: index < scaledSteps.count ? scaledSteps[index].targetCumulativeWaterG : nil)
       }
-      VStack(alignment: .leading, spacing: DS.Space.md) {
-        SteelButton(title: "Change steps", kind: .secondary, action: changeSteps)
-          .accessibilityHint("Add or change steps, with optional AI suggestions")
-          .accessibilityIdentifier("recipe.steps.change")
-        Text(
-          editsInPlace
-            ? "Add a step, change a pour or let AI suggest better steps."
-            : "Add a step, change a pour or let AI suggest better steps. It saves as your own "
-              + "recipe at this size; this one stays as it is."
-        )
-        .font(.footnote).foregroundStyle(DS.ink2)
-      }
-      .padding(.horizontal, DS.Space.lg)
+      let totalS = max(
+        recipe.totalTimeS.map { RecipeTiming.scaled($0, by: factor) } ?? 0,
+        (rows.last?.startS ?? 0) + 30)
+      BrewStepsCard(rows: rows, totalS: totalS, units: units, onEdit: changeSteps)
     }
-  }
-
-  /// A step's instruction cut to its first sentence, so the list reads at a glance; an AI
-  /// recipe can write a paragraph per step.
-  static func firstSentence(_ text: String) -> String? {
-    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmed.isEmpty else { return nil }
-    guard let end = trimmed.range(of: ". ") else { return trimmed }
-    return String(trimmed[..<end.upperBound]).trimmingCharacters(in: .whitespaces)
   }
 
   /// One of the user's own recipes at its own size is changed in place; anything else
@@ -807,32 +731,6 @@ extension Recipe {
   /// Built-in versions share a key prefix: "cone-balanced" and "cone-balanced/strong".
   var family: String? { builtInKey?.split(separator: "/").first.map(String.init) }
   var isVersion: Bool { builtInKey?.contains("/") == true }
-}
-
-/// One step read as one element, the same on a chip and on a timeline row.
-private struct StepAccessibility: ViewModifier {
-  let index: Int
-  let step: RecipeStep
-  let target: Double?
-  let units: UnitPreferences
-
-  init(_ index: Int, _ step: RecipeStep, _ target: Double?, _ units: UnitPreferences) {
-    self.index = index
-    self.step = step
-    self.target = target
-    self.units = units
-  }
-
-  func body(content: Content) -> some View {
-    content
-      .accessibilityElement(children: .ignore)
-      .accessibilityLabel(
-        RecipeFormat.spokenStep(
-          kind: step.kind, startOffsetS: step.startOffsetS, targetG: target, units: units)
-      )
-      .accessibilityHint(step.instruction)
-      .accessibilityIdentifier("recipe.step.\(index)")
-  }
 }
 
 /// What restarts the batch tuning: a new dose from the wheel, or the tap that sends it.
