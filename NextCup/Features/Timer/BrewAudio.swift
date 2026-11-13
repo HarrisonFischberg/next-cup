@@ -108,8 +108,19 @@ final class BrewAudio: NSObject, AVAudioPlayerDelegate {
   }
 
   /// Coming back to the brew, or after an interruption: the song plays again if it was
-  /// playing before, and stays quiet if the user or the brew paused it.
-  func resume() { if wantsMusic { playMusic() } }
+  /// playing before, and stays quiet if the user or the brew paused it. The timer calls it
+  /// every running second while on screen, because the system can take the audio back
+  /// without saying so, or refuse it for a moment on return. A player left silent is
+  /// rebuilt where the song was, as muting and unmuting did by hand.
+  func resume() {
+    guard wantsMusic, !musicPaused, music?.isPlaying != true else { return }
+    if let music, Self.on(Self.musicKey), !AVAudioSession.sharedInstance().isOtherAudioPlaying {
+      let at = music.currentTime
+      load(at: position, fadeIn: true)
+      self.music?.currentTime = at
+    }
+    playMusic()
+  }
 
   /// Brew sounds, the tick and the music all start on; the timer offers "Tap for sound
   /// and music" to anyone who turned them off. UI tests run silent unless they pass
