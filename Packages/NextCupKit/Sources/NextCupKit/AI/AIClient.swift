@@ -104,7 +104,8 @@ public struct URLSessionTransport: Transport {
 }
 
 /// One AI call: refused before any I/O without disclosure and key, retried with
-/// backoff on 429 and 5xx (max 3 attempts), and only ever returns schema-valid JSON.
+/// backoff on 429 and 5xx (max 3 attempts), never after a timeout, and only ever
+/// returns schema-valid JSON.
 public struct AIClient: Sendable {
   public static let maxAttempts = 3
 
@@ -169,6 +170,9 @@ public struct AIClient: Sendable {
           error.code)
       {
         throw AIError.offline
+      } catch let error as URLError where error.code == .timedOut {
+        // The provider may have received, and billed, the request: never send it again.
+        throw AIError.unavailable(nil)
       } catch {
         if attempt == Self.maxAttempts { throw AIError.unavailable(nil) }
         try await pause(attempt)

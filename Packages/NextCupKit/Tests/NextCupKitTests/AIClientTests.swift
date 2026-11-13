@@ -192,8 +192,17 @@ struct AIClientTests {
     }
   }
 
-  @Test func timeoutsAreRetriedThenGiveUp() async {
-    let stub = StubTransport(Array(repeating: .failure(URLError(.timedOut)), count: 3))
+  /// A timed-out POST may already be billed by the provider, so it is never sent again.
+  @Test func timeoutsAreNotRetried() async {
+    let stub = StubTransport([.failure(URLError(.timedOut)), ok(anthropicBody)])
+    await #expect(throws: AIError.unavailable(nil)) {
+      try await client(stub).send(payload(), provider: .anthropic, model: "m")
+    }
+    #expect(await stub.requests.count == 1)
+  }
+
+  @Test func otherTransportErrorsAreRetriedThenGiveUp() async {
+    let stub = StubTransport(Array(repeating: .failure(URLError(.cannotFindHost)), count: 3))
     await #expect(throws: AIError.unavailable(nil)) {
       try await client(stub).send(payload(), provider: .anthropic, model: "m")
     }
