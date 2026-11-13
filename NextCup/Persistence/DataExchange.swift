@@ -435,10 +435,16 @@ struct DataEraser {
   /// in-memory store.
   var externalData: URL?
   /// Where the drafts wait out the Undo window.
-  /// shortcut: in tmp, so if the app is killed inside the window they stay until iOS clears
-  /// tmp or the next Delete all; sweep it at launch if that ever matters.
-  var heldDrafts = FileManager.default.temporaryDirectory
+  var heldDrafts = DataEraser.standardHeldDrafts
+
+  static let standardHeldDrafts = FileManager.default.temporaryDirectory
     .appendingPathComponent("NextCupDeletedDrafts", isDirectory: true)
+
+  /// At launch: no Undo window survives a relaunch, so drafts left aside by a Delete all
+  /// the app was killed during go now, not whenever iOS clears tmp.
+  static func dropLeftoverDrafts(at folder: URL = standardHeldDrafts) {
+    try? FileManager.default.removeItem(at: folder)
+  }
 
   static var systemScratch: [URL] {
     FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)

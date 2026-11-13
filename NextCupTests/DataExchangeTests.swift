@@ -480,4 +480,20 @@ import Testing
     subject.restoreDrafts()
     #expect(!FileManager.default.fileExists(atPath: file.path))
   }
+
+  /// Drafts set aside by a Delete all the app was killed during are gone after a relaunch.
+  @Test func draftsLeftAsideAreDroppedAtLaunch() throws {
+    let env = try makeEnv()
+    let dir = tempDir()
+    let drafts = dir.appendingPathComponent("Drafts", isDirectory: true)
+    try FileManager.default.createDirectory(at: drafts, withIntermediateDirectories: true)
+    try Data("{}".utf8).write(to: drafts.appendingPathComponent("brew-draft-1.json"))
+    let subject = eraser(
+      env, drafts: drafts, backups: BackupStore(directory: dir.appendingPathComponent("B")))
+    _ = try subject.eraseAll(reseeding: try BuiltInContent(bundle: .main)).get()
+    #expect(FileManager.default.fileExists(atPath: subject.heldDrafts.path))
+
+    DataEraser.dropLeftoverDrafts(at: subject.heldDrafts)
+    #expect(!FileManager.default.fileExists(atPath: subject.heldDrafts.path))
+  }
 }
