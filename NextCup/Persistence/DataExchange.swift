@@ -423,7 +423,8 @@ struct DataEraser {
   let draftsDirectory: URL
   let backups: BackupStore
   var clearKeys: @MainActor () -> Void = DataEraser.clearKeychain
-  var endActivity: @MainActor () -> Void = { LiveTimerActivity().end() }
+  /// The timer's own controller, so it knows the app (not the person) ended the activity.
+  var endActivity: @MainActor () -> Void = { TimerEnvironment.activity.end() }
   /// Taste reminders are for brews that are now gone; Undo does not schedule them again.
   var clearReminders: @MainActor () -> Void = {
     UNUserNotificationCenter.current().removeAllPendingNotificationRequests()

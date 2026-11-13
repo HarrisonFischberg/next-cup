@@ -327,35 +327,55 @@ struct TimerSessionTests {
 
   // MARK: Live Activity
 
-  @Test func theSameRecipeStartedAgainGetsANewActivityNotTheEndingOne() throws {
-    let link = try #require(URL(string: "nextcup://timer/a?dose=15"))
-    let old = ActivityCandidate(id: "old", linkURL: link, isLive: true)
-    let plan = ActivityAdoption.plan(held: nil, link: link, listed: [old], ending: ["old"])
-    #expect(plan.keep == nil, "a new one is requested")
+  private let linkA = URL(string: "nextcup://timer/a?dose=15")!
+  private let linkB = URL(string: "nextcup://timer/b?dose=15")!
+
+  @Test func theSameRecipeStartedAgainGetsANewActivityNotTheEndingOne() {
+    let old = ActivityCandidate(id: "old", linkURL: linkA, state: .live)
+    let plan = ActivityAdoption.plan(held: nil, link: linkA, listed: [old], ending: ["old"])
+    #expect(plan.keep == nil && plan.request, "a new one is requested")
     #expect(plan.end.isEmpty, "already ending")
   }
 
-  @Test func aRelaunchAdoptsTheLiveActivityOfThisRunAndEndsTheOthers() throws {
-    let link = try #require(URL(string: "nextcup://timer/a?dose=15"))
-    let other = try #require(URL(string: "nextcup://timer/b?dose=15"))
+  @Test func aRelaunchAdoptsTheLiveActivityOfThisRunAndEndsTheOthers() {
     let listed = [
-      ActivityCandidate(id: "b", linkURL: other, isLive: true),
-      ActivityCandidate(id: "a", linkURL: link, isLive: true),
+      ActivityCandidate(id: "b", linkURL: linkB, state: .live),
+      ActivityCandidate(id: "a", linkURL: linkA, state: .live),
     ]
-    let plan = ActivityAdoption.plan(held: nil, link: link, listed: listed, ending: [])
-    #expect(plan.keep == "a")
+    let plan = ActivityAdoption.plan(held: nil, link: linkA, listed: listed, ending: [])
+    #expect(plan.keep == "a" && !plan.request)
     #expect(plan.end == ["b"])
   }
 
-  @Test func aHeldActivityThatEndedIsReplaced() throws {
-    let link = try #require(URL(string: "nextcup://timer/a?dose=15"))
-    let swiped = ActivityCandidate(id: "a", linkURL: link, isLive: false)
-    let plan = ActivityAdoption.plan(held: "a", link: link, listed: [swiped], ending: [])
-    #expect(plan.keep == nil)
-    #expect(plan.end == ["a"])
-    let live = ActivityCandidate(id: "a", linkURL: link, isLive: true)
-    #expect(
-      ActivityAdoption.plan(held: "a", link: link, listed: [live], ending: []).keep == "a")
+  /// Swiping the activity away is the person saying no: it does not come back at the
+  /// next step, and stays away for the rest of that run.
+  @Test func anActivityThePersonDismissedStaysGone() {
+    let swiped = ActivityCandidate(id: "a", linkURL: linkA, state: .dismissed)
+    let plan = ActivityAdoption.plan(held: "a", link: linkA, listed: [swiped], ending: [])
+    #expect(plan.declined && !plan.request && plan.keep == nil)
+    let next = ActivityAdoption.plan(
+      held: nil, link: linkA, listed: [], ending: [], declined: plan.declined)
+    #expect(!next.request, "the next step change requests nothing")
+  }
+
+  /// One this app ended (Delete all, or asked to end with immediate dismissal) is replaced.
+  @Test func anActivityTheAppEndedIsReplaced() {
+    let ended = ActivityCandidate(id: "a", linkURL: linkA, state: .ended)
+    let plan = ActivityAdoption.plan(held: "a", link: linkA, listed: [ended], ending: [])
+    #expect(plan.request && plan.end == ["a"])
+    let ours = ActivityCandidate(id: "a", linkURL: linkA, state: .dismissed)
+    #expect(ActivityAdoption.plan(held: "a", link: linkA, listed: [ours], ending: ["a"]).request)
+    let live = ActivityCandidate(id: "a", linkURL: linkA, state: .live)
+    #expect(ActivityAdoption.plan(held: "a", link: linkA, listed: [live], ending: []).keep == "a")
+  }
+
+  /// `end()` (the run finished, or another plan started) clears the "no", so the next run
+  /// gets a fresh activity.
+  @Test func aNewRunAfterADismissalGetsAFreshActivity() {
+    let swiped = ActivityCandidate(id: "a", linkURL: linkA, state: .dismissed)
+    let plan = ActivityAdoption.plan(
+      held: nil, link: linkB, listed: [swiped], ending: ["a"], declined: false)
+    #expect(plan.request && !plan.declined)
   }
 
   @Test func activityHearsStartPauseResumeAndStepChangesThenEnds() throws {
