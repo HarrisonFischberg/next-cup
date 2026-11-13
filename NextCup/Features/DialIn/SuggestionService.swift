@@ -197,43 +197,4 @@ enum SuggestionFormat {
     case .dismissed: "Dismissed"
     }
   }
-
-  /// What the edit field shows: the stored value in the user's unit.
-  static func editable(_ text: String, for parameter: BrewParameter, _ units: UnitPreferences)
-    -> String
-  {
-    let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
-    switch parameter {
-    case .water, .yield:
-      return Double(clean).map { RecipeFormat.weight($0, units, withSymbol: false) } ?? clean
-    case .temperature:
-      return Double(clean).map { String(format: "%.0f", units.displayTemperature(celsius: $0)) }
-        ?? clean
-    default: return clean
-    }
-  }
-
-  /// Turns what the user typed (in their unit) back into canonical text, or `nil`
-  /// when it is not a usable value.
-  static func canonical(_ typed: String, for parameter: BrewParameter, _ units: UnitPreferences)
-    -> String?
-  {
-    let clean = typed.trimmingCharacters(in: .whitespacesAndNewlines)
-    switch parameter {
-    case .grind:
-      return clean.isEmpty ? nil : clean
-    case .water, .yield:
-      guard let value = Double(clean), value > 0 else { return nil }
-      return SuggestionApplication.number(
-        (units.grams(fromDisplayWeight: value) * 10).rounded() / 10)
-    case .temperature:
-      guard let value = Double(clean) else { return nil }
-      return SuggestionApplication.number(units.celsius(fromDisplayTemperature: value).rounded())
-    case .time:
-      guard let value = Double(clean), value >= 0 else { return nil }
-      return String(Int(value.rounded()))
-    default:
-      return nil
-    }
-  }
 }
