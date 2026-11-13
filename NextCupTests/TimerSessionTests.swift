@@ -32,8 +32,16 @@ private final class RecordingHaptics: TimerHaptics {
 private final class RecordingActivity: TimerActivityControlling {
   private(set) var updates: [TimerState] = []
   private(set) var endCount = 0
-  func update(setup: TimerSetup, state: TimerState) { updates.append(state) }
-  func end() { endCount += 1 }
+  /// "update" and "end" in the order they came.
+  private(set) var calls: [String] = []
+  func update(setup: TimerSetup, state: TimerState) {
+    updates.append(state)
+    calls.append("update")
+  }
+  func end() {
+    endCount += 1
+    calls.append("end")
+  }
 }
 
 @MainActor
@@ -294,6 +302,27 @@ struct TimerSessionTests {
       setup: otherSetup, clock: clock, store: store, haptics: RecordingHaptics(),
       activity: RecordingActivity())
     #expect(second.state.phase == .notStarted)
+  }
+
+  /// The app has one Live Activity for every session, so a run of another plan ends the
+  /// first run's activity before its own first update, never pushing into it.
+  @Test func aRunOfAnotherPlanEndsTheSharedActivityFirst() throws {
+    let clock = FakeClock()
+    let store = MemoryStore()
+    let activity = RecordingActivity()
+    let first = TimerSession(
+      setup: try TimerPlanBuilder.setup(for: makeRecipe(), doseG: 15), clock: clock,
+      store: store, haptics: RecordingHaptics(), activity: activity)
+    first.start()
+
+    let second = TimerSession(
+      setup: try TimerPlanBuilder.setup(for: makeRecipe(), doseG: 20), clock: clock,
+      store: store, haptics: RecordingHaptics(), activity: activity)
+    #expect(activity.calls == ["update"], "opening another plan leaves the running brew alone")
+    second.start()
+    #expect(activity.calls == ["update", "end", "update"])
+    second.pause()
+    #expect(activity.endCount == 1)
   }
 
   // MARK: Live Activity

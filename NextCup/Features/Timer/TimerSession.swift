@@ -109,6 +109,9 @@ final class TimerSession {
   /// the screen changes, not again as each passes inside it.
   @ObservationIgnored private var lastIndex: Int?
   @ObservationIgnored private let activity: any TimerActivityControlling
+  /// A run of another plan was saved when this one opened: its Live Activity goes when this
+  /// run starts, not before, so backing out without starting leaves that brew on the Lock Screen.
+  @ObservationIgnored private var replacesOtherRun = false
 
   /// Picks up the saved timer when it belongs to this same plan; otherwise starts clean.
   init(
@@ -135,6 +138,8 @@ final class TimerSession {
       if stale {
         store.clear()
         activity.end()
+      } else {
+        replacesOtherRun = saved != nil
       }
       engine = TimerEngine(plan: setup.plan, clock: clock, store: store)
     }
@@ -151,6 +156,10 @@ final class TimerSession {
 
   func start() {
     guard state.phase == .notStarted else { return }
+    if replacesOtherRun {
+      activity.end()
+      replacesOtherRun = false
+    }
     engine.start()
     haptics.play(.start)
     refresh()

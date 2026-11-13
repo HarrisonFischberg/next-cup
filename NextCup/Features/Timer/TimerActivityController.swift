@@ -62,8 +62,15 @@ final class LiveTimerActivity: TimerActivityControlling {
       end()
       return
     }
-    // A relaunch adopts the activity the last process started instead of stacking a second.
-    activity = activity ?? Activity<TimerActivityAttributes>.activities.first
+    let attributes = TimerActivityAttributes(setup: setup)
+    if activity?.attributes.linkURL != attributes.linkURL {
+      // A relaunch adopts this run's activity from the last process instead of stacking a
+      // second. Any other is left from a run no longer saved (only one is), or still ending:
+      // it cannot take this run's name and link, so it goes.
+      let all = Activity<TimerActivityAttributes>.activities
+      activity = all.first { $0.attributes.linkURL == attributes.linkURL }
+      for other in all where other.id != activity?.id { Self.end(other) }
+    }
     let activityContent = ActivityContent(state: content, staleDate: content.endDate)
     if let activity {
       let handle = ActivityHandle(activity: activity)
@@ -71,16 +78,17 @@ final class LiveTimerActivity: TimerActivityControlling {
       return
     }
     guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-    activity = try? Activity.request(
-      attributes: TimerActivityAttributes(setup: setup), content: activityContent)
+    activity = try? Activity.request(attributes: attributes, content: activityContent)
   }
 
   func end() {
     let running = activity.map { [$0] } ?? Activity<TimerActivityAttributes>.activities
     activity = nil
-    for activity in running {
-      let handle = ActivityHandle(activity: activity)
-      Task { await handle.activity.end(nil, dismissalPolicy: .immediate) }
-    }
+    running.forEach(Self.end)
+  }
+
+  private static func end(_ activity: Activity<TimerActivityAttributes>) {
+    let handle = ActivityHandle(activity: activity)
+    Task { await handle.activity.end(nil, dismissalPolicy: .immediate) }
   }
 }
