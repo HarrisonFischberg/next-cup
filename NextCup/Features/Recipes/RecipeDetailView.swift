@@ -664,7 +664,6 @@ private struct RecipeDetailContent: View {
       }
       setup.grinderID = grinder?.id
       setup.grindSetting = grindSetting.trimmingCharacters(in: .whitespaces)
-      setup.rememberChoices()
       timerSetup = setup
       startFailed = false
     } catch {

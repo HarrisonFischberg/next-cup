@@ -36,9 +36,13 @@ struct TimerSetup: Identifiable, Hashable {
       ], forKey: Self.choicesKey)
   }
 
-  /// This setup with the last run's choices, when that run was the same recipe and dose.
-  func withRememberedChoices(from defaults: UserDefaults = .standard) -> TimerSetup {
-    guard let saved = defaults.dictionary(forKey: Self.choicesKey) as? [String: String],
+  /// This setup with the last run's choices, only when the timer picks up that saved run
+  /// (the match `TimerSession` makes): a fresh run from Siri or a link keeps none.
+  func withRememberedChoices(
+    resuming run: TimerSnapshot?, now: Date, from defaults: UserDefaults = .standard
+  ) -> TimerSetup {
+    guard let run, run.plan == plan, !TimerSession.isStale(run, now: now),
+      let saved = defaults.dictionary(forKey: Self.choicesKey) as? [String: String],
       saved["recipe"] == recipeID.uuidString, saved["dose"] == String(scaled.doseG)
     else { return self }
     var setup = self

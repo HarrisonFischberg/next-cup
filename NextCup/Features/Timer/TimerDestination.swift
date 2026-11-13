@@ -20,7 +20,10 @@ struct TimerDestination: View {
     if let recipe = matches.first,
       let setup = try? TimerPlanBuilder.setup(for: recipe, doseG: doseG)
     {
-      TimerView(setup: setup.withRememberedChoices()).accessibilityIdentifier(link.identifier)
+      TimerView(
+        setup: setup.withRememberedChoices(
+          resuming: TimerEnvironment.stateStore.load(), now: TimerEnvironment.clock.now())
+      ).accessibilityIdentifier(link.identifier)
     } else {
       ScrollView {
         EmptyState(
