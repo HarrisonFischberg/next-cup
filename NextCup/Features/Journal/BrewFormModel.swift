@@ -313,7 +313,7 @@ final class BrewFormModel {
   func addWaterProfile(named name: String, hardnessPPM: String = "") -> Bool {
     let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
     let typed = hardnessPPM.trimmingCharacters(in: .whitespaces)
-    let hardness = Double(typed)
+    let hardness = RecipeEditorFields.parseNumber(typed)
     guard !clean.isEmpty, typed.isEmpty || (hardness ?? 0) > 0 else { return false }
     let existing = (try? store.context.fetch(FetchDescriptor<WaterProfile>())) ?? []
     if let match = existing.first(where: {
