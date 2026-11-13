@@ -327,6 +327,37 @@ struct TimerSessionTests {
 
   // MARK: Live Activity
 
+  @Test func theSameRecipeStartedAgainGetsANewActivityNotTheEndingOne() throws {
+    let link = try #require(URL(string: "nextcup://timer/a?dose=15"))
+    let old = ActivityCandidate(id: "old", linkURL: link, isLive: true)
+    let plan = ActivityAdoption.plan(held: nil, link: link, listed: [old], ending: ["old"])
+    #expect(plan.keep == nil, "a new one is requested")
+    #expect(plan.end.isEmpty, "already ending")
+  }
+
+  @Test func aRelaunchAdoptsTheLiveActivityOfThisRunAndEndsTheOthers() throws {
+    let link = try #require(URL(string: "nextcup://timer/a?dose=15"))
+    let other = try #require(URL(string: "nextcup://timer/b?dose=15"))
+    let listed = [
+      ActivityCandidate(id: "b", linkURL: other, isLive: true),
+      ActivityCandidate(id: "a", linkURL: link, isLive: true),
+    ]
+    let plan = ActivityAdoption.plan(held: nil, link: link, listed: listed, ending: [])
+    #expect(plan.keep == "a")
+    #expect(plan.end == ["b"])
+  }
+
+  @Test func aHeldActivityThatEndedIsReplaced() throws {
+    let link = try #require(URL(string: "nextcup://timer/a?dose=15"))
+    let swiped = ActivityCandidate(id: "a", linkURL: link, isLive: false)
+    let plan = ActivityAdoption.plan(held: "a", link: link, listed: [swiped], ending: [])
+    #expect(plan.keep == nil)
+    #expect(plan.end == ["a"])
+    let live = ActivityCandidate(id: "a", linkURL: link, isLive: true)
+    #expect(
+      ActivityAdoption.plan(held: "a", link: link, listed: [live], ending: []).keep == "a")
+  }
+
   @Test func activityHearsStartPauseResumeAndStepChangesThenEnds() throws {
     let activity = RecordingActivity()
     let (session, clock, _, _) = try makeSession(activity: activity)

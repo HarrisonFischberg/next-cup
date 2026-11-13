@@ -44,6 +44,29 @@ struct NoTimerActivity: TimerActivityControlling {
   func end() {}
 }
 
+/// One Live Activity as the adopt decision sees it: no ActivityKit, so it can be tested.
+struct ActivityCandidate: Equatable {
+  let id: String
+  let linkURL: URL
+  /// Still on screen and updatable (`active` or `stale`), not ended or swiped away.
+  let isLive: Bool
+}
+
+enum ActivityAdoption {
+  /// Which activity a run keeps (`nil`: request a new one) and which to end. Only a live
+  /// activity with this run's link that was not already asked to end is kept: an end
+  /// lands later, so one still listed after `end()` (the same recipe started again, a
+  /// relaunch) would otherwise be adopted and then die under the new run. The held one
+  /// wins over another match. Every other one is from a run no longer saved (only one is).
+  static func plan(
+    held: String?, link: URL, listed: [ActivityCandidate], ending: Set<String>
+  ) -> (keep: String?, end: [String]) {
+    let usable = listed.filter { $0.isLive && $0.linkURL == link && !ending.contains($0.id) }
+    let keep = (usable.first { $0.id == held } ?? usable.first)?.id
+    return (keep, listed.map(\.id).filter { $0 != keep && !ending.contains($0) })
+  }
+}
+
 /// ActivityKit's `Activity` is not `Sendable` in this SDK, yet only its own async calls
 /// touch it, and this class is its only user.
 private struct ActivityHandle: @unchecked Sendable {
@@ -53,6 +76,8 @@ private struct ActivityHandle: @unchecked Sendable {
 @MainActor
 final class LiveTimerActivity: TimerActivityControlling {
   private var activity: Activity<TimerActivityAttributes>?
+  /// Activities this instance asked to end; they stay listed until the end lands.
+  private var ending: Set<String> = []
 
   func update(setup: TimerSetup, state: TimerState) {
     guard
@@ -63,14 +88,20 @@ final class LiveTimerActivity: TimerActivityControlling {
       return
     }
     let attributes = TimerActivityAttributes(setup: setup)
-    if activity?.attributes.linkURL != attributes.linkURL {
-      // A relaunch adopts this run's activity from the last process instead of stacking a
-      // second. Any other is left from a run no longer saved (only one is), or still ending:
-      // it cannot take this run's name and link, so it goes.
-      let all = Activity<TimerActivityAttributes>.activities
-      activity = all.first { $0.attributes.linkURL == attributes.linkURL }
-      for other in all where other.id != activity?.id { Self.end(other) }
-    }
+    // A relaunch adopts this run's activity from the last process instead of stacking a
+    // second; a held one that ended (swiped away, Delete all) is replaced.
+    var all = Activity<TimerActivityAttributes>.activities
+    if let held = activity, !all.contains(where: { $0.id == held.id }) { all.append(held) }
+    ending.formIntersection(all.map(\.id))
+    let plan = ActivityAdoption.plan(
+      held: activity?.id, link: attributes.linkURL,
+      listed: all.map {
+        ActivityCandidate(
+          id: $0.id, linkURL: $0.attributes.linkURL,
+          isLive: $0.activityState == .active || $0.activityState == .stale)
+      }, ending: ending)
+    activity = all.first { $0.id == plan.keep }
+    for other in all where plan.end.contains(other.id) { end(other) }
     // Not stale at the target: the clock counts overtime, like the app, for up to an hour.
     let activityContent = ActivityContent(
       state: content, staleDate: content.endDate.addingTimeInterval(3600))
@@ -86,10 +117,11 @@ final class LiveTimerActivity: TimerActivityControlling {
   func end() {
     let running = activity.map { [$0] } ?? Activity<TimerActivityAttributes>.activities
     activity = nil
-    running.forEach(Self.end)
+    for each in running { end(each) }
   }
 
-  private static func end(_ activity: Activity<TimerActivityAttributes>) {
+  private func end(_ activity: Activity<TimerActivityAttributes>) {
+    ending.insert(activity.id)
     let handle = ActivityHandle(activity: activity)
     Task { await handle.activity.end(nil, dismissalPolicy: .immediate) }
   }
