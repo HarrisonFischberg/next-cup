@@ -88,6 +88,81 @@ struct TimerSessionTests {
     #expect(setup.plan.steps[0].instruction == "Wet the bed")
   }
 
+  /// Starts a run of `setup` that records its choices in `defaults`.
+  private func startRun(
+    _ setup: TimerSetup, clock: FakeClock, store: MemoryStore, defaults: UserDefaults
+  ) {
+    TimerSession(
+      setup: setup, clock: clock, store: store, haptics: RecordingHaptics(),
+      activity: RecordingActivity(), defaults: defaults
+    ).start()
+  }
+
+  @Test func aReopenedTimerGetsBackTheChoicesOfTheSameRun() throws {
+    let suite = "nextcup.timertests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let (clock, store) = (FakeClock(), MemoryStore())
+    let recipe = makeRecipe()
+    var started = try TimerPlanBuilder.setup(for: recipe, doseG: 30)
+    (started.beanID, started.beanName) = (UUID(), "Ethiopia")
+    (started.grinderID, started.grindSetting) = (UUID(), "18")
+    startRun(started, clock: clock, store: store, defaults: defaults)
+
+    let reopened = try TimerPlanBuilder.setup(for: recipe, doseG: 30)
+      .withRememberedChoices(resuming: store.load(), now: clock.now(), from: defaults)
+    #expect(reopened.beanID == started.beanID)
+    #expect(reopened.beanName == "Ethiopia")
+    #expect(reopened.grinderID == started.grinderID)
+    #expect(reopened.grindSetting == "18")
+
+    let otherDose = try TimerPlanBuilder.setup(for: recipe, doseG: 20)
+      .withRememberedChoices(resuming: store.load(), now: clock.now(), from: defaults)
+    #expect(otherDose.beanID == nil && otherDose.grindSetting.isEmpty)
+  }
+
+  /// Siri and a fresh link build the same setup, but with no saved run of this plan to
+  /// pick up it is a new brew, so an old run's choices stay out of it.
+  @Test func aFreshRunOfTheSameRecipeGetsNoRememberedChoices() throws {
+    let suite = "nextcup.timertests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let (clock, store) = (FakeClock(), MemoryStore())
+    let recipe = makeRecipe()
+    var started = try TimerPlanBuilder.setup(for: recipe, doseG: 30)
+    (started.beanID, started.grindSetting) = (UUID(), "18")
+    startRun(started, clock: clock, store: store, defaults: defaults)
+
+    let fresh = try TimerPlanBuilder.setup(for: recipe, doseG: 30)
+    let noRun = fresh.withRememberedChoices(resuming: nil, now: clock.now(), from: defaults)
+    #expect(noRun.beanID == nil && noRun.grindSetting.isEmpty)
+    clock.advance(120 + 3601)
+    let stale = fresh.withRememberedChoices(
+      resuming: store.load(), now: clock.now(), from: defaults)
+    #expect(stale.beanID == nil && stale.grindSetting.isEmpty)
+  }
+
+  @Test func aStartWithoutChoicesOverwritesEarlierOnes() throws {
+    let suite = "nextcup.timertests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let (clock, store) = (FakeClock(), MemoryStore())
+    let recipe = makeRecipe()
+    var chosen = try TimerPlanBuilder.setup(for: recipe, doseG: 30)
+    (chosen.beanID, chosen.grinderID, chosen.grindSetting) = (UUID(), UUID(), "18")
+    startRun(chosen, clock: clock, store: store, defaults: defaults)
+
+    // The same recipe started again from the roaster catalog, with nothing picked.
+    store.clear()
+    startRun(
+      try TimerPlanBuilder.setup(for: recipe, doseG: 30), clock: clock, store: store,
+      defaults: defaults)
+    let reopened = try TimerPlanBuilder.setup(for: recipe, doseG: 30)
+      .withRememberedChoices(resuming: store.load(), now: clock.now(), from: defaults)
+    #expect(reopened.beanID == nil && reopened.grinderID == nil)
+    #expect(reopened.grindSetting.isEmpty)
+  }
+
   @Test func stepWeightsInTheTextFollowTheDose() {
     #expect(
       TimerPlanBuilder.scaledWeights(in: "Pour to 500 g in the centre.", by: 0.806)

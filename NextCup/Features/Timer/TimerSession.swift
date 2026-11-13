@@ -112,24 +112,29 @@ final class TimerSession {
   /// A run of another plan was saved when this one opened: its Live Activity goes when this
   /// run starts, not before, so backing out without starting leaves that brew on the Lock Screen.
   @ObservationIgnored private var replacesOtherRun = false
+  /// Where each start records its Start brew choices for a reopened timer.
+  @ObservationIgnored private let defaults: UserDefaults
+
+  /// A run begun over an hour past its target ago was left behind (screen left, app
+  /// killed), not paused for a moment: the same recipe today is a new brew.
+  nonisolated static func isStale(_ run: TimerSnapshot, now: Date) -> Bool {
+    now.timeIntervalSince(run.startedAt) > Double(run.plan.totalDurationS) + 3600
+  }
 
   /// Picks up the saved timer when it belongs to this same plan; otherwise starts clean.
   init(
     setup: TimerSetup, clock: any TimerClock = TimerEnvironment.clock,
     store: any TimerStateStore = TimerEnvironment.stateStore,
     haptics: any TimerHaptics = SystemTimerHaptics(),
-    activity: any TimerActivityControlling = TimerEnvironment.activity
+    activity: any TimerActivityControlling = TimerEnvironment.activity,
+    defaults: UserDefaults = .standard
   ) {
     self.setup = setup
     self.haptics = haptics
     self.activity = activity
+    self.defaults = defaults
     let saved = store.load()
-    // A run begun over an hour past its target ago was left behind (screen left, app
-    // killed), not paused for a moment: the same recipe today is a new brew.
-    let stale =
-      saved.map {
-        clock.now().timeIntervalSince($0.startedAt) > Double($0.plan.totalDurationS) + 3600
-      } ?? false
+    let stale = saved.map { Self.isStale($0, now: clock.now()) } ?? false
     if saved?.plan == setup.plan, !stale,
       let restored = TimerEngine.restore(clock: clock, store: store)
     {
@@ -161,6 +166,8 @@ final class TimerSession {
       replacesOtherRun = false
     }
     engine.start()
+    // Every start overwrites, so a run begun without choices never inherits older ones.
+    setup.rememberChoices(in: defaults)
     haptics.play(.start)
     refresh()
     lastIndex = group(state)

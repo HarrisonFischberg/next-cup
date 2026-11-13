@@ -23,6 +23,36 @@ struct TimerSetup: Identifiable, Hashable {
   var grinderID: UUID?
   var grindSetting = ""
 
+  /// The Start brew choices of the last run, so a timer reopened from the Live
+  /// Activity or Siri, which is rebuilt from the recipe alone, still logs them.
+  static let choicesKey = "nextcup.timer.choices"
+
+  func rememberChoices(in defaults: UserDefaults = .standard) {
+    defaults.set(
+      [
+        "recipe": recipeID.uuidString, "dose": String(scaled.doseG),
+        "bean": beanID?.uuidString ?? "", "beanName": beanName ?? "",
+        "grinder": grinderID?.uuidString ?? "", "grind": grindSetting,
+      ], forKey: Self.choicesKey)
+  }
+
+  /// This setup with the last run's choices, only when the timer picks up that saved run
+  /// (the match `TimerSession` makes): a fresh run from Siri or a link keeps none.
+  func withRememberedChoices(
+    resuming run: TimerSnapshot?, now: Date, from defaults: UserDefaults = .standard
+  ) -> TimerSetup {
+    guard let run, run.plan == plan, !TimerSession.isStale(run, now: now),
+      let saved = defaults.dictionary(forKey: Self.choicesKey) as? [String: String],
+      saved["recipe"] == recipeID.uuidString, saved["dose"] == String(scaled.doseG)
+    else { return self }
+    var setup = self
+    setup.beanID = saved["bean"].flatMap(UUID.init(uuidString:))
+    setup.beanName = saved["beanName"].flatMap { $0.isEmpty ? nil : $0 }
+    setup.grinderID = saved["grinder"].flatMap(UUID.init(uuidString:))
+    setup.grindSetting = saved["grind"] ?? ""
+    return setup
+  }
+
   static func == (lhs: TimerSetup, rhs: TimerSetup) -> Bool { lhs.id == rhs.id }
   func hash(into hasher: inout Hasher) { hasher.combine(id) }
 
