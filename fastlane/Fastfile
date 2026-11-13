@@ -30,7 +30,7 @@ platform :ios do
       export_method: "app-store",
       output_directory: "build",
       xcargs: "CURRENT_PROJECT_VERSION=#{Time.now.utc.strftime('%Y%m%d.%H%M')} -allowProvisioningUpdates#{key}",
-      export_xcargs: "-allowProvisioningUpdates#{key}"
+      export_xcargs: "-allowProvisioningUpdates" # gym adds the API key to the export step itself; passing it twice fails
     )
   end
 

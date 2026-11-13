@@ -1,7 +1,12 @@
-This update fixes bugs.
+A new look for brewing, plus fixes.
 
-- Restoring a backup no longer adds duplicate beans or recipe steps.
-- A timer you left running is no longer picked up by the next day's brew.
-- Accepting "one step finer" keeps the grind setting you wrote.
-- The taste reminder is cancelled once you taste or delete the brew.
-- The step number on the Lock Screen matches the timer screen.
+- The brew timer is now a full-colour screen with a cup that fills as you pour, and each step change is hard to miss.
+- Start brew shows your steps as one card you can edit.
+- Unsaved brews sit first in the Journal, above past brews.
+- Explore is now roasters and your flavors. Brew help moved to each bean's page.
+- Thirteen more brew tracks.
+- Deleting a recipe or discarding an unsaved brew shows Undo instead of asking first.
+- Hold the dose and water buttons to change them quickly.
+- The Lock Screen timer keeps counting when a brew runs over.
+- "Rate later" keeps the bean, grinder and grind you chose.
+- Water hardness accepts a decimal comma.
