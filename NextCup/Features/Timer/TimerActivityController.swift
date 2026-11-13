@@ -71,7 +71,9 @@ final class LiveTimerActivity: TimerActivityControlling {
       activity = all.first { $0.attributes.linkURL == attributes.linkURL }
       for other in all where other.id != activity?.id { Self.end(other) }
     }
-    let activityContent = ActivityContent(state: content, staleDate: content.endDate)
+    // Not stale at the target: the clock counts overtime, like the app, for up to an hour.
+    let activityContent = ActivityContent(
+      state: content, staleDate: content.endDate.addingTimeInterval(3600))
     if let activity {
       let handle = ActivityHandle(activity: activity)
       Task { await handle.activity.update(activityContent) }
