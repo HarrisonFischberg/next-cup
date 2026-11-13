@@ -21,6 +21,8 @@ struct TimerView: View {
   @State private var muted = false
   /// Bumped five seconds before each step change, for the get-ready haptic.
   @State private var readyCue = 0
+  /// The second the warning chime played in, so that second gets no tick on top of it.
+  @State private var chimedSecond: Int?
   /// When the big button was last pressed: a second tap right behind it is a slip of a wet
   /// thumb, not a wish to pause the brew just started or to leave the finish unread.
   @State private var lastPrimaryTap = Date.distantPast
@@ -170,6 +172,7 @@ struct TimerView: View {
     .onChange(of: soon) { _, now in
       guard now, scenePhase == .active else { return }
       readyCue += 1
+      chimedSecond = Int(state.elapsedS)
       BrewAudio.shared.chime()
       AccessibilityNotification.Announcement.urgent("Get ready: \(upcoming.action)")
     }
@@ -177,7 +180,7 @@ struct TimerView: View {
     // A tick each running second; the music follows the brew: playing, paused, over.
     .onChange(of: Int(state.elapsedS)) { _, _ in
       guard state.phase == .running else { return }
-      BrewAudio.shared.tick()
+      if chimedSecond != Int(state.elapsedS) { BrewAudio.shared.tick() }
       if scenePhase == .active { BrewAudio.shared.resume() }
     }
     .onChange(of: state.phase, initial: true) { _, phase in
