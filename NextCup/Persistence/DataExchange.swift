@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import UserNotifications
 import SwiftData
 
 // Export, merge import, automatic backup and delete-all (blueprint §3a, §7).
@@ -421,6 +422,11 @@ struct DataEraser {
   let backups: BackupStore
   var clearKeys: @MainActor () -> Void = DataEraser.clearKeychain
   var endActivity: @MainActor () -> Void = { LiveTimerActivity().end() }
+  /// Taste reminders are for brews that are now gone; Undo does not schedule them again.
+  var clearReminders: @MainActor () -> Void = {
+    UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+    UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+  }
   /// Folders whose contents are emptied: caches and tmp hold exports and AI photos.
   var scratchDirectories: [URL] = DataEraser.systemScratch
   /// SwiftData keeps photos and AI attachments as loose files here; `nil` for an
@@ -476,6 +482,7 @@ struct DataEraser {
       try? FileManager.default.removeItem(at: draftsDirectory)
       try? backups.removeAll()
       endActivity()
+      clearReminders()
       for directory in scratchDirectories + [externalData].compactMap({ $0 }) {
         Self.empty(directory)
       }

@@ -105,7 +105,8 @@ import Testing
     // No scratch folders: the real tmp holds the other tests' files.
     DataEraser(
       store: env.store, defaults: env.defaults, defaultsDomain: env.suite, draftsDirectory: drafts,
-      backups: backups, clearKeys: keys, endActivity: {}, scratchDirectories: [])
+      backups: backups, clearKeys: keys, endActivity: {}, clearReminders: {},
+      scratchDirectories: [])
   }
 
   /// Delete all keeps the ratings flag, so the next launch does not convert ratings
@@ -400,6 +401,7 @@ import Testing
     env.defaults.set("x", forKey: "brew.lastMethodID")
     var keysCleared = false
     var activityEnded = false
+    var remindersCleared = false
     let scratch = tempDir()
     try Data("x".utf8).write(to: scratch.appendingPathComponent("NextCupExport.json"))
     let external = tempDir()
@@ -411,6 +413,7 @@ import Testing
 
     var subject = eraser(env, drafts: drafts, backups: backups, keys: { keysCleared = true })
     subject.endActivity = { activityEnded = true }
+    subject.clearReminders = { remindersCleared = true }
     subject.scratchDirectories = [scratch]
     subject.externalData = external
     let snapshot = try subject.eraseAll(reseeding: try BuiltInContent(bundle: .main)).get()
@@ -425,6 +428,7 @@ import Testing
     #expect(env.defaults.string(forKey: "brew.lastMethodID") == nil)
     #expect(keysCleared)
     #expect(activityEnded)
+    #expect(remindersCleared)
     #expect(try context.fetchCount(FetchDescriptor<AIRequest>()) == 0)
     #expect(env.defaults.object(forKey: "ai.disclosure.accepted.anthropic") == nil)
     #expect(try FileManager.default.contentsOfDirectory(atPath: scratch.path).isEmpty)
