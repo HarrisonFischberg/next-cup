@@ -25,6 +25,24 @@ struct QRBeanLinkTests {
     }
   }
 
+  /// A bag link that redirects into the home network is stopped at that hop.
+  @Test func redirectsAreCheckedLikeTheScannedLink() throws {
+    func hop(_ text: String) -> String? {
+      QRBeanLink.redirect(URLRequest(url: URL(string: text)!))?.url?.absoluteString
+    }
+    #expect(hop("https://shop.roaster.coffee/guji") == "https://shop.roaster.coffee/guji")
+    #expect(hop("http://roaster.coffee/guji") == "https://roaster.coffee/guji")
+    for blocked in [
+      "http://192.168.1.1/admin", "https://10.0.0.1/", "http://[::1]/", "http://router.local/",
+      "https://localhost/", "ftp://roaster.coffee/", "https://user:pw@roaster.coffee/",
+    ] {
+      #expect(hop(blocked) == nil, "\(blocked)")
+    }
+    var request = QRBeanLink.request(for: try #require(QRBeanLink.link(from: "https://a.co/x")))
+    request.url = URL(string: "https://b.co/y")
+    #expect(QRBeanLink.redirect(request)?.value(forHTTPHeaderField: "User-Agent") != nil)
+  }
+
   @Test func requestNamesTheApp() throws {
     let link = try #require(QRBeanLink.link(from: "https://roaster.coffee/guji"))
     let request = QRBeanLink.request(for: link)

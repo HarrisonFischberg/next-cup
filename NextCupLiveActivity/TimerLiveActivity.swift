@@ -40,13 +40,16 @@ struct TimerLiveActivity: Widget {
   }
 }
 
-/// Elapsed brew time. Frozen at `pausedAt` while paused.
+/// Elapsed brew time, counting up like the app. Frozen at `pausedAt` while paused. It runs
+/// on past the target, as the app does in overtime, up to the hour after which the app
+/// treats the run as left behind.
 struct BrewClock: View {
   let state: TimerActivityAttributes.ContentState
 
   var body: some View {
     Text(
-      timerInterval: state.startDate...state.endDate, pauseTime: state.pausedAt, showsHours: false
+      timerInterval: state.startDate...state.endDate.addingTimeInterval(3600),
+      pauseTime: state.pausedAt, countsDown: false, showsHours: false
     )
     .monospacedDigit().multilineTextAlignment(.trailing)
   }

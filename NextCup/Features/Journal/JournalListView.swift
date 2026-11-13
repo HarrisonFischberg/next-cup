@@ -17,6 +17,8 @@ struct JournalListView: View {
   @Query(sort: \BrewMethod.sortOrder) private var methods: [BrewMethod]
   @State private var search = ""
   @State private var pendingDelete: UUID?
+  /// An Unsaved Brew discarded and waiting out the same Undo window; its file goes after.
+  @State private var pendingDiscard: SavedDraft?
   @State private var deleteTimer: Task<Void, Never>?
   @State private var deleteError: String?
   @State private var showImport = false
@@ -404,6 +406,7 @@ struct JournalListView: View {
   private func loadUnsaved() {
     let store = Store(context: context)
     unsaved = DraftStore.all().filter { entry in
+      guard entry.id != pendingDiscard?.id else { return false }
       switch entry.kind {
       case .newBrew:
         return BrewFormModel.hasChanges(entry.draft, editing: nil, repeating: nil, store: store)
@@ -423,8 +426,17 @@ struct JournalListView: View {
   }
 
   private func discard(_ entry: SavedDraft) {
-    _ = entry.store.clear()
-    loadUnsaved()
+    commitPendingDelete()
+    Feedback.lift()
+    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
+      pendingDiscard = entry
+      loadUnsaved()
+    }
+    deleteTimer = Task {
+      try? await Task.sleep(for: .seconds(Self.undoSeconds))
+      guard !Task.isCancelled else { return }
+      commitPendingDelete()
+    }
   }
 
   private func toggleFavorite(_ brew: Brew) {
@@ -461,11 +473,14 @@ struct JournalListView: View {
   // MARK: Delete with Undo
 
   @ViewBuilder private var toast: some View {
-    if pendingDelete != nil {
-      SteelToast(message: "Brew deleted", actionTitle: "Undo", action: undoDelete)
-        .padding(.horizontal, DS.Space.lg).padding(.bottom, DS.Space.sm)
-        .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
-        .accessibilityIdentifier("journal.toast")
+    if pendingDelete != nil || pendingDiscard != nil {
+      SteelToast(
+        message: pendingDelete != nil ? "Brew deleted" : "Unsaved brew discarded",
+        actionTitle: "Undo", action: undoDelete
+      )
+      .padding(.horizontal, DS.Space.lg).padding(.bottom, DS.Space.sm)
+      .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+      .accessibilityIdentifier("journal.toast")
     } else if let name = router.savedLater {
       // A brew from the timer saved to rate later: say where it went and offer it now.
       SteelToast(message: "Saved to Unsaved Brews", actionTitle: "Rate now") {
@@ -498,13 +513,24 @@ struct JournalListView: View {
   private func undoDelete() {
     deleteTimer?.cancel()
     Feedback.tap()
-    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { pendingDelete = nil }
+    withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
+      pendingDelete = nil
+      pendingDiscard = nil
+      loadUnsaved()
+    }
   }
 
-  /// Removes the brew that was waiting out its Undo window. A write failure puts
-  /// the brew back and says so, so nothing disappears without being deleted.
+  /// Removes the brew (or Unsaved Brew) that was waiting out its Undo window. A write
+  /// failure puts it back and says so, so nothing disappears without being deleted.
   private func commitPendingDelete() {
     deleteTimer?.cancel()
+    if let entry = pendingDiscard {
+      withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { pendingDiscard = nil }
+      if case .failure(.removeFailed(let message)) = entry.store.clear() {
+        deleteError = "The unsaved brew was not discarded. \(message)"
+      }
+      loadUnsaved()
+    }
     guard let id = pendingDelete else { return }
     let store = Store(context: context)
     withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { pendingDelete = nil }

@@ -1,6 +1,8 @@
 import Foundation
+import NextCupKit
 import Security
 import SwiftData
+import UserNotifications
 
 // Export, merge import, automatic backup and delete-all (blueprint §3a, §7).
 
@@ -410,7 +412,8 @@ struct BackupStore: Sendable {
 
 /// Wipes the store, drafts, backups, preferences and Keychain keys, then reseeds
 /// the built-ins (blueprint §7). The returned snapshot lets the caller offer Undo
-/// for the data; backups and keys are gone for good.
+/// for the data, and the drafts wait aside until the caller ends the Undo window;
+/// backups and keys are gone for good.
 @MainActor
 struct DataEraser {
   let store: Store
@@ -420,12 +423,29 @@ struct DataEraser {
   let draftsDirectory: URL
   let backups: BackupStore
   var clearKeys: @MainActor () -> Void = DataEraser.clearKeychain
-  var endActivity: @MainActor () -> Void = { LiveTimerActivity().end() }
+  /// The timer's own controller, so it knows the app (not the person) ended the activity.
+  var endActivity: @MainActor () -> Void = { TimerEnvironment.activity.end() }
+  /// Taste reminders are for brews that are now gone; Undo does not schedule them again.
+  var clearReminders: @MainActor () -> Void = {
+    UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+    UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+  }
   /// Folders whose contents are emptied: caches and tmp hold exports and AI photos.
   var scratchDirectories: [URL] = DataEraser.systemScratch
   /// SwiftData keeps photos and AI attachments as loose files here; `nil` for an
   /// in-memory store.
   var externalData: URL?
+  /// Where the drafts wait out the Undo window.
+  var heldDrafts = DataEraser.standardHeldDrafts
+
+  static let standardHeldDrafts = FileManager.default.temporaryDirectory
+    .appendingPathComponent("NextCupDeletedDrafts", isDirectory: true)
+
+  /// At launch: no Undo window survives a relaunch, so drafts left aside by a Delete all
+  /// the app was killed during go now, not whenever iOS clears tmp.
+  static func dropLeftoverDrafts(at folder: URL = standardHeldDrafts) {
+    try? FileManager.default.removeItem(at: folder)
+  }
 
   static var systemScratch: [URL] {
     FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
@@ -473,11 +493,16 @@ struct DataEraser {
       }
       // The delete is committed: from here nothing may fail the call, or the caller
       // would say "nothing was deleted" and drop the snapshot Undo needs.
-      try? FileManager.default.removeItem(at: draftsDirectory)
       try? backups.removeAll()
       endActivity()
+      clearReminders()
       for directory in scratchDirectories + [externalData].compactMap({ $0 }) {
         Self.empty(directory)
+      }
+      // After the scratch folders are emptied, as tmp is one of them.
+      try? FileManager.default.removeItem(at: heldDrafts)
+      if (try? FileManager.default.moveItem(at: draftsDirectory, to: heldDrafts)) == nil {
+        try? FileManager.default.removeItem(at: draftsDirectory)
       }
       // The selected tab stays, so the screen the user is on (and its Undo toast)
       // does not jump away. The rating flag stays, or the next launch would convert
@@ -497,5 +522,23 @@ struct DataEraser {
       store.context.rollback()
       return .failure(.saveFailed(error.localizedDescription))
     }
+  }
+
+  /// Undo: the drafts come back to the Journal's Unsaved Brews.
+  func restoreDrafts() {
+    let files = FileManager.default
+    let held = try? files.contentsOfDirectory(at: heldDrafts, includingPropertiesForKeys: nil)
+    try? files.createDirectory(at: draftsDirectory, withIntermediateDirectories: true)
+    for file in held ?? [] {
+      try? files.moveItem(
+        at: file, to: draftsDirectory.appendingPathComponent(file.lastPathComponent))
+    }
+    dropHeldDrafts()
+    NotificationCenter.default.post(name: DraftStore.didChange, object: nil)
+  }
+
+  /// The Undo window ended: the drafts go for good.
+  func dropHeldDrafts() {
+    try? FileManager.default.removeItem(at: heldDrafts)
   }
 }

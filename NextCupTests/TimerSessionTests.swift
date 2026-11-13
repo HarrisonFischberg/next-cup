@@ -32,8 +32,16 @@ private final class RecordingHaptics: TimerHaptics {
 private final class RecordingActivity: TimerActivityControlling {
   private(set) var updates: [TimerState] = []
   private(set) var endCount = 0
-  func update(setup: TimerSetup, state: TimerState) { updates.append(state) }
-  func end() { endCount += 1 }
+  /// "update" and "end" in the order they came.
+  private(set) var calls: [String] = []
+  func update(setup: TimerSetup, state: TimerState) {
+    updates.append(state)
+    calls.append("update")
+  }
+  func end() {
+    endCount += 1
+    calls.append("end")
+  }
 }
 
 @MainActor
@@ -296,7 +304,79 @@ struct TimerSessionTests {
     #expect(second.state.phase == .notStarted)
   }
 
+  /// The app has one Live Activity for every session, so a run of another plan ends the
+  /// first run's activity before its own first update, never pushing into it.
+  @Test func aRunOfAnotherPlanEndsTheSharedActivityFirst() throws {
+    let clock = FakeClock()
+    let store = MemoryStore()
+    let activity = RecordingActivity()
+    let first = TimerSession(
+      setup: try TimerPlanBuilder.setup(for: makeRecipe(), doseG: 15), clock: clock,
+      store: store, haptics: RecordingHaptics(), activity: activity)
+    first.start()
+
+    let second = TimerSession(
+      setup: try TimerPlanBuilder.setup(for: makeRecipe(), doseG: 20), clock: clock,
+      store: store, haptics: RecordingHaptics(), activity: activity)
+    #expect(activity.calls == ["update"], "opening another plan leaves the running brew alone")
+    second.start()
+    #expect(activity.calls == ["update", "end", "update"])
+    second.pause()
+    #expect(activity.endCount == 1)
+  }
+
   // MARK: Live Activity
+
+  private let linkA = URL(string: "nextcup://timer/a?dose=15")!
+  private let linkB = URL(string: "nextcup://timer/b?dose=15")!
+
+  @Test func theSameRecipeStartedAgainGetsANewActivityNotTheEndingOne() {
+    let old = ActivityCandidate(id: "old", linkURL: linkA, state: .live)
+    let plan = ActivityAdoption.plan(held: nil, link: linkA, listed: [old], ending: ["old"])
+    #expect(plan.keep == nil && plan.request, "a new one is requested")
+    #expect(plan.end.isEmpty, "already ending")
+  }
+
+  @Test func aRelaunchAdoptsTheLiveActivityOfThisRunAndEndsTheOthers() {
+    let listed = [
+      ActivityCandidate(id: "b", linkURL: linkB, state: .live),
+      ActivityCandidate(id: "a", linkURL: linkA, state: .live),
+    ]
+    let plan = ActivityAdoption.plan(held: nil, link: linkA, listed: listed, ending: [])
+    #expect(plan.keep == "a" && !plan.request)
+    #expect(plan.end == ["b"])
+  }
+
+  /// Swiping the activity away is the person saying no: it does not come back at the
+  /// next step, and stays away for the rest of that run.
+  @Test func anActivityThePersonDismissedStaysGone() {
+    let swiped = ActivityCandidate(id: "a", linkURL: linkA, state: .dismissed)
+    let plan = ActivityAdoption.plan(held: "a", link: linkA, listed: [swiped], ending: [])
+    #expect(plan.declined && !plan.request && plan.keep == nil)
+    let next = ActivityAdoption.plan(
+      held: nil, link: linkA, listed: [], ending: [], declined: plan.declined)
+    #expect(!next.request, "the next step change requests nothing")
+  }
+
+  /// One this app ended (Delete all, or asked to end with immediate dismissal) is replaced.
+  @Test func anActivityTheAppEndedIsReplaced() {
+    let ended = ActivityCandidate(id: "a", linkURL: linkA, state: .ended)
+    let plan = ActivityAdoption.plan(held: "a", link: linkA, listed: [ended], ending: [])
+    #expect(plan.request && plan.end == ["a"])
+    let ours = ActivityCandidate(id: "a", linkURL: linkA, state: .dismissed)
+    #expect(ActivityAdoption.plan(held: "a", link: linkA, listed: [ours], ending: ["a"]).request)
+    let live = ActivityCandidate(id: "a", linkURL: linkA, state: .live)
+    #expect(ActivityAdoption.plan(held: "a", link: linkA, listed: [live], ending: []).keep == "a")
+  }
+
+  /// `end()` (the run finished, or another plan started) clears the "no", so the next run
+  /// gets a fresh activity.
+  @Test func aNewRunAfterADismissalGetsAFreshActivity() {
+    let swiped = ActivityCandidate(id: "a", linkURL: linkA, state: .dismissed)
+    let plan = ActivityAdoption.plan(
+      held: nil, link: linkB, listed: [swiped], ending: ["a"], declined: false)
+    #expect(plan.request && !plan.declined)
+  }
 
   @Test func activityHearsStartPauseResumeAndStepChangesThenEnds() throws {
     let activity = RecordingActivity()

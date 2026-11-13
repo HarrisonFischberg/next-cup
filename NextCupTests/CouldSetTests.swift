@@ -110,6 +110,16 @@ struct CouldSetTests {
     #expect(try harness.store.context.fetch(FetchDescriptor<WaterProfile>()).count == 1)
   }
 
+  /// The decimal pad shows "," in comma locales, so "7,5" is read as 7.5.
+  @Test func waterHardnessTakesADecimalComma() throws {
+    let harness = try Harness()
+    let model = harness.model()
+    #expect(model.addWaterProfile(named: "Soft", hardnessPPM: "7,5"))
+    let profile = try #require(
+      try harness.store.context.fetch(FetchDescriptor<WaterProfile>()).first)
+    #expect(profile.ppmHardness == 7.5)
+  }
+
   @Test func deletingAWaterProfileKeepsTheBrew() throws {
     let harness = try Harness()
     let model = harness.model()

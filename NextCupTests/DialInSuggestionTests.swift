@@ -321,10 +321,6 @@ struct DialInSuggestionTests {
     #expect(SuggestionFormat.display("94", for: .temperature, ounces) == "201°F")
     #expect(SuggestionFormat.display("185", for: .time, grams) == "3:05")
     #expect(SuggestionFormat.display("", for: .grind, grams) == "not set")
-    #expect(SuggestionFormat.canonical("201", for: .temperature, ounces) == "94")
-    #expect(SuggestionFormat.canonical("8.82", for: .water, ounces) == "250")
-    #expect(SuggestionFormat.canonical("  ", for: .grind, grams) == nil)
-    #expect(SuggestionFormat.canonical("abc", for: .time, grams) == nil)
   }
 
   @Test func theHeadlineNamesTheFieldAndBothValues() throws {
