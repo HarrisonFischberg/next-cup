@@ -583,7 +583,10 @@ struct TimerView: View {
       ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
       : AnyLayout(HStackLayout(alignment: .center, spacing: DS.Space.md))
     return layout {
-      Text(next.kicker).font(.subheadline.weight(.heavy)).foregroundStyle(soon ? DS.field : soft)
+      Label(next.kicker, systemImage: "arrow.right.circle.fill")
+        .labelStyle(.titleAndIcon)
+        .font(.subheadline.weight(.heavy)).textCase(.uppercase)
+        .foregroundStyle(soon ? DS.field : hot ? soft : DS.accent)
       Text(next.action).font(DS.Font.headline).foregroundStyle(text)
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -598,8 +601,13 @@ struct TimerView: View {
     .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.sm)
     .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
     .background(
-      soon ? DS.fieldSoft : fg.opacity(hot ? 0.14 : 0.06),
+      soon ? DS.fieldSoft : hot ? fg.opacity(0.14) : DS.accent.opacity(0.14),
       in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+    )
+    // Off the pour the card sits on the plain background, so an accent rim lifts it out.
+    .overlay(
+      RoundedRectangle(cornerRadius: 28, style: .continuous)
+        .strokeBorder(DS.accent, lineWidth: soon || hot ? 0 : 1.5)
     )
     .animation(motion, value: soon)
     .accessibilityElement(children: .combine)
