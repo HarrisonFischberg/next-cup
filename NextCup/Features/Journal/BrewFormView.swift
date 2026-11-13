@@ -606,6 +606,8 @@ struct BrewFormView: View {
             start: BrewFormModel.defaultDoseG)
         }
       )
+      // Holding - or + repeats, so a 30 g / 500 g brew is a hold, not hundreds of taps.
+      .buttonRepeatBehavior(.enabled)
       .accessibilityIdentifier("brewform.dose")
       StepperTile(
         title: "Water", value: weightText(model.draft.waterG), unit: unitText(model.draft.waterG),
@@ -621,6 +623,7 @@ struct BrewFormView: View {
             start: BrewFormModel.defaultWaterG)
         }
       )
+      .buttonRepeatBehavior(.enabled)
       .accessibilityIdentifier("brewform.water")
       if fields.contains(.temperature) {
         StepperTile(
