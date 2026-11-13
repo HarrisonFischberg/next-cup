@@ -106,7 +106,7 @@ import Testing
     DataEraser(
       store: env.store, defaults: env.defaults, defaultsDomain: env.suite, draftsDirectory: drafts,
       backups: backups, clearKeys: keys, endActivity: {}, clearReminders: {},
-      scratchDirectories: [])
+      scratchDirectories: [], heldDrafts: tempDir().appendingPathComponent("Held"))
   }
 
   /// Delete all keeps the ratings flag, so the next launch does not convert ratings
@@ -455,5 +455,29 @@ import Testing
     let plan = try importer.plan(for: snapshot)
     _ = try importer.apply(plan, overwrite: Set(plan.conflicts.map(\.id))).get()
     #expect(try counts(env.store.context) == before)
+  }
+
+  /// Unsaved Brews wait out the Undo window: Undo brings them back, and they are deleted
+  /// only when the window ends.
+  @Test func draftsComeBackWithUndoAndGoWhenTheWindowEnds() throws {
+    let env = try makeEnv()
+    let dir = tempDir()
+    let drafts = dir.appendingPathComponent("Drafts", isDirectory: true)
+    let file = drafts.appendingPathComponent("brew-draft-1.json")
+    try FileManager.default.createDirectory(at: drafts, withIntermediateDirectories: true)
+    try Data("{}".utf8).write(to: file)
+    let subject = eraser(
+      env, drafts: drafts, backups: BackupStore(directory: dir.appendingPathComponent("B")))
+
+    _ = try subject.eraseAll(reseeding: try BuiltInContent(bundle: .main)).get()
+    #expect(!FileManager.default.fileExists(atPath: file.path))
+    subject.restoreDrafts()
+    #expect(FileManager.default.fileExists(atPath: file.path))
+    #expect(!FileManager.default.fileExists(atPath: subject.heldDrafts.path))
+
+    _ = try subject.eraseAll(reseeding: try BuiltInContent(bundle: .main)).get()
+    subject.dropHeldDrafts()
+    subject.restoreDrafts()
+    #expect(!FileManager.default.fileExists(atPath: file.path))
   }
 }

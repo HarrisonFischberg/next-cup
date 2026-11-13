@@ -282,16 +282,21 @@ struct DataSettingsView: View {
     }
   }
 
+  private var eraser: DataEraser {
+    DataEraser(
+      store: store, defaults: .standard,
+      defaultsDomain: Bundle.main.bundleIdentifier ?? "NextCup",
+      draftsDirectory: DraftDirectory.url, backups: .standard(),
+      externalData: DataEraser.externalDataDirectory(of: context))
+  }
+
   private func eraseAll() {
     guard let content = try? BuiltInContent(bundle: .main) else {
       errorMessage = "The built-in recipes could not be loaded, so nothing was deleted."
       return
     }
-    let eraser = DataEraser(
-      store: store, defaults: .standard,
-      defaultsDomain: Bundle.main.bundleIdentifier ?? "NextCup",
-      draftsDirectory: DraftDirectory.url, backups: .standard(),
-      externalData: DataEraser.externalDataDirectory(of: context))
+    // Kept for the timer, which may end after this screen (and its environment) is gone.
+    let eraser = self.eraser
     switch eraser.eraseAll(reseeding: content) {
     case .success(let snapshot):
       Feedback.success()
@@ -302,6 +307,7 @@ struct DataSettingsView: View {
       undoTimer = Task {
         try? await Task.sleep(for: .seconds(Self.undoSeconds))
         guard !Task.isCancelled else { return }
+        eraser.dropHeldDrafts()
         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { erasedSnapshot = nil }
       }
     case .failure(.saveFailed(let reason)):
@@ -312,6 +318,7 @@ struct DataSettingsView: View {
   private func undoErase() {
     undoTimer?.cancel()
     guard let snapshot = erasedSnapshot else { return }
+    eraser.restoreDrafts()
     let importer = DataImporter(store: store)
     do {
       let restore = try importer.plan(for: snapshot)
