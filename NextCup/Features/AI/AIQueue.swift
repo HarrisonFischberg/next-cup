@@ -110,14 +110,20 @@ final class AIQueue {
   }
 
   /// Cancels requests left `queued` or `sending` by an earlier launch, so they are
-  /// never sent later and their photo and payload are not kept.
+  /// never sent later and their photo and payload are not kept. Requests that ended
+  /// with no result kept (failed, cancelled, or the answer discarded) are deleted, so
+  /// the table does not grow by a row per AI ask.
   static func expireStale(in context: ModelContext) {
-    for request in (try? context.fetch(FetchDescriptor<AIRequest>())) ?? []
-    where request.status == .queued || request.status == .sending {
-      request.status = .cancelled
-      request.attachment = nil
-      request.payloadJSON = Data()
-      request.updatedAt = Date()
+    for request in (try? context.fetch(FetchDescriptor<AIRequest>())) ?? [] {
+      switch request.status {
+      case .queued, .sending:
+        request.status = .cancelled
+        request.attachment = nil
+        request.payloadJSON = Data()
+        request.updatedAt = Date()
+      case .done, .failed, .cancelled:
+        if request.resultJSON == nil { context.delete(request) }
+      }
     }
     try? context.save()
   }

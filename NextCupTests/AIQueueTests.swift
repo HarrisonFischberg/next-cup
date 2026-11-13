@@ -212,6 +212,26 @@ private actor StubTransport: Transport {
     #expect(await stub.count == 0)
   }
 
+  @Test func endedRequestsWithNoResultAreDeletedAtLaunch() throws {
+    let (_, _, context) = try make([])
+    func row(_ status: AIRequestStatus, result: String? = nil) -> AIRequest {
+      let request = AIRequest()
+      request.status = status
+      request.resultJSON = result.map { Data($0.utf8) }
+      context.insert(request)
+      return request
+    }
+    let kept = row(.done, result: #"{"field":"grind"}"#)
+    let leftQueued = row(.queued)
+    _ = [row(.failed), row(.cancelled), row(.done)]
+    try context.save()
+
+    AIQueue.expireStale(in: context)
+    let ids = Set(try context.fetch(FetchDescriptor<AIRequest>()).map(\.id))
+    #expect(ids == [kept.id, leftQueued.id])
+    #expect(leftQueued.status == .cancelled)
+  }
+
   @Test func deletingABrewDeletesItsRequests() throws {
     let (queue, _, context) = try make([])
     queue.setOnline(false)
