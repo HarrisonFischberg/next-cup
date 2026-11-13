@@ -47,6 +47,27 @@ public enum QRBeanLink {
     return true
   }
 
+  /// Each redirect hop is checked like the scanned link, so a page cannot bounce the fetch
+  /// to an IP address or a local name. `nil` stops the fetch at that hop.
+  public static func redirect(_ request: URLRequest) -> URLRequest? {
+    guard let url = request.url, let safe = link(from: url.absoluteString) else { return nil }
+    var next = request
+    next.url = safe
+    return next
+  }
+
+  /// The fetch's task delegate: every redirect goes through `redirect(_:)`.
+  public final class RedirectGuard: NSObject, URLSessionTaskDelegate, Sendable {
+    override public init() {}
+
+    public func urlSession(
+      _ session: URLSession, task: URLSessionTask,
+      willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest
+    ) async -> URLRequest? {
+      QRBeanLink.redirect(request)
+    }
+  }
+
   public static func request(for link: URL) -> URLRequest {
     var request = URLRequest(url: link, timeoutInterval: 10)
     request.setValue(userAgent, forHTTPHeaderField: "User-Agent")

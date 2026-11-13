@@ -734,7 +734,8 @@ struct BeanEditorView: View {
       let result = await QRBeanLink.lookUp(link) { request in
         let session = URLSession(configuration: .ephemeral)
         defer { session.finishTasksAndInvalidate() }
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await session.data(
+          for: request, delegate: QRBeanLink.RedirectGuard())
         return (
           data, (response as? HTTPURLResponse)?.statusCode ?? 0, response.url, response.mimeType
         )
