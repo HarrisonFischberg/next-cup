@@ -157,3 +157,23 @@ enum RecipeSnapshotBackfill {
     return matches.count == 1 ? matches[0] : nil
   }
 }
+
+/// Once: brews and recipes used to be starred apart. A starred brew now stars its recipe too,
+/// so the journal card's one favorite covers both. A recipe starred on its own keeps its star
+/// on the Brew tab, and no brew gains a star it was not given. Running it again changes nothing.
+@MainActor
+enum FavoriteMerge {
+  static let doneKey = "brew.favoritesMerged"
+
+  static func run(
+    _ context: ModelContext, defaults: UserDefaults = .standard
+  ) -> Result<Void, StoreError> {
+    guard !defaults.bool(forKey: doneKey) else { return .success(()) }
+    for brew in (try? context.fetch(FetchDescriptor<Brew>())) ?? [] where brew.isFavorite {
+      brew.recipe?.isFavorite = true
+    }
+    if case .failure(let error) = Store(context: context).save() { return .failure(error) }
+    defaults.set(true, forKey: doneKey)
+    return .success(())
+  }
+}

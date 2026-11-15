@@ -55,6 +55,21 @@ struct Store {
     return result
   }
 
+  /// Stars or unstars a brew together with its recipe: the journal card's one favorite covers
+  /// both. The recipe keeps its star while another starred brew uses it. A failed save puts
+  /// both back.
+  func toggleFavorite(_ brew: Brew) -> Result<Void, StoreError> {
+    brew.isFavorite.toggle()
+    brew.updatedAt = Date()
+    if let recipe = brew.recipe {
+      let starred = (recipe.brews ?? []).contains { $0.isFavorite }
+      if recipe.isFavorite != starred { recipe.isFavorite = starred }
+    }
+    let result = save()
+    if case .failure = result { context.rollback() }
+    return result
+  }
+
   /// Saves pending changes. A failure is returned, never swallowed, so callers
   /// keep the draft and show the error (X5).
   func save() -> Result<Void, StoreError> {
