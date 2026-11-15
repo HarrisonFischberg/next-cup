@@ -45,12 +45,14 @@ final class FavoriteUITests: XCTestCase {
           ],
           timeout: 3)
       }
-      XCTAssertTrue(card.isHittable)
+      // The journal's one favorite starred the brew's recipe too: its card already shows it.
+      if !card.isHittable { app.swipeUp() }
+      XCTAssertTrue(waitForLabel(card, contains: "Favorite"))
+      // Unstarring the recipe here is still its own action on the Brew tab.
       card.press(forDuration: 1.2)
       let star = app.buttons["recipe.favorite"]
       XCTAssertTrue(star.waitForExistence(timeout: 5))
-      star.tap()
-      XCTAssertTrue(waitForLabel(card, contains: "Favorite"))
+      XCTAssertEqual(star.label, "Unfavorite")
       if capturing {
         try shoot(app, folder, "\(prefix)favorite-brew-\(style)-\(variant)")
       }

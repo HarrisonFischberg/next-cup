@@ -442,7 +442,7 @@ struct JournalListView: View {
   private func toggleFavorite(_ brew: Brew) {
     var result: Result<Void, StoreError> = .success(())
     withAnimation(reduceMotion ? nil : .spring(duration: 0.25)) {
-      result = Store(context: context).toggleFavorite(brew, \.isFavorite)
+      result = Store(context: context).toggleFavorite(brew)
     }
     if case .failure(.saveFailed(let message)) = result {
       Feedback.error()
@@ -461,7 +461,9 @@ struct JournalListView: View {
   }
 
   private func brewAgain(_ brew: Brew) {
-    router.journalPath.append(.brewAgain(brew.id))
+    if !router.brewAgain(brew, store: Store(context: context)) {
+      router.journalPath.append(.brewAgain(brew.id))
+    }
   }
 
   private func clearFilters() {

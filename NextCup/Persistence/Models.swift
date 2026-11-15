@@ -37,7 +37,8 @@ final class Brew: Identified {
   var targetsJSON: Data?
   /// Unused: drafts live in files (`DraftStore`). Kept so the schema and old archives stay valid.
   var isDraft: Bool = false
-  /// Starred from the journal's long-press menu; shows a star on the card.
+  /// Starred from the journal's long-press menu; shows a star on the card and stars the
+  /// brew's recipe with it.
   var isFavorite: Bool = false
   /// The recipe as it was brewed (`RecipeSnapshot` as JSON), so the journal still names it,
   /// and can save it again, after the recipe is deleted.
