@@ -75,20 +75,19 @@ enum TimerPlanBuilder {
   /// Builds the plan for a recipe at `doseG`. Water targets scale with the dose and
   /// pour-over times stretch gently; an AI tuning for the batch sets the temperature and
   /// stretches every step to its total time instead. A brew too big for the user's brewer
-  /// is changed to fit (`BrewerFit.fitted`), whatever started it.
+  /// or with a pour that cannot be poured is put right by `BrewEngine`, whatever started it.
   @MainActor static func setup(
     for recipe: Recipe, doseG: Double, tuning: BrewSizeAI.Tuning? = nil, fits: Bool = true
   ) throws -> TimerSetup {
     let scaled = try RecipeScaler.scale(recipe.scalable, toDose: doseG).recipe
     var draft = RecipeEditorService.draft(
       from: recipe, scaledTo: doseG, tuning: tuning, name: recipe.name)
-    if fits, let fitted = BrewerFit.current(recipe.method?.builtInKey)?.fitted(draft)?.draft {
-      // Made smaller: rebuilt from that dose, so reopening the timer at it gives this plan.
-      if fitted.doseG < draft.doseG {
-        return try setup(for: recipe, doseG: fitted.doseG, tuning: tuning, fits: false)
-      }
-      draft = fitted
+    let planned = BrewEngine.plan(draft, methodKey: recipe.method?.builtInKey, fits: fits).draft
+    // Made smaller: rebuilt from that dose, so reopening the timer at it gives this plan.
+    if planned.doseG < draft.doseG {
+      return try setup(for: recipe, doseG: planned.doseG, tuning: tuning, fits: false)
     }
+    draft = planned
     let timerSteps = draft.steps.enumerated().map { index, step in
       TimerStep(
         order: index, label: RecipeFormat.title(step.kind), instruction: step.instruction,

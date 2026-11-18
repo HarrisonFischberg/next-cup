@@ -158,6 +158,11 @@ struct BrewerFit: Equatable {
   /// under that the brew would be too strong to extract well, so it is made smaller instead.
   static let leastBrewedShare = 0.6
 
+  /// The smallest pour a split may leave on either side: nobody pours 1 g.
+  static let leastPourG = 20.0
+  /// Seconds each pour added after the valve opens gets before the next step.
+  static let pulseS = 20
+
   /// Within this many grams counts as fitting: the capacities are rounded estimates.
   static let slackG = 2.0
 
@@ -379,13 +384,19 @@ struct BrewerFit: Equatable {
     var held = 0.0
     var closed = false
     var carry = 0.0  // water held back until the valve opens
+    var delay = 0  // seconds later steps move so a pour added before them has its time
 
     /// Pours `amount` as pulses that each fit, spread from `start` toward the next step.
-    func pourOpen(_ amount: Double, at start: Int, before next: Int?, kind: StepKind = .pour) {
+    /// `makesRoom` moves the steps after it later when they would start before it is poured.
+    func pourOpen(
+      _ amount: Double, at start: Int, before next: Int?, kind: StepKind = .pour,
+      makesRoom: Bool = false
+    ) {
       let count = Int((amount / size.pourG).rounded(.up))
       guard count > 0 else { return }
       let each = (amount / Double(count)).rounded(.down)
-      let gap = next.map { min(20, max(0, ($0 - start) / count)) } ?? 20
+      if makesRoom, let next { delay += max(0, count * Self.pulseS - (next - start)) }
+      let gap = makesRoom ? Self.pulseS : next.map { min(20, max(0, ($0 - start) / count)) } ?? 20
       for index in 0..<count {
         let part = index == count - 1 ? amount - each * Double(count - 1) : each
         total += part
@@ -398,8 +409,13 @@ struct BrewerFit: Equatable {
       }
     }
 
-    for (index, step) in sorted.enumerated() {
-      let next = sorted[(index + 1)...].first { $0.startOffsetS > step.startOffsetS }?.startOffsetS
+    for (index, original) in sorted.enumerated() {
+      var step = original
+      step.startOffsetS += delay
+      let next = sorted[(index + 1)...].first { $0.startOffsetS > original.startOffsetS }
+        .map { $0.startOffsetS + delay }
+      // The very next step, even one at the same second: a pour added here goes before it.
+      let following = sorted.dropFirst(index + 1).first.map { $0.startOffsetS + delay }
       switch step.kind {
       case .closeValve:
         closed = true
@@ -408,7 +424,7 @@ struct BrewerFit: Equatable {
         closed = false
         held = 0
         out.append(step)
-        pourOpen(carry, at: step.startOffsetS, before: next)
+        pourOpen(carry, at: step.startOffsetS, before: following, makesRoom: true)
         carry = 0
       case .drawdown:
         held = 0
@@ -426,7 +442,16 @@ struct BrewerFit: Equatable {
           kept.targetCumulativeWaterG = total
           out.append(kept)
         } else if closed {
-          let keep = min(added, max(0, size.heldG - held))
+          var keep = min(added, max(0, size.heldG - held))
+          if keep < added {
+            // Neither side of a split is a dribble: a small first part waits for the valve
+            // with the rest, and a small rest takes some of the first part with it.
+            if keep < Self.leastPourG {
+              keep = 0
+            } else if added - keep < Self.leastPourG, carry == 0 {
+              keep -= min(Self.leastPourG - (added - keep), max(0, keep - Self.leastPourG))
+            }
+          }
           held += keep
           if keep > 0 {
             total += keep
@@ -450,7 +475,7 @@ struct BrewerFit: Equatable {
               RecipeStepDraft(
                 kind: .openValve, startOffsetS: step.startOffsetS,
                 instruction: "Open the valve to drain."))
-            pourOpen(over, at: step.startOffsetS, before: next)
+            pourOpen(over, at: step.startOffsetS, before: following, makesRoom: true)
           }
         } else if added > size.pourG + Self.slackG {
           pourOpen(added, at: step.startOffsetS, before: next, kind: step.kind)
@@ -465,6 +490,7 @@ struct BrewerFit: Equatable {
     }
     var fixed = draft
     fixed.steps = out
+    fixed.totalTimeS = draft.totalTimeS.map { $0 + delay }
     return fixed
   }
 

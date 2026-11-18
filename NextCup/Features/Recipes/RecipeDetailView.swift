@@ -122,7 +122,11 @@ private struct RecipeDetailContent: View {
   }
 
   /// `brewDraft` changed to fit the user's brewer, as the timer will run it; nil when it fits.
-  private var fitted: (draft: RecipeDraft, note: String)? { brewerFit?.fitted(brewDraft) }
+  private var fitted: (draft: RecipeDraft, note: String)? {
+    _ = brewerSizeID  // read so a new size redraws the page
+    let plan = BrewEngine.plan(brewDraft, methodKey: recipe.method?.builtInKey)
+    return plan.note.map { (plan.draft, $0) }
+  }
 
   /// A brew that only fits smaller takes that dose here, so every number on the page is
   /// the brew that will be made.
@@ -151,6 +155,13 @@ private struct RecipeDetailContent: View {
           doseControls
           grinderRow
           yieldControls
+          // Under the amount, never over it: a line that comes and goes above the + would
+          // move it from under the finger.
+          if let fitNote {
+            Label(fitNote, systemImage: "checkmark.circle")
+              .font(.footnote).foregroundStyle(DS.ink)
+              .accessibilityIdentifier("recipe.fit")
+          }
           if let notes = scaled?.notes, scaledDoseG != nil, !notes.isEmpty {
             VStack(alignment: .leading, spacing: DS.Space.xs) {
               ForEach(notes, id: \.self) { Text($0).font(.footnote).foregroundStyle(DS.ink2) }
@@ -300,12 +311,6 @@ private struct RecipeDetailContent: View {
         .accessibilityLabel("Brewer size")
         .accessibilityValue(fit.size.name)
         .accessibilityIdentifier("recipe.brewerSize")
-        if let fitNote {
-          Label(fitNote, systemImage: "checkmark.circle")
-            .font(.footnote).foregroundStyle(DS.ink)
-            .padding(.horizontal, DS.Space.lg).padding(.bottom, DS.Space.md)
-            .accessibilityIdentifier("recipe.fit")
-        }
       }
       .tile()
     }
@@ -499,6 +504,12 @@ private struct RecipeDetailContent: View {
           .accessibilityHint("Sends the recipe name, brewer and these numbers to \(provider)")
           .accessibilityIdentifier("recipe.yield.tune")
         } else if tuningFailed || !BrewSizeAI.isAvailable {
+          if let hint = BrewEngine.batchGrindHint(
+            recipeDoseG: recipe.doseG, doseG: doseG, isPourOver: recipe.method?.style == .pourOver)
+          {
+            Text(hint).font(.footnote.weight(.semibold)).foregroundStyle(DS.ink)
+              .accessibilityIdentifier("recipe.yield.grindHint")
+          }
           Text(
             "Dose and water follow the recipe's ratio. Add a key in Settings > AI to tune time, "
               + "temperature and grind too."
@@ -561,7 +572,21 @@ private struct RecipeDetailContent: View {
   /// Dose: the same stepper row as the grind and the amount. Water and ratio follow it below.
   private var doseControls: some View {
     VStack(alignment: .leading, spacing: 0) {
-      tileTitle("Dose")
+      // Reset sits beside the title, so it comes and goes without moving what is below.
+      HStack(alignment: .firstTextBaseline) {
+        tileTitle("Dose")
+        Spacer(minLength: DS.Space.sm)
+        if scaledDoseG != nil {
+          Button("Reset to \(RecipeFormat.weight(recipe.doseG, units))") { scaledDoseG = nil }
+            .font(.footnote.weight(.semibold)).foregroundStyle(DS.signal)
+            .padding([.horizontal, .top], DS.Space.md)
+            // A full-size tap target that takes no more room than the title's line.
+            .padding(.bottom, DS.Space.md).contentShape(Rectangle())
+            .padding(.bottom, -DS.Space.md)
+            .accessibilityLabel("Reset to recipe \(RecipeFormat.weight(recipe.doseG, units))")
+            .accessibilityIdentifier("recipe.dose.reset")
+        }
+      }
       let doses = doseStops
       let names = doses.map { RecipeFormat.weight($0, units, withSymbol: false) }
       DialStepper(
@@ -573,19 +598,6 @@ private struct RecipeDetailContent: View {
             scaledDoseG = abs(doses[i] - recipe.doseG) < 0.0001 ? nil : doses[i]
           }),
         unit: units.weightSymbol, identifier: "stepper.dose.value")
-      if scaledDoseG != nil {
-        Button {
-          scaledDoseG = nil
-        } label: {
-          Text("Reset to recipe \(RecipeFormat.weight(recipe.doseG, units))".dsTitle).font(
-            .footnote.weight(.semibold)
-          )
-          .foregroundStyle(DS.signal)
-          .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
-          .padding(.horizontal, DS.Space.md)
-        }
-        .accessibilityIdentifier("recipe.dose.reset")
-      }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .tile()
