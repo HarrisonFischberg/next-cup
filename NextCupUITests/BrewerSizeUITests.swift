@@ -75,7 +75,37 @@ final class BrewerSizeUITests: XCTestCase {
     element("nextcup.save").tap()
     app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Next Cup'")).firstMatch.tap()
     XCTAssertTrue(element("recipe.nextCupNote").waitForExistence(timeout: 5))
-    XCTAssertTrue(element("recipe.fit").exists, "Start brew shows it too")
+    XCTAssertTrue(element("recipe.brewerSize").exists, "Start brew shows the brewer size")
     shoot("start-brew")
+  }
+
+  /// A built-in Switch steep turned up past what the Switch 03 holds is split to fit, and
+  /// the brewer size is right there to change.
+  func testBigSwitchBrewIsSplitToFit() throws {
+    launch(["-brewer.size.switchable-dripper", "switch-03"])
+    app.tabBars.buttons["Brew"].tap()
+    let method = element("brew.method.Switchable immersion dripper")
+    XCTAssertTrue(method.waitForExistence(timeout: 10))
+    method.tap()
+    XCTAssertTrue(element("style.1").waitForExistence(timeout: 5))
+    element("style.1").tap()
+    let size = element("recipe.brewerSize")
+    XCTAssertTrue(size.waitForExistence(timeout: 5))
+    XCTAssertEqual(size.value as? String, "Hario Switch 03")
+    XCTAssertFalse(element("recipe.fit").exists, "the recipe's own size fits")
+    shoot("start-brew-size")
+    let more = app.buttons["recipe.yield.increase"]
+    // Clear of the Start brew bar pinned to the bottom.
+    for _ in 0..<5 where !(more.exists && more.frame.maxY < app.frame.height - 220) {
+      app.swipeUp(velocity: .slow)
+    }
+    for _ in 0..<20 where !element("recipe.fit").exists { more.tap() }
+    let fit = element("recipe.fit")
+    XCTAssertTrue(fit.exists, "a brew too big for the Switch 03 was not adjusted")
+    XCTAssertTrue(fit.label.contains("Hario Switch 03"), fit.label)
+    XCTAssertFalse(element("recipe.fit.warning").exists)
+    shoot("fitted")
+    app.swipeUp()
+    shoot("fitted-steps")
   }
 }

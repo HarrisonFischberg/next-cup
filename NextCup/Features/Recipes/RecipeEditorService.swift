@@ -75,6 +75,10 @@ struct RecipeEditorService {
   /// The draft for editing `recipe`. `asCopy` clears the link to the original, so
   /// saving makes a new recipe (used for built-ins and Duplicate).
   func draft(from recipe: Recipe, asCopy: Bool) -> RecipeDraft {
+    Self.draft(from: recipe, asCopy: asCopy)
+  }
+
+  static func draft(from recipe: Recipe, asCopy: Bool) -> RecipeDraft {
     RecipeDraft(
       sourceID: asCopy ? nil : recipe.id,
       name: asCopy ? "\(recipe.name) (copy)" : recipe.name,
@@ -96,7 +100,13 @@ struct RecipeEditorService {
   func draft(
     from recipe: Recipe, scaledTo doseG: Double, tuning: BrewSizeAI.Tuning?, name: String
   ) -> RecipeDraft {
-    var draft = self.draft(from: recipe, asCopy: true)
+    Self.draft(from: recipe, scaledTo: doseG, tuning: tuning, name: name)
+  }
+
+  static func draft(
+    from recipe: Recipe, scaledTo doseG: Double, tuning: BrewSizeAI.Tuning?, name: String
+  ) -> RecipeDraft {
+    var draft = draft(from: recipe, asCopy: true)
     draft.name = name
     guard let scaled = try? RecipeScaler.scale(recipe.scalable, toDose: doseG).recipe else {
       return draft

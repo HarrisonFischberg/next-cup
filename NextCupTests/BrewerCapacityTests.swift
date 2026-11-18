@@ -138,23 +138,100 @@ struct BrewerCapacityTests {
     #expect(fixed.steps.allSatisfy { $0.startOffsetS <= 150 })
   }
 
-  @Test func overfullAeroPressIsScaledAtTheSameRatio() throws {
-    let aeropress = try #require(BrewerFit.current("aeropress", defaults: scratchDefaults()))
+  private func bigAeroPress(waterG: Double) -> RecipeDraft {
     var draft = RecipeDraft()
     draft.name = "Big AeroPress"
     draft.doseG = 20
-    draft.waterG = 300
+    draft.waterG = waterG
     draft.steps = [
       RecipeStepDraft(
-        kind: .pour, startOffsetS: 0, targetCumulativeWaterG: 300,
-        instruction: "Pour 300 g over 20 g of coffee."),
+        kind: .pour, startOffsetS: 0, targetCumulativeWaterG: waterG,
+        instruction: "Pour \(Int(waterG)) g over 20 g of coffee."),
       RecipeStepDraft(kind: .press, startOffsetS: 90),
     ]
-    let (fixed, note) = try #require(aeropress.fitted(draft))
+    return draft
+  }
+
+  @Test func aLittleTooMuchForAnAeroPressGoesToTheCup() throws {
+    let aeropress = try #require(BrewerFit.current("aeropress", defaults: scratchDefaults()))
+    let (fixed, note) = try #require(aeropress.fitted(bigAeroPress(waterG: 300)))
     #expect(aeropress.overfills(fixed).isEmpty)
-    #expect(fixed.waterG == 240 && fixed.doseG == 16)
-    #expect(fixed.steps[0].instruction == "Pour 240 g over 16 g of coffee.")
+    #expect(RecipeEditorService.validate(fixed) == nil)
+    #expect(fixed.waterG == 300 && fixed.doseG == 20)
+    #expect(fixed.steps[0].targetCumulativeWaterG == 240)
+    #expect(fixed.steps[0].instruction == "Pour to 240 g.")
+    let last = try #require(fixed.steps.last)
+    #expect(last.kind == .bypass && last.targetCumulativeWaterG == 300)
+    #expect(last.instruction.contains("60 g"))
+    #expect(note.contains("60 g"))
+  }
+
+  @Test func farTooMuchForAnAeroPressIsScaledAtTheSameRatio() throws {
+    let aeropress = try #require(BrewerFit.current("aeropress", defaults: scratchDefaults()))
+    let (fixed, note) = try #require(aeropress.fitted(bigAeroPress(waterG: 500)))
+    #expect(aeropress.overfills(fixed).isEmpty)
+    #expect(fixed.waterG == 240 && fixed.doseG == 9.6)
+    #expect(!fixed.steps.contains { $0.kind == .bypass })
     #expect(note.contains("240 g"))
+  }
+
+  /// A built-in recipe is never changed for someone who has not said which size they own.
+  @Test func builtInRecipesFitTheAssumedSizes() throws {
+    let defaults = scratchDefaults()
+    for entry in try BuiltInContent().recipes {
+      guard let fit = BrewerFit.current(entry.methodKey, defaults: defaults) else { continue }
+      var draft = RecipeDraft()
+      draft.doseG = entry.doseG
+      draft.waterG = entry.waterG
+      draft.steps = entry.steps.map {
+        RecipeStepDraft(
+          kind: $0.kind, startOffsetS: $0.startOffsetS,
+          targetCumulativeWaterG: $0.targetCumulativeWaterG, instruction: $0.instruction)
+      }
+      #expect(fit.overfills(draft).isEmpty, "\(entry.key) on \(fit.size.name)")
+    }
+  }
+
+  /// Harold's brew of 2026-11-17: a built-in Switch steep turned up to 600 g of water.
+  @Test func timerSplitsAScaledUpSwitchSteep() throws {
+    let defaults = UserDefaults.standard
+    defaults.removeObject(forKey: BrewerCapacity.storageKey("switchable-dripper"))
+    let method = BrewMethod(name: "Switch", style: .immersion)
+    method.builtInKey = "switchable-dripper"
+    let recipe = Recipe(name: "Steep then release", doseG: 18, waterG: 270)
+    recipe.method = method
+    recipe.totalTimeS = 210
+    let kinds: [(StepKind, Int, Double?)] = [
+      (.closeValve, 0, nil), (.pour, 0, 270), (.stir, 30, nil), (.openValve, 120, nil),
+      (.drawdown, 125, nil),
+    ]
+    recipe.steps = kinds.enumerated().map { index, entry in
+      let step = RecipeStep(order: index, kind: entry.0, startOffsetS: entry.1)
+      step.targetCumulativeWaterG = entry.2
+      return step
+    }
+    let setup = try TimerPlanBuilder.setup(for: recipe, doseG: 40)
+    #expect(setup.scaled.waterG == 600)
+    #expect(setup.plan.steps.compactMap(\.targetCumulativeWaterG) == [410, 600])
+    #expect(setup.stepKinds == ["closeValve", "pour", "stir", "openValve", "pour", "drawdown"])
+    // Reopened from the Live Activity at the same dose, it is the same plan.
+    #expect(try TimerPlanBuilder.setup(for: recipe, doseG: 40).plan == setup.plan)
+  }
+
+  @Test func timerMakesAMokaPotBrewSmallerAndReopensTheSame() throws {
+    UserDefaults.standard.removeObject(forKey: BrewerCapacity.storageKey("moka-pot"))
+    let method = BrewMethod(name: "Moka", style: .immersion)
+    method.builtInKey = "moka-pot"
+    let recipe = Recipe(name: "Moka", doseG: 15, waterG: 150)
+    recipe.method = method
+    let fill = RecipeStep(order: 0, kind: .pour, startOffsetS: 0)
+    fill.targetCumulativeWaterG = 150
+    recipe.steps = [fill, RecipeStep(order: 1, kind: .heat, startOffsetS: 20)]
+    let setup = try TimerPlanBuilder.setup(for: recipe, doseG: 30)
+    #expect(setup.scaled.doseG <= 19 && setup.scaled.doseG > 18.5)
+    #expect((setup.plan.steps[0].targetCumulativeWaterG ?? 999) <= 192)
+    let reopened = try TimerPlanBuilder.setup(for: recipe, doseG: setup.scaled.doseG)
+    #expect(reopened.plan == setup.plan)
   }
 
   @Test func bypassWaterIsNotHeld() throws {

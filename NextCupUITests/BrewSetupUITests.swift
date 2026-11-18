@@ -41,8 +41,13 @@ final class BrewSetupUITests: XCTestCase {
 
     // An ounce more coffee than the recipe makes sets a bigger dose than the recipe's.
     let recipeDose = dose.value as? String ?? ""
+    // The amount sits below the brewer, beans, dose and grind.
+    let more = app.buttons["recipe.yield.increase"]
+    for _ in 0..<5 where !(more.exists && more.frame.maxY < app.frame.height - 220) {
+      app.swipeUp(velocity: .slow)
+    }
     app.buttons["oz"].tap()
-    app.buttons["recipe.yield.increase"].tap()
+    more.tap()
     let tuning = element("recipe.yield.tuning")
     XCTAssertTrue(tuning.waitForExistence(timeout: 5))
     XCTAssertNotEqual(dose.value as? String, recipeDose, "the amount did not change the dose")
