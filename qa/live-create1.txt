@@ -1,0 +1,13 @@
+=== create1
+RAW: {"changes":[],"doseG":36,"name":"Hybrid Steep and Pour","steps":[{"atS":0,"instruction":"Close the valve before adding anything.","kind":"closeValve","waterG":0},{"atS":0,"instruction":"Pour 70 g of 94°C water over the 36 g of grounds, making sure all of them are wet.","kind":"bloom","waterG":70},{"atS":30,"instruction":"Pour 230 g more water in slow circles to reach 300 g total.","kind":"pour","waterG":300},{"atS":40,"instruction":"Stir gently three times to break up any dry clumps, then put the lid on.","kind":"stir","waterG":0},{"atS":50,"instruction":"Let the coffee steep with the valve closed until the 2:30 mark.","kind":"wait","waterG":0},{"atS":150,"instruction":"Open the valve to start draining the steeped coffee.","kind":"openValve","waterG":0},{"atS":155,"instruction":"Let the dripper drain until the water level is just above the coffee bed.","kind":"drawdown","waterG":0},{"atS":190,"instruction":"Pour 150 g of water in slow spirals to reach 450 g total, with the valve open.","kind":"pour","waterG":450},{"atS":225,"instruction":"Pour another 150 g in slow spirals to reach 600 g total.","kind":"pour","waterG":600},{"atS":255,"instruction":"Let the rest of the water drain through the bed until the dripper is empty.","kind":"drawdown","waterG":0}],"summary":"A 300 g immersion steep with the valve closed builds sweetness and body, then the valve opens to drain it. The last 300 g is poured over the bed for a cleaner, brighter finish, so the dripper never holds more than 400 g.","tempC":94,"totalTimeS":300,"waterG":600}
+PARSE OK name=Hybrid Steep and Pour dose=36.0 water=600.0 temp=94.0 time=300
+  0s closeValve - | Close the valve before adding anything.
+  0s bloom 70 g | Pour 70 g of 94°C water over the 36 g of grounds, making sure all of them are wet.
+  30s pour 300 g | Pour 230 g more water in slow circles to reach 300 g total.
+  40s stir - | Stir gently three times to break up any dry clumps, then put the lid on.
+  50s wait - | Let the coffee steep with the valve closed until the 2:30 mark.
+  150s openValve - | Open the valve to start draining the steeped coffee.
+  155s drawdown - | Let the dripper drain until the water level is just above the coffee bed.
+  190s pour 450 g | Pour 150 g of water in slow spirals to reach 450 g total, with the valve open.
+  225s pour 600 g | Pour another 150 g in slow spirals to reach 600 g total.
+  255s drawdown - | Let the rest of the water drain through the bed until the dripper is empty.

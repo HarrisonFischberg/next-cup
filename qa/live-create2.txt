@@ -1,0 +1,13 @@
+=== create2
+RAW: {"changes":[],"doseG":38,"name":"Hybrid Steep and Pour","steps":[{"atS":0,"instruction":"Close the valve.","kind":"closeValve","waterG":0},{"atS":0,"instruction":"Pour 80 g of water over all the grounds to bloom, making sure they are all wet.","kind":"bloom","waterG":80},{"atS":30,"instruction":"Pour steadily up to 300 g total, with the valve still closed.","kind":"pour","waterG":300},{"atS":50,"instruction":"Stir gently 3 times to break up any clumps and settle the grounds.","kind":"stir","waterG":0},{"atS":70,"instruction":"Let the coffee steep undisturbed until 3:00.","kind":"wait","waterG":0},{"atS":180,"instruction":"Open the valve to start draining the steeped coffee.","kind":"openValve","waterG":0},{"atS":190,"instruction":"Let the brewer drain until the water level reaches the coffee bed.","kind":"drawdown","waterG":0},{"atS":240,"instruction":"Pour 150 g in slow circles, taking you to 450 g total, with the valve open.","kind":"pour","waterG":450},{"atS":285,"instruction":"Pour the last 150 g in slow circles, taking you to 600 g total.","kind":"pour","waterG":600},{"atS":330,"instruction":"Let the brew drain completely, then remove the dripper and swirl the cup.","kind":"drawdown","waterG":0}],"summary":"Half the water steeps with the valve closed for a full, sweet body, then drains. The remaining water is poured over the same bed for clarity, with no more than 400 g in the dripper at any time.","tempC":94,"totalTimeS":390,"waterG":600}
+PARSE OK name=Hybrid Steep and Pour dose=38.0 water=600.0 temp=94.0 time=390
+  0s closeValve - | Close the valve.
+  0s bloom 80 g | Pour 80 g of water over all the grounds to bloom, making sure they are all wet.
+  30s pour 300 g | Pour steadily up to 300 g total, with the valve still closed.
+  50s stir - | Stir gently 3 times to break up any clumps and settle the grounds.
+  70s wait - | Let the coffee steep undisturbed until 3:00.
+  180s openValve - | Open the valve to start draining the steeped coffee.
+  190s drawdown - | Let the brewer drain until the water level reaches the coffee bed.
+  240s pour 450 g | Pour 150 g in slow circles, taking you to 450 g total, with the valve open.
+  285s pour 600 g | Pour the last 150 g in slow circles, taking you to 600 g total.
+  330s drawdown - | Let the brew drain completely, then remove the dripper and swirl the cup.
