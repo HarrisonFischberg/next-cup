@@ -110,6 +110,43 @@ struct BrewerCapacityTests {
     #expect(fixed.steps.compactMap(\.targetCumulativeWaterG).max() == 614)
   }
 
+  /// Harold's 18 oz Switch brew of 2026-11-18: 82, 409, then 614 g closed came out as a
+  /// 1 g pour, and the 204 g after the valve opened had no time before the drawdown.
+  @Test func splitNeverLeavesADribble() throws {
+    var draft = overfilledSwitch()
+    draft.steps = [
+      RecipeStepDraft(kind: .closeValve, startOffsetS: 0),
+      RecipeStepDraft(kind: .bloom, startOffsetS: 0, targetCumulativeWaterG: 82),
+      RecipeStepDraft(kind: .pour, startOffsetS: 30, targetCumulativeWaterG: 409),
+      RecipeStepDraft(kind: .pour, startOffsetS: 60, targetCumulativeWaterG: 614),
+      RecipeStepDraft(kind: .wait, startOffsetS: 75),
+      RecipeStepDraft(kind: .openValve, startOffsetS: 150),
+      RecipeStepDraft(kind: .drawdown, startOffsetS: 150),
+    ]
+    draft.totalTimeS = 210
+    let (fixed, _) = try #require(switch03.fitted(draft))
+    #expect(switch03.overfills(fixed).isEmpty)
+    #expect(RecipeEditorService.validate(fixed) == nil)
+    let sorted = RecipeEditorService.sorted(fixed.steps)
+    #expect(sorted.compactMap(\.targetCumulativeWaterG) == [82, 409, 614])
+    #expect(
+      sorted.map(\.kind) == [.closeValve, .bloom, .pour, .wait, .openValve, .pour, .drawdown])
+    // The drawdown and the end wait for the pour that now comes after the valve.
+    #expect(sorted.last?.startOffsetS == 170 && fixed.totalTimeS == 230)
+  }
+
+  /// 10 g too much does not become a 10 g pour: the last closed pour gives some up.
+  @Test func aSmallOverflowTakesWaterFromThePourBeforeIt() throws {
+    var draft = overfilledSwitch()
+    draft.waterG = 420
+    draft.steps[1].targetCumulativeWaterG = 200
+    draft.steps[2].targetCumulativeWaterG = 420
+    let (fixed, _) = try #require(switch03.fitted(draft))
+    #expect(switch03.overfills(fixed).isEmpty)
+    let targets = RecipeEditorService.sorted(fixed.steps).compactMap(\.targetCumulativeWaterG)
+    #expect(targets == [200, 400, 420])
+  }
+
   @Test func hybridWithinLimitsFits() {
     var draft = overfilledSwitch()
     draft.steps[2].startOffsetS = 160  // second pour after the valve opens
@@ -190,6 +227,73 @@ struct BrewerCapacityTests {
       }
       #expect(fit.overfills(draft).isEmpty, "\(entry.key) on \(fit.size.name)")
     }
+  }
+
+  /// The engine has nothing to say about a built-in recipe at its own size.
+  @Test func engineLeavesBuiltInRecipesAlone() throws {
+    let defaults = scratchDefaults()
+    for entry in try BuiltInContent().recipes {
+      var draft = RecipeDraft()
+      draft.doseG = entry.doseG
+      draft.waterG = entry.waterG
+      draft.totalTimeS = entry.totalTimeS
+      draft.steps = entry.steps.map {
+        RecipeStepDraft(
+          kind: $0.kind, startOffsetS: $0.startOffsetS,
+          targetCumulativeWaterG: $0.targetCumulativeWaterG, instruction: $0.instruction)
+      }
+      let plan = BrewEngine.plan(draft, methodKey: entry.methodKey, defaults: defaults)
+      #expect(plan.notes.isEmpty, "\(entry.key): \(plan.notes)")
+      #expect(plan.draft == draft, "\(entry.key)")
+    }
+  }
+
+  @Test func engineFoldsAPourTooSmallToPour() throws {
+    var draft = RecipeDraft()
+    draft.doseG = 30
+    draft.waterG = 500
+    draft.totalTimeS = 210
+    draft.steps = [
+      RecipeStepDraft(kind: .bloom, startOffsetS: 0, targetCumulativeWaterG: 60),
+      RecipeStepDraft(
+        kind: .pour, startOffsetS: 45, targetCumulativeWaterG: 250, instruction: "Pour 190 g."),
+      RecipeStepDraft(kind: .pour, startOffsetS: 75, targetCumulativeWaterG: 253),
+      RecipeStepDraft(kind: .pour, startOffsetS: 105, targetCumulativeWaterG: 500),
+      RecipeStepDraft(kind: .drawdown, startOffsetS: 150),
+    ]
+    let plan = BrewEngine.plan(draft, methodKey: "cone-dripper", defaults: scratchDefaults())
+    #expect(plan.draft.steps.compactMap(\.targetCumulativeWaterG) == [60, 253, 500])
+    #expect(plan.draft.steps[1].instruction == "Pour to 253 g.")
+    #expect(plan.notes.count == 1)
+    #expect(RecipeEditorService.validate(named(plan.draft)) == nil)
+  }
+
+  @Test func engineGivesAPourTimeBeforeTheNextStep() throws {
+    var draft = RecipeDraft()
+    draft.doseG = 20
+    draft.waterG = 300
+    draft.totalTimeS = 180
+    draft.steps = [
+      RecipeStepDraft(kind: .pour, startOffsetS: 0, targetCumulativeWaterG: 300),
+      RecipeStepDraft(kind: .stir, startOffsetS: 0),
+      RecipeStepDraft(kind: .press, startOffsetS: 120),
+    ]
+    let plan = BrewEngine.plan(draft, methodKey: nil)
+    #expect(plan.draft.steps.map(\.startOffsetS) == [0, 5, 125])
+    #expect(plan.draft.totalTimeS == 185)
+  }
+
+  @Test func bigAndSmallPourOverBatchesGetAGrindHint() {
+    #expect(BrewEngine.batchGrindHint(recipeDoseG: 15, doseG: 30, isPourOver: true) != nil)
+    #expect(BrewEngine.batchGrindHint(recipeDoseG: 30, doseG: 15, isPourOver: true) != nil)
+    #expect(BrewEngine.batchGrindHint(recipeDoseG: 15, doseG: 17, isPourOver: true) == nil)
+    #expect(BrewEngine.batchGrindHint(recipeDoseG: 15, doseG: 30, isPourOver: false) == nil)
+  }
+
+  private func named(_ draft: RecipeDraft) -> RecipeDraft {
+    var draft = draft
+    draft.name = "Test"
+    return draft
   }
 
   /// Harold's brew of 2026-11-17: a built-in Switch steep turned up to 600 g of water.

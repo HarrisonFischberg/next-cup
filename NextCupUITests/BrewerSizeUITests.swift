@@ -108,4 +108,33 @@ final class BrewerSizeUITests: XCTestCase {
     app.swipeUp()
     shoot("fitted-steps")
   }
+
+  /// Stepping the amount never moves the + under the finger: nothing above it changes height,
+  /// whether the dose leaves the recipe's or the brew outgrows the brewer.
+  func testSteppingTheAmountKeepsThePageStill() throws {
+    launch(["-brewer.size.switchable-dripper", "switch-03"])
+    app.tabBars.buttons["Brew"].tap()
+    let method = element("brew.method.Switchable immersion dripper")
+    XCTAssertTrue(method.waitForExistence(timeout: 10))
+    method.tap()
+    XCTAssertTrue(element("style.1").waitForExistence(timeout: 5))
+    element("style.1").tap()
+    let more = app.buttons["recipe.yield.increase"]
+    XCTAssertTrue(more.waitForExistence(timeout: 5))
+    for _ in 0..<5 where !(more.exists && more.frame.maxY < app.frame.height - 220) {
+      app.swipeUp(velocity: .slow)
+    }
+    app.buttons["oz"].tap()
+    var tops = [more.frame.minY]
+    for _ in 0..<10 {
+      more.tap()
+      sleep(1)
+      tops.append(more.frame.minY)
+    }
+    XCTAssertTrue(element("recipe.fit").exists, "the brew outgrew the Switch 03 on the way")
+    shoot("no-jump")
+    app.swipeDown(velocity: .slow)
+    shoot("no-jump-dose")
+    XCTAssertEqual(Set(tops.map { Int($0.rounded()) }).count, 1, "the + moved: \(tops)")
+  }
 }
