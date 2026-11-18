@@ -74,30 +74,34 @@ enum TimerPlanBuilder {
 
   /// Builds the plan for a recipe at `doseG`. Water targets scale with the dose and
   /// pour-over times stretch gently; an AI tuning for the batch sets the temperature and
-  /// stretches every step to its total time instead.
-  static func setup(
-    for recipe: Recipe, doseG: Double, tuning: BrewSizeAI.Tuning? = nil
+  /// stretches every step to its total time instead. A brew too big for the user's brewer
+  /// is changed to fit (`BrewerFit.fitted`), whatever started it.
+  @MainActor static func setup(
+    for recipe: Recipe, doseG: Double, tuning: BrewSizeAI.Tuning? = nil, fits: Bool = true
   ) throws -> TimerSetup {
     let scaled = try RecipeScaler.scale(recipe.scalable, toDose: doseG).recipe
-    let steps = recipe.orderedSteps
-    let factor = recipe.timingFactor(doseG: doseG, tuning: tuning)
-    let weightFactor = recipe.doseG > 0 ? scaled.doseG / recipe.doseG : 1
-    let timerSteps = steps.enumerated().map { index, step in
+    var draft = RecipeEditorService.draft(
+      from: recipe, scaledTo: doseG, tuning: tuning, name: recipe.name)
+    if fits, let fitted = BrewerFit.current(recipe.method?.builtInKey)?.fitted(draft)?.draft {
+      // Made smaller: rebuilt from that dose, so reopening the timer at it gives this plan.
+      if fitted.doseG < draft.doseG {
+        return try setup(for: recipe, doseG: fitted.doseG, tuning: tuning, fits: false)
+      }
+      draft = fitted
+    }
+    let timerSteps = draft.steps.enumerated().map { index, step in
       TimerStep(
-        order: index, label: RecipeFormat.title(step.kind),
-        instruction: scaledWeights(in: step.instruction, by: weightFactor),
-        startOffsetS: RecipeTiming.scaled(step.startOffsetS, by: factor),
-        targetCumulativeWaterG: index < scaled.steps.count
-          ? scaled.steps[index].targetCumulativeWaterG : nil)
+        order: index, label: RecipeFormat.title(step.kind), instruction: step.instruction,
+        startOffsetS: step.startOffsetS, targetCumulativeWaterG: step.targetCumulativeWaterG)
     }
     let lastOffset = timerSteps.map(\.startOffsetS).max() ?? 0
-    let declared = RecipeTiming.scaled(recipe.totalTimeS ?? 0, by: factor)
+    let declared = draft.totalTimeS ?? 0
     let total = declared > lastOffset ? declared : lastOffset + tailS
     let plan = try TimerPlan(steps: timerSteps, totalDurationS: total)
     return TimerSetup(
       plan: plan, recipeID: recipe.id, recipeName: recipe.name, methodName: recipe.method?.name,
       tempC: tuning?.tempC ?? recipe.tempC, scaled: scaled,
-      stepKinds: steps.map(\.kind.rawValue),
+      stepKinds: draft.steps.map(\.kind.rawValue),
       methodKey: recipe.method?.builtInKey ?? recipe.method?.style.rawValue)
   }
 

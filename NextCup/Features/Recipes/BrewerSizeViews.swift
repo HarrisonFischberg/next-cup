@@ -32,8 +32,8 @@ struct BrewerSizeQuestion: View {
           Text("Which size is your \(method.name.lowercased())?")
         } footer: {
           Text(
-            "AI recipes are kept within what it holds, so it never overflows. Change it any "
-              + "time in Settings > Brewer sizes.")
+            "Brews are kept within what it holds, so it never overflows. Change it any time "
+              + "on the Start brew page or in Settings > Brewer sizes.")
         }
         .listRowBackground(DS.paper)
         if let fallback {
@@ -85,8 +85,8 @@ struct BrewerSizesView: View {
         }
       } footer: {
         Text(
-          "AI recipes keep within what your brewer holds. A brewer you have not set uses its "
-            + "most common size.")
+          "Every brew is kept within what your brewer holds. A brewer you have not set uses "
+            + "its most common size. You can also change it on the Start brew page.")
       }
       .listRowBackground(DS.paper)
     }

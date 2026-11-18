@@ -47,7 +47,6 @@ private struct RecipeDetailContent: View {
   @AppStorage(UnitStorage.temperatureKey) private var temperatureUnit = TemperatureUnit.celsius
     .rawValue
   @Environment(\.dynamicTypeSize) private var dts
-  @Environment(\.modelContext) private var modelContext
   @Environment(AppRouter.self) private var router: AppRouter?
   @Query private var grinders: [Grinder]
   @Query(sort: \Bean.name) private var allBeans: [Bean]
@@ -66,6 +65,16 @@ private struct RecipeDetailContent: View {
   @State private var tuningFailed = false
   /// A keyed cloud provider gets the batch only after this tap; Apple's model needs none.
   @State private var tuningRequested = false
+  /// The user's size of this brewer; empty until picked, and then the common size is assumed.
+  @AppStorage private var brewerSizeID: String
+  /// The dose a brew too big for the brewer was brought down to, and the sentence saying so.
+  @State private var capped: (doseG: Double, note: String)?
+
+  init(recipe: Recipe) {
+    self.recipe = recipe
+    _brewerSizeID = AppStorage(
+      wrappedValue: "", BrewerCapacity.storageKey(recipe.method?.builtInKey ?? ""))
+  }
 
   private var units: UnitPreferences {
     UnitPreferences(
@@ -102,16 +111,29 @@ private struct RecipeDetailContent: View {
     try? RecipeScaler.scale(recipe.scalable, toDose: doseG)
   }
 
-  /// The recipe at the dose chosen here, to check it against the user's brewer size.
-  private var fitDraft: RecipeDraft {
-    var draft = RecipeEditorService(store: Store(context: modelContext))
-      .draft(from: recipe, asCopy: false)
-    let factor = scaledDoseG == nil ? 1 : (scaled?.factor ?? 1)
-    for index in draft.steps.indices {
-      draft.steps[index].targetCumulativeWaterG =
-        draft.steps[index].targetCumulativeWaterG.map { $0 * factor }
-    }
-    return draft
+  /// The recipe at the dose chosen here, the way the timer would run it before fitting.
+  private var brewDraft: RecipeDraft {
+    RecipeEditorService.draft(from: recipe, scaledTo: doseG, tuning: tuning, name: recipe.name)
+  }
+
+  private var brewerFit: BrewerFit? {
+    _ = brewerSizeID  // read so a new size redraws the page
+    return BrewerFit.current(recipe.method?.builtInKey)
+  }
+
+  /// `brewDraft` changed to fit the user's brewer, as the timer will run it; nil when it fits.
+  private var fitted: (draft: RecipeDraft, note: String)? { brewerFit?.fitted(brewDraft) }
+
+  /// A brew that only fits smaller takes that dose here, so every number on the page is
+  /// the brew that will be made.
+  private func capDose() {
+    guard let fitted, fitted.draft.doseG < doseG - 0.01 else { return }
+    capped = (fitted.draft.doseG, fitted.note)
+    scaledDoseG = fitted.draft.doseG
+  }
+
+  private var fitNote: String? {
+    fitted?.note ?? capped.flatMap { abs($0.doseG - doseG) < 0.01 ? $0.note : nil }
   }
 
   var body: some View {
@@ -121,9 +143,7 @@ private struct RecipeDetailContent: View {
         poster
         VStack(alignment: .leading, spacing: DS.Space.md) {
           nextCupNote
-          BrewerFitLine(
-            draft: fitDraft, methodKey: recipe.method?.builtInKey,
-            isAI: BrewerFitLine.isAI(name: recipe.name, credit: recipe.credit))
+          brewerRow
           if startFailed {
             StateBanner(kind: .error, message: "This recipe cannot be timed. Check its steps.")
           }
@@ -155,6 +175,8 @@ private struct RecipeDetailContent: View {
       }
     }
     .navigationDestination(item: $timerSetup) { TimerView(setup: $0) }
+    .onChange(of: doseG, initial: true) { capDose() }
+    .onChange(of: brewerSizeID) { capDose() }
     #if DEBUG
       // Screenshots: `-autoStartBrew` goes straight on to the timer.
       .task {
@@ -245,6 +267,47 @@ private struct RecipeDetailContent: View {
       }
       .padding(DS.Space.md)
       .panel(DS.paper)
+    }
+  }
+
+  /// The brewer's size and what it holds, changed here with one tap, and what was changed
+  /// in the recipe so it fits. Nothing for brewers without sizes.
+  @ViewBuilder private var brewerRow: some View {
+    if let fit = brewerFit, let key = recipe.method?.builtInKey {
+      VStack(alignment: .leading, spacing: 0) {
+        Menu {
+          Picker(
+            "Brewer size", selection: Binding(get: { fit.size.id }, set: { brewerSizeID = $0 })
+          ) {
+            ForEach(BrewerCapacity.sizes(for: key)) { Text($0.name).tag($0.id) }
+          }
+        } label: {
+          HStack(spacing: DS.Space.sm) {
+            VStack(alignment: .leading, spacing: 2) {
+              Text(fit.size.name).font(DS.Font.headline).foregroundStyle(DS.ink)
+              Text(BrewerSizeQuestion.holds(fit.size, methodKey: key)).font(.footnote)
+                .foregroundStyle(DS.ink2)
+            }
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "chevron.up.chevron.down").font(.footnote.weight(.bold))
+              .foregroundStyle(DS.ink2).accessibilityHidden(true)
+          }
+          .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.sm)
+          .frame(maxWidth: .infinity, minHeight: DS.Size.primary)
+          .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Brewer size")
+        .accessibilityValue(fit.size.name)
+        .accessibilityIdentifier("recipe.brewerSize")
+        if let fitNote {
+          Label(fitNote, systemImage: "checkmark.circle")
+            .font(.footnote).foregroundStyle(DS.ink)
+            .padding(.horizontal, DS.Space.lg).padding(.bottom, DS.Space.md)
+            .accessibilityIdentifier("recipe.fit")
+        }
+      }
+      .tile()
     }
   }
 
@@ -593,16 +656,9 @@ private struct RecipeDetailContent: View {
       Text("This recipe has no steps yet.").font(.body).foregroundStyle(DS.ink2)
         .padding(.horizontal, DS.Space.lg)
     } else {
-      let factor = recipe.timingFactor(doseG: doseG, tuning: tuning)
-      let scaledSteps = scaled?.recipe.steps ?? recipe.scalable.steps
-      let rows = steps.enumerated().map { index, step in
-        BrewStepRow(
-          index: index, step: step, startS: RecipeTiming.scaled(step.startOffsetS, by: factor),
-          target: index < scaledSteps.count ? scaledSteps[index].targetCumulativeWaterG : nil)
-      }
-      let totalS = max(
-        recipe.totalTimeS.map { RecipeTiming.scaled($0, by: factor) } ?? 0,
-        (rows.last?.startS ?? 0) + 30)
+      let draft = fitted?.draft ?? brewDraft
+      let rows = draft.steps.enumerated().map { BrewStepRow(index: $0, step: $1) }
+      let totalS = max(draft.totalTimeS ?? 0, (rows.last?.startS ?? 0) + 30)
       BrewStepsCard(rows: rows, totalS: totalS, units: units, onEdit: changeSteps)
     }
   }
@@ -620,10 +676,10 @@ private struct RecipeDetailContent: View {
       yieldAmount.map {
         "\($0.formatted(.number.precision(.fractionLength(0...1)))) \(yieldMeasure.title)"
       } ?? (scaledDoseG == nil ? "mine" : "\(RecipeFormat.weight(doseG, units)) dose")
-    let service = RecipeEditorService(store: Store(context: modelContext))
-    editor = .prepared(
-      service.draft(
-        from: recipe, scaledTo: doseG, tuning: tuning, name: "\(recipe.name) (\(size))"))
+    // The copy starts from the steps shown here, fitted to the brewer.
+    var draft = fitted?.draft ?? brewDraft
+    draft.name = "\(recipe.name) (\(size))"
+    editor = .prepared(draft)
   }
 
   @ViewBuilder private var credit: some View {

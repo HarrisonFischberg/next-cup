@@ -93,7 +93,7 @@ struct SettingsRootView: View {
         } label: {
           VStack(alignment: .leading, spacing: 2) {
             Text("Brewer sizes").font(DS.Font.headline).foregroundStyle(DS.ink)
-            Text("So AI recipes never overfill your brewer").font(.footnote)
+            Text("So a brew never overfills your brewer").font(.footnote)
               .foregroundStyle(DS.ink2)
           }
           .frame(minHeight: DS.Size.control, alignment: .leading)

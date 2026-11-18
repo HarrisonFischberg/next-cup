@@ -16,7 +16,7 @@ struct BrewerSize: Hashable, Identifiable {
 ///
 /// Sources and assumptions: makers' stated capacities (Hario Switch 02/03 and V60 01/02/03,
 /// Clever Dripper S/L, Kalita Wave 155/185, Chemex 3/6/8/10-cup, Bodum French press 3/4/8/12-cup,
-/// AeroPress Original/Go/XL, Bialetti Moka 1/3/6/9-cup) cut to what holds without spilling once
+/// AeroPress Original/Go/XL, Bialetti Moka 1/3/4/6/9-cup) cut to what holds without spilling once
 /// the coffee bed is in. Switch figures are measured: 03 about 410 g closed and 480 g hybrid, 02
 /// about 240 g and 300 g. Cone figures are brim volume less the bed, rounded down. Jar and
 /// drip-machine reservoirs are typical sizes. Every number errs small: splitting a pour that
@@ -36,6 +36,8 @@ enum BrewerCapacity {
     let sizes: [BrewerSize]
     /// The most common size, assumed until the user picks one.
     let defaultID: String
+    /// A stronger brew topped up in the cup is a normal way to use it (press, AeroPress).
+    var bypass = false
   }
 
   private static let cones = [
@@ -83,17 +85,20 @@ enum BrewerCapacity {
         BrewerSize(id: "press-4", name: "4-cup press (500 ml)", heldG: 430, pourG: 430),
         BrewerSize(id: "press-8", name: "8-cup press (1 L)", heldG: 850, pourG: 850),
         BrewerSize(id: "press-12", name: "12-cup press (1.5 L)", heldG: 1_300, pourG: 1_300),
-      ], defaultID: "press-8"),
-    "aeropress": Method(kind: .immersion, sizes: aeropress, defaultID: "aeropress"),
-    "inverted-press": Method(kind: .immersion, sizes: aeropress, defaultID: "aeropress"),
+      ], defaultID: "press-8", bypass: true),
+    "aeropress": Method(
+      kind: .immersion, sizes: aeropress, defaultID: "aeropress", bypass: true),
+    "inverted-press": Method(
+      kind: .immersion, sizes: aeropress, defaultID: "aeropress", bypass: true),
     "moka-pot": Method(
       kind: .immersion,
       sizes: [
         BrewerSize(id: "moka-1", name: "1-cup moka pot", heldG: 50, pourG: 50),
         BrewerSize(id: "moka-3", name: "3-cup moka pot", heldG: 130, pourG: 130),
+        BrewerSize(id: "moka-4", name: "4-cup moka pot", heldG: 190, pourG: 190),
         BrewerSize(id: "moka-6", name: "6-cup moka pot", heldG: 280, pourG: 280),
         BrewerSize(id: "moka-9", name: "9-cup moka pot", heldG: 450, pourG: 450),
-      ], defaultID: "moka-3"),
+      ], defaultID: "moka-4"),
     "cold-brew": Method(
       kind: .immersion,
       sizes: [
@@ -147,6 +152,11 @@ struct BrewerFit: Equatable {
   var size: BrewerSize
   /// The user never picked a size, so the most common one is assumed.
   var assumed = false
+  /// Water that does not fit may go straight to the cup instead of the brew being made smaller.
+  var bypass = false
+  /// The least of the recipe's water that must still brew the coffee for a top-up to be used;
+  /// under that the brew would be too strong to extract well, so it is made smaller instead.
+  static let leastBrewedShare = 0.6
 
   /// Within this many grams counts as fitting: the capacities are rounded estimates.
   static let slackG = 2.0
@@ -156,7 +166,8 @@ struct BrewerFit: Equatable {
       let fallback = BrewerCapacity.defaultSize(for: methodKey)
     else { return nil }
     let chosen = BrewerCapacity.chosen(for: methodKey, defaults: defaults)
-    return BrewerFit(kind: method.kind, size: chosen ?? fallback, assumed: chosen == nil)
+    return BrewerFit(
+      kind: method.kind, size: chosen ?? fallback, assumed: chosen == nil, bypass: method.bypass)
   }
 
   struct Overfill: Equatable {
@@ -257,33 +268,68 @@ struct BrewerFit: Equatable {
   func warning(_ overfill: Overfill) -> String {
     "Your \(size.name) holds about \(BrewerFit.grams(overfill.limitG)) g "
       + (overfill.whileHeld ? heldPhrase : "per pour") + "; step \(overfill.step + 1) would "
-      + "hold \(BrewerFit.grams(overfill.heldG)) g. Split that pour or pick your size in "
-      + "Settings > Brewer sizes."
+      + "hold \(BrewerFit.grams(overfill.heldG)) g. It is adjusted to fit when you brew."
   }
 
   /// The recipe changed to fit, with a sentence saying how; nil when it already fits.
-  /// Immersion brewers keep everything poured, so the whole recipe is scaled down to the
-  /// capacity at the same ratio. Otherwise the total water stays the same: water past the
+  /// Immersion brewers keep everything poured: a press or AeroPress brews what it holds a
+  /// little stronger and the rest of the water goes to the cup, unless that is too much of
+  /// it, and then (as for every other immersion brewer) the whole recipe is scaled down to
+  /// the capacity at the same ratio. Otherwise the total water stays the same: water past the
   /// closed limit is poured after the valve opens (opening it at that point when the recipe
   /// never does), and a pour too big for the brewer is split into pours that fit.
   func fitted(_ draft: RecipeDraft) -> (draft: RecipeDraft, note: String)? {
     guard !overfills(draft).isEmpty else { return nil }
-    var fixed = kind == .immersion ? scaled(draft) : split(draft)
+    let peak = overfills(draft).map(\.heldG).max() ?? size.heldG
+    let tops =
+      kind == .immersion && bypass && size.heldG >= peak * Self.leastBrewedShare
+      && !draft.steps.contains { $0.kind == .bypass }
+    var fixed = kind != .immersion ? split(draft) : tops ? topped(draft) : scaled(draft)
     if let last = fixed.steps.map(\.startOffsetS).max(), let total = fixed.totalTimeS,
       last > total
     {
       fixed.totalTimeS = last + 30
     }
     let note =
-      kind == .immersion
-      ? "Scaled to \(BrewerFit.grams(fixed.waterG)) g of water so your \(size.name) "
-        + "(holds about \(BrewerFit.grams(size.heldG)) g) never overflows."
-      : "Pours were split so your \(size.name) never holds more than "
-        + (kind == .switchable
-          ? "\(BrewerFit.grams(size.heldG)) g with the valve closed or "
-            + "\(BrewerFit.grams(size.pourG)) g while pouring."
-          : "\(BrewerFit.grams(size.pourG)) g at once.")
+      tops
+      ? "\(BrewerFit.grams(size.heldG)) g brews in your \(size.name) (all it holds) and the "
+        + "other \(BrewerFit.grams(fixed.waterG - size.heldG)) g of hot water goes in the cup."
+      : kind == .immersion
+        ? "Scaled to \(BrewerFit.grams(fixed.waterG)) g of water so your \(size.name) "
+          + "(holds about \(BrewerFit.grams(size.heldG)) g) never overflows."
+        : "Pours were split so your \(size.name) never holds more than "
+          + (kind == .switchable
+            ? "\(BrewerFit.grams(size.heldG)) g with the valve closed or "
+              + "\(BrewerFit.grams(size.pourG)) g while pouring."
+            : "\(BrewerFit.grams(size.pourG)) g at once.")
     return (fixed, "Adjusted to fit your brewer: \(note)")
+  }
+
+  /// Same dose and water: the pours shrink to what the brewer holds and the rest is a
+  /// bypass step after everything else.
+  private func topped(_ draft: RecipeDraft) -> RecipeDraft {
+    let peak = overfills(draft).map(\.heldG).max() ?? size.heldG
+    let factor = size.heldG / peak
+    var fixed = draft
+    fixed.steps = draft.steps.map { step in
+      guard let target = step.targetCumulativeWaterG else { return step }
+      var step = step
+      let fits = (target * factor).rounded(.down)
+      step.targetCumulativeWaterG = fits
+      // A weight written in the step may be the dose, which stays, so it is said again.
+      if step.instruction.contains(/\d\s?g\b/) {
+        step.instruction = "Pour to \(BrewerFit.grams(fits)) g."
+      }
+      return step
+    }
+    let end = max(draft.steps.map(\.startOffsetS).max() ?? 0, draft.totalTimeS ?? 0)
+    fixed.steps.append(
+      RecipeStepDraft(
+        kind: .bypass, startOffsetS: end, targetCumulativeWaterG: draft.waterG,
+        instruction: "Add \(BrewerFit.grams(draft.waterG - size.heldG)) g of hot water to the "
+          + "cup and stir."))
+    fixed.totalTimeS = end + 20
+    return fixed
   }
 
   private func scaled(_ draft: RecipeDraft) -> RecipeDraft {
