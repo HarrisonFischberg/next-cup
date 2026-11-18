@@ -661,28 +661,21 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(app.navigationBars["Cone dripper"].exists)
   }
 
-  /// The daily loop: a brew saved untasted waits on the journal; tasting it
-  /// offers one change for the next cup (or says to keep it the same).
+  /// The daily loop: a brew saved untasted waits on the journal; tasting it saves
+  /// the taste and returns to the journal.
   @MainActor
-  func testDailyLoopTastesASavedCupAndOffersTheNextChange() {
+  func testDailyLoopTastesASavedCup() {
     let app = launch()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
     logBrew(app, note: "Kenya, tasting later")
     XCTAssertTrue(element(app, "journal.today").waitForExistence(timeout: 5))
     element(app, "today.taste").tap()
     XCTAssertTrue(element(app, "taste.screen").waitForExistence(timeout: 5))
-    let seeChange = app.buttons["See tomorrow's change"]
-    XCTAssertTrue(seeChange.waitForExistence(timeout: 5))
-    XCTAssertFalse(seeChange.isEnabled, "nothing to save before a taste is chosen")
+    let save = app.buttons["Save taste"]
+    XCTAssertTrue(save.waitForExistence(timeout: 5))
+    XCTAssertFalse(save.isEnabled, "nothing to save before a taste is chosen")
     element(app, "taste.sour").tap()
-    seeChange.tap()
-    let change = element(app, "taste.change")
-    let keep = element(app, "taste.keep")
-    XCTAssertTrue(
-      change.waitForExistence(timeout: 5) || keep.exists,
-      "shows the next step: \(app.debugDescription)")
-    let finish = change.exists ? app.buttons["Use tomorrow"] : app.buttons["Done"]
-    finish.tap()
+    save.tap()
     XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 5))
   }
 
@@ -720,11 +713,8 @@ final class NextCupUITests: XCTestCase {
       XCTAssertTrue(element(app, "taste.screen").waitForExistence(timeout: 5))
       element(app, "taste.sour").tap()
       try save(app.screenshot(), "\(folderURL.path)/daily-taste-\(variant.name).png")
-      app.buttons["See tomorrow's change"].tap()
-      XCTAssertTrue(
-        element(app, "taste.change").waitForExistence(timeout: 5)
-          || element(app, "taste.keep").exists)
-      try save(app.screenshot(), "\(folderURL.path)/daily-next-\(variant.name).png")
+      app.buttons["Save taste"].tap()
+      XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 5))
       app.terminate()
     }
   }
@@ -1687,105 +1677,6 @@ final class NextCupUITests: XCTestCase {
       app.launch()
       try runExploreFlow(app) { name in
         try save(app.screenshot(), "\(folderURL.path)/T017-\(name)-\(variant.name).png")
-      }
-      app.terminate()
-    }
-  }
-
-  // MARK: Dial-in suggestions (T018)
-
-  /// Logs a sour cup of a bean, reads the suggestion on the saved screen and in
-  /// the journal, then starts the next brew of that bean, which shows no card.
-  /// `shot` is called with a name at each screen worth capturing.
-  @MainActor
-  private func runDialInFlow(_ app: XCUIApplication, shot: (String) throws -> Void) throws {
-    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
-    app.tabBars.buttons["Beans"].tap()
-    XCTAssertTrue(element(app, "tab.root.beans").waitForExistence(timeout: 5))
-    addBean(app, name: "Washed Ethiopia", roaster: "Tiny Roastery", weight: "250")
-    XCTAssertTrue(element(app, "beans.row.Washed Ethiopia").waitForExistence(timeout: 5))
-
-    func startBrew(_ app: XCUIApplication) {
-      app.tabBars.buttons["Journal"].tap()
-      app.buttons["Log a brew"].firstMatch.tap()
-      XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 5))
-      element(app, "brewform.beans.add").tap()
-      app.buttons["Washed Ethiopia"].tap()
-      app.buttons["Increase Dose"].tap()
-      app.buttons["Increase Water"].tap()
-    }
-
-    startBrew(app)
-    let grind = grindWheel(app, "brewform.grind")
-    scrollUntilHittable(grind, in: app)
-    app.step("brewform.grind", to: 20)
-    let sour = element(app, "brewform.verdict.sour")
-    scrollUntilHittable(sour, in: app)
-    sour.tap()
-    app.buttons["Save brew"].tap()
-    XCTAssertTrue(
-      element(app, "tab.root.journal").waitForExistence(timeout: 5), "a save lands on the Journal")
-    try shot("dialin-saved")
-
-    // History: the journal row names the suggestion this cup produced.
-    let row = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Next: Grind: 20'"))
-      .firstMatch
-    XCTAssertTrue(row.waitForExistence(timeout: 5), "journal row shows the suggestion")
-
-    // The next brew of the same bean shows no card: the advice lives on the saved brew and
-    // in Ask AI, not on the form you are filling in.
-    app.buttons["Log a brew"].firstMatch.tap()
-    XCTAssertTrue(element(app, "destination.brew.new").waitForExistence(timeout: 5))
-    element(app, "brewform.beans.add").tap()
-    app.buttons["Washed Ethiopia"].tap()
-    XCTAssertFalse(element(app, "suggestion.card").waitForExistence(timeout: 2))
-  }
-
-  @MainActor
-  func testDialInSuggestionStaysOffTheNextBrewForm() throws {
-    let app = launch()
-    try runDialInFlow(app) { _ in }
-  }
-
-  @MainActor
-  func testCaptureDialInLight() throws {
-    try captureDialIn("light", appearance: .light, size: nil)
-  }
-
-  @MainActor
-  func testCaptureDialInDark() throws {
-    try captureDialIn("dark", appearance: .dark, size: nil)
-  }
-
-  @MainActor
-  func testCaptureDialInLargestText() throws {
-    try captureDialIn(
-      "largest-text", appearance: .light, size: "UICTContentSizeCategoryAccessibilityXXXL")
-  }
-
-  /// Writes dial-in screenshots for one appearance; one test per variant keeps each
-  /// run short. Runs only while `ralph/screenshots/.capture` exists.
-  @MainActor
-  private func captureDialIn(
-    _ variant: String, appearance: XCUIDevice.Appearance, size: String?
-  ) throws {
-    let folderURL = URL(fileURLWithPath: #filePath)
-      .deletingLastPathComponent().deletingLastPathComponent()
-      .appendingPathComponent("ralph/screenshots")
-    try XCTSkipUnless(
-      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
-      "screenshot capture is off")
-    defer { XCUIDevice.shared.appearance = .light }
-    XCUIDevice.shared.appearance = appearance
-    do {
-      let app = XCUIApplication()
-      app.launchArguments = [
-        "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
-      ]
-      if let size { app.launchArguments += ["-UIPreferredContentSizeCategoryName", size] }
-      app.launch()
-      try runDialInFlow(app) { name in
-        try save(app.screenshot(), "\(folderURL.path)/T018-\(name)-\(variant).png")
       }
       app.terminate()
     }

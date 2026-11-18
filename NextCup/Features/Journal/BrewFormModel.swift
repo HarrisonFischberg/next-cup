@@ -38,9 +38,6 @@ final class BrewFormModel {
   /// with Undo after it leaves the waiting list.
   private(set) var handledSuggestionID: UUID?
   private(set) var suggestionError: String?
-  /// What the rules made of the brew just saved: the suggestion, or why none.
-  private(set) var madeSuggestion: Suggestion?
-  private(set) var dialInNote: String?
   /// Set when this brew's grade beats every earlier graded brew of one of its beans.
   private(set) var newBest: (bean: String, tenths: Int, previous: Int)?
   private var followedSuggestionID: UUID?
@@ -534,7 +531,6 @@ final class BrewFormModel {
     }
     // Tasted through Edit: the reminder to taste it has nothing left to ask.
     if isEditing, draft.verdict != nil { TasteReminder.cancel(brewID: draft.id) }
-    makeSuggestion()
     noteNewBest()
     if case .failure = draftStore.clear() {
       notice = FormNotice(
@@ -558,20 +554,6 @@ final class BrewFormModel {
         newBest = (bean.name, grade, previous)
         return
       }
-    }
-  }
-
-  /// Asks the dial-in rules what to change next. The brew is already saved, so a
-  /// failure here is a note, never a lost brew.
-  private func makeSuggestion() {
-    guard let brew = try? store.find(Brew.self, id: draft.id) else { return }
-    switch SuggestionService(store: store).propose(for: brew) {
-    case .success(.change):
-      madeSuggestion = (brew.suggestionsMade ?? []).first { $0.source == .rules }
-    case .success(.keep(let reason)):
-      dialInNote = reason
-    case .failure:
-      dialInNote = "The brew is saved, but its dial-in suggestion could not be stored."
     }
   }
 

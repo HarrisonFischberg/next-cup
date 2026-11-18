@@ -84,10 +84,8 @@ struct DailyLoopTests {
     #expect(!TodayCard.applies(to: try log(.balanced)))
   }
 
-  @Test func aSourCupLeavesTheCardEvenWithAChangeWaiting() throws {
-    let brew = try log(.sour)
-    #expect((brew.suggestionsMade ?? []).contains { $0.state == .proposed })
-    #expect(!TodayCard.applies(to: brew))
+  @Test func aTastedCupLeavesTheCard() throws {
+    #expect(!TodayCard.applies(to: try log(.sour)))
   }
 
   // MARK: Grind per bean
