@@ -84,6 +84,11 @@ final class StartBrewStepperUITests: XCTestCase {
     // An amount in oz sets the dose.
     let dose = element("stepper.dose.value")
     let recipeDose = dose.value as? String ?? ""
+    // Clear of the Start brew bar pinned to the bottom.
+    let more = app.buttons["recipe.yield.increase"]
+    for _ in 0..<5 where !(more.exists && more.frame.maxY < app.frame.height - 220) {
+      app.swipeUp(velocity: .slow)
+    }
     app.buttons["oz"].tap()
     let amount = element("recipe.yield")
     let before = amount.value as? String

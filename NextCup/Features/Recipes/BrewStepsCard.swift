@@ -4,10 +4,11 @@ import SwiftUI
 /// One step as the Start brew screen shows it, already scaled to the cup being made.
 struct BrewStepRow: Identifiable {
   let index: Int
-  let step: RecipeStep
-  let startS: Int
-  let target: Double?
-  var id: RecipeStep.ID { step.id }
+  /// As brewed: a brew changed to fit the brewer has steps the recipe does not.
+  let step: RecipeStepDraft
+  var startS: Int { step.startOffsetS }
+  var target: Double? { step.targetCumulativeWaterG }
+  var id: Int { index }
   var time: String { RecipeFormat.clock(startS) }
   var name: String { RecipeFormat.title(step.kind) }
 }
@@ -59,7 +60,7 @@ struct BrewStepsCard: View {
   let totalS: Int
   let units: UnitPreferences
   let onEdit: () -> Void
-  @State private var open: RecipeStep.ID?
+  @State private var open: Int?
 
   var body: some View {
     VStack(alignment: .leading, spacing: DS.Space.md) {
