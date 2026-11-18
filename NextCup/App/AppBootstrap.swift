@@ -36,6 +36,9 @@ enum AppBootstrap {
       if !inMemory, case .failure(let error) = RecipeSnapshotBackfill.run(container.mainContext) {
         return .failure(.init(message: describe(error)))
       }
+      if !inMemory, case .failure(let error) = FavoriteMerge.run(container.mainContext) {
+        return .failure(.init(message: describe(error)))
+      }
       #if DEBUG
         // Screenshots only: a few sample brews in the throwaway in-memory store.
         if inMemory, ProcessInfo.processInfo.arguments.contains("-demoBrews") {
@@ -142,6 +145,10 @@ struct StartupError: Error, Equatable {
       bag.roastLevel = .dark
       bag.status = .inUse
       context.insert(bag)
+      // Its brews are linked to it, so the bean's page lists them.
+      for brew in (try? context.fetch(FetchDescriptor<Brew>())) ?? [] {
+        for part in brew.beans ?? [] where part.beanNameSnapshot == bag.name { part.bean = bag }
+      }
       let arguments = ProcessInfo.processInfo.arguments
       if let index = arguments.firstIndex(of: "-demoOnlyMethod"), index + 1 < arguments.count {
         for method in methods { method.isHidden = method.builtInKey != arguments[index + 1] }
