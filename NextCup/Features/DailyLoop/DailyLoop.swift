@@ -135,17 +135,11 @@ struct TodayCard: View {
 
   private var name: String { brew.beanNames.first ?? brew.method?.name ?? "Today's cup" }
   private var due: Date { TasteReminder.due(after: brew.date) }
-  private var proposal: Suggestion? {
-    (brew.suggestionsMade ?? []).first { $0.source == .rules && $0.state == .proposed }
-  }
 
-  /// Shown for a brew from today that is untasted, or tasted with a change waiting.
+  /// Shown for a brew from today that is still untasted.
   static func applies(to brew: Brew, now: Date = .now) -> Bool {
     guard Calendar.current.isDate(brew.date, inSameDayAs: now) else { return false }
-    let waiting = (brew.suggestionsMade ?? []).contains {
-      $0.source == .rules && $0.state == .proposed
-    }
-    return brew.verdict == nil || waiting
+    return brew.verdict == nil
   }
 
   var body: some View {
@@ -176,12 +170,6 @@ struct TodayCard: View {
             .accessibilityIdentifier("today.taste")
           }
         }
-      } else if let proposal {
-        LoopStrip(at: .next, detail: "Tomorrow, change one thing.")
-        Text(loopHeadline(proposal))
-          .font(.system(.title3, design: .serif)).foregroundStyle(DS.ink)
-          .accessibilityIdentifier("today.next")
-        Text(proposal.rationale).font(.footnote).foregroundStyle(DS.ink2)
       }
     }
     .padding(DS.Space.xl)
