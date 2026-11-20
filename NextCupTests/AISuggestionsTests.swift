@@ -67,9 +67,7 @@ struct AISuggestionsTests {
     let suggestion = try AISuggestions.ingest(request, in: context).get()
     #expect(suggestion.fromValue == "94")
     let all = try context.fetch(FetchDescriptor<Suggestion>())
-    let match = SuggestionService.match(
-      in: all, beanIDs: [], methodID: nil, excluding: UUID())
-    #expect(match?.id == suggestion.id)
+    #expect(all.contains { $0.id == suggestion.id })
   }
 
   @Test func ingestingTwiceKeepsOneCard() throws {

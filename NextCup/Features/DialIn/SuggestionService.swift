@@ -33,22 +33,6 @@ struct SuggestionService {
     if a.isEmpty && b.isEmpty { return first.method?.id == second.method?.id }
     return !a.isDisjoint(with: b)
   }
-
-  /// The newest unanswered suggestion for a brew that is about to be made with
-  /// these beans (or, with no beans, this method). The brew itself never matches.
-  static func match(
-    in suggestions: [Suggestion], beanIDs: Set<UUID>, methodID: UUID?, excluding brewID: UUID
-  ) -> Suggestion? {
-    suggestions
-      .filter { $0.state == .proposed }
-      .sorted { $0.createdAt > $1.createdAt }
-      .first { suggestion in
-        guard let source = suggestion.sourceBrew, source.id != brewID else { return false }
-        let sourceBeans = Self.beanIDs(source)
-        if beanIDs.isEmpty && sourceBeans.isEmpty { return source.method?.id == methodID }
-        return !beanIDs.isEmpty && !beanIDs.isDisjoint(with: sourceBeans)
-      }
-  }
 }
 
 /// Reads and writes the brew-form value a suggestion is about.
