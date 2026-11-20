@@ -174,24 +174,7 @@ struct BrewFormView: View {
           onSaved?()
           dismiss()
         }
-      ) {
-        if let made = model.madeSuggestion {
-          KraftNote {
-            VStack(alignment: .leading, spacing: DS.Space.xs) {
-              Text("TRY THIS NEXT TIME").font(DS.Font.label).foregroundStyle(DS.ink)
-              Text(SuggestionFormat.headline(made, units))
-                .font(DS.Font.mono(.title2, .bold)).foregroundStyle(DS.ink)
-                .accessibilityIdentifier("brewform.saved.suggestion")
-              Text(made.rationale).font(.footnote).foregroundStyle(DS.ink)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
-          }
-        } else if let note = model.dialInNote {
-          Text(note).font(.footnote).foregroundStyle(DS.ink2)
-            .accessibilityIdentifier("brewform.saved.dialin")
-        }
-      }
+      )
       .accessibilityIdentifier("brewform.saved")
     }
   }

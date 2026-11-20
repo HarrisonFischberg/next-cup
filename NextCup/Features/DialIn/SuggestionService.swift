@@ -2,63 +2,11 @@ import Foundation
 import NextCupKit
 import SwiftData
 
-/// Stores the dial-in suggestions the rules make from a saved brew and finds the
-/// one that belongs on the next brew of the same bean (X4).
+/// Keeps stored suggestions in step: a newer brew of the same beans retires the older
+/// unanswered one, and the next brew of a bean can find the one that belongs to it (X4).
 @MainActor
 struct SuggestionService {
   let store: Store
-
-  /// Makes the rules suggestion for a saved brew, replacing one that was never
-  /// answered. A brew that already has an answered suggestion keeps it (editing a
-  /// brew never rewrites what the user decided). A balanced cup, or a cup with
-  /// nothing to change, stores nothing and returns the reason in `.keep`.
-  func propose(for brew: Brew) -> Result<DialInOutcome, StoreError> {
-    let made = (brew.suggestionsMade ?? []).filter { $0.source == .rules }
-    if made.contains(where: { $0.state != .proposed }) {
-      return .success(.keep("This brew already has a suggestion you answered."))
-    }
-    for old in made { store.context.delete(old) }
-
-    // Bright and balanced are good notes, so a fault picked with them decides the change.
-    let tasted = brew.verdicts.first { $0 != .bright && $0 != .balanced } ?? brew.verdict
-    guard let verdict = tasted.flatMap({ DialInVerdict(rawValue: $0.rawValue) }) else {
-      return commit(.keep("Choose how it tasted to get a suggestion."))
-    }
-    let outcome = DialInRules.suggest(for: input(for: brew, verdict: verdict))
-    guard case .change(let change) = outcome else { return commit(outcome) }
-
-    let suggestion = Suggestion()
-    suggestion.source = .rules
-    suggestion.field = BrewParameter(rawValue: change.parameter.rawValue) ?? .grind
-    suggestion.fromValue = change.fromValue
-    suggestion.toValue = change.toValue
-    suggestion.rationale = change.rationale
-    suggestion.state = .proposed
-    store.context.insert(suggestion)
-    suggestion.sourceBrew = brew
-    supersedeOlder(than: brew, keeping: suggestion)
-    return commit(outcome)
-  }
-
-  private func commit(_ outcome: DialInOutcome) -> Result<DialInOutcome, StoreError> {
-    switch store.save() {
-    case .success: return .success(outcome)
-    case .failure(let error):
-      store.context.rollback()
-      return .failure(error)
-    }
-  }
-
-  private func input(for brew: Brew, verdict: DialInVerdict) -> DialInInput {
-    let shown =
-      brew.method.map { MethodParameters.shown(tracked: $0.trackedParameters) }
-      ?? Set(BrewParameter.allCases)
-    let tracked = Set(shown.compactMap { DialInParameter(rawValue: $0.rawValue) })
-    let style = brew.method.flatMap { DialInStyle(rawValue: $0.style.rawValue) } ?? .pourOver
-    return DialInInput(
-      verdict: verdict, style: style, tracked: tracked, grindSetting: brew.grindSetting,
-      waterG: brew.waterG, tempC: brew.tempC, totalTimeS: brew.totalTimeS)
-  }
 
   /// A newer brew of the same beans makes an unanswered suggestion from an older
   /// one stale. It is dismissed so the list never offers two for one bean.
@@ -84,22 +32,6 @@ struct SuggestionService {
     let b = beanIDs(second)
     if a.isEmpty && b.isEmpty { return first.method?.id == second.method?.id }
     return !a.isDisjoint(with: b)
-  }
-
-  /// The newest unanswered suggestion for a brew that is about to be made with
-  /// these beans (or, with no beans, this method). The brew itself never matches.
-  static func match(
-    in suggestions: [Suggestion], beanIDs: Set<UUID>, methodID: UUID?, excluding brewID: UUID
-  ) -> Suggestion? {
-    suggestions
-      .filter { $0.state == .proposed }
-      .sorted { $0.createdAt > $1.createdAt }
-      .first { suggestion in
-        guard let source = suggestion.sourceBrew, source.id != brewID else { return false }
-        let sourceBeans = Self.beanIDs(source)
-        if beanIDs.isEmpty && sourceBeans.isEmpty { return source.method?.id == methodID }
-        return !beanIDs.isEmpty && !beanIDs.isDisjoint(with: sourceBeans)
-      }
   }
 }
 
