@@ -5,6 +5,8 @@ import SwiftUI
 /// Explore > Roaster catalog: roasters, then their coffees, then starting recipes.
 struct RoasterCatalogView: View {
   let catalog: RoasterCatalog
+  /// Keys of catalog roasters found near the user, marked "near you".
+  var nearKeys: Set<String> = []
 
   var body: some View {
     ScrollView {
@@ -21,6 +23,7 @@ struct RoasterCatalogView: View {
               Text(roaster.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
               Text("\(roaster.place)  ·  \(roaster.coffees.count) coffees")
                 .font(.footnote).foregroundStyle(DS.ink2)
+              if nearKeys.contains(roaster.key) { Tag(text: "Near you") }
             }
             .padding(DS.Space.md)
             .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
@@ -52,11 +55,12 @@ struct SavedRoasters: View {
         PaperBox {
           VStack(spacing: 0) {
             ForEach(saved) { roaster in
-              if let website = roaster.website {
-                Link(destination: website) { row(roaster, linked: true) }
-              } else {
-                row(roaster, linked: false)
+              NavigationLink {
+                SavedRoasterView(roaster: roaster)
+              } label: {
+                row(roaster)
               }
+              .buttonStyle(PressableStyle())
               if roaster.id != saved.last?.id { Hairline() }
             }
           }
@@ -67,7 +71,7 @@ struct SavedRoasters: View {
     }
   }
 
-  private func row(_ roaster: Roaster, linked: Bool) -> some View {
+  private func row(_ roaster: Roaster) -> some View {
     HStack(spacing: DS.Space.md) {
       Image(systemName: "mappin.and.ellipse").foregroundStyle(DS.ink2).frame(width: 24)
         .accessibilityHidden(true)
@@ -76,10 +80,8 @@ struct SavedRoasters: View {
         if let city = roaster.city { Text(city).font(.footnote).foregroundStyle(DS.ink2) }
       }
       Spacer(minLength: DS.Space.sm)
-      if linked {
-        Image(systemName: "arrow.up.right").font(.footnote.weight(.semibold))
-          .foregroundStyle(DS.ink2).accessibilityHidden(true)
-      }
+      Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+        .foregroundStyle(DS.ink2).accessibilityHidden(true)
     }
     .padding(DS.Space.md)
     .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
@@ -89,7 +91,7 @@ struct SavedRoasters: View {
   }
 }
 
-private struct CatalogRoasterView: View {
+struct CatalogRoasterView: View {
   let roaster: RoasterCatalog.Roaster
   let checkedOn: String
 
@@ -129,7 +131,7 @@ private struct CatalogRoasterView: View {
   }
 }
 
-private struct CatalogCoffeeView: View {
+struct CatalogCoffeeView: View {
   let coffee: RoasterCatalog.Coffee
   let roaster: RoasterCatalog.Roaster
   @Environment(\.modelContext) private var context

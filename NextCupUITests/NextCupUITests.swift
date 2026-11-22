@@ -2046,9 +2046,56 @@ final class NextCupUITests: XCTestCase {
     }
     app.buttons["roasterdetail.save"].tap()
     app.navigationBars.buttons.firstMatch.tap()
+    app.buttons["roasters.done"].tap()
     XCTAssertTrue(
-      element(app, "roasters.saved.Sample Roasters One").waitForExistence(timeout: 5),
-      "saving from the details lists the roaster under Saved")
+      element(app, "explore.savedRoaster.Sample Roasters One").waitForExistence(timeout: 5),
+      "saving from the details lists the roaster under Saved roasters")
+  }
+
+  @MainActor
+  func testExploreShowsNearbyRoastersSearchAndASavedRoasterPage() {
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "-inMemoryStore", "-appStyle", "steelKraft", "-resetNavigationState", "-resetDraft",
+      "-roasterStub", "-locationStub", "authorized",
+    ]
+    app.launch()
+    XCTAssertTrue(element(app, "tab.root.journal").waitForExistence(timeout: 10))
+    app.tabBars.buttons["Explore"].tap()
+
+    // Idea 1: the closest roasters are on Explore itself, with a rounded distance.
+    let nearest = app.buttons["explore.nearby.Sample Roasters One"]
+    XCTAssertTrue(nearest.waitForExistence(timeout: 5), "nearby roasters show on Explore")
+    XCTAssertTrue(nearest.label.contains("About"), "approximate location says about")
+    XCTAssertFalse(
+      app.buttons["explore.nearby.Huckleberry Roasters"].exists, "only the closest three")
+
+    // Idea 4: the catalog roaster found nearby is marked, and one search covers both.
+    app.buttons["explore.catalog"].tap()
+    let huckleberry = element(app, "catalog.roaster.huckleberry")
+    XCTAssertTrue(huckleberry.waitForExistence(timeout: 5))
+    XCTAssertTrue(huckleberry.label.localizedCaseInsensitiveContains("near you"))
+    app.navigationBars.buttons.firstMatch.tap()
+    let search = app.textFields["explore.search"]
+    search.tap()
+    search.typeText("Kenya")
+    XCTAssertTrue(
+      element(app, "explore.search.coffee.huck-kenya-rukira").waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["explore.search.map"].exists)
+    search.typeText("\n")  // put the keyboard away
+    app.buttons["explore.search.clear"].tap()
+
+    // Idea 3: a saved roaster has its own page.
+    nearest.tap()
+    XCTAssertTrue(element(app, "roasterdetail.screen").waitForExistence(timeout: 5))
+    app.buttons["roasterdetail.save"].tap()
+    app.navigationBars.buttons.firstMatch.tap()
+    let saved = element(app, "explore.savedRoaster.Sample Roasters One")
+    XCTAssertTrue(saved.waitForExistence(timeout: 5))
+    saved.tap()
+    XCTAssertTrue(element(app, "savedroaster.screen").waitForExistence(timeout: 5))
+    XCTAssertTrue(element(app, "savedroaster.noBeans").exists)
+    XCTAssertTrue(app.buttons["savedroaster.addBean"].exists)
   }
 
   @MainActor
@@ -2068,6 +2115,23 @@ final class NextCupUITests: XCTestCase {
     XCTAssertTrue(element(app, "roasterdetail.screen").waitForExistence(timeout: 5))
     sleep(2)
     try save(app.screenshot(), "\(folderURL.path)/new_roaster-detail.png")
+    app.buttons["roasterdetail.save"].tap()
+    app.navigationBars.buttons.firstMatch.tap()
+    app.buttons["roasters.done"].tap()
+    XCTAssertTrue(app.buttons["explore.nearby.Sample Roasters One"].waitForExistence(timeout: 5))
+    sleep(2)
+    try save(app.screenshot(), "\(folderURL.path)/new_explore-nearby.png")
+    let search = app.textFields["explore.search"]
+    search.tap()
+    search.typeText("Kenya")
+    XCTAssertTrue(app.buttons["explore.search.map"].waitForExistence(timeout: 5))
+    try save(app.screenshot(), "\(folderURL.path)/new_explore-search.png")
+    app.buttons["explore.search.clear"].tap()
+    let saved = element(app, "explore.savedRoaster.Sample Roasters One")
+    XCTAssertTrue(saved.waitForExistence(timeout: 5))
+    saved.tap()
+    XCTAssertTrue(element(app, "savedroaster.screen").waitForExistence(timeout: 5))
+    try save(app.screenshot(), "\(folderURL.path)/new_saved-roaster.png")
   }
 
   // MARK: Screenshot capture for T027 and T028 (only runs when ralph/screenshots/.capture exists)

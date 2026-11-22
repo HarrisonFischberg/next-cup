@@ -7,6 +7,8 @@ import SwiftUI
 struct RoasterPlaceDetailView: View {
   let place: RoasterPlace
   let isSaved: Bool
+  /// Opens the roaster's catalog page. Nil where the catalog page is pushed in place.
+  var openCatalog: ((RoasterCatalog.Roaster) -> Void)?
   let toggleSaved: () -> Void
 
   @Environment(\.openURL) private var openURL
@@ -76,9 +78,36 @@ struct RoasterPlaceDetailView: View {
 
   // MARK: Rows
 
+  private var catalogRoaster: RoasterCatalog.Roaster? {
+    RoasterCatalog.shared?.roaster(matching: place.name)
+  }
+
+  @ViewBuilder private func catalogRow(_ roaster: RoasterCatalog.Roaster) -> some View {
+    let label = rowLabel(
+      "Coffees and starter recipes", "\(roaster.coffees.count) in the Next Cup catalog",
+      "storefront")
+    if let openCatalog {
+      Button {
+        openCatalog(roaster)
+      } label: {
+        label
+      }
+      .accessibilityIdentifier("roasterdetail.catalog")
+    } else {
+      NavigationLink {
+        CatalogRoasterView(roaster: roaster, checkedOn: RoasterCatalog.shared?.checkedOn ?? "")
+      } label: {
+        label
+      }
+      .accessibilityIdentifier("roasterdetail.catalog")
+    }
+    Hairline()
+  }
+
   private var details: some View {
     PaperBox {
       VStack(spacing: 0) {
+        if let catalogRoaster { catalogRow(catalogRoaster) }
         if let phone = place.phone {
           row("Phone", phone, "phone", id: "phone") { open(place.callURL) }
           Hairline()
@@ -108,22 +137,12 @@ struct RoasterPlaceDetailView: View {
   private func row(
     _ title: String, _ detail: String, _ symbol: String, id: String, action: @escaping () -> Void
   ) -> some View {
-    Button(action: action) {
-      HStack(spacing: DS.Space.md) {
-        Image(systemName: symbol).foregroundStyle(DS.ink2).frame(width: 24)
-          .accessibilityHidden(true)
-        VStack(alignment: .leading, spacing: 2) {
-          Text(title).font(DS.Font.headline).foregroundStyle(DS.ink)
-          Text(detail).font(.footnote).foregroundStyle(DS.ink2)
-        }
-        Spacer(minLength: DS.Space.sm)
-      }
-      .padding(DS.Space.md)
-      .frame(maxWidth: .infinity, minHeight: DS.Size.control, alignment: .leading)
-      .contentShape(Rectangle())
-    }
-    .accessibilityElement(children: .combine)
-    .accessibilityIdentifier("roasterdetail.\(id)")
+    Button(action: action) { rowLabel(title, detail, symbol) }
+      .accessibilityIdentifier("roasterdetail.\(id)")
+  }
+
+  private func rowLabel(_ title: String, _ detail: String, _ symbol: String) -> some View {
+    RoasterRowLabel(title: title, detail: detail, symbol: symbol)
   }
 
   // MARK: Actions

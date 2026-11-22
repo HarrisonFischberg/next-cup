@@ -11,9 +11,16 @@ struct MapKitRoasterSearch: RoasterSearching {
     let places = try await search(area, request: Self.request(for: area))
     // A bag's brand ("… Coffee Roasters") plus "coffee roaster" often finds nothing;
     // the brand alone usually finds the business.
-    if places.isEmpty, case .named(let name) = area {
+    // The search box also takes a roaster's name, which "coffee roaster in …" can miss.
+    let text: String? =
+      switch area {
+      case .named(let name): name
+      case .city(let typed): typed
+      case .near, .region: nil
+      }
+    if places.isEmpty, let text {
       let plain = MKLocalSearch.Request()
-      plain.naturalLanguageQuery = name
+      plain.naturalLanguageQuery = text
       plain.resultTypes = .pointOfInterest
       return try await search(area, request: plain)
     }
@@ -32,6 +39,12 @@ struct MapKitRoasterSearch: RoasterSearching {
       request.naturalLanguageQuery = "coffee roaster in \(city)"
     case .named(let name):
       request.naturalLanguageQuery = "\(name) coffee roaster"
+    case .region(let latitude, let longitude, let latitudeDelta, let longitudeDelta):
+      request.naturalLanguageQuery = "coffee roaster"
+      request.region = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+        span: MKCoordinateSpan(latitudeDelta: latitudeDelta, longitudeDelta: longitudeDelta))
+      request.regionPriority = .required
     }
     request.resultTypes = .pointOfInterest
     return request
@@ -69,6 +82,8 @@ struct DeviceLocation: LocationProviding {
     return status == .authorizedWhenInUse || status == .authorizedAlways
   }
 
+  var isPrecise: Bool { CLLocationManager().accuracyAuthorization == .fullAccuracy }
+
   func currentLocation() async -> LocationOutcome {
     let session = CLServiceSession(authorization: .whenInUse)
     defer { session.invalidate() }
@@ -103,10 +118,10 @@ struct DeviceLocation: LocationProviding {
       case .city(let text), .named(let text):
         if text.lowercased() == "nowhere" { return [] }
         if text.lowercased() == "offline" { throw URLError(.notConnectedToInternet) }
-      case .near:
+      case .near, .region:
         break
       }
-      return [
+      var places = [
         RoasterPlace(
           name: "Sample Roasters One", city: "Sampletown",
           website: URL(string: "https://sample-roasters.example"), latitude: 45.52,
@@ -119,6 +134,15 @@ struct DeviceLocation: LocationProviding {
           name: "Sample Roasters Three", city: "Sampletown", website: nil, latitude: 45.51,
           longitude: -122.64),
       ]
+      // Near the user there is also a roaster from the bundled catalog, to reach the
+      // catalog link. A typed city keeps to the three samples.
+      if case .near = area {
+        places.append(
+          RoasterPlace(
+            name: "Huckleberry Roasters", city: "Sampletown", website: nil, latitude: 45.56,
+            longitude: -122.58))
+      }
+      return places
     }
   }
 

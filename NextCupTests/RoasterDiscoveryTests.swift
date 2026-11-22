@@ -1,4 +1,5 @@
 import Foundation
+import MapKit
 import SwiftData
 import Testing
 
@@ -58,6 +59,79 @@ struct RoasterDiscoveryTests {
     await model.searchCity()
     await model.start()
     #expect(model.phase == .results)
+  }
+
+  // MARK: Distance and the map's area
+
+  @Test func aNearbySearchListsTheClosestFirstWithDistances() async {
+    let far = RoasterPlace(
+      name: "Far", city: nil, website: nil, latitude: 45.60, longitude: -122.68)
+    let close = RoasterPlace(
+      name: "Close", city: nil, website: nil, latitude: 45.53, longitude: -122.68)
+    let model = model(
+      search: FakeSearch(places: [far, close]),
+      location: .granted(latitude: 45.52, longitude: -122.68), authorized: true)
+    await model.start()
+    #expect(model.places.map(\.name) == ["Close", "Far"])
+    #expect(model.distanceText(to: close)?.hasPrefix("About ") == true)
+  }
+
+  @Test func aCitySearchShowsNoDistance() async {
+    let model = model()
+    model.city = "Sampletown"
+    await model.searchCity()
+    #expect(model.distanceText(to: samplePlace("Sample Roasters One")) == nil)
+  }
+
+  @Test func distanceIsRoundedAndSaysAboutWithApproximateLocation() {
+    let us = Locale(identifier: "en_US")
+    #expect(RoasterDistance.text(meters: 1_287, precise: true, locale: us) == "0.8 mi")
+    #expect(RoasterDistance.text(meters: 3_500, precise: false, locale: us) == "About 2 mi")
+    #expect(RoasterDistance.text(meters: 50, precise: false, locale: us) == "About 1 mi")
+    let de = Locale(identifier: "de_DE")
+    #expect(RoasterDistance.text(meters: 3_500, precise: false, locale: de).contains("km"))
+  }
+
+  @Test func searchThisAreaReplacesTheListAndKeepsItWhenNothingIsThere() async {
+    let region = MKCoordinateRegion(
+      center: CLLocationCoordinate2D(latitude: 45.6, longitude: -122.6),
+      span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1))
+    let found = model(location: .granted(latitude: 45.52, longitude: -122.68), authorized: true)
+    await found.start()
+    await found.searchRegion(region)
+    #expect(found.showsRegionResults)
+    #expect(found.places.count == 1)
+    #expect(found.distanceText(to: found.places[0]) != nil, "still measured from the user")
+
+    let empty = RoasterDiscoveryModel(
+      searcher: AreaIsEmpty(), location: FakeLocation(outcome: .denied))
+    empty.city = "Sampletown"
+    await empty.searchCity()
+    await empty.searchRegion(region)
+    #expect(empty.places.count == 1, "the list is kept")
+    #expect(empty.areaNotice != nil)
+    #expect(!empty.showsRegionResults)
+  }
+
+  private struct AreaIsEmpty: RoasterSearching {
+    func search(_ area: SearchArea) async throws -> [RoasterPlace] {
+      if case .region = area { return [] }
+      return [samplePlace("Sample Roasters One")]
+    }
+  }
+
+  @Test func theMapOffersSearchThisAreaOnlyAfterARealMove() throws {
+    let places = [samplePlace("Sample Roasters One")]
+    let shown = try #require(RoasterMap.region(fitting: places))
+    var nudged = shown
+    nudged.center.latitude += shown.span.latitudeDelta * 0.05
+    #expect(!RoasterMap.moved(from: shown, to: nudged))
+    var panned = shown
+    panned.center.longitude += shown.span.longitudeDelta * 0.5
+    #expect(RoasterMap.moved(from: shown, to: panned))
+    var zoomedOut = shown
+    zoomedOut.span.latitudeDelta *= 2
+    #expect(RoasterMap.moved(from: shown, to: zoomedOut))
   }
 
   // MARK: Links on a roaster's details

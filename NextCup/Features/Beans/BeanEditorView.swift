@@ -58,14 +58,18 @@ struct BeanEditorView: View {
   /// Hears about a new bean saved after a photo, barcode or QR scan filled it, so the Beans
   /// tab can ask how the user wants it to taste.
   var afterScan: ((Bean) -> Void)?
+  /// What a new bean starts with, e.g. the roaster when it is added from a roaster's page.
+  var prefill: BeanFields?
   let close: () -> Void
 
   init(
-    target: BeanEditorTarget, start: BeanCaptureStart? = nil, onSaved: ((Bean) -> Void)? = nil,
-    afterScan: ((Bean) -> Void)? = nil, close: @escaping () -> Void
+    target: BeanEditorTarget, start: BeanCaptureStart? = nil, prefill: BeanFields? = nil,
+    onSaved: ((Bean) -> Void)? = nil, afterScan: ((Bean) -> Void)? = nil,
+    close: @escaping () -> Void
   ) {
     self.target = target
     self.start = start
+    self.prefill = prefill
     self.onSaved = onSaved
     self.afterScan = afterScan
     self.close = close
@@ -489,7 +493,7 @@ struct BeanEditorView: View {
 
   private func load() {
     guard !loaded else { return }
-    if let bean { fields = BeanFields(bean) }
+    if let bean { fields = BeanFields(bean) } else if let prefill { fields = prefill }
     hasRoastDate = fields.roastDate != nil
     weightText = fields.bagWeightG.map { RecipeFormat.weight($0, units, withSymbol: false) } ?? ""
     original = fields
