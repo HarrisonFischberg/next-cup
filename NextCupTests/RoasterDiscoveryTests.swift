@@ -22,13 +22,61 @@ struct RoasterDiscoveryTests {
 
   private struct FakeLocation: LocationProviding {
     let outcome: LocationOutcome
+    var isAuthorized = false
     func currentLocation() async -> LocationOutcome { outcome }
   }
 
   private func model(
-    search: FakeSearch = FakeSearch(), location: LocationOutcome = .denied
+    search: FakeSearch = FakeSearch(), location: LocationOutcome = .denied,
+    authorized: Bool = false
   ) -> RoasterDiscoveryModel {
-    RoasterDiscoveryModel(searcher: search, location: FakeLocation(outcome: location))
+    RoasterDiscoveryModel(
+      searcher: search, location: FakeLocation(outcome: location, isAuthorized: authorized))
+  }
+
+  // MARK: Opening the screen
+
+  @Test func openingWithLocationAllowedGoesStraightToNearbyRoasters() async {
+    let model = model(location: .granted(latitude: 1, longitude: 2), authorized: true)
+    #expect(model.opensOnMap)
+    await model.start()
+    #expect(model.phase == .results)
+    #expect(model.places.count == 1)
+  }
+
+  @Test func openingBeforeLocationIsAllowedWaitsForTheUser() async {
+    let model = model(location: .granted(latitude: 1, longitude: 2))
+    #expect(!model.opensOnMap)
+    await model.start()
+    #expect(model.phase == .idle)
+    #expect(model.places.isEmpty)
+  }
+
+  @Test func reopeningDoesNotSearchAgainOverResults() async {
+    let model = model(location: .granted(latitude: 1, longitude: 2), authorized: true)
+    model.city = "Sampletown"
+    await model.searchCity()
+    await model.start()
+    #expect(model.phase == .results)
+  }
+
+  // MARK: Links on a roaster's details
+
+  @Test func detailLinksCarryOnlyTheRoaster() throws {
+    var place = samplePlace("Sample Roasters One")
+    place.address = "12 Sample Street\nSampletown, OR 97200"
+    place.phone = "+1 (503) 555-0100"
+    #expect(place.callURL?.absoluteString == "tel:+15035550100")
+    let google = try #require(place.googleMapsURL?.absoluteString)
+    #expect(
+      google.hasPrefix("https://www.google.com/maps/search/?api=1&query=Sample%20Roasters%20One"))
+    #expect(google.contains("12%20Sample%20Street"))
+    let directions = try #require(place.directionsURL?.absoluteString)
+    #expect(directions.contains("daddr=45.52,-122.68"))
+  }
+
+  @Test func aPlaceWithoutAPhoneHasNoCallLink() {
+    #expect(samplePlace("Sample Roasters One").callURL == nil)
   }
 
   // MARK: Location paths

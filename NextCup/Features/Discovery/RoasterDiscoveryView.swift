@@ -4,8 +4,10 @@ import SwiftUI
 import UIKit
 
 /// S10: find local roasters. Search a typed city, or tap "Use my location" (asked
-/// for then, not at launch). Only a roaster the user saves is kept, and it keeps
-/// the roaster's place, never the user's.
+/// for then, not at launch). Once location is allowed the screen opens on the map of
+/// roasters nearby. Tapping a roaster, on the map or in the list, shows its details.
+/// Only a roaster the user saves is kept, and it keeps the roaster's place, never the
+/// user's.
 struct RoasterDiscoveryView: View {
   let onClose: () -> Void
 
@@ -17,6 +19,8 @@ struct RoasterDiscoveryView: View {
   @State private var model = RoasterDiscoveryModel.live()
   @State private var camera = MapCameraPosition.automatic
   @State private var error: String?
+  @State private var selectedID: String?
+  @State private var detail: RoasterPlace?
 
   private var service: RoasterService { RoasterService(store: Store(context: context)) }
 
@@ -48,6 +52,17 @@ struct RoasterDiscoveryView: View {
         }
       }
       .onChange(of: model.places) { camera = .automatic }
+      .onChange(of: selectedID) {
+        guard let place = model.places.first(where: { $0.id == selectedID }) else { return }
+        detail = place
+        selectedID = nil
+      }
+      .navigationDestination(item: $detail) { place in
+        RoasterPlaceDetailView(place: place, isSaved: service.isSaved(place, in: saved)) {
+          toggle(place)
+        }
+      }
+      .task { await model.start() }
       .accessibilityIdentifier("roasters.screen")
     }
   }
@@ -104,15 +119,16 @@ struct RoasterDiscoveryView: View {
 
   @ViewBuilder private var results: some View {
     switch model.phase {
-    case .idle, .locating:
-      if model.phase == .idle {
+    case .idle:
+      // With location already allowed the screen is on its way to the map: no hint.
+      if !model.opensOnMap {
         Text("Search a city or use your location. Only roasters you save are kept.")
           .font(.callout).foregroundStyle(DS.ink2)
           .padding(.horizontal, DS.Space.lg)
           .listRowInsets(EdgeInsets()).listRowBackground(DS.bg).listRowSeparator(.hidden)
           .accessibilityIdentifier("roasters.hint")
       }
-    case .searching:
+    case .locating, .searching:
       ForEach(0..<3, id: \.self) { _ in
         SkeletonRow().listRowInsets(EdgeInsets()).listRowSeparator(.hidden)
       }
@@ -131,25 +147,30 @@ struct RoasterDiscoveryView: View {
         .accessibilityIdentifier("roasters.empty")
         .listRowInsets(EdgeInsets()).listRowBackground(DS.bg).listRowSeparator(.hidden)
       } else {
-        Map(position: $camera) {
+        Map(position: $camera, selection: $selectedID) {
           ForEach(model.places) { place in
             Marker(
               place.name,
               coordinate: CLLocationCoordinate2D(
-                latitude: place.latitude, longitude: place.longitude))
+                latitude: place.latitude, longitude: place.longitude)
+            )
+            .tag(place.id)
           }
         }
-        .frame(height: 220)
+        .frame(height: 260)
         .overlay(Rectangle().strokeBorder(DS.line, lineWidth: DS.rule))
-        // The list below carries every result; the map only adds the picture.
+        // The list below carries every result and opens the same details.
         .accessibilityHidden(true)
         .listRowInsets(EdgeInsets(top: 0, leading: DS.Space.lg, bottom: 0, trailing: DS.Space.lg))
         .listRowBackground(DS.bg).listRowSeparator(.hidden)
         ForEach(model.places) { place in
-          PlaceRow(place: place, isSaved: service.isSaved(place, in: saved)) { toggle(place) }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(DS.paper)
-            .listRowSeparatorTint(DS.line)
+          PlaceRow(
+            place: place, isSaved: service.isSaved(place, in: saved),
+            open: { detail = place }
+          ) { toggle(place) }
+          .listRowInsets(EdgeInsets())
+          .listRowBackground(DS.paper)
+          .listRowSeparatorTint(DS.line)
         }
       }
     }
@@ -167,12 +188,21 @@ struct RoasterDiscoveryView: View {
       }
       ForEach(saved) { roaster in
         HStack(spacing: DS.Space.md) {
-          VStack(alignment: .leading, spacing: DS.Space.xs) {
-            Text(roaster.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
-            if let city = roaster.city { Text(city).font(.footnote).foregroundStyle(DS.ink2) }
+          Button {
+            detail = RoasterPlace(roaster)
+          } label: {
+            VStack(alignment: .leading, spacing: DS.Space.xs) {
+              Text(roaster.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
+              if let city = roaster.city { Text(city).font(.footnote).foregroundStyle(DS.ink2) }
+            }
+            .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
+            .contentShape(Rectangle())
           }
-          Spacer(minLength: DS.Space.sm)
+          .buttonStyle(PressableStyle())
+          .disabled(RoasterPlace(roaster) == nil)
+          .accessibilityHint("Shows details")
           Button("Remove") { remove(roaster) }
+            .buttonStyle(PressableStyle())
             .font(DS.Font.label).foregroundStyle(DS.ink)
             .frame(minWidth: DS.Size.minTap, minHeight: DS.Size.minTap)
             .accessibilityLabel("Remove \(roaster.name) from saved")
@@ -218,11 +248,12 @@ struct RoasterDiscoveryView: View {
   }
 }
 
-/// One result: name and city, with a Save / Saved toggle that stays reachable at
-/// every text size.
+/// One result: name and city (tap for details), with a Save / Saved toggle that stays
+/// reachable at every text size.
 private struct PlaceRow: View {
   let place: RoasterPlace
   let isSaved: Bool
+  let open: () -> Void
   let toggle: () -> Void
   @Environment(\.dynamicTypeSize) private var dts
 
@@ -232,12 +263,23 @@ private struct PlaceRow: View {
       ? AnyLayout(VStackLayout(alignment: .leading, spacing: DS.Space.sm))
       : AnyLayout(HStackLayout(spacing: DS.Space.md))
     layout {
-      VStack(alignment: .leading, spacing: DS.Space.xs) {
-        Text(place.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
-        if let city = place.city { Text(city).font(.footnote).foregroundStyle(DS.ink2) }
+      Button(action: open) {
+        HStack(spacing: DS.Space.sm) {
+          VStack(alignment: .leading, spacing: DS.Space.xs) {
+            Text(place.name.dsTitle).font(DS.Font.headline).foregroundStyle(DS.ink)
+            if let city = place.city { Text(city).font(.footnote).foregroundStyle(DS.ink2) }
+          }
+          Spacer(minLength: DS.Space.sm)
+          Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+            .foregroundStyle(DS.ink2).accessibilityHidden(true)
+        }
+        .frame(maxWidth: .infinity, minHeight: DS.Size.minTap, alignment: .leading)
+        .contentShape(Rectangle())
       }
+      .buttonStyle(PressableStyle())
       .accessibilityElement(children: .combine)
-      if !dts.isAccessibilitySize { Spacer(minLength: DS.Space.sm) }
+      .accessibilityHint("Shows address, phone and directions")
+      .accessibilityIdentifier("roasters.place.\(place.name)")
       Button(action: toggle) {
         Text(isSaved ? "SAVED" : "SAVE").font(DS.Font.label)
           .foregroundStyle(isSaved ? DS.onSignal : DS.ink)

@@ -9,8 +9,51 @@ struct RoasterPlace: Identifiable, Hashable, Sendable {
   let website: URL?
   let latitude: Double
   let longitude: Double
+  var address: String?
+  var phone: String?
+  /// Apple Maps' identifier for the place, used to open its place card (hours, photos).
+  var mapItemID: String?
 
   var id: String { "\(name)|\(Int(latitude * 10_000))|\(Int(longitude * 10_000))" }
+}
+
+extension RoasterPlace {
+  /// A saved roaster as a place, when it was saved with its spot on the map.
+  init?(_ roaster: Roaster) {
+    guard let latitude = roaster.latitude, let longitude = roaster.longitude else { return nil }
+    self.init(
+      name: roaster.name, city: roaster.city, website: roaster.website, latitude: latitude,
+      longitude: longitude)
+  }
+
+  /// `tel:` link for the phone number, or nil when there is no dialable number.
+  var callURL: URL? {
+    guard let phone else { return nil }
+    let digits = phone.filter { $0.isNumber || $0 == "+" }
+    return digits.count >= 3 ? URL(string: "tel:\(digits)") : nil
+  }
+
+  /// Driving directions to the roaster in Apple Maps.
+  var directionsURL: URL? {
+    var parts = URLComponents(string: "https://maps.apple.com/")
+    parts?.queryItems = [
+      URLQueryItem(name: "daddr", value: "\(latitude),\(longitude)"),
+      URLQueryItem(name: "q", value: name),
+    ]
+    return parts?.url
+  }
+
+  /// The roaster in Google Maps (the app when installed, else the browser). Only the
+  /// roaster's name and address go in the link, never the user's location.
+  var googleMapsURL: URL? {
+    var parts = URLComponents(string: "https://www.google.com/maps/search/")
+    let place = [name, address?.replacingOccurrences(of: "\n", with: ", ") ?? city]
+      .compactMap { $0 }.joined(separator: ", ")
+    parts?.queryItems = [
+      URLQueryItem(name: "api", value: "1"), URLQueryItem(name: "query", value: place),
+    ]
+    return parts?.url
+  }
 }
 
 /// Where to look: around the device (used for the search, never stored) or a
@@ -34,11 +77,14 @@ protocol RoasterSearching: Sendable {
 
 @MainActor
 protocol LocationProviding {
+  /// True once the user has allowed location (While Using or Always).
+  var isAuthorized: Bool { get }
   func currentLocation() async -> LocationOutcome
 }
 
 /// S10: finds roasters near the user or in a typed city. Location is asked for
-/// only when the user taps "Use my location"; when it is denied or unavailable
+/// only when the user taps "Use my location"; once it is allowed, opening the
+/// screen searches around the user straight away. When it is denied or unavailable
 /// the typed city still works, so nothing on this screen needs location.
 @MainActor
 @Observable
@@ -63,6 +109,16 @@ final class RoasterDiscoveryModel {
   }
 
   var isBusy: Bool { phase == .locating || phase == .searching }
+
+  /// Location already allowed: the screen opens on the map, with no ask and no hint.
+  var opensOnMap: Bool { location.isAuthorized }
+
+  /// Called when the screen opens. With location already allowed it goes straight
+  /// to the roasters nearby; otherwise it waits for the user.
+  func start() async {
+    guard phase == .idle, places.isEmpty, location.isAuthorized else { return }
+    await useMyLocation()
+  }
 
   func useMyLocation() async {
     guard !isBusy else { return }

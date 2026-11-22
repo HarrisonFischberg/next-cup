@@ -2030,6 +2030,46 @@ final class NextCupUITests: XCTestCase {
       app.buttons.matching(NSPredicate(format: "label ==[c] 'Retry'")).firstMatch.exists)
   }
 
+  @MainActor
+  func testAllowedLocationOpensOnTheMapAndARoasterShowsItsDetails() {
+    let app = openRoasters(location: "authorized")
+    let first = app.buttons["roasters.place.Sample Roasters One"]
+    XCTAssertTrue(
+      first.waitForExistence(timeout: 5), "nearby roasters load without tapping Use my location")
+    XCTAssertFalse(element(app, "roasters.hint").exists, "the intro hint is not shown again")
+
+    first.tap()
+    XCTAssertTrue(element(app, "roasterdetail.screen").waitForExistence(timeout: 5))
+    XCTAssertTrue(element(app, "roasterdetail.address").exists)
+    for id in ["directions", "call", "website", "google", "save"] {
+      XCTAssertTrue(app.buttons["roasterdetail.\(id)"].exists, "\(id) is offered")
+    }
+    app.buttons["roasterdetail.save"].tap()
+    app.navigationBars.buttons.firstMatch.tap()
+    XCTAssertTrue(
+      element(app, "roasters.saved.Sample Roasters One").waitForExistence(timeout: 5),
+      "saving from the details lists the roaster under Saved")
+  }
+
+  @MainActor
+  func testCaptureRoasterMapAndDetailScreenshots() throws {
+    let folderURL = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent().deletingLastPathComponent()
+      .appendingPathComponent("ralph/screenshots")
+    try XCTSkipUnless(
+      FileManager.default.fileExists(atPath: folderURL.appendingPathComponent(".capture").path),
+      "screenshot capture is off")
+    let app = openRoasters(location: "authorized")
+    let first = app.buttons["roasters.place.Sample Roasters One"]
+    XCTAssertTrue(first.waitForExistence(timeout: 5))
+    sleep(2)  // map tiles
+    try save(app.screenshot(), "\(folderURL.path)/new_roasters-map.png")
+    first.tap()
+    XCTAssertTrue(element(app, "roasterdetail.screen").waitForExistence(timeout: 5))
+    sleep(2)
+    try save(app.screenshot(), "\(folderURL.path)/new_roaster-detail.png")
+  }
+
   // MARK: Screenshot capture for T027 and T028 (only runs when ralph/screenshots/.capture exists)
 
   @MainActor
