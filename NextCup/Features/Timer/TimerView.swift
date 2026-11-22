@@ -35,6 +35,10 @@ struct TimerView: View {
   @Environment(\.dynamicTypeSize) private var dts
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+  /// The recipe whose timer is on screen, so reopening that brew from the Live Activity
+  /// or Siri keeps this screen.
+  @MainActor static var showing: UUID?
+
   init(setup: TimerSetup) {
     _session = State(initialValue: TimerSession(setup: setup))
   }
@@ -195,7 +199,10 @@ struct TimerView: View {
         BrewAudio.shared.stop()
       }
     }
-    .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+    .onAppear {
+      Self.showing = setup.recipeID
+      UIApplication.shared.isIdleTimerDisabled = true
+    }
     #if DEBUG
       // Screenshots: `-timerHoldAt <s>` starts the brew and holds it at that second;
       // with `-timerEnd` it then finishes.
@@ -208,6 +215,7 @@ struct TimerView: View {
       }
     #endif
     .onDisappear {
+      if Self.showing == setup.recipeID { Self.showing = nil }
       UIApplication.shared.isIdleTimerDisabled = false
       BrewAudio.shared.stop()
     }
