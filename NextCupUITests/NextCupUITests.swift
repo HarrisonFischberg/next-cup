@@ -2081,8 +2081,12 @@ final class NextCupUITests: XCTestCase {
     search.typeText("Kenya")
     XCTAssertTrue(
       element(app, "explore.search.coffee.huck-kenya-rukira").waitForExistence(timeout: 5))
-    XCTAssertTrue(app.buttons["explore.search.map"].exists)
-    search.typeText("\n")  // put the keyboard away
+    app.buttons["explore.search.map"].tap()
+    XCTAssertTrue(
+      app.buttons["roasters.place.Sample Roasters One"].waitForExistence(timeout: 5),
+      "the same words are searched on the map")
+    XCTAssertEqual(app.textFields["roasters.city"].value as? String, "Kenya")
+    app.buttons["roasters.done"].tap()
     app.buttons["explore.search.clear"].tap()
 
     // Idea 3: a saved roaster has its own page.

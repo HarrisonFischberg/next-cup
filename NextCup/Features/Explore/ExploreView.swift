@@ -7,12 +7,12 @@ import SwiftUI
 /// on the bean's own page in Beans.
 struct ExploreView: View {
   @State private var taxonomy = ExploreModel.taxonomy
-  @State private var showsRoasters = false
+  /// The roaster finder sheet, with the words to look for on the map when it was opened
+  /// from the search box.
+  @State private var finder: RoasterFinder?
   /// Finds the roasters at the top of Explore, once location is allowed.
   @State private var nearby = RoasterDiscoveryModel.live()
   @State private var query = ""
-  /// Words from the search box to look for on the map when the roaster finder opens.
-  @State private var mapQuery: String?
   @State private var catalogRoaster: RoasterCatalog.Roaster?
   @FocusState private var searching: Bool
 
@@ -37,8 +37,7 @@ struct ExploreView: View {
         } else {
           ExploreSearchResults(query: typed) {
             searching = false
-            mapQuery = typed
-            showsRoasters = true
+            finder = RoasterFinder(query: typed)
           }
         }
       }
@@ -48,14 +47,14 @@ struct ExploreView: View {
     .background(DS.bg)
     .navigationTitle("Explore")
     .toolbar(.hidden, for: .navigationBar)
-    .sheet(isPresented: $showsRoasters, onDismiss: { mapQuery = nil }) {
+    .sheet(item: $finder) { finder in
       RoasterDiscoveryView(
-        initialQuery: mapQuery,
+        initialQuery: finder.query,
         openCatalog: { roaster in
-          showsRoasters = false
+          self.finder = nil
           catalogRoaster = roaster
         }
-      ) { showsRoasters = false }
+      ) { self.finder = nil }
     }
     .navigationDestination(item: $catalogRoaster) { roaster in
       CatalogRoasterView(roaster: roaster, checkedOn: RoasterCatalog.shared?.checkedOn ?? "")
@@ -96,7 +95,7 @@ struct ExploreView: View {
   }
 
   @ViewBuilder private var moreSections: some View {
-    NearbyRoasters(model: nearby) { showsRoasters = true }
+    NearbyRoasters(model: nearby) { finder = RoasterFinder() }
     SavedRoasters()
     VStack(alignment: .leading, spacing: DS.Space.sm) {
       Text("ROASTERS").font(DS.Font.label).foregroundStyle(DS.ink2)
@@ -113,7 +112,7 @@ struct ExploreView: View {
             Hairline()
           }
           Button {
-            showsRoasters = true
+            finder = RoasterFinder()
           } label: {
             sectionRow("Find roasters near me", "Search the map while you use the app", "map")
           }
@@ -155,4 +154,10 @@ struct ExploreView: View {
     .contentShape(Rectangle())
     .accessibilityElement(children: .combine)
   }
+}
+
+/// One opening of the roaster finder.
+private struct RoasterFinder: Identifiable {
+  let id = UUID()
+  var query: String?
 }

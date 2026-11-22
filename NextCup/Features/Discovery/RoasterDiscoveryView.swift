@@ -205,7 +205,11 @@ struct RoasterDiscoveryView: View {
     .overlay(alignment: .top) {
       if canSearchArea || (model.phase == .searching && model.showsRegionResults) {
         Button {
-          if let visibleRegion { Task { await model.searchRegion(visibleRegion) } }
+          guard let visibleRegion else { return }
+          // Pin the map where the user put it: it is redrawn while the area is searched.
+          camera = .region(visibleRegion)
+          fittedRegion = visibleRegion
+          Task { await model.searchRegion(visibleRegion) }
         } label: {
           HStack(spacing: DS.Space.sm) {
             if model.phase == .searching { ProgressView().tint(DS.ink) }
