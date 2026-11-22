@@ -26,6 +26,6 @@
 		<string>audio</string>
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Next Cup uses your location once, when you ask, to find coffee roasters near you. It is not stored.</string>
+	<string>Next Cup uses your location to find coffee roasters near you and show where you are on the roaster map. It is not stored.</string>
 </dict>
 </plist>

@@ -138,3 +138,32 @@ Network endpoints are now the two AI providers, Apple Maps search, Open Food Fac
 | AI prompts and photos with no key set | Apple's on-device model (FoundationModels). Photos are first read to text with Apple Vision. Nothing leaves the iPhone, so no disclosure is shown | Same as the AI request log | Pick another provider in Settings → AI |
 | API key when it is saved | Sent once to `api.anthropic.com/v1/models` or `api.openai.com/v1/models` to check it and list its models; no user data is sent | Not stored by the app beyond the Keychain item | Remove key |
 | Effort choice | `UserDefaults` (`ai.effort`), no secrets; sent with each cloud request | Until changed | Settings → AI |
+
+## Roaster details and outbound links (2026-11-21)
+
+Once location is allowed (While Using or Always), opening "Find roasters near me" searches around the user straight away instead of waiting for a tap on "Use my location". The location is still approximate, used for that one search and not stored.
+
+Tapping a roaster on the map or in the list shows its details in the app. No new vendor of ours; every link below opens only when the user taps it.
+
+| Data | Where it goes | Retention | Deletion |
+| --- | --- | --- | --- |
+| Roaster address, phone and Apple Maps place identifier | Returned by the same Apple MapKit search; held in memory while the screen is open, not saved (a saved roaster still keeps only name, city, website and coordinates) | Not stored | n/a |
+| Apple Maps place identifier | Sent back to Apple MapKit when the user taps "Hours, photos and more", to load Apple's place card | Apple's terms | Not stored by the app |
+| Roaster name and address | Put in a `google.com/maps/search` link when the user taps "Open in Google Maps"; opens the Google Maps app or the browser. The user's location is never in the link | Google's terms | Not stored by the app |
+| Roaster coordinates and name | Put in a `maps.apple.com` directions link when the user taps "Directions" | Apple's terms | Not stored by the app |
+| Roaster phone number | `tel:` link when the user taps "Call" | n/a | n/a |
+
+App Privacy label: unchanged (nothing is collected by Rare Creatures LLC; the links are the same as following a link in a browser).
+
+## Explore: nearby roasters, distance and search (2026-11-21)
+
+No new vendor. Apple MapKit local search is still the only place roaster searches go.
+
+| Data | Where it goes | Retention | Deletion |
+| --- | --- | --- | --- |
+| Approximate location, on opening Explore | Once location is allowed, the Explore tab runs the same nearby search as "Find roasters near me" to show the three closest roasters. Sent to Apple MapKit as the search region | Held in memory for distances while Explore is open; not stored | Revoke permission in iOS Settings |
+| Position on the roaster map | With location allowed, the map shows the user's position (MapKit's own dot, drawn on device). Distances say "About" and are rounded unless Precise Location is on | Not stored | Revoke permission in iOS Settings |
+| Map area for "Search this area" | The visible map region is sent to Apple MapKit as the search region | Apple's terms | Not stored by the app |
+| Text typed in Explore's search box | Matched on device against the bundled catalog and saved roasters. Sent to Apple MapKit only when the user taps "Search the map for …" | Not stored | n/a |
+
+The location purpose text (`NSLocationWhenInUseUsageDescription`) now reads "Next Cup uses your location to find coffee roasters near you and show where you are on the roaster map. It is not stored.", because the search now also runs when Explore opens, not only on a tap. App Privacy label: unchanged (location is not collected by Rare Creatures LLC; it goes from the phone to Apple Maps search and is not linked to the user).
