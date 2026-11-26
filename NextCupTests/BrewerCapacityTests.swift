@@ -101,6 +101,29 @@ struct BrewerCapacityTests {
     #expect(sorted.contains { $0.instruction.contains("103 g") })
   }
 
+  /// The 663 g the dial-in rule used to suggest: more than the 410 g held closed, so it
+  /// must go in as pours after the valve opens, none over the 480 g a Switch 03 drains.
+  @Test func switch03With663gIsStagedAndFits() throws {
+    var draft = overfilledSwitch()
+    draft.waterG = 663
+    draft.steps = [
+      RecipeStepDraft(kind: .closeValve, startOffsetS: 0, instruction: "Close the valve."),
+      RecipeStepDraft(
+        kind: .pour, startOffsetS: 0, targetCumulativeWaterG: 330, instruction: "Pour 330 g."),
+      RecipeStepDraft(
+        kind: .pour, startOffsetS: 30, targetCumulativeWaterG: 663, instruction: "Pour 333 g."),
+      RecipeStepDraft(kind: .openValve, startOffsetS: 150, instruction: "Open the valve."),
+      RecipeStepDraft(kind: .drawdown, startOffsetS: 180, instruction: "Let it drain."),
+    ]
+    let (fixed, _) = try #require(switch03.fitted(draft))
+    #expect(switch03.overfills(fixed).isEmpty)
+    #expect(RecipeEditorService.validate(fixed) == nil)
+    #expect(fixed.steps.compactMap(\.targetCumulativeWaterG).max() == 663)
+    let sorted = RecipeEditorService.sorted(fixed.steps)
+    let open = try #require(sorted.firstIndex { $0.kind == .openValve })
+    #expect(sorted[..<open].compactMap(\.targetCumulativeWaterG).max() ?? 0 <= 410)
+  }
+
   @Test func switchThatNeverOpensGetsAValve() throws {
     var draft = overfilledSwitch()
     draft.steps.removeAll { $0.kind == .openValve }
