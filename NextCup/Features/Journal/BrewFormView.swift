@@ -48,6 +48,7 @@ struct BrewFormView: View {
   /// Set by Edit and Cancel. A saved brew opens locked, so a stray swipe can't
   /// change it; an unsaved edit reopened from the Journal opens unlocked.
   @State private var unlocked: Bool?
+  @State private var repeatingAgain = false
   @FocusState private var focused: Field?
   @AppStorage(BrewYield.unitKey) private var yieldUnit = BrewYield.defaultUnit.rawValue
   @AppStorage(UnitStorage.weightKey) private var weightUnit = WeightUnit.grams.rawValue
@@ -173,24 +174,7 @@ struct BrewFormView: View {
           onSaved?()
           dismiss()
         }
-      ) {
-        if let made = model.madeSuggestion {
-          KraftNote {
-            VStack(alignment: .leading, spacing: DS.Space.xs) {
-              Text("TRY THIS NEXT TIME").font(DS.Font.label).foregroundStyle(DS.ink)
-              Text(SuggestionFormat.headline(made, units))
-                .font(DS.Font.mono(.title2, .bold)).foregroundStyle(DS.ink)
-                .accessibilityIdentifier("brewform.saved.suggestion")
-              Text(made.rationale).font(.footnote).foregroundStyle(DS.ink)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
-          }
-        } else if let note = model.dialInNote {
-          Text(note).font(.footnote).foregroundStyle(DS.ink2)
-            .accessibilityIdentifier("brewform.saved.dialin")
-        }
-      }
+      )
       .accessibilityIdentifier("brewform.saved")
     }
   }
@@ -214,6 +198,15 @@ struct BrewFormView: View {
       VStack(alignment: .leading, spacing: DS.Space.lg) {
         header(model)
         if locked {
+          if let editing {
+            SteelButton(title: "Brew Again") {
+              if router?.brewAgain(editing, store: Store(context: context)) != true {
+                repeatingAgain = true
+              }
+            }
+            .accessibilityHint("Opens Start brew with this brew's recipe, dose, grind and bean")
+            .accessibilityIdentifier("brewform.brewAgain")
+          }
           SteelButton(title: "Ask AI for Next Cup", kind: .secondary) { askingNextCup = true }
             .accessibilityHint("Puts an improved recipe called Next Cup on the Brew tab")
             .accessibilityIdentifier("brewform.askNextCup")
@@ -291,6 +284,10 @@ struct BrewFormView: View {
       if let editing {
         NextCupAIView(brew: editing) { askingNextCup = false }
       }
+    }
+    // A brew logged by hand has no recipe to time: Brew Again repeats it on a new brew.
+    .navigationDestination(isPresented: $repeatingAgain) {
+      if let editing { BrewFormView(seed: nil, repeating: editing) }
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       if !locked { saveBar(model).hiddenWhileTyping() }

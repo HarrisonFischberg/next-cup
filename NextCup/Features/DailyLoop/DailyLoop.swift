@@ -3,9 +3,8 @@ import SwiftData
 import SwiftUI
 @preconcurrency import UserNotifications
 
-// The daily loop: brew, let the cup rest, taste it (a reminder 20 minutes after
-// brewing), then one change for the next cup. The rules suggestion is stored by
-// SuggestionService and the next brew of the same bean opens with it on offer.
+// The daily loop: brew, let the cup rest, then taste it (a reminder 20 minutes after
+// brewing). Changes for the next cup come from the brew engine and the AI, not from here.
 
 /// Where today's cup is in the loop.
 enum LoopStation: Int, CaseIterable {
@@ -59,14 +58,6 @@ struct LoopStrip: View {
       }
     }
   }
-}
-
-/// "Grind: 20 → 19", or "Grind: one step finer" when the brew had no value to start from.
-func loopHeadline(_ suggestion: Suggestion) -> String {
-  guard suggestion.fromValue.trimmingCharacters(in: .whitespaces).isEmpty else {
-    return SuggestionFormat.headline(suggestion, UnitStorage.preferences())
-  }
-  return "\(SuggestionFormat.title(suggestion.field)): \(suggestion.toValue)"
 }
 
 // MARK: Reminder
@@ -127,25 +118,18 @@ enum TasteReminder {
 
 // MARK: Today card
 
-/// The top of the journal while today's cup is in the loop: resting and waiting to
-/// be tasted, or tasted with one change ready for the next cup.
+/// The top of the journal while today's cup is waiting to be tasted.
 struct TodayCard: View {
   let brew: Brew
   let taste: () -> Void
 
   private var name: String { brew.beanNames.first ?? brew.method?.name ?? "Today's cup" }
   private var due: Date { TasteReminder.due(after: brew.date) }
-  private var proposal: Suggestion? {
-    (brew.suggestionsMade ?? []).first { $0.source == .rules && $0.state == .proposed }
-  }
 
-  /// Shown for a brew from today that is untasted, or tasted with a change waiting.
+  /// Shown for a brew from today that is still untasted.
   static func applies(to brew: Brew, now: Date = .now) -> Bool {
     guard Calendar.current.isDate(brew.date, inSameDayAs: now) else { return false }
-    let waiting = (brew.suggestionsMade ?? []).contains {
-      $0.source == .rules && $0.state == .proposed
-    }
-    return brew.verdict == nil || waiting
+    return brew.verdict == nil
   }
 
   var body: some View {
@@ -176,12 +160,6 @@ struct TodayCard: View {
             .accessibilityIdentifier("today.taste")
           }
         }
-      } else if let proposal {
-        LoopStrip(at: .next, detail: "Tomorrow, change one thing.")
-        Text(loopHeadline(proposal))
-          .font(.system(.title3, design: .serif)).foregroundStyle(DS.ink)
-          .accessibilityIdentifier("today.next")
-        Text(proposal.rationale).font(.footnote).foregroundStyle(DS.ink2)
       }
     }
     .padding(DS.Space.xl)
@@ -194,8 +172,7 @@ struct TodayCard: View {
 
 // MARK: Taste, then the next cup
 
-/// Opened from the reminder, the Today card or `nextcup://taste/<id>`: how the cup
-/// tasted, then the one change the rules suggest for the next cup.
+/// Opened from the reminder, the Today card or `nextcup://taste/<id>`: how the cup tasted.
 struct TasteView: View {
   let brew: Brew
   @Environment(\.modelContext) private var context
@@ -204,9 +181,7 @@ struct TasteView: View {
   @State private var tenths = 0
   @State private var notes = ""
   @FocusState private var notesFocused: Bool
-  @State private var outcome: DialInOutcome?
   @State private var error: String?
-  @Environment(\.dynamicTypeSize) private var dts
 
   private static let words: [(Verdict, String)] = [
     (.sour, "Sharp, thin, lemony"), (.bitter, "Dry, harsh, ashy"), (.weak, "Watery, light"),
@@ -214,14 +189,10 @@ struct TasteView: View {
     (.strong, "Heavy, intense"), (.balanced, "Sweet, round, clean"),
   ]
 
-  private var proposal: Suggestion? {
-    (brew.suggestionsMade ?? []).first { $0.source == .rules && $0.state == .proposed }
-  }
-
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: DS.Space.xl) {
-        if let outcome { next(outcome) } else { taste }
+        taste
         if let error {
           StateBanner(kind: .error, message: error, actionTitle: "Dismiss") { self.error = nil }
         }
@@ -296,56 +267,10 @@ struct TasteView: View {
     }
   }
 
-  @ViewBuilder private func next(_ outcome: DialInOutcome) -> some View {
-    LoopStrip(
-      at: .next,
-      detail: "You said \(tastes.isEmpty ? "–" : tastes.map(\.rawValue).joined(separator: ", "))"
-        + (tenths > 0 ? ", \(Rating.text(tenths)) of 10." : "."))
-    VStack(alignment: .leading, spacing: DS.Space.lg) {
-      switch outcome {
-      case .change:
-        if let proposal {
-          Text("Change one thing").font(DS.Font.display).foregroundStyle(DS.ink)
-            .dynamicTypeSize(...DS.displayCap)
-          Text(loopHeadline(proposal))
-            .font(.system(.title, design: .serif, weight: .medium)).foregroundStyle(DS.signal)
-            .accessibilityIdentifier("taste.change")
-          Text(proposal.rationale).font(.body).foregroundStyle(DS.ink2)
-          Text(
-            "The next brew of this bean opens with this change on offer. You can still adjust it."
-          )
-          .font(.footnote).foregroundStyle(DS.ink2)
-        }
-      case .keep(let reason):
-        Text("Brew it the same way").font(DS.Font.display).foregroundStyle(DS.ink)
-          .dynamicTypeSize(...DS.displayCap)
-        Text(reason).font(.body).foregroundStyle(DS.ink2)
-          .accessibilityIdentifier("taste.keep")
-      }
-    }
-    .padding(DS.Space.xl)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .panel(DS.paper)
-  }
-
   private var actions: some View {
-    // Side by side, or stacked when the text is too large to share a row.
-    (dts.isAccessibilitySize
-      ? AnyLayout(VStackLayout(spacing: DS.Space.sm))
-      : AnyLayout(HStackLayout(spacing: DS.Space.md))) {
-        if outcome == nil {
-          SteelButton(title: "See tomorrow's change") { save() }
-            .disabled(tastes.isEmpty)
-            .accessibilityIdentifier("taste.save")
-        } else {
-          if let proposal {
-            SteelButton(title: "Not this time", kind: .secondary) { answer(proposal, .dismissed) }
-              .accessibilityIdentifier("taste.dismiss")
-          }
-          SteelButton(title: proposal == nil ? "Done" : "Use tomorrow") { dismiss() }
-            .accessibilityIdentifier("taste.done")
-        }
-      }
+    SteelButton(title: "Save taste") { save() }
+      .disabled(tastes.isEmpty)
+      .accessibilityIdentifier("taste.save")
       .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.sm)
       .background(DS.bg)
   }
@@ -363,21 +288,6 @@ struct TasteView: View {
     }
     TasteReminder.cancel(brewID: brew.id)
     NextCupAuto.shared.brewReviewed(brew.id, store: store)
-    switch SuggestionService(store: store).propose(for: brew) {
-    case .success(let result):
-      withAnimation(.smooth(duration: 0.35)) { outcome = result }
-    case .failure(let failure):
-      error = failure.localizedDescription
-    }
-  }
-
-  private func answer(_ suggestion: Suggestion, _ state: SuggestionState) {
-    suggestion.state = state
-    suggestion.updatedAt = Date()
-    if case .failure(let failure) = Store(context: context).save() {
-      error = failure.localizedDescription
-      return
-    }
     dismiss()
   }
 }

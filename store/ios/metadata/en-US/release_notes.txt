@@ -1,12 +1,8 @@
-A new look for brewing, plus fixes.
+Roasters near you, and a simpler Journal.
 
-- The brew timer is now a full-colour screen with a cup that fills as you pour, and each step change is hard to miss.
-- Start brew shows your steps as one card you can edit.
-- Unsaved brews sit first in the Journal, above past brews.
-- Explore is now roasters and your flavors. Brew help moved to each bean's page.
-- Thirteen more brew tracks.
-- Deleting a recipe or discarding an unsaved brew shows Undo instead of asking first.
-- Hold the dose and water buttons to change them quickly.
-- The Lock Screen timer keeps counting when a brew runs over.
-- "Rate later" keeps the bean, grinder and grind you chose.
-- Water hardness accepts a decimal comma.
+- Explore now shows the three coffee roasters closest to you, with how far away each one is.
+- The roaster map opens on your area once location is allowed, and "Search this area" looks wherever you move the map.
+- Tap a roaster for its address, phone, website and directions.
+- Roasters you save get their own page with your beans and brews from them.
+- One search box on Explore finds roasters and coffees, and can hand your search to the map.
+- The Journal no longer shows "Tomorrow, change one thing". Saving how a cup tasted just saves it.

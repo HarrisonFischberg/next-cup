@@ -111,6 +111,9 @@ struct RootTabView: View {
 
   private func handle(_ url: URL) {
     guard let link = DeepLink(url: url) else { return }
+    // The Live Activity or Siri reopening the brew already on screen: keep that screen, so
+    // its music, bean and grinder carry on instead of a fresh timer replacing it.
+    if case .timer(let id, _) = link, id == TimerView.showing { return }
     storedTab = link.tab.rawValue
     router.open(link)
   }

@@ -28,7 +28,7 @@ SHOTS = [
     ("04-timer", "The timer shows\neach pour",
      "The current step is on screen, on your Lock Screen and in the Dynamic Island."),
     ("06-taste", "Say how the\ncup tasted",
-     "Pick what you tasted and Next Cup suggests a change for next time."),
+     "Pick what you tasted and rate the cup. It is saved with the brew."),
     ("05-journal", "Your journal keeps\nevery brew",
      "Each entry has the dose, water, grind, time, taste and rating."),
     ("07-beans", "Keep track of\nyour beans",

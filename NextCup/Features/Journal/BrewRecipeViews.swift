@@ -8,30 +8,26 @@ struct BrewRecipeInfo {
   var name: String
   var symbol: String
   var isDeleted: Bool
-  var isFavorite: Bool
 
   init?(_ brew: Brew) {
     if let recipe = brew.recipe {
-      (name, isDeleted, isFavorite) = (recipe.name, false, recipe.isFavorite)
+      (name, isDeleted) = (recipe.name, false)
       symbol = recipe.method?.symbol ?? brew.method?.symbol ?? "cup.and.saucer"
     } else if let snapshot = brew.recipeSnapshot {
-      (name, isDeleted, isFavorite) = (snapshot.name, true, false)
+      (name, isDeleted) = (snapshot.name, true)
       symbol = snapshot.methodSymbol ?? brew.method?.symbol ?? "cup.and.saucer"
     } else {
       return nil
     }
   }
 
-  /// "Recipe: Kasuya 4:6, favorite recipe" or "Recipe: Kasuya 4:6, Recipe deleted".
-  var accessibilityLabel: String {
-    "Recipe: \(name)" + (isDeleted ? ", Recipe deleted" : "")
-      + (isFavorite ? ", favorite recipe" : "")
-  }
+  /// "Recipe: Kasuya 4:6" or "Recipe: Kasuya 4:6, Recipe deleted".
+  var accessibilityLabel: String { "Recipe: \(name)" + (isDeleted ? ", Recipe deleted" : "") }
 }
 
 /// The recipe line on a journal card and a brew's page: the brewer's symbol and the recipe's
-/// name in an outlined capsule (the taste tags are filled), the favorite star when the recipe
-/// is starred, and "Recipe deleted" once it is gone.
+/// name in an outlined capsule (the taste tags are filled), and "Recipe deleted" once it is
+/// gone. The card's one star covers the brew and its recipe.
 struct BrewRecipeChip: View {
   let info: BrewRecipeInfo
 
@@ -44,11 +40,6 @@ struct BrewRecipeChip: View {
       if info.isDeleted {
         Text("Recipe deleted").font(.caption).foregroundStyle(DS.ink2).lineLimit(1)
       }
-      if info.isFavorite {
-        Image(systemName: "star.fill").font(.caption2.weight(.bold))
-          .foregroundStyle(DS.favorite)
-          .transition(.scale(scale: 0.5).combined(with: .opacity))
-      }
     }
     .padding(.horizontal, DS.Space.sm).padding(.vertical, 4)
     .overlay(Capsule().strokeBorder(DS.ink.opacity(0.18), lineWidth: 1))
@@ -57,55 +48,27 @@ struct BrewRecipeChip: View {
   }
 }
 
-/// The recipe actions a brew offers, for the journal's long-press menu and the brew's page:
-/// star or unstar the recipe (its own star on the Brew tab, apart from the brew's), or save a
-/// deleted recipe again from what the brew kept of it.
+/// The recipe action a brew offers, on the journal's long-press menu and the brew's page:
+/// save a deleted recipe again from what the brew kept of it. (The recipe's star follows the
+/// brew's: `Store.toggleFavorite(_:)`.)
 @MainActor
 enum BrewRecipeAction {
-  case favorite(Recipe)
   case restore
 
   init?(_ brew: Brew) {
-    if let recipe = brew.recipe {
-      self = .favorite(recipe)
-    } else if brew.recipeSnapshotJSON != nil {
-      self = .restore
-    } else {
-      return nil
-    }
+    guard brew.recipe == nil, brew.recipeSnapshotJSON != nil else { return nil }
+    self = .restore
   }
 
-  var title: String {
-    switch self {
-    case .favorite(let recipe): recipe.isFavorite ? "Unfavorite recipe" : "Favorite recipe"
-    case .restore: "Save recipe again"
-    }
-  }
-
-  var symbol: String {
-    switch self {
-    case .favorite(let recipe): recipe.isFavorite ? "star.slash" : "star.circle"
-    case .restore: "arrow.uturn.backward"
-    }
-  }
-
-  var identifier: String {
-    switch self {
-    case .favorite: "journal.favoriteRecipe"
-    case .restore: "journal.restoreRecipe"
-    }
-  }
+  var title: String { "Save recipe again" }
+  var symbol: String { "arrow.uturn.backward" }
+  var identifier: String { "journal.restoreRecipe" }
 
   /// Runs the action with a light tap on success; a failure returns the message to show.
   func perform(on brew: Brew, store: Store, reduceMotion: Bool) -> String? {
     var failure: StoreError?
     withAnimation(reduceMotion ? nil : .spring(duration: 0.25)) {
-      switch self {
-      case .favorite(let recipe):
-        if case .failure(let error) = store.toggleFavorite(recipe, \.isFavorite) { failure = error }
-      case .restore:
-        if case .failure(let error) = store.restoreRecipe(for: brew) { failure = error }
-      }
+      if case .failure(let error) = store.restoreRecipe(for: brew) { failure = error }
     }
     guard case .saveFailed(let message) = failure else {
       Feedback.tap()
