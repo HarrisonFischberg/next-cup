@@ -74,6 +74,67 @@ struct RoasterCatalogTests {
     #expect(try context.fetchCount(FetchDescriptor<Recipe>()) == coffee.starterRecipes.count)
   }
 
+  // MARK: The catalog and the map
+
+  @Test func aBusinessOnTheMapIsMatchedToItsCatalogRoaster() throws {
+    let catalog = try catalog()
+    #expect(catalog.roaster(matching: "Onyx Coffee Lab - Rogers")?.key == "onyx")
+    #expect(catalog.roaster(matching: "HUCKLEBERRY ROASTERS")?.key == "huckleberry")
+    #expect(catalog.roaster(matching: "Peet’s Coffee")?.name == "Peet's Coffee")
+    #expect(catalog.roaster(matching: "Counter Coffee") == nil)
+    #expect(catalog.roaster(matching: "Sample Roasters One") == nil)
+    #expect(catalog.roaster(matching: "Coffee Roasters") == nil)
+  }
+
+  @Test func catalogRoastersAmongNearbyPlacesAreMarkedNear() throws {
+    let catalog = try catalog()
+    let place = { (name: String) in
+      RoasterPlace(name: name, city: nil, website: nil, latitude: 1, longitude: 2)
+    }
+    #expect(
+      catalog.roasters(near: [place("Huckleberry Roasters"), place("Sample Roasters One")])
+        == ["huckleberry"])
+    #expect(catalog.roasters(near: []).isEmpty)
+  }
+
+  @Test func oneSearchFindsRoastersAndCoffees() throws {
+    let catalog = try catalog()
+    #expect(catalog.search("huckle").roasters.map(\.key) == ["huckleberry"])
+    #expect(catalog.search("denver").roasters.map(\.key) == ["huckleberry"])
+    #expect(catalog.search("kenya rukira").coffees.map(\.id) == ["huck-kenya-rukira"])
+    #expect(catalog.search("  ").roasters.isEmpty)
+    #expect(catalog.search("zzzz").coffees.isEmpty)
+  }
+
+  // MARK: A saved roaster's page
+
+  @Test func roasterStatsCountBeansAndBrewsAndAverageTheRatedOnes() throws {
+    let context = container.mainContext
+    let roaster = Roaster(name: "Sample Roasters One")
+    context.insert(roaster)
+    let beans = ["One", "Two"].map { name in
+      let bean = Bean(name: name)
+      context.insert(bean)
+      bean.roaster = roaster
+      return bean
+    }
+    for (bean, rating) in [(beans[0], 80), (beans[0], 70), (beans[1], nil)] {
+      let brew = Brew()
+      context.insert(brew)
+      brew.ratingTenths = rating
+      let use = BrewBean(grams: 15, beanNameSnapshot: bean.name)
+      context.insert(use)
+      use.brew = brew
+      use.bean = bean
+    }
+    try context.save()
+    let stats = RoasterStats(beans: roaster.beans ?? [])
+    #expect(stats.beans == 2)
+    #expect(stats.brews == 3)
+    #expect(stats.averageTenths == 75)
+    #expect(RoasterStats(beans: []).averageTenths == nil)
+  }
+
   @Test func starterRecipeKindsAreRealStepKinds() {
     for style in StarterStyle.allCases {
       for step in StarterRecipes.recipe(style: style, roast: .light, process: nil).steps {

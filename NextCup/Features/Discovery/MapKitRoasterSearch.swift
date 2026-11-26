@@ -11,9 +11,16 @@ struct MapKitRoasterSearch: RoasterSearching {
     let places = try await search(area, request: Self.request(for: area))
     // A bag's brand ("… Coffee Roasters") plus "coffee roaster" often finds nothing;
     // the brand alone usually finds the business.
-    if places.isEmpty, case .named(let name) = area {
+    // The search box also takes a roaster's name, which "coffee roaster in …" can miss.
+    let text: String? =
+      switch area {
+      case .named(let name): name
+      case .city(let typed): typed
+      case .near, .region: nil
+      }
+    if places.isEmpty, let text {
       let plain = MKLocalSearch.Request()
-      plain.naturalLanguageQuery = name
+      plain.naturalLanguageQuery = text
       plain.resultTypes = .pointOfInterest
       return try await search(area, request: plain)
     }
@@ -32,6 +39,12 @@ struct MapKitRoasterSearch: RoasterSearching {
       request.naturalLanguageQuery = "coffee roaster in \(city)"
     case .named(let name):
       request.naturalLanguageQuery = "\(name) coffee roaster"
+    case .region(let latitude, let longitude, let latitudeDelta, let longitudeDelta):
+      request.naturalLanguageQuery = "coffee roaster"
+      request.region = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+        span: MKCoordinateSpan(latitudeDelta: latitudeDelta, longitudeDelta: longitudeDelta))
+      request.regionPriority = .required
     }
     request.resultTypes = .pointOfInterest
     return request
@@ -52,7 +65,9 @@ struct MapKitRoasterSearch: RoasterSearching {
       let coordinate = item.location.coordinate
       let place = RoasterPlace(
         name: name, city: item.addressRepresentations?.cityName, website: item.url,
-        latitude: coordinate.latitude, longitude: coordinate.longitude)
+        latitude: coordinate.latitude, longitude: coordinate.longitude,
+        address: item.address?.fullAddress, phone: item.phoneNumber,
+        mapItemID: item.identifier?.rawValue)
       return seen.insert(place.id).inserted ? place : nil
     }
   }
@@ -62,6 +77,13 @@ struct MapKitRoasterSearch: RoasterSearching {
 /// used for one search and never stored.
 @MainActor
 struct DeviceLocation: LocationProviding {
+  var isAuthorized: Bool {
+    let status = CLLocationManager().authorizationStatus
+    return status == .authorizedWhenInUse || status == .authorizedAlways
+  }
+
+  var isPrecise: Bool { CLLocationManager().accuracyAuthorization == .fullAccuracy }
+
   func currentLocation() async -> LocationOutcome {
     let session = CLServiceSession(authorization: .whenInUse)
     defer { session.invalidate() }
@@ -88,20 +110,23 @@ struct DeviceLocation: LocationProviding {
   /// Synthetic roasters for UI tests, chosen with `-roasterStub`. The city
   /// "Nowhere" finds none and "Offline" fails, so every state can be reached
   /// without a network or a location prompt. `-locationStub denied` makes the
-  /// location tap take the denied path.
+  /// location tap take the denied path, and `-locationStub authorized` is a user
+  /// who already allowed location.
   struct StubRoasterSearch: RoasterSearching {
     func search(_ area: SearchArea) async throws -> [RoasterPlace] {
       switch area {
       case .city(let text), .named(let text):
         if text.lowercased() == "nowhere" { return [] }
         if text.lowercased() == "offline" { throw URLError(.notConnectedToInternet) }
-      case .near:
+      case .near, .region:
         break
       }
-      return [
+      var places = [
         RoasterPlace(
-          name: "Sample Roasters One", city: "Sampletown", website: nil, latitude: 45.52,
-          longitude: -122.68),
+          name: "Sample Roasters One", city: "Sampletown",
+          website: URL(string: "https://sample-roasters.example"), latitude: 45.52,
+          longitude: -122.68, address: "12 Sample Street\nSampletown, OR 97200",
+          phone: "+1 (503) 555-0100"),
         RoasterPlace(
           name: "Sample Roasters Two", city: "Sampletown", website: nil, latitude: 45.53,
           longitude: -122.66),
@@ -109,11 +134,21 @@ struct DeviceLocation: LocationProviding {
           name: "Sample Roasters Three", city: "Sampletown", website: nil, latitude: 45.51,
           longitude: -122.64),
       ]
+      // Near the user there is also a roaster from the bundled catalog, to reach the
+      // catalog link. A typed city keeps to the three samples.
+      if case .near = area {
+        places.append(
+          RoasterPlace(
+            name: "Huckleberry Roasters", city: "Sampletown", website: nil, latitude: 45.56,
+            longitude: -122.58))
+      }
+      return places
     }
   }
 
   struct StubLocation: LocationProviding {
     let outcome: LocationOutcome
+    var isAuthorized = false
     func currentLocation() async -> LocationOutcome { outcome }
   }
 #endif
@@ -132,13 +167,13 @@ extension RoasterDiscoveryModel {
     #if DEBUG
       let arguments = ProcessInfo.processInfo.arguments
       if arguments.contains("-roasterStub") {
-        let denied =
-          arguments.firstIndex(of: "-locationStub").map { $0 + 1 }
-          .flatMap { arguments.indices.contains($0) ? arguments[$0] : nil } == "denied"
+        let stub = arguments.firstIndex(of: "-locationStub").map { $0 + 1 }
+          .flatMap { arguments.indices.contains($0) ? arguments[$0] : nil }
         return RoasterDiscoveryModel(
           searcher: StubRoasterSearch(),
           location: StubLocation(
-            outcome: denied ? .denied : .granted(latitude: 45.52, longitude: -122.68)))
+            outcome: stub == "denied" ? .denied : .granted(latitude: 45.52, longitude: -122.68),
+            isAuthorized: stub == "authorized"))
       }
     #endif
     return RoasterDiscoveryModel(searcher: MapKitRoasterSearch(), location: DeviceLocation())
