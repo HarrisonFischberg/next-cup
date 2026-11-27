@@ -419,13 +419,16 @@ struct RecipeEditorView: View {
       return
     }
     let brewer = BrewerFit.current(method?.builtInKey)
+    let sanity = RecipeReviewAI.Sanity(method: method, note: aiNote, from: draft)
     let payload = RecipeReviewAI.payload(
-      draft, methodName: method?.name, note: aiNote, grinder: grinderName, brewer: brewer)
+      draft, methodName: method?.name, note: aiNote, grinder: grinderName, brewer: brewer,
+      reference: sanity?.reference.promptLine())
     reviewing = true
     Task {
       defer { reviewing = false }
       do {
-        review = try await RecipeReviewAI.review(payload, base: draft, brewer: brewer)
+        review = try await RecipeReviewAI.review(
+          payload, base: draft, brewer: brewer, sanity: sanity)
       } catch {
         reviewError =
           "The AI could not suggest steps that add up for this recipe. Your steps are unchanged."

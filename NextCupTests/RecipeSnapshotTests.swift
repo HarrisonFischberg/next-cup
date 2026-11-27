@@ -108,21 +108,80 @@ import Testing
     #expect(brew.recipe?.id == recipeID)
   }
 
-  @Test func favoriteRecipeWorksBeforeAndAfterRestoring() throws {
+  @Test func oneFavoriteCoversTheBrewAndItsRecipe() throws {
     let (store, recipe, brew) = try brewed()
-    #expect(BrewRecipeAction(brew)?.title == "Favorite recipe")
-    #expect(BrewRecipeAction(brew)?.perform(on: brew, store: store, reduceMotion: true) == nil)
-    #expect(recipe.isFavorite)
-    #expect(!brew.isFavorite)  // the brew's own star is separate
-    #expect(BrewRecipeAction(brew)?.title == "Unfavorite recipe")
+    #expect(BrewRecipeAction(brew) == nil)  // no separate recipe star
+    let other = Brew()
+    store.context.insert(other)
+    other.recipe = recipe
 
+    try store.toggleFavorite(brew).get()
+    #expect(brew.isFavorite && recipe.isFavorite)
+    try store.toggleFavorite(other).get()
+    // The recipe keeps its star while another starred brew uses it.
+    try store.toggleFavorite(brew).get()
+    #expect(!brew.isFavorite && recipe.isFavorite)
+    try store.toggleFavorite(other).get()
+    #expect(!recipe.isFavorite)
+
+    // A brew whose recipe is gone is starred on its own, and offers the recipe again.
     try RecipeEditorService(store: store).delete(recipe).get()
     #expect(BrewRecipeAction(brew)?.title == "Save recipe again")
-    #expect(BrewRecipeAction(brew)?.perform(on: brew, store: store, reduceMotion: true) == nil)
-    #expect(BrewRecipeAction(brew)?.title == "Favorite recipe")
-    #expect(BrewRecipeAction(brew)?.perform(on: brew, store: store, reduceMotion: true) == nil)
-    #expect(brew.recipe?.isFavorite == true)
-    #expect(BrewRecipeInfo(brew)?.isFavorite == true)
+    try store.toggleFavorite(brew).get()
+    #expect(brew.isFavorite)
+  }
+
+  @Test func mergeStarsTheRecipesOfStarredBrewsOnce() throws {
+    let (store, recipe, brew) = try brewed()
+    let alone = Recipe(name: "Starred on the Brew tab")
+    store.context.insert(alone)
+    alone.isFavorite = true
+    let plain = Brew()
+    store.context.insert(plain)
+    plain.recipe = alone
+    brew.isFavorite = true
+    let defaults = try #require(UserDefaults(suiteName: "merge.\(UUID().uuidString)"))
+
+    try FavoriteMerge.run(store.context, defaults: defaults).get()
+    #expect(recipe.isFavorite)
+    #expect(alone.isFavorite && !plain.isFavorite)  // nothing loses or gains a star it had not
+
+    recipe.isFavorite = false
+    try FavoriteMerge.run(store.context, defaults: defaults).get()
+    #expect(!recipe.isFavorite)  // ran once
+  }
+
+  @Test func brewAgainOpensStartBrewWithTheBrewsNumbers() throws {
+    let (store, recipe, brew) = try brewed()
+    let bean = Bean(name: "Geometry")
+    let grinder = Grinder(name: "Encore")
+    store.context.insert(bean)
+    store.context.insert(grinder)
+    let part = BrewBean(grams: 16, beanNameSnapshot: bean.name)
+    part.bean = bean
+    (brew.beans, brew.grinder, brew.doseG, brew.grindSetting) = ([part], grinder, 16, "20")
+    let router = AppRouter()
+
+    #expect(router.brewAgain(brew, store: store))
+    #expect(router.recipesPath == [.recipe(recipe.id)])
+    let start = try #require(router.startAgain)
+    #expect(start.beanID == bean.id && start.grinderID == grinder.id)
+    #expect(start.doseG == 16 && start.grindSetting == "20")
+
+    // A deleted recipe is saved again from the brew, with its steps; a deleted bean is dropped.
+    let recipeID = recipe.id
+    try RecipeEditorService(store: store).delete(recipe).get()
+    store.context.delete(bean)
+    try store.save().get()
+    #expect(router.brewAgain(brew, store: store))
+    #expect(router.recipesPath == [.recipe(recipeID)])
+    #expect(brew.recipe?.steps?.count == 2)
+    #expect(router.startAgain?.beanID == nil)
+
+    // A brew logged by hand has no recipe to time.
+    let byHand = Brew()
+    store.context.insert(byHand)
+    #expect(!router.brewAgain(byHand, store: store))
   }
 
   @Test func backfillSnapshotsLinkedBrewsOnce() throws {

@@ -52,6 +52,8 @@ private struct RecipeDetailContent: View {
   @Query(sort: \Bean.name) private var allBeans: [Bean]
   @State private var beanID: UUID?
   @State private var addingBean = false
+  /// Brew again came with a bean that is finished or gone: none is picked in its place.
+  @State private var keepsNoBean = false
   @State private var grindSetting = ""
   @AppStorage(BrewFormModel.lastGrinderKey) private var lastGrinderID = ""
   @AppStorage(BrewYield.unitKey) private var yieldUnit = BrewYield.defaultUnit.rawValue
@@ -357,12 +359,18 @@ private struct RecipeDetailContent: View {
       BeanEditorView(target: .new, onSaved: { choose($0) }) { addingBean = false }
     }
     .onAppear {
-      if let id = router?.startBeanID, let bean = beans.first(where: { $0.id == id }) {
+      if let again = router?.startAgain {
+        apply(again)
+      } else if let id = router?.startBeanID, let bean = beans.first(where: { $0.id == id }) {
         router?.startBeanID = nil
         choose(bean)
-      } else if beanID == nil, let first = beans.first {
+      } else if beanID == nil, !keepsNoBean, let first = beans.first {
         choose(first)
       }
+    }
+    // Brew again on the recipe this page already shows.
+    .onChange(of: router?.startAgain) { _, again in
+      if let again { apply(again) }
     }
   }
 
@@ -721,6 +729,25 @@ private struct RecipeDetailContent: View {
     .max { $0.date < $1.date }
     let last = brews.max { $0.date < $1.date }
     grindSetting = onRecipe?.grindSetting ?? recipeGrind ?? last?.grindSetting ?? grindSetting
+  }
+
+  /// Brew again: the saved brew's bean, dose, grind and grinder. A bean that is finished or
+  /// deleted leaves none picked, and a deleted grinder keeps the current one.
+  private func apply(_ again: BrewAgainStart) {
+    router?.startAgain = nil
+    if let bean = beans.first(where: { $0.id == again.beanID }) {
+      choose(bean)
+    } else {
+      beanID = nil
+    }
+    keepsNoBean = beanID == nil
+    if let dose = again.doseG, dose > 0 {
+      scaledDoseG = abs(dose - recipe.doseG) < 0.0001 ? nil : dose
+    }
+    if let id = again.grinderID, grinders.contains(where: { $0.id == id }) {
+      lastGrinderID = id.uuidString
+    }
+    if !again.grindSetting.isEmpty { grindSetting = again.grindSetting }
   }
 
   private func startBrew() {

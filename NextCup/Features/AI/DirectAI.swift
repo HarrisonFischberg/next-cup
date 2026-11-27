@@ -38,15 +38,31 @@ enum DirectAI {
 
   /// Asks the keyed provider to search the web; nil when Apple's model would answer, since
   /// it cannot browse.
-  static func research(_ question: String, system: String) async throws -> WebResearch? {
+  /// The search is kept to `RecipeReviewAI.researchSites`, and an answer is reused from
+  /// this iPhone for 30 days (`ResearchCache`), so asking the same thing again sends nothing.
+  static func research(
+    _ question: String, system: String, cache: ResearchCache = researchCache
+  ) async throws -> WebResearch? {
     guard let (provider, model) = route, let kind = provider.kind else { return nil }
+    let cacheKey = ResearchCache.key(question, version: system)
+    if let kept = cache.research(for: cacheKey) { return kept }
     let keychain = KeychainStore()
     let client = AIClient(
       transport: URLSessionTransport(),
       key: { _ in (try? keychain.key(for: provider)) ?? nil },
       disclosureAccepted: { _ in true })
-    return try await client.research(question, system: system, provider: kind, model: model)
+    let found = try await client.research(
+      question, system: system, provider: kind, model: model,
+      domains: RecipeReviewAI.researchSites)
+    // An answer that cites no page may be a search that found nothing: ask again next time.
+    if !found.sources.isEmpty { cache.save(found, for: cacheKey) }
+    return found
   }
+
+  /// In Caches, which "Delete all data" empties and iOS backups leave out.
+  static let researchCache = ResearchCache(
+    file: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+      .appendingPathComponent("research.json"))
 
   /// Sends one payload and returns the decoded answer with who gave it: "Anthropic",
   /// "OpenAI" or "On this iPhone".

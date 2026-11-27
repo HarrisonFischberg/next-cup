@@ -7,10 +7,13 @@ THIRTEEN WAYS TO BREW
 Cone and flat-bed drippers, switchable immersion, press pot and inverted press, espresso, iced pour over, cold brew, moka pot, AeroPress, Chemex, drip machine and Nespresso, each with its own styles and starting recipes.
 
 A JOURNAL THAT LEARNS YOUR TASTE
-Save each brew with its dose, water, grind, temperature, time, taste and a photo. Tell Next Cup how the cup tasted, and it suggests one change for next time, built from the recipe and your recent brews of the same coffee. A suggestion only changes your recipe when you tap to use it. Ask AI for Next Cup turns a past brew and your similar brews into an improved recipe, pinned at the top of the Brew tab.
+Save each brew with its dose, water, grind, temperature, time, taste and a photo. Say how each cup tasted, so you can see what worked. Ask AI for Next Cup turns a past brew and your similar brews into an improved recipe, pinned at the top of the Brew tab.
 
 YOUR BEANS, ORGANIZED
-Keep each bag with its roaster, origin, process, roast date and flavor notes. Scan the bag's barcode or QR code, or take a photo, to fill in the details, then say how you want it to taste and get three ways to brew it on your brewers. See how much is left, and find coffee roasters near you on the map.
+Keep each bag with its roaster, origin, process, roast date and flavor notes. Scan the bag's barcode or QR code, or take a photo, to fill in the details, then say how you want it to taste and get three ways to brew it on your brewers. See how much is left.
+
+ROASTERS NEAR YOU
+Explore shows the coffee roasters closest to you with how far away they are. Open the map to search another area, see a roaster's address, phone and website, get directions, and save the ones you like.
 
 RECIPES YOU CAN CHANGE
 Change a recipe's steps before you brew, delete the ones you no longer use, or describe a cup and let Create with AI write the recipe, with a grind to start from on your grinder.

@@ -21,6 +21,8 @@ struct TimerView: View {
   @State private var muted = false
   /// Bumped five seconds before each step change, for the get-ready haptic.
   @State private var readyCue = 0
+  /// The second the warning chime played in, so that second gets no tick on top of it.
+  @State private var chimedSecond: Int?
   /// When the big button was last pressed: a second tap right behind it is a slip of a wet
   /// thumb, not a wish to pause the brew just started or to leave the finish unread.
   @State private var lastPrimaryTap = Date.distantPast
@@ -34,6 +36,10 @@ struct TimerView: View {
   @Environment(AppRouter.self) private var router: AppRouter?
   @Environment(\.dynamicTypeSize) private var dts
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  /// The recipe whose timer is on screen, so reopening that brew from the Live Activity
+  /// or Siri keeps this screen.
+  @MainActor static var showing: UUID?
 
   init(setup: TimerSetup) {
     _session = State(initialValue: TimerSession(setup: setup))
@@ -170,6 +176,7 @@ struct TimerView: View {
     .onChange(of: soon) { _, now in
       guard now, scenePhase == .active else { return }
       readyCue += 1
+      chimedSecond = Int(state.elapsedS)
       BrewAudio.shared.chime()
       AccessibilityNotification.Announcement.urgent("Get ready: \(upcoming.action)")
     }
@@ -177,7 +184,7 @@ struct TimerView: View {
     // A tick each running second; the music follows the brew: playing, paused, over.
     .onChange(of: Int(state.elapsedS)) { _, _ in
       guard state.phase == .running else { return }
-      BrewAudio.shared.tick()
+      if chimedSecond != Int(state.elapsedS) { BrewAudio.shared.tick() }
       if scenePhase == .active { BrewAudio.shared.resume() }
     }
     .onChange(of: state.phase, initial: true) { _, phase in
@@ -195,7 +202,10 @@ struct TimerView: View {
         BrewAudio.shared.stop()
       }
     }
-    .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+    .onAppear {
+      Self.showing = setup.recipeID
+      UIApplication.shared.isIdleTimerDisabled = true
+    }
     #if DEBUG
       // Screenshots: `-timerHoldAt <s>` starts the brew and holds it at that second;
       // with `-timerEnd` it then finishes.
@@ -208,6 +218,7 @@ struct TimerView: View {
       }
     #endif
     .onDisappear {
+      if Self.showing == setup.recipeID { Self.showing = nil }
       UIApplication.shared.isIdleTimerDisabled = false
       BrewAudio.shared.stop()
     }
@@ -585,7 +596,10 @@ struct TimerView: View {
       ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
       : AnyLayout(HStackLayout(alignment: .center, spacing: DS.Space.md))
     return layout {
-      Text(next.kicker).font(.subheadline.weight(.heavy)).foregroundStyle(soon ? DS.field : soft)
+      Label(next.kicker, systemImage: "arrow.right.circle.fill")
+        .labelStyle(.titleAndIcon)
+        .font(.subheadline.weight(.heavy)).textCase(.uppercase)
+        .foregroundStyle(soon ? DS.field : hot ? soft : DS.accent)
       Text(next.action).font(DS.Font.headline).foregroundStyle(text)
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -600,8 +614,13 @@ struct TimerView: View {
     .padding(.horizontal, DS.Space.lg).padding(.vertical, DS.Space.sm)
     .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
     .background(
-      soon ? DS.fieldSoft : fg.opacity(hot ? 0.14 : 0.06),
+      soon ? DS.fieldSoft : hot ? fg.opacity(0.14) : DS.accent.opacity(0.14),
       in: RoundedRectangle(cornerRadius: 28, style: .continuous)
+    )
+    // Off the pour the card sits on the plain background, so an accent rim lifts it out.
+    .overlay(
+      RoundedRectangle(cornerRadius: 28, style: .continuous)
+        .strokeBorder(DS.accent, lineWidth: soon || hot ? 0 : 1.5)
     )
     .animation(motion, value: soon)
     .accessibilityElement(children: .combine)

@@ -81,3 +81,16 @@ report's matrix:
 
 Also on device: camera permission denied then granted, barcode scan of a damaged or unknown
 code, VoiceOver through the bean editor, and the largest text size.
+
+## Recipes
+
+`qa/run-eval.sh apple recipes` (or `anthropic`, or both) sends the 20 requests in
+`fixtures/recipes.json` through the recipe AI as the app does: the real payload builders
+with the brewer's size and its `BrewReference` line, then `RecipeReviewAI.parse` and
+`RecipeReviewAI.fit` (one retry). `tools/score_recipes.py` counts, per provider, how many
+requests got a recipe, how many first answers already passed the number and capacity rules,
+and lists the rest with the reason. Results: `qa/results/recipes-<providers>.jsonl`.
+`QA_RESEARCH=1` adds one live web search kept to `RecipeReviewAI.researchSites` and fails if
+the provider refused the list or cited another site (up to 3 searches on the key). The same
+`QA_MODEL`, `QA_MAX_REQUESTS`, `QA_MAX_USD` and `QA_IDS` limits apply. Not covered: Next Cup
+from a saved brew and brew advice for a bean (they need a journal; their rules are unit tested).

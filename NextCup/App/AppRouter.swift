@@ -18,6 +18,9 @@ final class AppRouter {
   /// The bean Start brew picks when the recipe page opens, then cleared (Brew advice).
   var startBeanID: UUID?
 
+  /// What Brew again brings to the Start brew page, then cleared.
+  var startAgain: BrewAgainStart?
+
   /// Replaces the destination tab's stack with the linked screen, so opening the
   /// same link twice never stacks duplicates.
   func open(_ link: DeepLink) {
@@ -43,10 +46,37 @@ final class AppRouter {
     UserDefaults.standard.set(AppTab.recipes.rawValue, forKey: AppTab.storageKey)
   }
 
+  /// Brew again: the brew's recipe on its Start brew page with the brew's dose, grind, bean
+  /// and grinder. A deleted recipe is saved again first. False for a brew with no recipe to
+  /// time (logged by hand), which the caller repeats on the brew form instead.
+  func brewAgain(_ brew: Brew, store: Store) -> Bool {
+    let recipe = brew.recipe ?? (try? store.restoreRecipe(for: brew).get())
+    guard let recipe, !(recipe.steps ?? []).isEmpty else { return false }
+    startAgain = BrewAgainStart(brew)
+    startBrew(recipe: recipe.id, bean: nil)
+    return true
+  }
+
   /// After a brew is saved: every tab back to its root, with the Journal on screen.
   func showJournal(savedLater: String? = nil) {
     self.savedLater = savedLater
     (journalPath, recipesPath, beansPath, explorePath) = ([], [], [], [])
     UserDefaults.standard.set(AppTab.journal.rawValue, forKey: AppTab.storageKey)
+  }
+}
+
+/// A saved brew's dose, grind, bean and grinder, for the Start brew page to open with.
+struct BrewAgainStart: Equatable {
+  var beanID: UUID?
+  var doseG: Double?
+  var grindSetting: String
+  var grinderID: UUID?
+
+  init(_ brew: Brew) {
+    // Start brew takes one bean: a blend brings its first.
+    beanID = brew.beans?.first?.bean?.id
+    doseG = brew.doseG
+    grindSetting = brew.grindSetting ?? ""
+    grinderID = brew.grinder?.id
   }
 }

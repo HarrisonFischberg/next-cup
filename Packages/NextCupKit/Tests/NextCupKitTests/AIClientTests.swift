@@ -295,6 +295,52 @@ struct AIClientTests {
     #expect(sent.contains("\"web_search\""))
   }
 
+  @Test func researchIsKeptToTheSitesGiven() async throws {
+    let anthropic = StubTransport([ok(#"{"content":[{"type":"text","text":"Use 1:16."}]}"#)])
+    _ = try await client(anthropic).research(
+      "q", system: "s", provider: .anthropic, model: "m", domains: ["a.example", "b.example"])
+    var sent = String(
+      decoding: try #require(await anthropic.requests.first?.httpBody), as: UTF8.self)
+    #expect(sent.contains(#""allowed_domains":["a.example","b.example"]"#))
+    let openAI = StubTransport([
+      ok(#"{"output":[{"type":"message","content":[{"type":"output_text","text":"x"}]}]}"#)
+    ])
+    _ = try await client(openAI).research(
+      "q", system: "s", provider: .openAI, model: "m", domains: ["a.example"])
+    sent = String(decoding: try #require(await openAI.requests.first?.httpBody), as: UTF8.self)
+    #expect(sent.contains(#""filters":{"allowed_domains":["a.example"]}"#))
+    let counts = [await anthropic.requests.count, await openAI.requests.count]
+    #expect(counts == [1, 1], "nothing to fall back from")
+  }
+
+  /// A provider that refuses the list is asked once more with no list. Nothing else is asked
+  /// twice: a search that ran was billed, so one call never costs more than its searches.
+  @Test func researchFallsBackToTheOpenWebOnlyWhenTheListIsRefused() async throws {
+    let stub = StubTransport([
+      .success(HTTPResult(status: 400, body: Data())),
+      ok(#"{"content":[{"type":"text","text":"Use 1:16."}]}"#),
+    ])
+    let research = try await client(stub).research(
+      "q", system: "s", provider: .anthropic, model: "m", domains: ["a.example"])
+    #expect(research.notes == "Use 1:16.")
+    let bodies = await stub.requests.map { String(decoding: $0.httpBody ?? Data(), as: UTF8.self) }
+    #expect(bodies.count == 2)
+    #expect(bodies[0].contains("allowed_domains") && !bodies[1].contains("allowed_domains"))
+
+    let empty = StubTransport([ok(#"{"content":[{"type":"server_tool_use"}]}"#)])
+    await #expect(throws: AIError.invalidResponse) {
+      try await client(empty).research(
+        "q", system: "s", provider: .anthropic, model: "m", domains: ["a.example"])
+    }
+    let rejected = StubTransport([.success(HTTPResult(status: 401, body: Data()))])
+    await #expect(throws: AIError.keyRejected) {
+      try await client(rejected).research(
+        "q", system: "s", provider: .anthropic, model: "m", domains: ["a.example"])
+    }
+    let attempts = [await empty.requests.count, await rejected.requests.count]
+    #expect(attempts == [1, 1], "a search that ran, or a bad key, is not asked twice")
+  }
+
   @Test func researchWithoutTextIsDiscardedAndNeedsDisclosure() async {
     let stub = StubTransport([ok(#"{"content":[{"type":"server_tool_use"}]}"#)])
     await #expect(throws: AIError.invalidResponse) {

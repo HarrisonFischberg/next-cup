@@ -455,7 +455,10 @@ struct BeanDetailView: View {
     let uses = (bean.brewUses ?? []).compactMap { use in
       use.brew.map { (brew: $0, grams: use.grams) }
     }
-    .sorted { $0.brew.date > $1.brew.date }
+    // The best rated first, under the Best so far card; newest first on a tie or unrated.
+    .sorted {
+      ($0.brew.ratingTenths ?? 0, $0.brew.date) > ($1.brew.ratingTenths ?? 0, $1.brew.date)
+    }
     return VStack(alignment: .leading, spacing: DS.Space.sm) {
       Text("BREWS WITH THIS BEAN").font(DS.Font.label).foregroundStyle(DS.ink2)
         .accessibilityAddTraits(.isHeader)
