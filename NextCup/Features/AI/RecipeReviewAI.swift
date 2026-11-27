@@ -99,11 +99,56 @@ enum RecipeReviewAI {
   /// The web search before Create with AI, run only with a keyed provider.
   static let researchSystem = """
     You research coffee recipes for a home brewer. Search well-known specialty coffee \
-    sites (for example beanbench.coffee and the brew guides of established roasters and \
-    coffee educators) for popular, well-regarded recipes for the brewer named that fit \
-    what they want. Answer in under 200 words: the dose, water, ratio, temperature, grind, \
-    pour or steep schedule and timing the sources recommend, and where they disagree.
+    sites (beanbench.coffee, the brewer's maker, and the brew guides of established \
+    roasters and coffee educators) for popular, well-regarded recipes for the brewer named \
+    that fit what they want. Answer in under 200 words with the one or two recipes that fit \
+    best, each as these lines and nothing else: Recipe (its name and who wrote it), Dose, \
+    Water, Ratio, Temperature, Grind, Schedule (each pour or steep with its time and \
+    running total), Total time. Leave out a line the source does not give; never guess a \
+    number. End with one line, Disagreements, on where the sources differ.
     """
+
+  /// The sites the web search is kept to: the makers of the brewers the app knows, and
+  /// roasters and educators whose brew guides are widely used. Subdomains are included.
+  /// A provider that refuses the list is asked on the open web (`AIClient.research`).
+  static let researchSites = [
+    "beanbench.coffee", "jameshoffmann.co.uk", "baristahustle.com", "coffeeadastra.com",
+    "scottrao.com", "perfectdailygrind.com", "sca.coffee", "europeancoffeetrip.com",
+    "aeropress.com", "chemexcoffeemaker.com", "hario-usa.com", "fellowproducts.com",
+    "counterculturecoffee.com", "bluebottlecoffee.com", "stumptowncoffee.com",
+    "onyxcoffeelab.com", "intelligentsia.com", "squaremilecoffee.com", "timwendelboe.no",
+    "georgehowellcoffee.com", "sweetmarias.com", "prima-coffee.com", "clivecoffee.com",
+    "home-barista.com",
+  ]
+
+  /// The check that an answer's numbers are ones a real recipe for the brewer uses.
+  struct Sanity {
+    var reference: BrewReference
+    /// The recipe or brew the AI started from; its own numbers are never the mistake.
+    var from: RecipeDraft?
+    /// A next cup: the dose, water and temperature may only move a little from `from`.
+    var smallSteps = false
+    /// Off when the user's note names numbers of its own, which come first: the answer is
+    /// asked for again once, but never thrown away for following the note.
+    var strict = true
+
+    /// For a brewer and what the user typed. Nil for a brewer with no reference.
+    init?(
+      method: BrewMethod?, note: String = "", from: RecipeDraft? = nil, smallSteps: Bool = false
+    ) {
+      guard
+        let reference = BrewReference.find(methodKey: method?.builtInKey, style: method?.style)
+      else { return nil }
+      self.reference = reference
+      self.from = from
+      self.smallSteps = smallSteps
+      strict = !note.contains(where: \.isNumber)
+    }
+
+    func problem(_ draft: RecipeDraft) -> String? {
+      reference.problem(draft, from: from, smallSteps: smallSteps)
+    }
+  }
 
   static var isAvailable: Bool { DirectAI.route != nil }
   /// Who the tap sends the recipe to; nil when Apple's model answers on the iPhone.
@@ -163,7 +208,7 @@ enum RecipeReviewAI {
   /// photo, no beans, no brews.
   static func payload(
     _ draft: RecipeDraft, methodName: String?, note: String, grinder: String? = nil,
-    brewer: BrewerFit? = nil
+    brewer: BrewerFit? = nil, reference: String? = nil
   ) -> AIRequestPayload {
     var lines = [
       "Recipe: \(draft.name)" + (methodName.map { " on a \($0)" } ?? ""),
@@ -174,6 +219,7 @@ enum RecipeReviewAI {
     ]
     if let line = grinderLine(grinder, methodName: methodName) { lines.append(line) }
     if let brewer { lines.append(brewer.promptLine) }
+    if let reference { lines.append(reference) }
     let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
     if !trimmed.isEmpty { lines.append("Their note: \(trimmed)") }
     lines.append("Steps:")
@@ -203,11 +249,12 @@ enum RecipeReviewAI {
   /// its web search found. No beans, brews or photos.
   static func createPayload(
     methodName: String, style: String, note: String, grinder: String? = nil,
-    research: WebResearch? = nil, brewer: BrewerFit? = nil
+    research: WebResearch? = nil, brewer: BrewerFit? = nil, reference: String? = nil
   ) -> AIRequestPayload {
     let lines = [
       "Brewer: \(methodName) (\(style))",
       brewer?.promptLine,
+      reference,
       grinderLine(grinder, methodName: methodName),
       "What they want: \(note.trimmingCharacters(in: .whitespacesAndNewlines))",
       research.map { "What coffee sites recommend:\n\($0.notes)" },
@@ -219,41 +266,52 @@ enum RecipeReviewAI {
 
   static func review(
     _ payload: AIRequestPayload, base: RecipeDraft, mode: Mode = .improve,
-    brewer: BrewerFit? = nil
+    brewer: BrewerFit? = nil, sanity: Sanity? = nil
   ) async throws -> Review {
     let (answer, source) = try await DirectAI.send(payload)
     guard let review = parse(answer, base: base, source: source, mode: mode) else {
       throw AIError.invalidResponse
     }
     return try await fit(
-      review, brewer: brewer, payload: payload, base: base, mode: mode,
+      review, brewer: brewer, payload: payload, base: base, mode: mode, sanity: sanity,
       send: { try await DirectAI.send($0) })
   }
 
-  /// Never hands back a recipe that overfills the brewer. One that does is asked for again
-  /// once, with the problem spelled out; if the second answer still overfills (or fails), the
-  /// first one's pours are split to fit and its summary says so.
+  /// Never hands back a recipe that overfills the brewer, or (with `sanity`) one whose
+  /// numbers no real recipe for the brewer uses. One that does either is asked for again
+  /// once, with the problems spelled out. If the second answer still overfills (or fails),
+  /// the pours are split to fit and the summary says so. If its numbers are still wrong the
+  /// answer is thrown away, unless the user's note named numbers of its own.
   static func fit(
     _ review: Review, brewer: BrewerFit?, payload: AIRequestPayload, base: RecipeDraft,
-    mode: Mode,
+    mode: Mode, sanity: Sanity? = nil,
     send: (AIRequestPayload) async throws -> (answer: [String: Any], source: String)
   ) async throws -> Review {
-    guard let brewer, let problem = brewer.problem(review.draft) else { return review }
+    let wrong = sanity?.problem(review.draft)
+    let problems = [wrong, brewer?.problem(review.draft)].compactMap { $0 }
+    guard !problems.isEmpty else { return review }
     var again = payload
-    again.userText += "\n\n" + problem
+    again.userText += "\n\n" + problems.joined(separator: " ")
+    var best = review
     if let reply = try? await send(again),
       let second = parse(reply.answer, base: base, source: reply.source, mode: mode),
-      brewer.problem(second.draft) == nil
+      sanity?.problem(second.draft) == nil
     {
-      return second
+      if brewer?.problem(second.draft) == nil { return second }
+      // Its numbers are now right and only the pours need splitting.
+      if wrong != nil { best = second }
     }
     try Task.checkCancellation()
-    guard let fitted = brewer.fitted(review.draft), brewer.problem(fitted.draft) == nil,
+    if let sanity, sanity.strict, sanity.problem(best.draft) != nil {
+      throw AIError.invalidResponse
+    }
+    guard let brewer, brewer.problem(best.draft) != nil else { return best }
+    guard let fitted = brewer.fitted(best.draft), brewer.problem(fitted.draft) == nil,
       RecipeEditorService.validate(fitted.draft) == nil
     else { throw AIError.invalidResponse }
-    var fixed = review
+    var fixed = best
     fixed.draft = fitted.draft
-    fixed.summary = [review.summary, fitted.note].filter { !$0.isEmpty }.joined(separator: " ")
+    fixed.summary = [best.summary, fitted.note].filter { !$0.isEmpty }.joined(separator: " ")
     return fixed
   }
 

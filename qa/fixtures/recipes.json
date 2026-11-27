@@ -1,0 +1,25 @@
+{
+  "about": "Recipe requests for qa/run-eval.sh <providers> recipes. mode create writes a new recipe for the brewer from the note; mode improve rewrites the brewer's first built-in recipe to follow the note. method is a built-in brewer key. Nothing here is a real person's data.",
+  "fixtures": [
+    {"id": "R01", "mode": "create", "method": "cone-dripper", "note": "one bright, sweet cup of a light roast"},
+    {"id": "R02", "mode": "create", "method": "cone-dripper", "note": "two big mugs for a dark roast, not bitter"},
+    {"id": "R03", "mode": "create", "method": "flat-dripper", "note": "an easy everyday cup"},
+    {"id": "R04", "mode": "create", "method": "chemex", "note": "coffee for three people"},
+    {"id": "R05", "mode": "create", "method": "switchable-dripper", "note": "a hybrid: steep first, then pour the rest over"},
+    {"id": "R06", "mode": "create", "method": "switchable-dripper", "note": "a full travel mug, as much as it can make"},
+    {"id": "R07", "mode": "create", "method": "press", "note": "rich and heavy, for milk"},
+    {"id": "R08", "mode": "create", "method": "aeropress", "note": "a quick strong cup before work"},
+    {"id": "R09", "mode": "create", "method": "inverted-press", "note": "fruity and clean"},
+    {"id": "R10", "mode": "create", "method": "espresso", "note": "a sweet double shot of a medium roast"},
+    {"id": "R11", "mode": "create", "method": "moka-pot", "note": "smooth, no burnt taste"},
+    {"id": "R12", "mode": "create", "method": "cold-brew", "note": "a concentrate for the week"},
+    {"id": "R13", "mode": "create", "method": "iced-pour-over", "note": "one tall iced coffee"},
+    {"id": "R14", "mode": "create", "method": "drip-machine", "note": "a full pot for guests"},
+    {"id": "R15", "mode": "improve", "method": "cone-dripper", "note": ""},
+    {"id": "R16", "mode": "improve", "method": "cone-dripper", "note": "it tastes sour and thin"},
+    {"id": "R17", "mode": "improve", "method": "press", "note": "less sludge in the cup"},
+    {"id": "R18", "mode": "improve", "method": "switchable-dripper", "note": "make it a hybrid with more pours"},
+    {"id": "R19", "mode": "improve", "method": "aeropress", "note": "it is too bitter"},
+    {"id": "R20", "mode": "improve", "method": "chemex", "note": "brew it for one person"}
+  ]
+}

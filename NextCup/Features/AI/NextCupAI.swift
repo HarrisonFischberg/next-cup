@@ -154,7 +154,8 @@ enum NextCupAI {
   /// the user's similar past brews. No photos.
   static func payload(
     for brew: Brew, base: RecipeDraft, similar: [Brew] = [],
-    noteCharacters: Int = cloudHistory.noteCharacters, brewer: BrewerFit? = nil
+    noteCharacters: Int = cloudHistory.noteCharacters, brewer: BrewerFit? = nil,
+    reference: String? = nil
   ) -> AIRequestPayload {
     var lines = ["Brewed: \(brew.date.formatted(date: .abbreviated, time: .omitted))"]
     lines += (brew.beans ?? []).map(beanLine)
@@ -168,7 +169,8 @@ enum NextCupAI {
     let notes = brew.notes.trimmingCharacters(in: .whitespacesAndNewlines)
     if !notes.isEmpty { lines.append("Their notes on this cup: \(notes)") }
     let recipe = RecipeReviewAI.payload(
-      base, methodName: brew.method?.name, note: "", grinder: base.grinderName, brewer: brewer)
+      base, methodName: brew.method?.name, note: "", grinder: base.grinderName, brewer: brewer,
+      reference: reference)
     lines.append(recipe.userText)
     lines.append("Their other similar brews, newest first:" + (similar.isEmpty ? " none yet" : ""))
     lines += similar.map { historyLine($0, noteCharacters: noteCharacters) }
@@ -274,9 +276,12 @@ enum NextCupAI {
       to: brew, in: sameCategoryOnly ? sameCategory(as: brew, in: all) : all,
       limit: history.brews)
     let brewer = BrewerFit.current(brew.method?.builtInKey)
+    // A next cup moves a little from the cup it answers, and never to numbers no recipe uses.
+    let sanity = RecipeReviewAI.Sanity(method: brew.method, from: start, smallSteps: true)
+    let roast = (brew.beans ?? []).compactMap { $0.bean?.roastLevel }.first
     let request = payload(
       for: brew, base: start, similar: similar, noteCharacters: history.noteCharacters,
-      brewer: brewer)
+      brewer: brewer, reference: sanity?.reference.promptLine(roast: roast))
     let (answer, source) = try await send(request)
     try Task.checkCancellation()
     try checkStillThere(brew)
@@ -284,7 +289,8 @@ enum NextCupAI {
       throw AIError.invalidResponse
     }
     let review = try await RecipeReviewAI.fit(
-      parsed, brewer: brewer, payload: request, base: start, mode: .improve, send: send)
+      parsed, brewer: brewer, payload: request, base: start, mode: .improve, sanity: sanity,
+      send: send)
     try checkStillThere(brew)
     let draft = finished(review, brew: brew, sources: found?.sources ?? [])
     if let problem = RecipeEditorService.validate(draft) { throw problem }

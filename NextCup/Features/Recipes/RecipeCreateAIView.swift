@@ -220,6 +220,7 @@ struct RecipeCreateAIView: View {
     base.methodID = method.id
     let style = RecipeFormat.title(method.style)
     let grinder = grinderName
+    let sanity = RecipeReviewAI.Sanity(method: method, note: note)
     working = true
     job = Task {
       defer {
@@ -236,10 +237,10 @@ struct RecipeCreateAIView: View {
       guard !Task.isCancelled else { return }
       let payload = RecipeReviewAI.createPayload(
         methodName: method.name, style: style, note: note, grinder: grinder, research: research,
-        brewer: brewer)
+        brewer: brewer, reference: sanity?.reference.promptLine())
       do {
         let review = try await RecipeReviewAI.review(
-          payload, base: base, mode: .create, brewer: brewer)
+          payload, base: base, mode: .create, brewer: brewer, sanity: sanity)
         guard !Task.isCancelled else { return }
         var draft = review.draft
         draft.credit = "AI, from your note"

@@ -154,6 +154,11 @@ struct BeanBrewAITests {
     ]
     #expect(BeanBrewAI.isSound(draft, style: .pourOver))
     #expect(!BeanBrewAI.isSound(draft, style: .espresso))
+    // A built-in brewer is held to its own limits: 1:16 is no moka pot recipe.
+    #expect(BeanBrewAI.isSound(draft, methodKey: "cone-dripper", style: .pourOver))
+    #expect(!BeanBrewAI.isSound(draft, methodKey: "moka-pot", style: .espresso))
+    draft.tempC = 40
+    #expect(!BeanBrewAI.isSound(draft, methodKey: "cone-dripper", style: .pourOver))
   }
 
   @Test func savedPickWaitsUnderItsBeanUntilBrewed() throws {

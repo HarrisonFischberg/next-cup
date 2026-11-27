@@ -116,6 +116,9 @@ enum BeanBrewAI {
       if let brewer = BrewerFit.current(method.builtInKey) {
         lines.append("\(method.name): \(brewer.promptLine)")
       }
+      if let reference = BrewReference.find(methodKey: method.builtInKey, style: method.style) {
+        lines.append("\(method.name) recipes: \(reference.shortLine)")
+      }
     }
     if let line = RecipeReviewAI.grinderLine(grinder, methodName: nil) { lines.append(line) }
     return AIRequestPayload(
@@ -170,7 +173,7 @@ enum BeanBrewAI {
         (raw["grind"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
       var draft: RecipeDraft
       if let review = RecipeReviewAI.parse(raw, base: base, source: source, mode: .create),
-        isSound(review.draft, style: method.style)
+        isSound(review.draft, method: method)
       {
         draft = review.draft
       } else if var builtIn = fallback(method) {
@@ -230,18 +233,22 @@ enum BeanBrewAI {
     return name.isEmpty ? nil : String(name.prefix(60))
   }
 
-  /// Water for the coffee in a range real recipes use for the brewer (espresso and moka
-  /// about 1:1.5 to 1:10, cold brew, often a concentrate, 1:4 to 1:20, the rest 1:12 to 1:20),
-  /// and for pour over and immersion at least two steps and 1.5 to 10 minutes.
-  static func isSound(_ draft: RecipeDraft, style: BrewStyle) -> Bool {
-    guard draft.doseG > 0 else { return false }
-    let ratio = draft.waterG / draft.doseG
+  /// The recipe's ratio, temperature and time are ones real recipes for this brewer use
+  /// (`BrewReference`), and a pour over or immersion has at least two steps and a time.
+  static func isSound(_ draft: RecipeDraft, method: BrewMethod) -> Bool {
+    isSound(draft, methodKey: method.builtInKey, style: method.style)
+  }
+
+  static func isSound(_ draft: RecipeDraft, methodKey: String? = nil, style: BrewStyle) -> Bool {
+    guard draft.doseG > 0, draft.waterG > 0 else { return false }
+    if let reference = BrewReference.find(methodKey: methodKey, style: style),
+      reference.problem(draft) != nil
+    {
+      return false
+    }
     switch style {
-    case .espresso: return (1.5...10).contains(ratio)
-    case .cold: return (4...20).contains(ratio)
-    default:
-      return (12...20).contains(ratio) && draft.steps.count >= 2
-        && (90...600).contains(draft.totalTimeS ?? 0)
+    case .espresso, .cold: return true
+    case .pourOver, .immersion: return draft.steps.count >= 2 && draft.totalTimeS != nil
     }
   }
 

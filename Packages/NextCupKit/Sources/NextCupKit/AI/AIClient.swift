@@ -34,7 +34,7 @@ public struct AIResult: Equatable, Sendable {
 }
 
 /// One page a web search answer cites.
-public struct WebSource: Equatable, Hashable, Sendable {
+public struct WebSource: Codable, Equatable, Hashable, Sendable {
   public let title: String
   public let url: URL
 
@@ -45,7 +45,7 @@ public struct WebSource: Equatable, Hashable, Sendable {
 }
 
 /// What a provider found on the web: its summary and the pages it cites.
-public struct WebResearch: Equatable, Sendable {
+public struct WebResearch: Codable, Equatable, Sendable {
   public let notes: String
   public let sources: [WebSource]
 
@@ -143,16 +143,27 @@ public struct AIClient: Sendable {
   /// Searches the web for `question` and returns what the provider found, in its own words,
   /// with the pages its answer cites. Only `question` and `system` are sent. Anthropic uses
   /// its web search tool (billed per search on the user's key); OpenAI its web_search tool.
+  /// With `domains`, the search is kept to those sites. A provider that refuses the list
+  /// (HTTP 400, before any search runs or is billed) is asked once more on the open web, so
+  /// one call never costs more than `maxSearches` searches.
   public func research(
     _ question: String, system: String, provider: AIProviderKind, model: String,
-    maxSearches: Int = 3
+    maxSearches: Int = 3, domains: [String] = []
   ) async throws -> WebResearch {
     guard disclosureAccepted(provider) else { throw AIError.disclosureNotAccepted }
     guard let apiKey = key(provider), !apiKey.isEmpty else { throw AIError.noKey }
-    let request = try Self.researchRequest(
-      question, system: system, provider: provider, model: model, key: apiKey,
-      maxSearches: maxSearches)
-    return try Self.parseResearch(try await perform(request), provider: provider)
+    func ask(_ domains: [String]) async throws -> WebResearch {
+      let request = try Self.researchRequest(
+        question, system: system, provider: provider, model: model, key: apiKey,
+        maxSearches: maxSearches, domains: domains)
+      return try Self.parseResearch(try await perform(request), provider: provider)
+    }
+    guard !domains.isEmpty else { return try await ask([]) }
+    do {
+      return try await ask(domains)
+    } catch AIError.http(400) {
+      return try await ask([])
+    }
   }
 
   /// Sends one request with retries and returns the body of a 2xx answer.
@@ -299,7 +310,7 @@ public struct AIClient: Sendable {
 
   static func researchRequest(
     _ question: String, system: String, provider: AIProviderKind, model: String, key: String,
-    maxSearches: Int
+    maxSearches: Int, domains: [String] = []
   ) throws -> URLRequest {
     var request: URLRequest
     let body: [String: Any]
@@ -310,17 +321,23 @@ public struct AIClient: Sendable {
       request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
       // The basic tool works on every model a key may pick; no structured output here,
       // because web search answers always carry citations.
+      var tool: [String: Any] = [
+        "type": "web_search_20250305", "name": "web_search", "max_uses": maxSearches,
+      ]
+      if !domains.isEmpty { tool["allowed_domains"] = domains }
       body = [
         "model": model, "max_tokens": 8000, "system": system,
         "messages": [["role": "user", "content": question]],
-        "tools": [["type": "web_search_20250305", "name": "web_search", "max_uses": maxSearches]],
+        "tools": [tool],
       ]
     case .openAI:
       request = URLRequest(url: URL(string: "https://api.openai.com/v1/responses")!)
       request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+      var tool: [String: Any] = ["type": "web_search"]
+      if !domains.isEmpty { tool["filters"] = ["allowed_domains": domains] }
       body = [
         "model": model, "instructions": system, "input": question,
-        "tools": [["type": "web_search"]], "max_tool_calls": maxSearches,
+        "tools": [tool], "max_tool_calls": maxSearches,
       ]
     }
     request.httpMethod = "POST"
