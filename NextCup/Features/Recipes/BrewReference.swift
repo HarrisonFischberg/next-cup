@@ -32,7 +32,7 @@ struct BrewReference: Equatable {
     timeS: 45...360, usualTimeS: 75...165,
     technique: "Pour, stir, steep 1 to 2 minutes, then press for about 30 s.")
 
-  /// Keyed by `BrewMethod.builtInKey`. Nespresso has no recipe to check.
+  /// Keyed by `BrewMethod.builtInKey`. Nespresso has no entry and is held to its style.
   static let methods: [String: BrewReference] = [
     "cone-dripper": cone,
     "flat-dripper": BrewReference(
@@ -83,6 +83,7 @@ struct BrewReference: Equatable {
   ]
 
   /// A brewer the user made has no key, so only its style is known and the limits are wider.
+  /// Also what brew advice is held to when the taste the user typed names numbers.
   private static let styles: [BrewStyle: BrewReference] = [
     .pourOver: BrewReference(
       ratio: 12...20, usualRatio: 15...17, tempC: 80...100, usualTempC: 90...96,
@@ -100,10 +101,7 @@ struct BrewReference: Equatable {
   ]
 
   static func find(methodKey: String?, style: BrewStyle?) -> BrewReference? {
-    if let known = methodKey.flatMap({ methods[$0] }) { return known }
-    // A built-in brewer with no entry (Nespresso) is deliberately unchecked.
-    guard methodKey == nil, let style else { return nil }
-    return styles[style]
+    methodKey.flatMap { methods[$0] } ?? style.flatMap { styles[$0] }
   }
 
   /// Water for each gram of coffee, counting the ice of a recipe brewed over ice.
@@ -215,6 +213,43 @@ struct BrewReference: Equatable {
     return "Your last recipe has numbers no good recipe for this brewer uses: "
       + problems.joined(separator: "; ") + ". Rewrite it with numbers inside those limits."
   }
+
+  /// The recipe with its wrong numbers moved to the nearest ones this brewer is brewed
+  /// with, and a sentence saying so; nil when it has no problem or cannot be mended. Only
+  /// the coffee, the temperature and the finish time move, so every pour, and with it what
+  /// the brewer holds, stays as written. A ratio so far out that the coffee would change by
+  /// more than `mostMend` is not mended: that recipe is wrong in more than its numbers.
+  func mended(_ draft: RecipeDraft, from: RecipeDraft? = nil, smallSteps: Bool = false)
+    -> (draft: RecipeDraft, note: String)?
+  {
+    guard problem(draft, from: from, smallSteps: smallSteps) != nil else { return nil }
+    var fixed = draft
+    if let ratio = Self.ratio(of: draft), !self.ratio.contains(ratio) {
+      // To the half gram just inside the limit.
+      let water = ratio * draft.doseG
+      let dose =
+        ratio > self.ratio.upperBound
+        ? (water / self.ratio.upperBound * 2).rounded(.up) / 2
+        : (water / self.ratio.lowerBound * 2).rounded(.down) / 2
+      guard abs(dose - draft.doseG) <= draft.doseG * Self.mostMend else { return nil }
+      fixed.doseG = dose
+    }
+    if let limits = tempC, let temp = draft.tempC {
+      fixed.tempC = min(max(temp, limits.lowerBound), limits.upperBound)
+    }
+    if let time = draft.totalTimeS, !timeS.contains(time) {
+      let last = draft.steps.map(\.startOffsetS).max() ?? 0
+      guard last < timeS.upperBound else { return nil }
+      fixed.totalTimeS = min(max(time, timeS.lowerBound, last), timeS.upperBound)
+    }
+    guard problem(fixed, from: from, smallSteps: smallSteps) == nil else { return nil }
+    return (
+      fixed, "Its coffee, temperature or time was adjusted to what this brewer is brewed with."
+    )
+  }
+
+  /// The most the coffee may change for a ratio to be mended rather than thrown away.
+  static let mostMend = 0.25
 
   /// The most a next cup moves the dose or the water from the cup before it.
   static let mostChange = 0.25

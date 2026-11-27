@@ -128,8 +128,8 @@ enum RecipeReviewAI {
     var from: RecipeDraft?
     /// A next cup: the dose, water and temperature may only move a little from `from`.
     var smallSteps = false
-    /// Off when the user's note names numbers of its own, which come first: the answer is
-    /// asked for again once, but never thrown away for following the note.
+    /// Off when the user's note names numbers of its own. Those come first, so the answer
+    /// is not checked at all: asking again would talk the AI out of what they asked for.
     var strict = true
 
     /// For a brewer and what the user typed. Nil for a brewer with no reference.
@@ -146,7 +146,11 @@ enum RecipeReviewAI {
     }
 
     func problem(_ draft: RecipeDraft) -> String? {
-      reference.problem(draft, from: from, smallSteps: smallSteps)
+      strict ? reference.problem(draft, from: from, smallSteps: smallSteps) : nil
+    }
+
+    func mended(_ draft: RecipeDraft) -> (draft: RecipeDraft, note: String)? {
+      strict ? reference.mended(draft, from: from, smallSteps: smallSteps) : nil
     }
   }
 
@@ -280,8 +284,9 @@ enum RecipeReviewAI {
   /// Never hands back a recipe that overfills the brewer, or (with `sanity`) one whose
   /// numbers no real recipe for the brewer uses. One that does either is asked for again
   /// once, with the problems spelled out. If the second answer still overfills (or fails),
-  /// the pours are split to fit and the summary says so. If its numbers are still wrong the
-  /// answer is thrown away, unless the user's note named numbers of its own.
+  /// the pours are split to fit and the summary says so. If its numbers are still wrong
+  /// they are moved to the nearest ones the brewer is brewed with (`BrewReference.mended`),
+  /// and an answer too far out for that is thrown away.
   static func fit(
     _ review: Review, brewer: BrewerFit?, payload: AIRequestPayload, base: RecipeDraft,
     mode: Mode, sanity: Sanity? = nil,
@@ -302,8 +307,12 @@ enum RecipeReviewAI {
       if wrong != nil { best = second }
     }
     try Task.checkCancellation()
-    if let sanity, sanity.strict, sanity.problem(best.draft) != nil {
-      throw AIError.invalidResponse
+    if let sanity, sanity.problem(best.draft) != nil {
+      guard let mended = sanity.mended(best.draft),
+        RecipeEditorService.validate(mended.draft) == nil
+      else { throw AIError.invalidResponse }
+      best.draft = mended.draft
+      best.summary = [best.summary, mended.note].filter { !$0.isEmpty }.joined(separator: " ")
     }
     guard let brewer, brewer.problem(best.draft) != nil else { return best }
     guard let fitted = brewer.fitted(best.draft), brewer.problem(fitted.draft) == nil,

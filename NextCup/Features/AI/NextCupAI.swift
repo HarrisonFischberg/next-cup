@@ -276,8 +276,10 @@ enum NextCupAI {
       to: brew, in: sameCategoryOnly ? sameCategory(as: brew, in: all) : all,
       limit: history.brews)
     let brewer = BrewerFit.current(brew.method?.builtInKey)
-    // A next cup moves a little from the cup it answers, and never to numbers no recipe uses.
-    let sanity = RecipeReviewAI.Sanity(method: brew.method, from: start, smallSteps: true)
+    // A next cup moves a little from the cup it answers, and never to numbers no recipe uses,
+    // unless their notes on the cup name numbers of their own ("next time 22 g").
+    let sanity = RecipeReviewAI.Sanity(
+      method: brew.method, note: brew.notes, from: start, smallSteps: true)
     let roast = (brew.beans ?? []).compactMap { $0.bean?.roastLevel }.first
     let request = payload(
       for: brew, base: start, similar: similar, noteCharacters: history.noteCharacters,

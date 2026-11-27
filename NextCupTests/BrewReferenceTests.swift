@@ -11,6 +11,7 @@ struct BrewReferenceTests {
     dose: Double, water: Double, temp: Double? = 94, time: Int? = 180
   ) -> RecipeDraft {
     var draft = RecipeDraft()
+    draft.name = "Test cup"
     draft.doseG = dose
     draft.waterG = water
     draft.tempC = temp
@@ -47,7 +48,8 @@ struct BrewReferenceTests {
     for method in try BuiltInContent().methods where method.key != "nespresso" {
       #expect(BrewReference.methods[method.key] != nil, "\(method.key)")
     }
-    #expect(BrewReference.find(methodKey: "nespresso", style: .espresso) == nil)
+    let capsule = BrewReference.find(methodKey: "nespresso", style: .espresso)
+    #expect(capsule?.ratio == 1...13, "no entry of its own, so its style's limits")
     #expect(BrewReference.find(methodKey: nil, style: .pourOver) != nil, "a brewer the user made")
     #expect(BrewReference.find(methodKey: nil, style: nil) == nil)
   }
@@ -160,20 +162,54 @@ struct BrewReferenceTests {
     #expect(result.review.summary == "Second try." && result.review.draft.waterG == 250)
   }
 
-  @Test func numbersStillWrongAreThrownAway() async {
+  @Test func numbersStillFarOutAreThrownAway() async {
     await #expect(throws: AIError.invalidResponse) {
       _ = try await fit(
         draft(dose: 10, water: 400), sanity: sanity(), second: answer(dose: 10, water: 400))
     }
   }
 
-  /// "1:10, strong" is the user's call: the AI is asked once more, then believed.
+  /// Apple's small model often answers 1:20 in 40 seconds twice running: the coffee and
+  /// the finish move to the brewer's limits and every pour stays as written.
+  @Test func numbersStillALittleOutAreMended() async throws {
+    let weak = draft(dose: 18, water: 360, temp: 70, time: 50)
+    let result = try await fit(weak, sanity: sanity(), second: answer(dose: 1, water: 1))
+    let mended = result.review.draft
+    #expect(result.asked.count == 1)
+    #expect(mended.doseG == 19 && mended.waterG == 360 && mended.steps == weak.steps)
+    #expect(mended.tempC == 80 && mended.totalTimeS == 105)
+    #expect(result.review.summary.hasPrefix("First try. Its coffee, temperature or time"))
+    #expect(cone.mended(mended) == nil, "nothing left to mend")
+    #expect(cone.mended(draft(dose: 10, water: 400)) == nil, "too far out to mend")
+  }
+
+  /// "1:10, strong" is the user's call: asking again would talk the AI out of it.
   @Test func aNoteThatNamesNumbersComesFirst() async throws {
-    let asked = sanity(note: "strong, 1:10")
-    #expect(!asked.strict && sanity(note: "bright and sweet").strict)
+    let named = sanity(note: "strong, 1:10")
+    #expect(!named.strict && sanity(note: "bright and sweet").strict)
     let result = try await fit(
-      draft(dose: 20, water: 200), sanity: asked, second: answer(dose: 20, water: 200))
-    #expect(result.asked.count == 1 && result.review.summary == "First try.")
+      draft(dose: 20, water: 200), sanity: named, second: answer(dose: 15, water: 250))
+    #expect(result.asked.isEmpty && result.review.draft.waterG == 200)
+  }
+
+  /// A second answer with the right numbers but too big a pour is kept and its pours split.
+  @Test func numbersFixedOnTheSecondTryStillGetFittedToTheBrewer() async throws {
+    let defaults = try #require(UserDefaults(suiteName: "BrewReference.\(UUID().uuidString)"))
+    let cone02 = try #require(BrewerFit.current("cone-dripper", defaults: defaults))
+    var asked: [String] = []
+    let review = try await RecipeReviewAI.fit(
+      RecipeReviewAI.Review(
+        summary: "First try.", changes: [], draft: draft(dose: 10, water: 400), source: "Test"),
+      brewer: cone02,
+      payload: RecipeReviewAI.createPayload(methodName: "V60", style: "", note: ""),
+      base: RecipeDraft(), mode: .create, sanity: sanity(),
+      send: {
+        asked.append($0.userText)
+        return (self.answer(dose: 30, water: 480), "Test")
+      })
+    #expect(asked.count == 1 && asked[0].contains("its ratio is 1:40"))
+    #expect(review.draft.doseG == 30 && review.draft.waterG == 480)
+    #expect(cone02.overfills(review.draft).isEmpty && review.summary.hasPrefix("Second try."))
   }
 
   @Test func theSitesAreBareDomainsBothProvidersAccept() {

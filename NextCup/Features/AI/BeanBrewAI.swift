@@ -151,7 +151,7 @@ enum BeanBrewAI {
   /// survive.
   static func parse(
     _ answer: [String: Any], methods: [BrewMethod], grinder: String?, bean: Bean, source: String,
-    fallback: (BrewMethod) -> RecipeDraft? = { _ in nil }
+    namesNumbers: Bool = false, fallback: (BrewMethod) -> RecipeDraft? = { _ in nil }
   ) -> Outcome? {
     var picks: [Pick] = []
     var used = Set<UUID>()
@@ -173,7 +173,8 @@ enum BeanBrewAI {
         (raw["grind"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
       var draft: RecipeDraft
       if let review = RecipeReviewAI.parse(raw, base: base, source: source, mode: .create),
-        isSound(review.draft, method: method)
+        isSound(
+          review.draft, methodKey: namesNumbers ? nil : method.builtInKey, style: method.style)
       {
         draft = review.draft
       } else if var builtIn = fallback(method) {
@@ -235,10 +236,8 @@ enum BeanBrewAI {
 
   /// The recipe's ratio, temperature and time are ones real recipes for this brewer use
   /// (`BrewReference`), and a pour over or immersion has at least two steps and a time.
-  static func isSound(_ draft: RecipeDraft, method: BrewMethod) -> Bool {
-    isSound(draft, methodKey: method.builtInKey, style: method.style)
-  }
-
+  /// Without a key only the style's wider limits apply: a brewer the user made, or a taste
+  /// that names numbers of its own ("a 1:5 ristretto").
   static func isSound(_ draft: RecipeDraft, methodKey: String? = nil, style: BrewStyle) -> Bool {
     guard draft.doseG > 0, draft.waterG > 0 else { return false }
     if let reference = BrewReference.find(methodKey: methodKey, style: style),
@@ -307,6 +306,7 @@ enum BeanBrewAI {
         try Task.checkCancellation()
         if let outcome = parse(
           answer, methods: methods, grinder: grinder, bean: bean, source: source,
+          namesNumbers: goals.joined().contains(where: \.isNumber),
           fallback: { builtInDraft(for: $0, store: store) })
         {
           guard onePerGoal, !goals.isEmpty else { return outcome }
